@@ -1,0 +1,164 @@
+#ifndef T2S_ANALYSIS_MANAGER_HXX
+#define T2S_ANALYSIS_MANAGER_HXX
+
+#include <memory>
+#include <utility>
+
+#include "Math/Point3D.h"
+#include "TFile.h"
+#include "TTree.h"
+
+#include "Analysis/InputFormat.hxx"
+#include "Analysis/OutputFormat.hxx"
+#include "App/Settings.hxx"
+#include "Math/Constants.hxx"
+#include "Secondary/Charged.hxx"
+#include "Secondary/Neutral.hxx"
+#include "Secondary/True.hxx"
+#include "Secondary/TypeA.hxx"
+#include "Secondary/TypeD.hxx"
+#include "Secondary/TypeE.hxx"
+#include "Secondary/TypeH.hxx"
+
+namespace Tree2Secondaries::Analysis {
+
+class Manager {
+   public:
+    Manager(const Manager &) = delete;
+    Manager(Manager &&) = delete;
+    Manager &operator=(const Manager &) = delete;
+    Manager &operator=(Manager &&) = delete;
+    ~Manager() = default;
+
+    explicit Manager(Settings settings) : fSettings{std::move(settings)} {}
+
+    bool Initialize();
+    bool OpenInputFile();
+    bool LoadInputTree();
+    void ConnectInputBranches();
+
+    void ConnectBranchesEvents();
+    void ConnectBranchesInjected();
+    void ConnectBranchesMC();
+    void ConnectBranchesTracks();
+
+    bool PrepareOutputFile();
+    bool PrepareOutputTree();
+    void PrepareOutputBranches();
+
+    void PrepareBranchesEvents();
+    void PrepareBranchesV0s();
+    void PrepareBranchesTypeA();
+    void PrepareBranchesTypeD();
+    void PrepareBranchesTypeE();
+    void PrepareBranchesTypeH();
+
+    [[nodiscard]] long long NumberEventsToRead() const { return fSettings.limitToNEvents ? fSettings.limitToNEvents : fEventsTree->GetEntries(); }
+    [[nodiscard]] bool IsMC() const { return fSettings.isMC; }
+    [[nodiscard]] bool IsSignalMC() const { return fSettings.isSignalMC; }
+    void GetEvent(long long i_event) { fEventsTree->GetEntry(i_event); }
+
+    [[nodiscard]] size_t NumberMC() const { return fInput_MC.PdgCode->size(); }
+    [[nodiscard]] size_t NumberInjected() const { return fInput_Injected.ReactionID->size(); }
+    [[nodiscard]] size_t NumberTracks() const { return fInput_Tracks.Px->size(); }
+
+    void ProcessEvent();
+    void SetBz(double bz) { fBz = bz; }
+    [[nodiscard]] double Bz() const { return fBz; }
+    void SetPrimaryVertex(double x, double y, double z) { fPV.SetCoordinates(x, y, z); }
+    [[nodiscard]] ROOT::Math::XYZPoint PrimaryVertex() const { return fPV; }
+
+    void ProcessInjected();
+    void ProcessMC();
+    void ProcessTracks();
+
+    void FindV0s(int pdg_code_v0, int pdg_code_neg, int pdg_code_pos);
+    [[nodiscard]] bool PassesV0CutsAs(const Neutral &this_v0, int pdg_code_v0) const;
+    void Store(const std::shared_ptr<Neutral> &v0, int pdg_code_v0);
+
+    void FindSexaquarks_TypeA(int pdg_struck_nucleon, const std::vector<int> &pdg_products);
+    [[nodiscard]] bool PassesSexaquarkCuts(const TypeA &sexa) const;
+    void Store(const std::unique_ptr<TypeA> &sexa);
+
+    void FindSexaquarks_TypeD(int pdg_struck_nucleon, const std::vector<int> &pdg_products);
+    [[nodiscard]] bool PassesSexaquarkCuts(const TypeD &sexa) const;
+    void Store(const std::unique_ptr<TypeD> &sexa);
+
+    void FindSexaquarks_TypeE(int pdg_struck_nucleon, const std::vector<int> &pdg_products);
+    [[nodiscard]] bool PassesSexaquarkCuts(const TypeE &sexa) const;
+    void Store(const std::unique_ptr<TypeE> &sexa);
+
+    void FindSexaquarks_TypeH(int pdg_struck_nucleon, const std::vector<int> &pdg_products);
+    [[nodiscard]] bool PassesSexaquarkCuts(const TypeH &sexa) const;
+    void Store(const std::unique_ptr<TypeH> &sexa);
+
+    void FindSexaquarks(Channel channel_opt) {
+        if (channel_opt == Channel::A)
+            FindSexaquarks_TypeA(PdgCode::Neutron, {PdgCode::AntiLambda, PdgCode::KaonZeroShort});
+        else if (channel_opt == Channel::AntiA)
+            FindSexaquarks_TypeA(PdgCode::AntiNeutron, {PdgCode::Lambda, PdgCode::KaonZeroShort});
+        else if (channel_opt == Channel::D)
+            FindSexaquarks_TypeD(PdgCode::Proton, {PdgCode::AntiLambda, PdgCode::PosKaon});
+        else if (channel_opt == Channel::AntiD)
+            FindSexaquarks_TypeD(PdgCode::AntiProton, {PdgCode::Lambda, PdgCode::NegKaon});
+        else if (channel_opt == Channel::E)
+            FindSexaquarks_TypeE(PdgCode::Proton, {PdgCode::AntiLambda, PdgCode::PosKaon, PdgCode::PiMinus, PdgCode::PiPlus});
+        else if (channel_opt == Channel::AntiE)
+            FindSexaquarks_TypeE(PdgCode::AntiProton, {PdgCode::Lambda, PdgCode::NegKaon, PdgCode::PiMinus, PdgCode::PiPlus});
+        else if (channel_opt == Channel::H)
+            FindSexaquarks_TypeH(PdgCode::Proton, {PdgCode::PosKaon, PdgCode::PosKaon});
+        else if (channel_opt == Channel::AntiH)
+            FindSexaquarks_TypeH(PdgCode::AntiProton, {PdgCode::NegKaon, PdgCode::NegKaon});
+        else {
+            WARNING("Unknown Sexaquark Channel");
+            return;
+        }
+    }
+
+    void EndOfEvent();
+    void EndOfAnalysis();
+
+   private:
+    Settings fSettings;
+    std::unique_ptr<TFile> fInputFile;
+    std::unique_ptr<TTree> fEventsTree;
+
+    std::unique_ptr<TFile> fOutputFile;
+    std::unique_ptr<TTree> fOutputTree;
+
+    // input structs //
+    Struct::Event fInput_Event;
+    Struct::Injected fInput_Injected;
+    Struct::MC fInput_MC;
+    Struct::Tracks fInput_Tracks;
+
+    // transitory containers //
+    double fBz{};
+    ROOT::Math::XYZPoint fPV;
+    std::vector<std::shared_ptr<True>> fMCParticles;
+
+    std::vector<std::shared_ptr<Charged>> fAntiProtons;
+    std::vector<std::shared_ptr<Charged>> fProtons;
+    std::vector<std::shared_ptr<Charged>> fNegKaons;
+    std::vector<std::shared_ptr<Charged>> fPosKaons;
+    std::vector<std::shared_ptr<Charged>> fPiMinus;
+    std::vector<std::shared_ptr<Charged>> fPiPlus;
+
+    std::vector<std::shared_ptr<Neutral>> fAntiLambdas;
+    std::vector<std::shared_ptr<Neutral>> fLambdas;
+    std::vector<std::shared_ptr<Neutral>> fNeutralKaons;  // KaonZeroShort
+
+    // output structs //
+    Struct::Event fOutput_Event;
+    Struct::V0s fOutput_V0s;
+    Struct::TypeA fOutput_ChannelA;
+    Struct::TypeD fOutput_ChannelD;
+    /*
+    Struct::TypeE fOutput_ChannelE;
+    Struct::TypeH fOutput_ChannelH;
+    */
+};
+
+}  // namespace Tree2Secondaries::Analysis
+
+#endif  // T2S_ANALYSIS_MANAGER_HXX
