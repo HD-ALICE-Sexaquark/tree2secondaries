@@ -3,7 +3,7 @@
 
 #include <vector>
 
-namespace Tree2Secondaries::Struct {
+namespace Tree2Secondaries::Output {
 
 struct V0s {
     std::vector<int>* Index{nullptr};
@@ -188,6 +188,6 @@ struct TypeD {
     }
 };
 
-}  // namespace Tree2Secondaries::Struct
+}  // namespace Tree2Secondaries::Output
 
 #endif  // T2S_OUTPUT_FORMAT_HXX

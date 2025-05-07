@@ -1,7 +1,6 @@
 #ifndef T2S_SECONDARY_NEUTRAL_HXX
 #define T2S_SECONDARY_NEUTRAL_HXX
 
-#include <memory>
 #include <utility>
 
 #include "Math/Point3D.h"
@@ -9,108 +8,77 @@
 #include "Math/Vector4D.h"
 
 #include "Math/Common.hxx"
-#include "Math/VtxrResults.hxx"
-#include "Secondary/Charged.hxx"
-#include "Secondary/Reconstructed.hxx"
+#include "Math/Propagator.hxx"
+#include "Secondary/Particle.hxx"
 
 namespace Tree2Secondaries {
 
-//
-class Neutral final : public Reconstructed {
+class alignas(256) Neutral {
    public:
     Neutral(const Neutral&) = delete;
     Neutral(Neutral&&) noexcept = default;
     Neutral& operator=(const Neutral&) = delete;
     Neutral& operator=(Neutral&&) = default;
-    ~Neutral() final = default;
+    ~Neutral() = default;
 
-    Neutral(int charge, ROOT::Math::XYZPoint vtx, ROOT::Math::PxPyPzMVector momentum) : Reconstructed{charge, std::move(vtx), std::move(momentum)} {}
+    Neutral(ROOT::Math::XYZPoint vtx, ROOT::Math::PxPyPzEVector momentum) : fState{std::move(momentum), std::move(vtx)} {}
 
-    Neutral(size_t id, const std::shared_ptr<Charged>& neg, const std::shared_ptr<Charged>& pos, const PartPartResults& res)
-        : Reconstructed{neg->Charge() + pos->Charge(),
-                        {0.5 * (res.q.pca.X() + res.t.pca.X()),  //
-                         0.5 * (res.q.pca.Y() + res.t.pca.Y()),  //
-                         0.5 * (res.q.pca.Z() + res.t.pca.Z())},
-                        neg->PxPyPzM(res.q.ds) + pos->PxPyPzM(res.t.ds)},  //
-          fNeg{neg},
-          fNegRes{res.q},
-          fPos{pos},
-          fPosRes{res.t},
-          fIndex{id} {}
+    Neutral(int neg_idx, int pos_idx, ROOT::Math::XYZPoint vtx, ROOT::Math::PxPyPzEVector momentum)
+        : fState{std::move(momentum), std::move(vtx)},  //
+          fNegIndex{neg_idx},
+          fPosIndex{pos_idx} {}
 
-    [[nodiscard]] size_t Index() const override { return fIndex; }
-    [[nodiscard]] size_t NegIndex() const { return fNeg->Index(); }
-    [[nodiscard]] size_t PosIndex() const { return fPos->Index(); }
+    Neutral(int neg_idx, int pos_idx, const Particle::Pair& pair)
+        : fState{pair.first.Momentum + pair.first.Momentum,                  //
+                 Math::MiddlePoint(pair.first.Vertex, pair.second.Vertex)},  //
+          fNegIndex{neg_idx},
+          fPosIndex{pos_idx} {}
 
-    [[nodiscard]] std::shared_ptr<Charged> Neg() const { return fNeg; }
-    [[nodiscard]] std::shared_ptr<Charged> Pos() const { return fPos; }
-    [[nodiscard]] ROOT::Math::XYZPoint NegPCA() const { return fNegRes.pca; }
-    [[nodiscard]] ROOT::Math::XYZPoint PosPCA() const { return fPosRes.pca; }
-    [[nodiscard]] ROOT::Math::PxPyPzEVector NegMom() const { return fNeg->PxPyPzE(fNegRes.ds); }
-    [[nodiscard]] ROOT::Math::PxPyPzEVector PosMom() const { return fPos->PxPyPzE(fPosRes.ds); }
-    [[nodiscard]] ROOT::Math::XYZVector NegDir() const { return NegMom().Vect(); }
-    [[nodiscard]] ROOT::Math::XYZVector PosDir() const { return PosMom().Vect(); }
+    [[nodiscard]] int NegIndex() const { return fNegIndex; }
+    [[nodiscard]] ROOT::Math::XYZPoint NegVertex() const { return fNegative.Vertex; }
+    [[nodiscard]] ROOT::Math::XYZPoint PosVertex() const { return fPositive.Vertex; }
 
-    // [[nodiscard]] double ProductionX() const { return fProdVtx.X(); }
-    // [[nodiscard]] double ProductionY() const { return fProdVtx.Y(); }
-    // [[nodiscard]] double ProductionZ() const { return fProdVtx.Z(); }
-    // [[nodiscard]] const ROOT::Math::XYZPoint ProductionVertex() const { return fProdVtx; }
-    // [[nodiscard]] double ProductionRadius() const { return fProdVtx.Rho(); }
+    [[nodiscard]] int PosIndex() const { return fPosIndex; }
+    [[nodiscard]] ROOT::Math::XYZVector NegMomentum() const { return fNegative.Momentum.Vect(); }
+    [[nodiscard]] ROOT::Math::XYZVector PosMomentum() const { return fNegative.Momentum.Vect(); }
 
-    [[nodiscard]] ROOT::Math::XYZPoint DecayVertex() const { return fMeasuredVtx; }
-    [[nodiscard]] double DecayX() const { return fMeasuredVtx.X(); }
-    [[nodiscard]] double DecayY() const { return fMeasuredVtx.Y(); }
-    [[nodiscard]] double DecayZ() const { return fMeasuredVtx.Z(); }
-    [[nodiscard]] double DecayRadius() const { return fMeasuredVtx.Rho(); }
+    [[nodiscard]] ROOT::Math::XYZPoint DecayVertex() const { return fState.Vertex; }
+    [[nodiscard]] double DecayX() const { return fState.Vertex.X(); }
+    [[nodiscard]] double DecayY() const { return fState.Vertex.Y(); }
+    [[nodiscard]] double DecayZ() const { return fState.Vertex.Z(); }
+    [[nodiscard]] double DecayRadius() const { return fState.Vertex.Rho(); }
 
-    // Parametrization of neutral particles: (line) //
-    //   X(s)  = X0 + Px s                          //
-    //   Y(s)  = Y0 + Py s                          //
-    //   Z(s)  = Z0 + Pz s                          //
-    [[nodiscard]] double X(double s) const override { return DecayX() + Px(s) * s; }
-    [[nodiscard]] double Y(double s) const override { return DecayY() + Py(s) * s; }
-    [[nodiscard]] double Z(double s) const override { return DecayZ() + Pz(s) * s; }
-    [[nodiscard]] double Px(double s [[maybe_unused]]) const override { return Px(); }  // PENDING: wtf
-    [[nodiscard]] double Py(double s [[maybe_unused]]) const override { return Py(); }  // PENDING: wtf
-    [[nodiscard]] double Pz(double s [[maybe_unused]]) const override { return Pz(); }  // PENDING: wtf
-    [[nodiscard]] double Px() const { return fMeasuredMom.Px(); }
-    [[nodiscard]] double Py() const { return fMeasuredMom.Py(); }
-    [[nodiscard]] double Pz() const { return fMeasuredMom.Pz(); }
+    [[nodiscard]] double X(double s, const Helper::Propagator& prop) const { return prop.NeutralCoord(s, DecayX(), Px()); }
+    [[nodiscard]] double Y(double s, const Helper::Propagator& prop) const { return prop.NeutralCoord(s, DecayY(), Py()); }
+    [[nodiscard]] double Z(double s, const Helper::Propagator& prop) const { return prop.NeutralCoord(s, DecayZ(), Pz()); }
+    [[nodiscard]] ROOT::Math::XYZPoint XYZ(double s, const Helper::Propagator& prop) const { return {X(s, prop), Y(s, prop), Z(s, prop)}; }
 
-    [[nodiscard]] double CPAwrt(const ROOT::Math::XYZPoint& v) const { return Math::CosinePointingAngle(PxPyPz(), DecayVertex(), v); }
-    // [[nodiscard]] double DecayLength() const { return (fDecayVtx - fProdVtx).R(); }
-    [[nodiscard]] double ArmenterosAlpha() const { return Math::ArmenterosAlpha(PxPyPz(), NegDir(), PosDir()); }
-    [[nodiscard]] double ArmenterosQt() const { return Math::ArmenterosQt(PxPyPz(), NegDir()); }
-    [[nodiscard]] double DCANegWrtV0() const { return (NegPCA() - DecayVertex()).R(); }
-    [[nodiscard]] double DCAPosWrtV0() const { return (PosPCA() - DecayVertex()).R(); }
-    [[nodiscard]] double DCAbtwDaughters() const { return (NegPCA() - PosPCA()).R(); }
+    [[nodiscard]] double Px() const { return fState.Momentum.Px(); }
+    [[nodiscard]] double Py() const { return fState.Momentum.Py(); }
+    [[nodiscard]] double Pz() const { return fState.Momentum.Pz(); }
+    [[nodiscard]] ROOT::Math::XYZVector PxPyPz() const { return fState.Momentum.Vect(); }
+    [[nodiscard]] ROOT::Math::PxPyPzEVector PxPyPzE() const { return fState.Momentum; }
+    [[nodiscard]] double Eta() const { return fState.Momentum.Eta(); }
+    [[nodiscard]] double Pt() const { return fState.Momentum.Pt(); }
+    [[nodiscard]] double P2() const { return fState.Momentum.P2(); }
+    [[nodiscard]] double Mass() const { return fState.Momentum.M(); }
+    [[nodiscard]] double Energy() const { return fState.Momentum.E(); }
 
-    // based on true info //
-    [[nodiscard]] bool DaughtersHaveSameMcMother() const {
-        return fNeg->LinkedMc()->MotherMcEntry() != -1 && fNeg->LinkedMc()->MotherMcEntry() == fPos->LinkedMc()->MotherMcEntry();
-    }
-    [[nodiscard]] bool IsTrue(int pdg_code_v0, int pdg_code_neg, int pdg_code_pos) const {
-        return LinkedMc()->PdgCode() == pdg_code_v0 && fNeg->LinkedMc()->PdgCode() == pdg_code_neg && fPos->LinkedMc()->PdgCode() == pdg_code_pos;
-    }
-    [[nodiscard]] bool IsSignal(int pdg_code_v0, int pdg_code_neg, int pdg_code_pos) const {
-        return IsTrue(pdg_code_v0, pdg_code_neg, pdg_code_pos) && LinkedMc()->IsSignal();
-    }
-    [[nodiscard]] bool IsHybrid(int pdg_code_v0, int pdg_code_neg, int pdg_code_pos) const {
-        return !IsSignal(pdg_code_v0, pdg_code_neg, pdg_code_pos) &&  //
-               ((fNeg->LinkedMc()->IsSignal() && !fPos->LinkedMc()->IsSignal()) || (!fNeg->LinkedMc()->IsSignal() && fPos->LinkedMc()->IsSignal()));
-    }
-
-    // find true info //
-    // if (IsMC() && neg.LinkedMc()->MotherMcEntry() != -1 && neg.LinkedMc()->MotherMcEntry() == neg.LinkedMc()->MotherMcEntry()) {
-    // V0.SetLinkedMc(fMCParticles[neg.LinkedMc()->MotherMcEntry()]);
-    // }
+    [[nodiscard]] double CPAwrt(const ROOT::Math::XYZPoint& v) const { return Math::CosinePointingAngle(PxPyPz(), fState.Vertex, v); }
+    [[nodiscard]] double DCAwrt(const ROOT::Math::XYZPoint& v) const { return Math::FastDCALineVertex(fState.Momentum.Vect(), fState.Vertex, v); }
+    [[nodiscard]] double ArmenterosAlpha() const { return Math::ArmenterosAlpha(PxPyPz(), fNegative.Momentum.Vect(), fPositive.Momentum.Vect()); }
+    [[nodiscard]] double ArmenterosQt() const { return Math::ArmenterosQt(PxPyPz(), fNegative.Momentum.Vect()); }
+    [[nodiscard]] double DCANegWrtV0() const { return (fNegative.Vertex - DecayVertex()).R(); }
+    [[nodiscard]] double DCAPosWrtV0() const { return (fPositive.Vertex - DecayVertex()).R(); }
+    [[nodiscard]] double DCAbtwDaughters() const { return (fNegative.Vertex - fPositive.Vertex).R(); }
+    [[nodiscard]] Particle::State PropagatedState(double s, const Helper::Propagator& prop) const { return {PxPyPzE(), XYZ(s, prop)}; }
 
    protected:
-    std::shared_ptr<Charged> fNeg;
-    VtxrResults fNegRes;
-    std::shared_ptr<Charged> fPos;
-    VtxrResults fPosRes;
-    size_t fIndex{0};
+    Particle::State fState;
+    Particle::State fNegative;
+    Particle::State fPositive;
+    int fNegIndex{0};
+    int fPosIndex{0};
 };
 
 }  // namespace Tree2Secondaries

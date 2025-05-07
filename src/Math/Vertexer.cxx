@@ -1,10 +1,11 @@
+#include <limits>
+
 #include "Math/Point2D.h"
 #include "Math/Vector2D.h"
 #include "Math/Vector3D.h"
 
 #include "Math/Constants.hxx"
 #include "Math/Vertexer.hxx"
-#include "Math/VtxrResults.hxx"
 
 using XYPoint = ROOT::Math::XYPoint;
 using XYZPoint = ROOT::Math::XYZPoint;
@@ -14,12 +15,12 @@ using XYZVector = ROOT::Math::XYZVector;
 namespace Tree2Secondaries::Vertexer {
 
 // Calculate the DCA between two charged particles (assuming both have helicoidal trajectory).
-PartPartResults MinimizeDistanceHelixHelix(const Charged& q, const Charged& t) {
+Particle::Pair MinimizeDistanceHelixHelix(const Charged& q, const Charged& t, const Helper::Propagator& prop) {
 
     // 1st approximation : DCA in XY //
 
-    double omega1 = q.Omega();
-    double omega2 = t.Omega();
+    double omega1 = q.Omega(prop);
+    double omega2 = t.Omega(prop);
 
     double px01{q.Px0()};
     double py01{q.Py0()};
@@ -51,7 +52,7 @@ PartPartResults MinimizeDistanceHelixHelix(const Charged& q, const Charged& t) {
     double dist_btw_centers = std::sqrt(r2);
     bool intersection = dist_btw_centers < radius1 + radius2 && dist_btw_centers > std::abs(radius1 - radius2);
 
-    double dca_3d{999999999.};
+    double dca_3d{std::numeric_limits<double>::max()};
     double sr1{0.}, sr2{0.};
 
     if (!intersection) {
@@ -61,7 +62,7 @@ PartPartResults MinimizeDistanceHelixHelix(const Charged& q, const Charged& t) {
             for (auto sign2 : {+1, -1}) {
                 double tmp_sr1{std::atan2(sign1 * Pxy1dotDR, sign1 * Pxy1crossDR) / omega1};
                 double tmp_sr2{std::atan2(sign2 * Pxy2dotDR, sign2 * Pxy2crossDR) / omega2};
-                double tmp_dca{(q.XYZ(tmp_sr1) - t.XYZ(tmp_sr2)).Mag2()};
+                double tmp_dca{(q.XYZ(tmp_sr1, prop) - t.XYZ(tmp_sr2, prop)).Mag2()};
                 if (tmp_dca < dca_3d) {
                     dca_3d = tmp_dca;
                     sr1 = tmp_sr1;
@@ -88,7 +89,7 @@ PartPartResults MinimizeDistanceHelixHelix(const Charged& q, const Charged& t) {
             double tmp_sr2{std::atan2(omega2 * k2 * Pxy2dotDR + sign * d2 * Pxy2crossDR / Pxy2dotDR,  //
                                       omega2 * k2 * Pxy2crossDR - d2) /
                            omega2};
-            double tmp_dca{(q.XYZ(tmp_sr1) - t.XYZ(tmp_sr2)).Mag2()};
+            double tmp_dca{(q.XYZ(tmp_sr1, prop) - t.XYZ(tmp_sr2, prop)).Mag2()};
             if (tmp_dca < dca_3d) {
                 dca_3d = tmp_dca;
                 sr1 = tmp_sr1;
@@ -101,11 +102,11 @@ PartPartResults MinimizeDistanceHelixHelix(const Charged& q, const Charged& t) {
 
     double rz{q.Z0() - t.Z0()};
 
-    double px1{q.Px(sr1)};
-    double py1{q.Py(sr1)};
+    double px1{q.Px(sr1, prop)};
+    double py1{q.Py(sr1, prop)};
 
-    double px2{t.Px(sr2)};
-    double py2{t.Py(sr2)};
+    double px2{t.Px(sr2, prop)};
+    double py2{t.Py(sr2, prop)};
 
     double Pxy1crossPxy2{px1 * py2 - py1 * px2};
     double Pxy1dotPxy2{px1 * px2 + py1 * py2};
@@ -128,16 +129,16 @@ PartPartResults MinimizeDistanceHelixHelix(const Charged& q, const Charged& t) {
         sz2 = (-bb * cc + aa * P1dotP2) / den;
     }
 
-    return {{sr1 + sz1, q.XYZ(sr1 + sz1)}, {sr2 + sz2, t.XYZ(sr2 + sz2)}};
+    return {q.PropagatedState(sr1 + sz1, prop), t.PropagatedState(sr2 + sz2, prop)};
 }
 
 // Calculate the DCA between a charged particle (assuming a helicoidal trajectory) and a point in space.
-VtxrResults MinimizeDistanceHelixVertex(const Charged& q, const ROOT::Math::XYZPoint& v) {
+Particle::State MinimizeDistanceHelixVertex(const Charged& q, const ROOT::Math::XYZPoint& v, const Helper::Propagator& prop) {
 
     // 1st approximation : DCA in XY                //
     // helix projection on xy-plane : circumference //
 
-    double omega{q.Omega()};
+    double omega{q.Omega(prop)};
     double xc{q.X0() + q.Py0() / omega};
     double yc{q.Y0() - q.Px0() / omega};
     double rx{xc - v.X()};
@@ -145,14 +146,14 @@ VtxrResults MinimizeDistanceHelixVertex(const Charged& q, const ROOT::Math::XYZP
     double PxydotDR{q.Px0() * rx + q.Py0() * ry};
     double PxycrossDR{q.Px0() * ry - q.Py0() * rx};
 
-    double dca_3d{999999999.};
+    double dca_3d{std::numeric_limits<double>::max()};
     double sr{0.};
 
     // PCA is colinear to circle center and vertex //
     // 2 possible solutions, choose the one that minimizes distance in 3D //
     for (auto sign : {+1, -1}) {
         double tmp_sr{std::atan2(sign * PxydotDR, sign * PxycrossDR) / omega};
-        double tmp_dca{(q.XYZ(tmp_sr) - v).Mag2()};
+        double tmp_dca{(q.XYZ(tmp_sr, prop) - v).Mag2()};
         if (tmp_dca < dca_3d) {
             dca_3d = tmp_dca;
             sr = tmp_sr;
@@ -163,8 +164,8 @@ VtxrResults MinimizeDistanceHelixVertex(const Charged& q, const ROOT::Math::XYZP
 
     double rz{q.Z0() - v.Z()};
 
-    double px{q.Px(sr)};
-    double py{q.Py(sr)};
+    double px{q.Px(sr, prop)};
+    double py{q.Py(sr, prop)};
     PxycrossDR = px * ry - py * rx;
     double P1dotDR = px * rx + py * ry + q.Pz0() * rz;
 
@@ -174,21 +175,21 @@ VtxrResults MinimizeDistanceHelixVertex(const Charged& q, const ROOT::Math::XYZP
         sz = (-q.Pz0() * q.Pz0() * sr - P1dotDR) / det;
     }
 
-    return {sr + sz, q.XYZ(sr + sz)};
+    return q.PropagatedState(sr + sz, prop);
 }
 
 // Calculate the DCA between a charged particle (assuming a helicoidal trajectory) and a neutral particule (assuming a straight line trajectory).
-PartPartResults MinimizeDistanceHelixLine(const Charged& q, const Neutral& n) {
+Particle::Pair MinimizeDistanceHelixLine(const Charged& q, const Neutral& n, const Helper::Propagator& prop) {
 
     // 1st approximation : DCA in XY //
 
-    double omega1{q.Omega()};
+    double omega1{q.Omega(prop)};
     double omega1sq{omega1 * omega1};
 
     double rx{q.X0() + q.Py0() / omega1 - n.DecayX()};
     double ry{q.Y0() - q.Px0() / omega1 - n.DecayY()};
 
-    double pt1sq{q.Pt() * q.Pt()};
+    double pt1sq{q.Pt0() * q.Pt0()};
     double pt2sq{n.Pt() * n.Pt()};
 
     double Pxy1dotPxy2{q.Px0() * n.Px() + q.Py0() * n.Py()};
@@ -196,7 +197,7 @@ PartPartResults MinimizeDistanceHelixLine(const Charged& q, const Neutral& n) {
     double Pxy2dotDR{n.Px() * rx + n.Py() * ry};
     double Pxy2crossDR{n.Px() * ry - n.Py() * rx};
 
-    double dca_3d{999999999.};
+    double dca_3d{std::numeric_limits<double>::max()};
     double sr1{0.}, sr2{0.};
 
     double discrim{omega1sq * (pt1sq * pt2sq - omega1sq * Pxy2crossDR * Pxy2crossDR)};
@@ -206,7 +207,7 @@ PartPartResults MinimizeDistanceHelixLine(const Charged& q, const Neutral& n) {
         // 2 possible solutions, choose the one that minimizes distance in 3D //
         for (auto sign : {+1, -1}) {
             double tmp_sr1{std::atan2(sign * Pxy1crossPxy2, -sign * Pxy1dotPxy2) / omega1};
-            double tmp_dca{(q.XYZ(tmp_sr1) - n.XYZ(sr2)).Mag2()};
+            double tmp_dca{(q.XYZ(tmp_sr1, prop) - n.XYZ(sr2, prop)).Mag2()};
             if (tmp_dca < dca_3d) {
                 dca_3d = tmp_dca;
                 sr1 = tmp_sr1;
@@ -221,7 +222,7 @@ PartPartResults MinimizeDistanceHelixLine(const Charged& q, const Neutral& n) {
                                       -omega1 * Pxy2crossDR * Pxy1dotPxy2 - sign * discrim * Pxy1crossPxy2 / omega1)  //
                            / omega1};
             double tmp_sr2{(Pxy2dotDR * omega1sq - sign * discrim) / (omega1sq * pt2sq)};
-            double tmp_dca{(q.XYZ(tmp_sr1) - n.XYZ(tmp_sr2)).Mag2()};
+            double tmp_dca{(q.XYZ(tmp_sr1, prop) - n.XYZ(tmp_sr2, prop)).Mag2()};
             if (tmp_dca < dca_3d) {
                 dca_3d = tmp_dca;
                 sr1 = tmp_sr1;
@@ -234,8 +235,8 @@ PartPartResults MinimizeDistanceHelixLine(const Charged& q, const Neutral& n) {
 
     double rz{q.Z0() - n.DecayZ()};
 
-    double px1{q.Px(sr1)};
-    double py1{q.Py(sr1)};
+    double px1{q.Px(sr1, prop)};
+    double py1{q.Py(sr1, prop)};
 
     Pxy1dotPxy2 = px1 * n.Px() + py1 * n.Py();
     Pxy1crossPxy2 = px1 * n.Py() - py1 * n.Px();
@@ -251,18 +252,16 @@ PartPartResults MinimizeDistanceHelixLine(const Charged& q, const Neutral& n) {
     double sz1{0.};
     double sz2{0.};
     double den{P1dotP2 * P1dotP2 - bb * n.P2()};
-    if (std::abs(den) < Const::AlmostZero) {
+    if (std::abs(den) > Const::AlmostZero) {
         sz1 = (aa * n.P2() - cc * P1dotP2) / den;
         sz2 = (-bb * cc + aa * P1dotP2) / den;
     }
 
-    return {{sr1 + sz1, q.XYZ(sr1 + sz1)}, {sr2 + sz2, n.XYZ(sr2 + sz2)}};
+    return {q.PropagatedState(sr1 + sz1, prop), n.PropagatedState(sr2 + sz2, prop)};
 }
 
 // Calculate the DCA between two neutral particles (assuming both have a straight line trajectory).
-PartPartResults MinimizeDistanceLineLine(const Neutral& n, const Neutral& m) {
-
-    PartPartResults res;
+Particle::Pair MinimizeDistanceLineLine(const Neutral& n, const Neutral& m, const Helper::Propagator& prop) {
 
     double p1p1{n.P2()};
     double p1p2{n.PxPyPz().Dot(m.PxPyPz())};
@@ -270,32 +269,21 @@ PartPartResults MinimizeDistanceLineLine(const Neutral& n, const Neutral& m) {
 
     double det{p1p2 * p1p2 - p1p1 * p2p2};
     if (std::abs(det) < Const::AlmostZero) {
-        // rare case : particles are parallel //
-        res.q = MinimizeDistanceLineVertex(n, {0., 0., 0.});
-        res.t = MinimizeDistanceLineVertex(m, {0., 0., 0.});
-        return res;
+        // rare case : particles are parallel, minimize both to a same arbitrary vertex (origin) //
+        return {MinimizeDistanceLineVertex(n, {0., 0., 0.}, prop),  //
+                MinimizeDistanceLineVertex(m, {0., 0., 0.}, prop)};
     }
 
     XYZVector dr{n.DecayVertex() - m.DecayVertex()};
     double p1dr{n.PxPyPz().Dot(dr)};
     double p2dr{m.PxPyPz().Dot(dr)};
 
-    res.q.ds = (p2p2 * p1dr - p1p2 * p2dr) / det;
-    res.q.pca = n.XYZ(res.q.ds);
-
-    res.t.ds = (p1p1 * p2dr - p1p2 * p1dr) / det;
-    res.t.pca = m.XYZ(res.t.ds);
-
-    return res;
+    return {n.PropagatedState((p2p2 * p1dr - p1p2 * p2dr) / det, prop), m.PropagatedState((p1p1 * p2dr - p1p2 * p1dr) / det, prop)};
 }
 
 // Calculate the DCA between a neutral particle (assuming a straight line trajectory) and a point in space.
-VtxrResults MinimizeDistanceLineVertex(const Neutral& n, const ROOT::Math::XYZPoint& v) {
-
-    double ds{-n.PxPyPz().Dot(n.DecayVertex() - v) / n.P2()};
-    XYZPoint pca{n.XYZ(ds)};
-
-    return {ds, pca};
+Particle::State MinimizeDistanceLineVertex(const Neutral& n, const ROOT::Math::XYZPoint& v, const Helper::Propagator& prop) {
+    return n.PropagatedState(-n.PxPyPz().Dot(n.DecayVertex() - v) / n.P2(), prop);
 }
 
 }  // namespace Tree2Secondaries::Vertexer

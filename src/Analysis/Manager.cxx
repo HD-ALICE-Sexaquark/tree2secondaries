@@ -10,7 +10,6 @@
 #include "App/Logger.hxx"
 #include "Math/Constants.hxx"
 #include "Math/Vertexer.hxx"
-#include "Math/VtxrResults.hxx"
 
 using XYZPoint = ROOT::Math::XYZPoint;
 using PxPyPzMVector = ROOT::Math::PxPyPzMVector;
@@ -198,8 +197,8 @@ void Manager::PrepareOutputBranches() {
     //
     PrepareBranchesEvents();
     PrepareBranchesV0s();
-    PrepareBranchesTypeA();
-    PrepareBranchesTypeD();
+    // PrepareBranchesTypeA();
+    // PrepareBranchesTypeD();
 }
 
 //
@@ -248,7 +247,7 @@ void Manager::PrepareBranchesV0s() {
         // PENDING
     }
 }
-
+/*
 void Manager::PrepareBranchesTypeA() {
     fOutputTree->Branch("ASA_Xv", &fOutput_ChannelA.Xv);
     fOutputTree->Branch("ASA_Yv", &fOutput_ChannelA.Yv);
@@ -278,7 +277,8 @@ void Manager::PrepareBranchesTypeA() {
         // PENDING
     }
 }
-
+ */
+/*
 void Manager::PrepareBranchesTypeD() {
     //
     fOutputTree->Branch("ASD_Xv", &fOutput_ChannelD.Xv);
@@ -311,15 +311,15 @@ void Manager::PrepareBranchesTypeD() {
         // PENDING
     }
 }
+ */
 
-void Manager::PrepareBranchesTypeE() {}
-
-void Manager::PrepareBranchesTypeH() {}
+// void Manager::PrepareBranchesTypeE() {}
+// void Manager::PrepareBranchesTypeH() {}
 
 // Read and copy the event data.
 void Manager::ProcessEvent() {
-    SetBz(fInput_Event.MagneticField);
-    SetPrimaryVertex(fInput_Event.PV_Xv, fInput_Event.PV_Yv, fInput_Event.PV_Zv);
+    fPropagator.SetBz(fInput_Event.MagneticField);
+    fPropagator.SetPrimaryVertex(fInput_Event.PV_Xv, fInput_Event.PV_Yv, fInput_Event.PV_Zv);
 
     fOutput_Event.RunNumber = fInput_Event.RunNumber;
     fOutput_Event.DirNumber = fInput_Event.DirNumber;
@@ -340,10 +340,11 @@ void Manager::ProcessEvent() {
 void Manager::ProcessInjected() {}
 
 // Process the MC data.
+/*
 void Manager::ProcessMC() {
     auto n_mc{NumberMC()};
     fMCParticles.reserve(n_mc);
-    for (size_t mc_entry{0}; mc_entry < n_mc; mc_entry++) {
+    for (auto mc_entry{0}; mc_entry < n_mc; mc_entry++) {
         // Get properties //
         auto pdg_code{fInput_MC.PdgCode->at(mc_entry)};
         auto mother_mc_entry{fInput_MC.Mother_McEntry->at(mc_entry)};
@@ -357,18 +358,17 @@ void Manager::ProcessMC() {
         fMCParticles.emplace_back(std::make_shared<True>(mc_entry, mother_mc_entry, pdg_code, is_signal, reaction_id));
     }
     // DEBUG MC //
-    /*
-    for (const auto& mc : fMCParticles) {
-    if (mc->ReactionID() == -1) continue;
-    INFO("MC particle %d, pdg code: %d, mother: %d, reaction: %d", mc->Index(), mc->PdgCode(), mc->MotherMcEntry(), mc->ReactionID());
-    }
-    */
+    // for (const auto& mc : fMCParticles) {
+    // if (mc->ReactionID() == -1) continue;
+    // INFO("MC particle %d, pdg code: %d, mother: %d, reaction: %d", mc->Index(), mc->PdgCode(), mc->MotherMcEntry(), mc->ReactionID());
+    // }
 }
+*/
 
 // Process selected reconstructed tracks.
 void Manager::ProcessTracks() {
 
-    for (size_t track_entry{0}; track_entry < NumberTracks(); track_entry++) {
+    for (auto track_entry{0}; track_entry < NumberTracks(); track_entry++) {
         // Get properties //
         auto charge{fInput_Tracks.Charge->at(track_entry)};
         XYZPoint xyz0{fInput_Tracks.X->at(track_entry), fInput_Tracks.Y->at(track_entry), fInput_Tracks.Z->at(track_entry)};
@@ -377,20 +377,20 @@ void Manager::ProcessTracks() {
         auto pz0{fInput_Tracks.Pz->at(track_entry)};
         // PID //
         if (std::abs(fInput_Tracks.NSigmaProton->at(track_entry)) < Cuts::Track::AbsMax_PID_NSigma) {
-            auto proton = std::make_shared<Charged>(track_entry, charge, Bz(), xyz0, PxPyPzMVector{px0, py0, pz0, Const::MassProton});
-            if (IsMC()) proton->SetLinkedMc(fMCParticles[fInput_Tracks.McEntry->at(track_entry)]);
+            auto proton = std::make_shared<Charged>(track_entry, charge, xyz0, PxPyPzMVector{px0, py0, pz0, Const::MassProton});
+            // if (IsMC()) proton->SetLinkedMc(fMCParticles[fInput_Tracks.McEntry->at(track_entry)]);
             if (charge < 0) fAntiProtons.push_back(proton);
             if (charge > 0) fProtons.push_back(proton);
         }
         if (std::abs(fInput_Tracks.NSigmaKaon->at(track_entry)) < Cuts::Track::AbsMax_PID_NSigma) {
-            auto kaon = std::make_shared<Charged>(track_entry, charge, Bz(), xyz0, PxPyPzMVector{px0, py0, pz0, Const::MassKaon});
-            if (IsMC()) kaon->SetLinkedMc(fMCParticles[fInput_Tracks.McEntry->at(track_entry)]);
+            auto kaon = std::make_shared<Charged>(track_entry, charge, xyz0, PxPyPzMVector{px0, py0, pz0, Const::MassKaon});
+            // if (IsMC()) kaon->SetLinkedMc(fMCParticles[fInput_Tracks.McEntry->at(track_entry)]);
             if (charge < 0) fNegKaons.push_back(kaon);
             if (charge > 0) fPosKaons.push_back(kaon);
         }
         if (std::abs(fInput_Tracks.NSigmaPion->at(track_entry)) < Cuts::Track::AbsMax_PID_NSigma) {
-            auto pion = std::make_shared<Charged>(track_entry, charge, Bz(), xyz0, PxPyPzMVector{px0, py0, pz0, Const::MassPion});
-            if (IsMC()) pion->SetLinkedMc(fMCParticles[fInput_Tracks.McEntry->at(track_entry)]);
+            auto pion = std::make_shared<Charged>(track_entry, charge, xyz0, PxPyPzMVector{px0, py0, pz0, Const::MassPion});
+            // if (IsMC()) pion->SetLinkedMc(fMCParticles[fInput_Tracks.McEntry->at(track_entry)]);
             if (charge < 0) fPiMinus.push_back(pion);
             if (charge > 0) fPiPlus.push_back(pion);
         }
@@ -402,75 +402,70 @@ void Manager::ProcessTracks() {
 
 // ## V0s ZONE ## //
 
-// .
 void Manager::FindV0s(int pdg_code_v0, int pdg_code_neg, int pdg_code_pos) {
     // choose tracks species to loop over //
     const auto& neg_vec{pdg_code_neg == PdgCode::AntiProton ? fAntiProtons : fPiMinus};
     const auto& pos_vec{pdg_code_pos == PdgCode::Proton ? fProtons : fPiPlus};
     // loop over all possible pairs of tracks //
-    size_t n_v0s{0};
     for (const auto& neg : neg_vec) {
         for (const auto& pos : pos_vec) {
             // sanity check //
-            if (neg->Index() == pos->Index()) continue;
+            if (neg->Entry() == pos->Entry()) continue;
             // fit //
-            PartPartResults res{Vertexer::MinimizeDistanceHelixHelix(*neg, *pos)};
-            auto V0 = std::make_shared<Neutral>(n_v0s, neg, pos, res);
+            Particle::Pair res{Vertexer::MinimizeDistanceHelixHelix(*neg, *pos, fPropagator)};
+            auto V0 = std::make_shared<Neutral>(neg->Entry(), pos->Entry(), res);  // PENDING: indexing not correct..
             // apply cuts //
-            if (!PassesV0CutsAs(*V0, pdg_code_v0)) continue;
-            ++n_v0s;
+            if (!PassesV0Cuts(*V0, pdg_code_v0)) continue;
             // store //
             Store(V0, pdg_code_v0);
         }  // end of loop over pos
     }  // end of loop over neg
 }
 
-// .
-bool Manager::PassesV0CutsAs(const Neutral& v0, int pdg_code_v0) const {
+bool Manager::PassesLambdaCuts(const Neutral& v0) const {
 
-    if (std::abs(pdg_code_v0) == PdgCode::Lambda) {
-        // (anti)lambdas //
-        if (v0.Mass() < Cuts::Lambda::Min_Mass || v0.Mass() > Cuts::Lambda::Max_Mass) return false;
-        if (v0.DCAbtwDaughters() > Cuts::Lambda::Max_DCAbtwDau) return false;
-        if (std::abs(v0.DecayZ()) > Cuts::Lambda::AbsMax_Zv) return false;
-        if (v0.DecayRadius() < Cuts::Lambda::Min_Radius || v0.DecayRadius() > Cuts::Lambda::Max_Radius) return false;
-        if (v0.DCANegWrtV0() > Cuts::Lambda::Max_DCAnegV0) return false;
-        if (v0.DCAPosWrtV0() > Cuts::Lambda::Max_DCAposV0) return false;
-        if (v0.Pt() < Cuts::Lambda::Min_Pt) return false;
-        if (std::abs(v0.Eta()) > Cuts::Lambda::AbsMax_Eta) return false;
-        if (v0.ArmenterosQt() / std::abs(v0.ArmenterosAlpha()) > Cuts::Lambda::AbsMax_ArmQtOverAlpha) return false;
-        if (v0.CPAwrt(PrimaryVertex()) < Cuts::Lambda::Min_CPAwrtPV || v0.CPAwrt(PrimaryVertex()) > Cuts::Lambda::Max_CPAwrtPV) return false;
-        VtxrResults res{Vertexer::MinimizeDistanceLineVertex(v0, PrimaryVertex())};
-        if ((v0.XYZ(res.ds) - PrimaryVertex()).R() < Cuts::Lambda::Min_DCAwrtPV) return false;
-        /*
-        INFO("m%f dbd%f z%f r%f dn%f dp%f pt%f et%f qt%f a%f cpv%f dpv%f", v0.Mass(), v0.DCAbtwDaughters(), v0.DecayZ(), v0.DecayRadius(),
-        v0.DCANegWrtV0(), v0.DCAPosWrtV0(), v0.Pt(), v0.Eta(), v0.ArmenterosQt(), v0.ArmenterosAlpha(), v0.CPAwrt(PrimaryVertex()),
-        (v0.XYZ(res.ds) - PrimaryVertex()).R());
-        */
-    } else if (pdg_code_v0 == PdgCode::KaonZeroShort) {
-        // kaons zero short //
-        if (v0.DCAbtwDaughters() > Cuts::KaonZeroShort::Max_DCAbtwDau) return false;
-        if (v0.Pt() < Cuts::KaonZeroShort::Min_Pt) return false;
-        if (v0.Mass() < Cuts::KaonZeroShort::Min_Mass || v0.Mass() > Cuts::KaonZeroShort::Max_Mass) return false;
-        if (std::abs(v0.Eta()) > Cuts::KaonZeroShort::AbsMax_Eta) return false;
-        if (std::abs(v0.DecayZ()) > Cuts::KaonZeroShort::AbsMax_Zv) return false;
-        if (v0.DecayRadius() < Cuts::KaonZeroShort::Min_Radius || v0.DecayRadius() > Cuts::KaonZeroShort::Max_Radius) return false;
-        if (v0.DCANegWrtV0() > Cuts::KaonZeroShort::Max_DCAnegV0) return false;
-        if (v0.DCAPosWrtV0() > Cuts::KaonZeroShort::Max_DCAposV0) return false;
-        if (v0.CPAwrt(PrimaryVertex()) < Cuts::KaonZeroShort::Min_CPAwrtPV || v0.CPAwrt(PrimaryVertex()) > Cuts::KaonZeroShort::Max_CPAwrtPV) {
-            return false;
-        }
-        VtxrResults res{Vertexer::MinimizeDistanceLineVertex(v0, PrimaryVertex())};
-        if ((v0.XYZ(res.ds) - PrimaryVertex()).R() < Cuts::KaonZeroShort::Min_DCAwrtPV) return false;
-        /*
-        INFO("m%f dbd%f z%f r%f dn%f dp%f pt%f et%f qt%f a%f cpv%f dpv%f", v0.Mass(), v0.DCAbtwDaughters(), v0.DecayZ(), v0.DecayRadius(),
-        v0.DCANegWrtV0(), v0.DCAPosWrtV0(), v0.Pt(), v0.Eta(), v0.ArmenterosQt(), v0.ArmenterosAlpha(), v0.CPAwrt(PrimaryVertex()),
-        (v0.XYZ(res.ds) - PrimaryVertex()).R());
-        */
-    } else {
-        WARNING("Unknown V0 type");
+    if (v0.Mass() < Cuts::Lambda::Min_Mass || v0.Mass() > Cuts::Lambda::Max_Mass) return false;
+    if (v0.DCAbtwDaughters() > Cuts::Lambda::Max_DCAbtwDau) return false;
+    if (std::abs(v0.DecayZ()) > Cuts::Lambda::AbsMax_Zv) return false;
+    if (v0.DecayRadius() < Cuts::Lambda::Min_Radius || v0.DecayRadius() > Cuts::Lambda::Max_Radius) return false;
+    if (v0.DCANegWrtV0() > Cuts::Lambda::Max_DCAnegV0) return false;
+    if (v0.DCAPosWrtV0() > Cuts::Lambda::Max_DCAposV0) return false;
+    if (v0.Pt() < Cuts::Lambda::Min_Pt) return false;
+    if (std::abs(v0.Eta()) > Cuts::Lambda::AbsMax_Eta) return false;
+    if (v0.ArmenterosQt() / std::abs(v0.ArmenterosAlpha()) > Cuts::Lambda::AbsMax_ArmQtOverAlpha) return false;
+    if (v0.CPAwrt(fPropagator.PrimaryVertex()) < Cuts::Lambda::Min_CPAwrtPV || v0.CPAwrt(fPropagator.PrimaryVertex()) > Cuts::Lambda::Max_CPAwrtPV) {
         return false;
     }
+    if (v0.DCAwrt(fPropagator.PrimaryVertex()) < Cuts::Lambda::Min_DCAwrtPV) return false;
+    /*
+        INFO("m%f dbd%f z%f r%f dn%f dp%f pt%f et%f qt%f a%f cpv%f dpv%f", v0.Mass(), v0.DCAbtwDaughters(), v0.DecayZ(), v0.DecayRadius(),
+        v0.DCANegWrtV0(), v0.DCAPosWrtV0(), v0.Pt(), v0.Eta(), v0.ArmenterosQt(), v0.ArmenterosAlpha(), v0.CPAwrt(PrimaryVertex()),
+        (v0.XYZ(res.ds) - PrimaryVertex()).R());
+    */
+
+    return true;
+}
+
+bool Manager::PassesKaonZeroCuts(const Neutral& v0) const {
+
+    if (v0.DCAbtwDaughters() > Cuts::KaonZeroShort::Max_DCAbtwDau) return false;
+    if (v0.Pt() < Cuts::KaonZeroShort::Min_Pt) return false;
+    if (v0.Mass() < Cuts::KaonZeroShort::Min_Mass || v0.Mass() > Cuts::KaonZeroShort::Max_Mass) return false;
+    if (std::abs(v0.Eta()) > Cuts::KaonZeroShort::AbsMax_Eta) return false;
+    if (std::abs(v0.DecayZ()) > Cuts::KaonZeroShort::AbsMax_Zv) return false;
+    if (v0.DecayRadius() < Cuts::KaonZeroShort::Min_Radius || v0.DecayRadius() > Cuts::KaonZeroShort::Max_Radius) return false;
+    if (v0.DCANegWrtV0() > Cuts::KaonZeroShort::Max_DCAnegV0) return false;
+    if (v0.DCAPosWrtV0() > Cuts::KaonZeroShort::Max_DCAposV0) return false;
+    if (v0.CPAwrt(fPropagator.PrimaryVertex()) < Cuts::KaonZeroShort::Min_CPAwrtPV ||
+        v0.CPAwrt(fPropagator.PrimaryVertex()) > Cuts::KaonZeroShort::Max_CPAwrtPV) {
+        return false;
+    }
+    if (v0.DCAwrt(fPropagator.PrimaryVertex()) < Cuts::KaonZeroShort::Min_DCAwrtPV) return false;
+    /*
+    INFO("m%f dbd%f z%f r%f dn%f dp%f pt%f et%f qt%f a%f cpv%f dpv%f", v0.Mass(), v0.DCAbtwDaughters(), v0.DecayZ(), v0.DecayRadius(),
+    v0.DCANegWrtV0(), v0.DCAPosWrtV0(), v0.Pt(), v0.Eta(), v0.ArmenterosQt(), v0.ArmenterosAlpha(), v0.CPAwrt(PrimaryVertex()),
+    (v0.XYZ(res.ds) - PrimaryVertex()).R());
+    */
 
     return true;
 }
@@ -489,7 +484,7 @@ void Manager::Store(const std::shared_ptr<Neutral>& v0, int pdg_code_v0) {
         return;
     }
     // fill branches //
-    fOutput_V0s.Index->push_back(v0->Index());
+    fOutput_V0s.Index->push_back(0);  // INDEXING PENDING
     fOutput_V0s.PID->push_back(pdg_code_v0);
     fOutput_V0s.Neg_Entry->push_back(v0->NegIndex());
     fOutput_V0s.Pos_Entry->push_back(v0->PosIndex());
@@ -500,32 +495,32 @@ void Manager::Store(const std::shared_ptr<Neutral>& v0, int pdg_code_v0) {
     fOutput_V0s.Py->push_back(v0->Py());
     fOutput_V0s.Pz->push_back(v0->Pz());
     fOutput_V0s.E->push_back(v0->Energy());
-    fOutput_V0s.Neg_Xv->push_back(v0->NegPCA().X());
-    fOutput_V0s.Neg_Yv->push_back(v0->NegPCA().Y());
-    fOutput_V0s.Neg_Zv->push_back(v0->NegPCA().Z());
-    fOutput_V0s.Neg_Px->push_back(v0->NegMom().Px());
-    fOutput_V0s.Neg_Py->push_back(v0->NegMom().Py());
-    fOutput_V0s.Neg_Pz->push_back(v0->NegMom().Pz());
-    fOutput_V0s.Pos_Xv->push_back(v0->PosPCA().X());
-    fOutput_V0s.Pos_Yv->push_back(v0->PosPCA().Y());
-    fOutput_V0s.Pos_Zv->push_back(v0->PosPCA().Z());
-    fOutput_V0s.Pos_Px->push_back(v0->PosMom().Px());
-    fOutput_V0s.Pos_Py->push_back(v0->PosMom().Py());
-    fOutput_V0s.Pos_Pz->push_back(v0->PosMom().Pz());
+    fOutput_V0s.Neg_Xv->push_back(v0->NegVertex().X());
+    fOutput_V0s.Neg_Yv->push_back(v0->NegVertex().Y());
+    fOutput_V0s.Neg_Zv->push_back(v0->NegVertex().Z());
+    fOutput_V0s.Neg_Px->push_back(v0->NegMomentum().X());
+    fOutput_V0s.Neg_Py->push_back(v0->NegMomentum().Y());
+    fOutput_V0s.Neg_Pz->push_back(v0->NegMomentum().Z());
+    fOutput_V0s.Pos_Xv->push_back(v0->PosVertex().X());
+    fOutput_V0s.Pos_Yv->push_back(v0->PosVertex().Y());
+    fOutput_V0s.Pos_Zv->push_back(v0->PosVertex().Z());
+    fOutput_V0s.Pos_Px->push_back(v0->PosMomentum().X());
+    fOutput_V0s.Pos_Py->push_back(v0->PosMomentum().Y());
+    fOutput_V0s.Pos_Pz->push_back(v0->PosMomentum().Z());
 }
 
 // ## Sexaquark ZONE : Channel A ## //
-
+/*
 void Manager::FindSexaquarks_TypeA(int pdg_struck_nucleon, const std::vector<int>& pdg_products) {
     // loop over all possible pairs of (anti)lambda - K0S //
-    size_t n_sexa{0};
+    int n_sexa{0};
     for (const auto& v0a : (pdg_products[0] == PdgCode::AntiLambda ? fAntiLambdas : fLambdas)) {
         for (const auto& v0b : fNeutralKaons) {
             // sanity check //
-            std::set<size_t> unique_track_entries{v0a->NegIndex(), v0a->PosIndex(), v0b->NegIndex(), v0b->PosIndex()};
+            std::set<int> unique_track_entries{v0a->NegEntry(), v0a->PosEntry(), v0b->NegEntry(), v0b->PosEntry()};
             if (unique_track_entries.size() < 4) continue;
             // fit //
-            PartPartResults res{Vertexer::MinimizeDistanceLineLine(*v0a, *v0b)};
+            Struct::PartPartResults res{Vertexer::MinimizeDistanceLineLine(*v0a, *v0b)};
             auto Sexaquark = std::make_unique<TypeA>(n_sexa, v0a, v0b, res, Const::MassNeutron);
             // apply cuts //
             if (!PassesSexaquarkCuts(*Sexaquark)) continue;
@@ -582,19 +577,19 @@ void Manager::Store(const std::unique_ptr<TypeA>& sexa) {
     fOutput_ChannelA.KaonZero_Pz->push_back(sexa->KaonZeroMom().Pz());
     fOutput_ChannelA.KaonZero_E->push_back(sexa->KaonZeroMom().E());
 }
-
+ */
 // ## Sexaquark ZONE : Channel D ## //
-
+/*
 void Manager::FindSexaquarks_TypeD(int pdg_struck_nucleon, const std::vector<int>& pdg_products) {
     // loop over all possible pairs of (anti)lambda - (pos/neg)kaons //
-    size_t n_sexa{0};
+    int n_sexa{0};
     for (const auto& v0 : (pdg_products[0] == PdgCode::AntiLambda ? fAntiLambdas : fLambdas)) {
         for (const auto& kaon : (pdg_products[0] == PdgCode::PosKaon ? fPosKaons : fNegKaons)) {
             // sanity check //
-            std::set<size_t> unique_track_entries{v0->NegIndex(), v0->PosIndex(), kaon->Index()};
+            std::set<int> unique_track_entries{v0->NegEntry(), v0->PosEntry(), kaon->Entry()};
             if (unique_track_entries.size() < 3) continue;
             // fit //
-            PartPartResults res{Vertexer::MinimizeDistanceHelixLine(*kaon, *v0)};
+            Struct::PartPartResults res{Vertexer::MinimizeDistanceHelixLine(*kaon, *v0)};
             auto Sexaquark = std::make_unique<TypeD>(n_sexa, v0, kaon, res, Const::MassProton);
             // apply cuts //
             if (!PassesSexaquarkCuts(*Sexaquark)) continue;
@@ -641,7 +636,7 @@ void Manager::Store(const std::unique_ptr<TypeD>& sexa) {
     fOutput_ChannelD.Lambda_Pz->push_back(sexa->LambdaMom().Pz());
     fOutput_ChannelD.Lambda_E->push_back(sexa->LambdaMom().E());
 
-    fOutput_ChannelD.Kaon_Entry->push_back(sexa->Kaon()->Index());
+    fOutput_ChannelD.Kaon_Entry->push_back(sexa->Kaon()->Entry());
     fOutput_ChannelD.Kaon_Xv->push_back(sexa->KaonPCA().X());
     fOutput_ChannelD.Kaon_Yv->push_back(sexa->KaonPCA().Y());
     fOutput_ChannelD.Kaon_Zv->push_back(sexa->KaonPCA().Z());
@@ -650,18 +645,18 @@ void Manager::Store(const std::unique_ptr<TypeD>& sexa) {
     fOutput_ChannelD.Kaon_Pz->push_back(sexa->KaonMom().Pz());
     fOutput_ChannelD.Kaon_E->push_back(sexa->KaonMom().E());
 }
-
+ */
 // ## Sexaquark ZONE : Channel E ## //
 
-void Manager::FindSexaquarks_TypeE(int pdg_struck_nucleon, const std::vector<int>& pdg_products) {}
-bool Manager::PassesSexaquarkCuts(const TypeE& sexa) const {}
-void Manager::Store(const std::unique_ptr<TypeE>& sexa) {}
+// void Manager::FindSexaquarks_TypeE(int pdg_struck_nucleon, const std::vector<int>& pdg_products) {}
+// bool Manager::PassesSexaquarkCuts(const TypeE& sexa) const {}
+// void Manager::Store(const std::unique_ptr<TypeE>& sexa) {}
 
 // ## Sexaquark ZONE : Channel H ## //
 
-void Manager::FindSexaquarks_TypeH(int pdg_struck_nucleon, const std::vector<int>& pdg_products) {}
-bool Manager::PassesSexaquarkCuts(const TypeH& sexa) const {}
-void Manager::Store(const std::unique_ptr<TypeH>& sexa) {}
+// void Manager::FindSexaquarks_TypeH(int pdg_struck_nucleon, const std::vector<int>& pdg_products) {}
+// bool Manager::PassesSexaquarkCuts(const TypeH& sexa) const {}
+// void Manager::Store(const std::unique_ptr<TypeH>& sexa) {}
 
 // ## END OF CYCLES ## //
 
@@ -670,20 +665,21 @@ void Manager::EndOfEvent() {
     // fill tree //
     fOutputTree->Fill();
     // clear temporary containers //
-    if (IsMC()) fMCParticles.clear();
+    // if (IsMC()) fMCParticles.clear();
     fAntiProtons.clear();
     fProtons.clear();
     fNegKaons.clear();
     fPosKaons.clear();
     fPiMinus.clear();
     fPiPlus.clear();
+    //
     fAntiLambdas.clear();
     fLambdas.clear();
     fNeutralKaons.clear();
     // clear output branches //
     fOutput_V0s.Clear();
-    fOutput_ChannelA.Clear();
-    fOutput_ChannelD.Clear();
+    // fOutput_ChannelA.Clear();
+    // fOutput_ChannelD.Clear();
 }
 
 //

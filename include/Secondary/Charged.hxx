@@ -4,67 +4,67 @@
 #include "Math/Point3D.h"
 #include "Math/Vector4D.h"
 
-#include "Math/Constants.hxx"
-#include "Math/VtxrResults.hxx"
-#include "Secondary/Reconstructed.hxx"
+#include "Math/Propagator.hxx"
+#include "Secondary/Particle.hxx"
 
 namespace Tree2Secondaries {
 
-//
-class Charged final : public Reconstructed {
+class Charged {
    public:
     Charged(const Charged &) = delete;
     Charged(Charged &&) noexcept = default;
     Charged &operator=(const Charged &) = delete;
     Charged &operator=(Charged &&) = default;
-    ~Charged() final = default;
+    ~Charged() = default;
 
-    Charged(size_t id, int charge, double bz, ROOT::Math::XYZPoint xyz0, ROOT::Math::PxPyPzMVector pxyz0)
-        : Reconstructed{charge, std::move(xyz0), std::move(pxyz0)}, fTrackIndex{id}, fBz{bz} {}
+    Charged(int entry, int charge, const ROOT::Math::XYZPoint &vertex, const ROOT::Math::PxPyPzMVector &momentum)
+        : fState{{momentum.Px(), momentum.Py(), momentum.Pz(), momentum.E()}, vertex},  //
+          fCharge{charge},                                                              //
+          fEntry{entry} {}
+    // Charged(int entry, int charge, const ROOT::Math::XYZPoint &vertex, const ROOT::Math::PxPyPzEVector &momentum)
+    //     : fState{momentum, vertex},  //
+    //       fCharge{charge},           //
+    //       fEntry{entry} {}
 
-    [[nodiscard]] size_t Index() const override { return fTrackIndex; }
+    [[nodiscard]] int Entry() const { return fEntry; }
+    [[nodiscard]] int Charge() const { return fCharge; }
 
-    // convenient aliases //
-    [[nodiscard]] double X0() const { return fMeasuredVtx.X(); }
-    [[nodiscard]] double Y0() const { return fMeasuredVtx.Y(); }
-    [[nodiscard]] double Z0() const { return fMeasuredVtx.Z(); }
-    [[nodiscard]] double Px0() const { return fMeasuredMom.Px(); }
-    [[nodiscard]] double Py0() const { return fMeasuredMom.Py(); }
-    [[nodiscard]] double Pz0() const { return fMeasuredMom.Pz(); }
-    [[nodiscard]] double Pt0() const { return fMeasuredMom.Pt(); }
+    [[nodiscard]] double X0() const { return fState.Vertex.X(); }
+    [[nodiscard]] double Y0() const { return fState.Vertex.Y(); }
+    [[nodiscard]] double Z0() const { return fState.Vertex.Z(); }
+    [[nodiscard]] double Px0() const { return fState.Momentum.Px(); }
+    [[nodiscard]] double Py0() const { return fState.Momentum.Py(); }
+    [[nodiscard]] double Pz0() const { return fState.Momentum.Pz(); }
+    [[nodiscard]] double Pt0() const { return fState.Momentum.Pt(); }
+    [[nodiscard]] double Mass() const { return fState.Momentum.M(); }
 
-    // Parametrization of charged particles: (helix)                    //
-    //   X(s)  = X0 + Sin(omega s) Px/omega + (1-Cos(omega s)) Py/omega //
-    //   Y(s)  = Y0 - (1-Cos(omega s)) Px/omega + Sin(omega s) Py/omega //
-    //   Z(s)  = Z0 + Pz s                                              //
-    //   Px(s) = Cos(omega s) Px + Sin(omega s) Py                      //
-    //   Py(s) = -Sin(omega s) Px + Cos(omega s) Py                     //
-    //   Pz    = (constant)                                             //
-    [[nodiscard]] double Omega() const { return fBz * Charge() * Const::Kappa; }
-    [[nodiscard]] double X(double s) const override {
-        return X0() + std::sin(Omega() * s) * Px0() / Omega() + (1 - std::cos(Omega() * s)) * Py0() / Omega();
+    [[nodiscard]] double Omega(const Helper::Propagator &prop) const { return prop.Omega(fCharge); }
+    [[nodiscard]] double X(double s, const Helper::Propagator &prop) const { return prop.ChargedX(s, Charge(), X0(), Px0(), Py0()); }
+    [[nodiscard]] double Y(double s, const Helper::Propagator &prop) const { return prop.ChargedY(s, Charge(), Y0(), Px0(), Py0()); }
+    [[nodiscard]] double Z(double s, const Helper::Propagator &prop) const { return prop.ChargedZ(s, Z0(), Pz()); }
+    [[nodiscard]] ROOT::Math::XYZPoint XYZ(double s, const Helper::Propagator &prop) const { return {X(s, prop), Y(s, prop), Z(s, prop)}; }
+
+    [[nodiscard]] double Px(double s, const Helper::Propagator &prop) const {
+        //
+        return prop.ChargedPx(s, Charge(), Px0(), Py0());
     }
-    [[nodiscard]] double Y(double s) const override {
-        return Y0() - (1 - std::cos(Omega() * s)) * Px0() / Omega() + std::sin(Omega() * s) * Py0() / Omega();
+    [[nodiscard]] double Py(double s, const Helper::Propagator &prop) const {
+        //
+        return prop.ChargedPy(s, Charge(), Px0(), Py0());
     }
-    [[nodiscard]] double Z(double s) const override { return Z0() + Pz0() * s; }
-
-    [[nodiscard]] double Px(double s) const override { return Px0() * std::cos(Omega() * s) + Py0() * std::sin(Omega() * s); }
-    [[nodiscard]] double Py(double s) const override { return -Px0() * std::sin(Omega() * s) + Py0() * std::cos(Omega() * s); }
-    [[nodiscard]] double Pz(double s [[maybe_unused]]) const override { return Pz0(); }  // PENDING: wtf
-
-    /*
-        void SetInitialState(double x0, double y0, double z0, double px0, double py0, double pz0, double mass) {
-            fMeasuredVtx.SetCoordinates(x0, y0, z0);
-            fMeasuredMom.SetCoordinates(px0, py0, pz0, mass);
-        }
-        void Propagate(double s) { SetInitialState(X(s), Y(s), Z(s), Px(s), Py(s), Pz0(), Mass()); }
-        [[nodiscard]] Charged CopyPropagated(double s) const { return {Index(), Charge(), fBz, XYZ(s), PxPyPzM(s)}; }
-     */
+    [[nodiscard]] double Pz() const { return Pz0(); }
+    [[nodiscard]] ROOT::Math::PxPyPzEVector PxPyPzE(double s, const Helper::Propagator &prop) const {
+        return {Px(s, prop), Py(s, prop), Pz(), std::sqrt(Px(s, prop) * Px(s, prop) + Py(s, prop) * Py(s, prop) + Pz() * Pz() + Mass() * Mass())};
+    }
+    [[nodiscard]] ROOT::Math::PxPyPzMVector PxPyPzM(double s, const Helper::Propagator &prop) const {
+        return {Px(s, prop), Py(s, prop), Pz(), Mass()};
+    }
+    [[nodiscard]] Particle::State PropagatedState(double s, const Helper::Propagator &prop) const { return {PxPyPzE(s, prop), XYZ(s, prop)}; }
 
    protected:
-    size_t fTrackIndex;
-    double fBz;  // PENDING: shouldn't it be a singleton or smth?
+    Particle::State fState;  // initially set arbitrary momentum
+    int fCharge;
+    int fEntry;
 };
 
 }  // namespace Tree2Secondaries

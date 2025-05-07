@@ -22,18 +22,17 @@ int main(int argc, char *argv[]) {
     for (long long i_event{0}; i_event < mgr.NumberEventsToRead(); i_event++) {
         mgr.GetEvent(i_event);
         mgr.ProcessEvent();
-        if (mgr.IsMC()) {
-            mgr.ProcessMC();
-            // if (mgr.IsSignalMC()) mgr.ProcessInjected(); // PENDING
-        }
+        // if (mgr.IsMC()) {
+        // mgr.ProcessMC();
+        // if (mgr.IsSignalMC()) mgr.ProcessInjected(); // PENDING
+        // }
         mgr.ProcessTracks();
-
         mgr.FindV0s(PdgCode::Lambda, PdgCode::PiMinus, PdgCode::Proton);
         mgr.FindV0s(PdgCode::AntiLambda, PdgCode::AntiProton, PdgCode::PiPlus);
         mgr.FindV0s(PdgCode::KaonZeroShort, PdgCode::PiMinus, PdgCode::PiPlus);
 
-        mgr.FindSexaquarks(Channel::A);
-        mgr.FindSexaquarks(Channel::D);
+        // mgr.FindSexaquarks(Channel::A);
+        // mgr.FindSexaquarks(Channel::D);
 
         mgr.EndOfEvent();
     }

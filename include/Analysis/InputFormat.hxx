@@ -20,6 +20,10 @@ struct Event {
     float PV_TrueZv{0.};
 };
 
+}  // namespace Tree2Secondaries::Struct
+
+namespace Tree2Secondaries::Input {
+
 struct Injected {
     std::vector<int> *ReactionID{nullptr};
     std::vector<float> *Px{nullptr};
@@ -52,6 +56,6 @@ struct Tracks {
     std::vector<int> *McEntry{nullptr};
 };
 
-}  // namespace Tree2Secondaries::Struct
+}  // namespace Tree2Secondaries::Input
 
 #endif  // T2S_INPUT_FORMAT_HXX

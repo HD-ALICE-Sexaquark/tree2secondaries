@@ -1,17 +1,21 @@
-#ifndef T2S_SECONDARY_PARTICLE_HXX
-#define T2S_SECONDARY_PARTICLE_HXX
+#ifndef T2S_VTXR_RESULTS_HXX
+#define T2S_VTXR_RESULTS_HXX
 
-#include <cstdlib>
+#include "Math/Point3D.h"
+#include "Math/Vector4D.h"
 
-namespace Tree2Secondaries {
+namespace Tree2Secondaries::Particle {
 
-// Abstract base class for all particles.
-class Particle {
-   public:
-    virtual ~Particle() = default;
-    [[nodiscard]] virtual size_t Index() const = 0;
+struct State {
+    ROOT::Math::PxPyPzEVector Momentum{0., 0., 0., 0.};
+    ROOT::Math::XYZPoint Vertex{0., 0., 0.};
 };
 
-}  // namespace Tree2Secondaries
+struct Pair {
+    State first{{0., 0., 0., 0.}, {0., 0., 0.}};
+    State second{{0., 0., 0., 0.}, {0., 0., 0.}};
+};
 
-#endif  // T2S_SECONDARY_PARTICLE_HXX
+}  // namespace Tree2Secondaries::Particle
+
+#endif  // T2S_VTXR_RESULTS_HXX

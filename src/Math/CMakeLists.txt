@@ -1,4 +1,4 @@
-add_library(Math STATIC Common.cxx Vertexer.cxx)
+add_library(Math STATIC Vertexer.cxx)
 
 target_link_libraries(Math PUBLIC ROOT::Core)
 
