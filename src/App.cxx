@@ -7,9 +7,7 @@ using namespace Tree2Secondaries;
 
 int main(int argc, char *argv[]) {
 
-    // default //
-    Settings settings{"../files/AnalysisResults.root", "SecondaryResults_SignalMC.root", true, true, 0};
-
+    Settings settings;
     Parser parser(argc, argv, settings, "II. Tree2Secondaries");
     if (parser.HelpOrError) return parser.ExitCode;
     settings.Print();
@@ -25,13 +23,48 @@ int main(int argc, char *argv[]) {
         // if (mgr.IsSignalMC()) mgr.ProcessInjected(); // PENDING
         // }
         mgr.ProcessTracks();
-        mgr.FindV0s(PdgCode::Lambda, PdgCode::PiMinus, PdgCode::Proton);
-        mgr.FindV0s(PdgCode::AntiLambda, PdgCode::AntiProton, PdgCode::PiPlus);
-        mgr.FindV0s(PdgCode::KaonZeroShort, PdgCode::PiMinus, PdgCode::PiPlus);
+
+        switch (mgr.GetReactionChannel()) {
+            // standard channels //
+            case ReactionChannel::A:
+                mgr.FindV0s(PdgCode::AntiLambda, PdgCode::AntiProton, PdgCode::PiPlus);
+                mgr.FindV0s(PdgCode::KaonZeroShort, PdgCode::PiMinus, PdgCode::PiPlus);
+                break;
+            case ReactionChannel::D:
+                mgr.FindV0s(PdgCode::AntiLambda, PdgCode::AntiProton, PdgCode::PiPlus);
+                mgr.StoreTracks(PdgCode::PosKaon);
+                break;
+            case ReactionChannel::E:
+                mgr.FindV0s(PdgCode::AntiLambda, PdgCode::AntiProton, PdgCode::PiPlus);
+                mgr.StoreTracks(PdgCode::PosKaon);
+                mgr.StoreTracks(PdgCode::PiMinus);
+                mgr.StoreTracks(PdgCode::PiPlus);
+                break;
+            case ReactionChannel::H:
+                // SUPER PENDING
+                break;
+            // anti-channels //
+            case ReactionChannel::AntiA:
+                mgr.FindV0s(PdgCode::Lambda, PdgCode::PiMinus, PdgCode::Proton);
+                mgr.FindV0s(PdgCode::KaonZeroShort, PdgCode::PiMinus, PdgCode::PiPlus);
+                break;
+            case ReactionChannel::AntiD:
+                mgr.FindV0s(PdgCode::Lambda, PdgCode::PiMinus, PdgCode::Proton);
+                mgr.StoreTracks(PdgCode::NegKaon);
+                break;
+            case ReactionChannel::AntiE:
+                mgr.FindV0s(PdgCode::Lambda, PdgCode::PiMinus, PdgCode::Proton);
+                mgr.StoreTracks(PdgCode::NegKaon);
+                mgr.StoreTracks(PdgCode::PiMinus);
+                mgr.StoreTracks(PdgCode::PiPlus);
+                break;
+            case ReactionChannel::AntiH:
+                // SUPER PENDING
+                break;
+        }  // end of switch statement
 
         mgr.EndOfEvent();
     }
-    // mgr.WriteOutputFile();
     mgr.EndOfAnalysis();
 
     return 0;

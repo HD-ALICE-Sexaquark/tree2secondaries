@@ -24,6 +24,21 @@ struct Event {
 
 namespace Tree2Secondaries::Input {
 
+struct Tracks {
+    std::vector<float> *Px{nullptr};
+    std::vector<float> *Py{nullptr};
+    std::vector<float> *Pz{nullptr};
+    std::vector<float> *X{nullptr};
+    std::vector<float> *Y{nullptr};
+    std::vector<float> *Z{nullptr};
+    std::vector<int> *Charge{nullptr};
+    std::vector<float> *NSigmaPion{nullptr};
+    std::vector<float> *NSigmaKaon{nullptr};
+    std::vector<float> *NSigmaProton{nullptr};
+
+    std::vector<int> *McEntry{nullptr};
+};
+
 struct Injected {
     std::vector<int> *ReactionID{nullptr};
     std::vector<float> *Px{nullptr};
@@ -39,21 +54,6 @@ struct MC {
     std::vector<int> *Mother_McEntry{nullptr};
     std::vector<int> *Status{nullptr};
     std::vector<int> *Generator{nullptr};
-};
-
-struct Tracks {
-    std::vector<float> *Px{nullptr};
-    std::vector<float> *Py{nullptr};
-    std::vector<float> *Pz{nullptr};
-    std::vector<float> *X{nullptr};
-    std::vector<float> *Y{nullptr};
-    std::vector<float> *Z{nullptr};
-    std::vector<int> *Charge{nullptr};
-    std::vector<float> *NSigmaPion{nullptr};
-    std::vector<float> *NSigmaKaon{nullptr};
-    std::vector<float> *NSigmaProton{nullptr};
-
-    std::vector<int> *McEntry{nullptr};
 };
 
 }  // namespace Tree2Secondaries::Input

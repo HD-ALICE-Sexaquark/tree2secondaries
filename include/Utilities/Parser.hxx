@@ -1,11 +1,14 @@
 #ifndef T2S_PARSER_HXX
 #define T2S_PARSER_HXX
 
+#include <cctype>
+#include <set>
 #include <string>
 
 #include "CLI11.hpp"
 
 #include "Analysis/Settings.hxx"
+#include "Math/Constants.hxx"
 
 namespace Tree2Secondaries {
 
@@ -20,15 +23,33 @@ class Parser {
     ~Parser() = default;
 
     void AddOptions(Settings& settings) {
-        CLI_APP.add_option("-i,--input", settings.PathInputFiles, "Path of input files");
-        CLI_APP.add_option("-o,--output", settings.PathOutputFile, "Path of output file");
-        CLI_APP.add_flag("-m,--mc", settings.IsMC, "Flag to process MC");
+        // input/output paths //
+        CLI_APP.add_option("-i,--input", settings.PathInputFiles, "Path of input files")->required();
+        CLI_APP.add_option("-o,--output", settings.PathOutputFile, "Path of output file")->expected(1);
+        // data type flags //
+        CLI_APP.add_flag("-m,--mc", settings.IsMC, "Process MC");
         CLI_APP
-            .add_flag("-s,--signal", settings.IsSignalMC, "Flag to process Signal MC")  //
+            .add_flag("-s,--signal", settings.IsSignalMC, "Process Signal MC")  //
             ->needs("-m");
+        //
         CLI_APP
             .add_option("-n,--nevents", settings.LimitToNEvents, "Limit to N events")  //
-            ->check(CLI::NonNegativeNumber & CLI::TypeValidator<int>());
+            ->check(CLI::NonNegativeNumber);
+        // reaction channel //
+        const std::set<char> allowed_channels{'A', 'D', 'E', 'H'};
+        CLI_APP
+            .add_option_function<char>(
+                "-c,--channel", [&settings](const char& val) { settings.Channel = static_cast<ReactionChannel>(val); },
+                "Process a standard reaction channel")
+            ->expected(1)
+            ->check(CLI::IsMember(allowed_channels));
+        CLI_APP
+            .add_option_function<char>(
+                "-a,--anti", [&settings](const char& val) { settings.Channel = static_cast<ReactionChannel>(std::tolower(val)); },
+                "Process an anti reaction channel")
+            ->expected(1)
+            ->excludes("-c")
+            ->check(CLI::IsMember(allowed_channels));
     }
 
     int Parse(int argc, char* argv[], Settings& settings) {
@@ -44,23 +65,12 @@ class Parser {
         if (settings.PathOutputFile.empty()) {
             if (settings.IsMC) {
                 if (settings.IsSignalMC) {
-                    settings.PathOutputFile = "../files/AnalysisResults.root";
+                    settings.PathOutputFile = "Packed_Channel" + settings.StrReactionChannel() + "_BkgMC.root";
                 } else {
-                    settings.PathOutputFile = "../files/AnalysisResults_what.root";
+                    settings.PathOutputFile = "Packed_Channel" + settings.StrReactionChannel() + "_SignalMC.root";
                 }
             } else {
-                settings.PathOutputFile = "../files/AnalysisResults_data_15o_245554_001.root";
-            }
-        }
-        if (settings.PathOutputFile.empty()) {
-            if (settings.IsMC) {
-                if (settings.IsSignalMC) {
-                    settings.PathOutputFile = "../files/SecondariesResults_BkgMC.root";
-                } else {
-                    settings.PathOutputFile = "../files/SecondariesResults_SignalMC.root";
-                }
-            } else {
-                settings.PathOutputFile = "../files/SecondariesResults_Data.root";
+                settings.PathOutputFile = "Packed_Channel" + settings.StrReactionChannel() + "_Data.root";
             }
         }
         return 0;

@@ -1,5 +1,5 @@
 #include <memory>
-#include <set>
+#include <string_view>
 
 #include "Math/Point3D.h"
 #include "Math/Vector4D.h"
@@ -25,7 +25,7 @@ bool Manager::Initialize() {
 
     if (!PrepareOutputFile()) return false;
     if (!PrepareOutputTree()) return false;
-    PrepareOutputBranches();
+    CreateOutputBranches();
 
     INFO("Manager initialized successfully");
     return true;
@@ -167,7 +167,6 @@ void Manager::ConnectBranchesTracks() {
 
 // ## OUTPUT ZONE ## //
 
-//
 bool Manager::PrepareOutputFile() {
 
     fOutputFile = std::unique_ptr<TFile>(TFile::Open(fSettings.PathOutputFile.c_str(), "RECREATE"));
@@ -180,7 +179,6 @@ bool Manager::PrepareOutputFile() {
     return true;
 }
 
-// Create output tree.
 bool Manager::PrepareOutputTree() {
 
     fOutputTree = std::make_unique<TTree>("ProEvents", "Processed Events");
@@ -192,12 +190,51 @@ bool Manager::PrepareOutputTree() {
     return true;
 }
 
-void Manager::PrepareOutputBranches() {
-    PrepareBranchesEvents();
-    PrepareBranchesV0s();
+void Manager::CreateOutputBranches() {
+    //
+    CreateOutputBranchesEvents();
+    //
+    switch (GetReactionChannel()) {
+        // standard channels //
+        case ReactionChannel::A:
+            CreateOutputBranchesV0s(Acronym::AntiLambda, fOutput_AntiLambdas);
+            CreateOutputBranchesV0s(Acronym::KaonZeroShort, fOutput_NeutralKaons);
+            break;
+        case ReactionChannel::D:
+            CreateOutputBranchesV0s(Acronym::AntiLambda, fOutput_AntiLambdas);
+            CreateOutputBranchesTracks(Acronym::PosKaon, fOutput_PosKaons);
+            break;
+        case ReactionChannel::E:
+            CreateOutputBranchesV0s(Acronym::AntiLambda, fOutput_AntiLambdas);
+            CreateOutputBranchesTracks(Acronym::PosKaon, fOutput_PosKaons);
+            CreateOutputBranchesTracks(Acronym::PiMinus, fOutput_PiMinus);
+            CreateOutputBranchesTracks(Acronym::PiPlus, fOutput_PiPlus);
+            break;
+        case ReactionChannel::H:
+            // SUPER PENDING
+            break;
+        // anti-channels //
+        case ReactionChannel::AntiA:
+            CreateOutputBranchesV0s(Acronym::Lambda, fOutput_Lambdas);
+            CreateOutputBranchesV0s(Acronym::KaonZeroShort, fOutput_NeutralKaons);
+            break;
+        case ReactionChannel::AntiD:
+            CreateOutputBranchesV0s(Acronym::Lambda, fOutput_Lambdas);
+            CreateOutputBranchesTracks(Acronym::NegKaon, fOutput_NegKaons);
+            break;
+        case ReactionChannel::AntiE:
+            CreateOutputBranchesV0s(Acronym::Lambda, fOutput_Lambdas);
+            CreateOutputBranchesTracks(Acronym::NegKaon, fOutput_NegKaons);
+            CreateOutputBranchesTracks(Acronym::PiMinus, fOutput_PiMinus);
+            CreateOutputBranchesTracks(Acronym::PiPlus, fOutput_PiPlus);
+            break;
+        case ReactionChannel::AntiH:
+            // SUPER PENDING
+            break;
+    }  // end of switch statement
 }
 
-void Manager::PrepareBranchesEvents() {
+void Manager::CreateOutputBranchesEvents() {
     fOutputTree->Branch("RunNumber", &fOutput_Event.RunNumber);
     fOutputTree->Branch("DirNumber", &fOutput_Event.DirNumber);
     fOutputTree->Branch("EventNumber", &fOutput_Event.EventNumber);
@@ -213,31 +250,43 @@ void Manager::PrepareBranchesEvents() {
     }
 }
 
-//
-void Manager::PrepareBranchesV0s() {
-    fOutputTree->Branch("V0_Index", &fOutput_V0s.Index);
-    fOutputTree->Branch("V0_PID", &fOutput_V0s.PID);
-    fOutputTree->Branch("V0_Neg_Entry", &fOutput_V0s.Neg_Entry);
-    fOutputTree->Branch("V0_Pos_Entry", &fOutput_V0s.Pos_Entry);
-    fOutputTree->Branch("V0_Xv", &fOutput_V0s.Xv);
-    fOutputTree->Branch("V0_Yv", &fOutput_V0s.Yv);
-    fOutputTree->Branch("V0_Zv", &fOutput_V0s.Zv);
-    fOutputTree->Branch("V0_Px", &fOutput_V0s.Px);
-    fOutputTree->Branch("V0_Py", &fOutput_V0s.Py);
-    fOutputTree->Branch("V0_Pz", &fOutput_V0s.Pz);
-    fOutputTree->Branch("V0_E", &fOutput_V0s.E);
-    fOutputTree->Branch("V0_Neg_Xv", &fOutput_V0s.Neg_Xv);
-    fOutputTree->Branch("V0_Neg_Yv", &fOutput_V0s.Neg_Yv);
-    fOutputTree->Branch("V0_Neg_Zv", &fOutput_V0s.Neg_Zv);
-    fOutputTree->Branch("V0_Neg_Px", &fOutput_V0s.Neg_Px);
-    fOutputTree->Branch("V0_Neg_Py", &fOutput_V0s.Neg_Py);
-    fOutputTree->Branch("V0_Neg_Pz", &fOutput_V0s.Neg_Pz);
-    fOutputTree->Branch("V0_Pos_Xv", &fOutput_V0s.Pos_Xv);
-    fOutputTree->Branch("V0_Pos_Yv", &fOutput_V0s.Pos_Yv);
-    fOutputTree->Branch("V0_Pos_Zv", &fOutput_V0s.Pos_Zv);
-    fOutputTree->Branch("V0_Pos_Px", &fOutput_V0s.Pos_Px);
-    fOutputTree->Branch("V0_Pos_Py", &fOutput_V0s.Pos_Py);
-    fOutputTree->Branch("V0_Pos_Pz", &fOutput_V0s.Pos_Pz);
+void Manager::CreateOutputBranchesV0s(std::string_view v0_sv, Output::V0s& out_branches) {
+    const std::string v0_name{v0_sv};
+    fOutputTree->Branch((v0_name + "_Neg_Entry").c_str(), &out_branches.Neg_Entry);
+    fOutputTree->Branch((v0_name + "_Pos_Entry").c_str(), &out_branches.Pos_Entry);
+    fOutputTree->Branch((v0_name + "_Xv").c_str(), &out_branches.Xv);
+    fOutputTree->Branch((v0_name + "_Yv").c_str(), &out_branches.Yv);
+    fOutputTree->Branch((v0_name + "_Zv").c_str(), &out_branches.Zv);
+    fOutputTree->Branch((v0_name + "_Px").c_str(), &out_branches.Px);
+    fOutputTree->Branch((v0_name + "_Py").c_str(), &out_branches.Py);
+    fOutputTree->Branch((v0_name + "_Pz").c_str(), &out_branches.Pz);
+    fOutputTree->Branch((v0_name + "_E").c_str(), &out_branches.E);
+    fOutputTree->Branch((v0_name + "_Neg_Xv").c_str(), &out_branches.Neg_Xv);
+    fOutputTree->Branch((v0_name + "_Neg_Yv").c_str(), &out_branches.Neg_Yv);
+    fOutputTree->Branch((v0_name + "_Neg_Zv").c_str(), &out_branches.Neg_Zv);
+    fOutputTree->Branch((v0_name + "_Neg_Px").c_str(), &out_branches.Neg_Px);
+    fOutputTree->Branch((v0_name + "_Neg_Py").c_str(), &out_branches.Neg_Py);
+    fOutputTree->Branch((v0_name + "_Neg_Pz").c_str(), &out_branches.Neg_Pz);
+    fOutputTree->Branch((v0_name + "_Pos_Xv").c_str(), &out_branches.Pos_Xv);
+    fOutputTree->Branch((v0_name + "_Pos_Yv").c_str(), &out_branches.Pos_Yv);
+    fOutputTree->Branch((v0_name + "_Pos_Zv").c_str(), &out_branches.Pos_Zv);
+    fOutputTree->Branch((v0_name + "_Pos_Px").c_str(), &out_branches.Pos_Px);
+    fOutputTree->Branch((v0_name + "_Pos_Py").c_str(), &out_branches.Pos_Py);
+    fOutputTree->Branch((v0_name + "_Pos_Pz").c_str(), &out_branches.Pos_Pz);
+    if (IsMC()) {
+        // PENDING
+    }
+}
+
+void Manager::CreateOutputBranchesTracks(std::string_view charged_sv, Output::Tracks& out_branches) {
+    const std::string charged_name{charged_sv};
+    fOutputTree->Branch((charged_name + "_Entry").c_str(), &out_branches.Entry);
+    fOutputTree->Branch((charged_name + "_Xv").c_str(), &out_branches.Xv);
+    fOutputTree->Branch((charged_name + "_Yv").c_str(), &out_branches.Yv);
+    fOutputTree->Branch((charged_name + "_Zv").c_str(), &out_branches.Zv);
+    fOutputTree->Branch((charged_name + "_Px").c_str(), &out_branches.Px);
+    fOutputTree->Branch((charged_name + "_Py").c_str(), &out_branches.Py);
+    fOutputTree->Branch((charged_name + "_Pz").c_str(), &out_branches.Pz);
     if (IsMC()) {
         // PENDING
     }
@@ -264,7 +313,9 @@ void Manager::ProcessEvent() {
 }
 
 // Process injected interactions.
-void Manager::ProcessInjected() {}
+void Manager::ProcessInjected() {
+    // PENDING
+}
 
 // Process the MC data.
 /*
@@ -292,6 +343,8 @@ void Manager::ProcessMC() {
 }
 */
 
+// ## Tracks ZONE ## //
+
 // Process selected reconstructed tracks.
 void Manager::ProcessTracks() {
 
@@ -306,20 +359,20 @@ void Manager::ProcessTracks() {
         if (std::abs(fInput_Tracks.NSigmaProton->at(track_entry)) < Cuts::Track::AbsMax_PID_NSigma) {
             auto proton = std::make_shared<Charged>(track_entry, charge, xyz0, PxPyPzMVector{px0, py0, pz0, Const::MassProton});
             // if (IsMC()) proton->SetLinkedMc(fMCParticles[fInput_Tracks.McEntry->at(track_entry)]);
-            if (charge < 0) fAntiProtons.push_back(proton);
-            if (charge > 0) fProtons.push_back(proton);
+            if (charge < 0) fVec_AntiProtons.push_back(proton);
+            if (charge > 0) fVec_Protons.push_back(proton);
         }
         if (std::abs(fInput_Tracks.NSigmaKaon->at(track_entry)) < Cuts::Track::AbsMax_PID_NSigma) {
             auto kaon = std::make_shared<Charged>(track_entry, charge, xyz0, PxPyPzMVector{px0, py0, pz0, Const::MassKaon});
             // if (IsMC()) kaon->SetLinkedMc(fMCParticles[fInput_Tracks.McEntry->at(track_entry)]);
-            if (charge < 0) fNegKaons.push_back(kaon);
-            if (charge > 0) fPosKaons.push_back(kaon);
+            if (charge < 0) fVec_NegKaons.push_back(kaon);
+            if (charge > 0) fVec_PosKaons.push_back(kaon);
         }
         if (std::abs(fInput_Tracks.NSigmaPion->at(track_entry)) < Cuts::Track::AbsMax_PID_NSigma) {
             auto pion = std::make_shared<Charged>(track_entry, charge, xyz0, PxPyPzMVector{px0, py0, pz0, Const::MassPion});
             // if (IsMC()) pion->SetLinkedMc(fMCParticles[fInput_Tracks.McEntry->at(track_entry)]);
-            if (charge < 0) fPiMinus.push_back(pion);
-            if (charge > 0) fPiPlus.push_back(pion);
+            if (charge < 0) fVec_PiMinus.push_back(pion);
+            if (charge > 0) fVec_PiPlus.push_back(pion);
         }
     }
     // INFO("finished ProcessTracks() with n_protons = %zu, n_poskaons = %zu, n_piplus = %zu", fProtons.size(), fPosKaons.size(), fPiPlus.size());
@@ -327,12 +380,24 @@ void Manager::ProcessTracks() {
     //  fPiMinus.size());
 }
 
+void Manager::StoreTracks(const std::vector<std::shared_ptr<Charged>>& charged_vec, const Output::Tracks& out_branch) {
+    for (const auto& charged : charged_vec) {
+        out_branch.Entry->push_back(charged->Entry());
+        out_branch.Xv->push_back(charged->X0());
+        out_branch.Yv->push_back(charged->Y0());
+        out_branch.Zv->push_back(charged->Z0());
+        out_branch.Px->push_back(charged->Px0());
+        out_branch.Py->push_back(charged->Py0());
+        out_branch.Pz->push_back(charged->Pz0());
+    }
+}
+
 // ## V0s ZONE ## //
 
 void Manager::FindV0s(int pdg_code_v0, int pdg_code_neg, int pdg_code_pos) {
     // choose tracks species to loop over //
-    const auto& neg_vec{pdg_code_neg == PdgCode::AntiProton ? fAntiProtons : fPiMinus};
-    const auto& pos_vec{pdg_code_pos == PdgCode::Proton ? fProtons : fPiPlus};
+    const auto& neg_vec{pdg_code_neg == PdgCode::AntiProton ? fVec_AntiProtons : fVec_PiMinus};
+    const auto& pos_vec{pdg_code_pos == PdgCode::Proton ? fVec_Protons : fVec_PiPlus};
     // loop over all possible pairs of tracks //
     for (const auto& neg : neg_vec) {
         for (const auto& pos : pos_vec) {
@@ -396,43 +461,29 @@ bool Manager::PassesKaonZeroCuts(const std::shared_ptr<Neutral>& v0) const {
     return true;
 }
 
-//
-void Manager::Store(const std::shared_ptr<Neutral>& v0, int pdg_code_v0) {
-    // fill temporary container //
-    if (pdg_code_v0 == PdgCode::AntiLambda)
-        fAntiLambdas.push_back(v0);
-    else if (pdg_code_v0 == PdgCode::Lambda)
-        fLambdas.push_back(v0);
-    else if (pdg_code_v0 == PdgCode::KaonZeroShort)
-        fNeutralKaons.push_back(v0);
-    else {
-        WARNING("Unknown V0 type");
-        return;
-    }
-    // fill branches //
-    fOutput_V0s.Index->push_back(0);  // INDEXING PENDING
-    fOutput_V0s.PID->push_back(pdg_code_v0);
-    fOutput_V0s.Neg_Entry->push_back(v0->NegIndex());
-    fOutput_V0s.Pos_Entry->push_back(v0->PosIndex());
-    fOutput_V0s.Xv->push_back(v0->DecayX());
-    fOutput_V0s.Yv->push_back(v0->DecayY());
-    fOutput_V0s.Zv->push_back(v0->DecayZ());
-    fOutput_V0s.Px->push_back(v0->Px());
-    fOutput_V0s.Py->push_back(v0->Py());
-    fOutput_V0s.Pz->push_back(v0->Pz());
-    fOutput_V0s.E->push_back(v0->Energy());
-    fOutput_V0s.Neg_Xv->push_back(v0->NegVertex().X());
-    fOutput_V0s.Neg_Yv->push_back(v0->NegVertex().Y());
-    fOutput_V0s.Neg_Zv->push_back(v0->NegVertex().Z());
-    fOutput_V0s.Neg_Px->push_back(v0->NegMomentum().X());
-    fOutput_V0s.Neg_Py->push_back(v0->NegMomentum().Y());
-    fOutput_V0s.Neg_Pz->push_back(v0->NegMomentum().Z());
-    fOutput_V0s.Pos_Xv->push_back(v0->PosVertex().X());
-    fOutput_V0s.Pos_Yv->push_back(v0->PosVertex().Y());
-    fOutput_V0s.Pos_Zv->push_back(v0->PosVertex().Z());
-    fOutput_V0s.Pos_Px->push_back(v0->PosMomentum().X());
-    fOutput_V0s.Pos_Py->push_back(v0->PosMomentum().Y());
-    fOutput_V0s.Pos_Pz->push_back(v0->PosMomentum().Z());
+// fill branches //
+void Manager::Store(const std::shared_ptr<Neutral>& v0, const Output::V0s& out_branches) {
+    out_branches.Neg_Entry->push_back(v0->NegIndex());
+    out_branches.Pos_Entry->push_back(v0->PosIndex());
+    out_branches.Xv->push_back(v0->DecayX());
+    out_branches.Yv->push_back(v0->DecayY());
+    out_branches.Zv->push_back(v0->DecayZ());
+    out_branches.Px->push_back(v0->Px());
+    out_branches.Py->push_back(v0->Py());
+    out_branches.Pz->push_back(v0->Pz());
+    out_branches.E->push_back(v0->Energy());
+    out_branches.Neg_Xv->push_back(v0->NegVertex().X());
+    out_branches.Neg_Yv->push_back(v0->NegVertex().Y());
+    out_branches.Neg_Zv->push_back(v0->NegVertex().Z());
+    out_branches.Neg_Px->push_back(v0->NegMomentum().X());
+    out_branches.Neg_Py->push_back(v0->NegMomentum().Y());
+    out_branches.Neg_Pz->push_back(v0->NegMomentum().Z());
+    out_branches.Pos_Xv->push_back(v0->PosVertex().X());
+    out_branches.Pos_Yv->push_back(v0->PosVertex().Y());
+    out_branches.Pos_Zv->push_back(v0->PosVertex().Z());
+    out_branches.Pos_Px->push_back(v0->PosMomentum().X());
+    out_branches.Pos_Py->push_back(v0->PosMomentum().Y());
+    out_branches.Pos_Pz->push_back(v0->PosMomentum().Z());
 }
 
 // ## END OF CYCLES ## //
@@ -443,18 +494,51 @@ void Manager::EndOfEvent() {
     fOutputTree->Fill();
     // clear temporary containers //
     // if (IsMC()) fMCParticles.clear();
-    fAntiProtons.clear();
-    fProtons.clear();
-    fNegKaons.clear();
-    fPosKaons.clear();
-    fPiMinus.clear();
-    fPiPlus.clear();
-    //
-    fAntiLambdas.clear();
-    fLambdas.clear();
-    fNeutralKaons.clear();
+    fVec_AntiProtons.clear();
+    fVec_Protons.clear();
+    fVec_NegKaons.clear();
+    fVec_PosKaons.clear();
+    fVec_PiMinus.clear();
+    fVec_PiPlus.clear();
     // clear output branches //
-    fOutput_V0s.Clear();
+    switch (GetReactionChannel()) {
+        // standard channels //
+        case ReactionChannel::A:
+            fOutput_AntiLambdas.Clear();
+            fOutput_NeutralKaons.Clear();
+            break;
+        case ReactionChannel::D:
+            fOutput_AntiLambdas.Clear();
+            fOutput_PosKaons.Clear();
+            break;
+        case ReactionChannel::E:
+            fOutput_AntiLambdas.Clear();
+            fOutput_PosKaons.Clear();
+            fOutput_PiMinus.Clear();
+            fOutput_PiPlus.Clear();
+            break;
+        case ReactionChannel::H:
+            // SUPER PENDING
+            break;
+        // anti-channels //
+        case ReactionChannel::AntiA:
+            fOutput_Lambdas.Clear();
+            fOutput_NeutralKaons.Clear();
+            break;
+        case ReactionChannel::AntiD:
+            fOutput_Lambdas.Clear();
+            fOutput_NegKaons.Clear();
+            break;
+        case ReactionChannel::AntiE:
+            fOutput_Lambdas.Clear();
+            fOutput_NegKaons.Clear();
+            fOutput_PiMinus.Clear();
+            fOutput_PiPlus.Clear();
+            break;
+        case ReactionChannel::AntiH:
+            // SUPER PENDING
+            break;
+    }
 }
 
 //

@@ -6,8 +6,6 @@
 namespace Tree2Secondaries::Output {
 
 struct V0s {
-    std::vector<int>* Index{nullptr};
-    std::vector<int>* PID{nullptr};  // PID Hypothesis
     std::vector<int>* Neg_Entry{nullptr};
     std::vector<int>* Pos_Entry{nullptr};
 
@@ -43,8 +41,6 @@ struct V0s {
     */
 
     void Clear() {
-        Index->clear();
-        PID->clear();  // PID Hypothesis
         Neg_Entry->clear();
         Pos_Entry->clear();
 
@@ -69,6 +65,25 @@ struct V0s {
         Pos_Px->clear();
         Pos_Py->clear();
         Pos_Pz->clear();
+    }
+};
+
+struct Tracks {
+    std::vector<int>* Entry{nullptr};
+    std::vector<float>* Px{nullptr};
+    std::vector<float>* Py{nullptr};
+    std::vector<float>* Pz{nullptr};
+    std::vector<float>* Xv{nullptr};
+    std::vector<float>* Yv{nullptr};
+    std::vector<float>* Zv{nullptr};
+    void Clear() {
+        Entry->clear();
+        Px->clear();
+        Py->clear();
+        Pz->clear();
+        Xv->clear();
+        Yv->clear();
+        Zv->clear();
     }
 };
 
