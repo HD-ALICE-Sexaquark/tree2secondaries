@@ -23,6 +23,7 @@ set(CMAKE_CXX_FLAGS
 )
 
 # enable LTO #
+
 include(CheckIPOSupported)
 check_ipo_supported(RESULT LTO_SUPPORTED)
 if(LTO_SUPPORTED)
@@ -57,5 +58,4 @@ message(STATUS "Using compiler flags: ${CMAKE_CXX_FLAGS}")
 # main targets of the project in various subdirectories. order matters. #
 
 add_subdirectory(src/Analysis)
-add_subdirectory(src/Math)
 add_subdirectory(src/App)
