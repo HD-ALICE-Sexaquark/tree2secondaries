@@ -68,9 +68,9 @@ class Manager {
     void ProcessTracks();
 
     void FindV0s(int pdg_code_v0, int pdg_code_neg, int pdg_code_pos);
-    [[nodiscard]] bool PassesLambdaCuts(const Neutral &this_v0) const;
-    [[nodiscard]] bool PassesKaonZeroCuts(const Neutral &this_v0) const;
-    [[nodiscard]] bool PassesV0Cuts(const Neutral &this_v0, int pdg_code_v0) const {
+    [[nodiscard]] bool PassesLambdaCuts(const std::shared_ptr<Neutral> &this_v0) const;
+    [[nodiscard]] bool PassesKaonZeroCuts(const std::shared_ptr<Neutral> &this_v0) const;
+    [[nodiscard]] bool PassesV0Cuts(const std::shared_ptr<Neutral> &this_v0, int pdg_code_v0) const {
         if (std::abs(pdg_code_v0) == PdgCode::Lambda) return PassesLambdaCuts(this_v0);
         return PassesKaonZeroCuts(this_v0);
     }
@@ -134,7 +134,7 @@ class Manager {
     Input::Tracks fInput_Tracks;
 
     // helpers //
-    Helper::Propagator fPropagator;
+    Helper::Propagator fPropagator{0.};
 
     // transitory containers //
     // std::vector<std::shared_ptr<True>> fMCParticles;

@@ -57,6 +57,9 @@ inline ROOT::Math::XYZPoint MiddlePoint(const ROOT::Math::XYZPoint& p1, const RO
     return {0.5 * (p1.X() + p2.X()), 0.5 * (p1.Y() + p2.Y()), 0.5 * (p1.Z() + p2.Z())};
 }
 
+// Calculate square of the distance between two points in 3D space.
+inline double DistanceSquared(const ROOT::Math::XYZPoint& p1, const ROOT::Math::XYZPoint& p2) { return (p1 - p2).Mag2(); }
+
 }  // namespace Tree2Secondaries::Math
 
 #endif  // T2S_MATH_COMMON_HXX

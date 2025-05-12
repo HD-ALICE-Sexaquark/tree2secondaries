@@ -7,6 +7,7 @@
 #include "Math/Vector3D.h"
 #include "Math/Vector4D.h"
 
+#include "App/Logger.hxx"
 #include "Math/Common.hxx"
 #include "Math/Propagator.hxx"
 #include "Secondary/Particle.hxx"
@@ -29,8 +30,10 @@ class alignas(256) Neutral {
           fPosIndex{pos_idx} {}
 
     Neutral(int neg_idx, int pos_idx, const Particle::Pair& pair)
-        : fState{pair.first.Momentum + pair.first.Momentum,                  //
+        : fState{pair.first.Momentum + pair.second.Momentum,                 //
                  Math::MiddlePoint(pair.first.Vertex, pair.second.Vertex)},  //
+          fNegative(pair.first),
+          fPositive(pair.second),
           fNegIndex{neg_idx},
           fPosIndex{pos_idx} {}
 
@@ -73,10 +76,20 @@ class alignas(256) Neutral {
     [[nodiscard]] double DCAbtwDaughters() const { return (fNegative.Vertex - fPositive.Vertex).R(); }
     [[nodiscard]] Particle::State PropagatedState(double s, const Helper::Propagator& prop) const { return {PxPyPzE(), XYZ(s, prop)}; }
 
+    void Print(int pdg_code_v0, const Helper::Propagator& prop) {
+        INFO("Searching %i {%i,%i},P={%f,%f,%f,m=%f,e=%f},V={%f,%f,%f}", pdg_code_v0, fNegIndex, fPosIndex, fState.Momentum.Px(),
+             fState.Momentum.Py(), fState.Momentum.Pz(), fState.Momentum.M(), fState.Momentum.E(), fState.Vertex.X(), fState.Vertex.Y(),
+             fState.Vertex.Z());
+        fNegative.Print();
+        fPositive.Print();
+        INFO("m%f dbd%f z%f r%f dn%f dp%f pt%f et%f qt%f a%f cpv%f dpv%f", Mass(), DCAbtwDaughters(), DecayZ(), DecayRadius(), DCANegWrtV0(),
+             DCAPosWrtV0(), Pt(), Eta(), ArmenterosQt(), ArmenterosAlpha(), CPAwrt(prop.PrimaryVertex()), DCAwrt(prop.PrimaryVertex()));
+    }
+
    protected:
     Particle::State fState;
-    Particle::State fNegative;
-    Particle::State fPositive;
+    Particle::State fNegative{{0., 0., 0., 0.}, {0., 0., 0.}};
+    Particle::State fPositive{{0., 0., 0., 0.}, {0., 0., 0.}};
     int fNegIndex{0};
     int fPosIndex{0};
 };

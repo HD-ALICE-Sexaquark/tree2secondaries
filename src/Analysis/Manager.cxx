@@ -415,57 +415,56 @@ void Manager::FindV0s(int pdg_code_v0, int pdg_code_neg, int pdg_code_pos) {
             Particle::Pair res{Vertexer::MinimizeDistanceHelixHelix(*neg, *pos, fPropagator)};
             auto V0 = std::make_shared<Neutral>(neg->Entry(), pos->Entry(), res);  // PENDING: indexing not correct..
             // apply cuts //
-            if (!PassesV0Cuts(*V0, pdg_code_v0)) continue;
+            if (!PassesV0Cuts(V0, pdg_code_v0)) continue;
             // store //
             Store(V0, pdg_code_v0);
         }  // end of loop over pos
     }  // end of loop over neg
 }
 
-bool Manager::PassesLambdaCuts(const Neutral& v0) const {
-
-    if (v0.Mass() < Cuts::Lambda::Min_Mass || v0.Mass() > Cuts::Lambda::Max_Mass) return false;
-    if (v0.DCAbtwDaughters() > Cuts::Lambda::Max_DCAbtwDau) return false;
-    if (std::abs(v0.DecayZ()) > Cuts::Lambda::AbsMax_Zv) return false;
-    if (v0.DecayRadius() < Cuts::Lambda::Min_Radius || v0.DecayRadius() > Cuts::Lambda::Max_Radius) return false;
-    if (v0.DCANegWrtV0() > Cuts::Lambda::Max_DCAnegV0) return false;
-    if (v0.DCAPosWrtV0() > Cuts::Lambda::Max_DCAposV0) return false;
-    if (v0.Pt() < Cuts::Lambda::Min_Pt) return false;
-    if (std::abs(v0.Eta()) > Cuts::Lambda::AbsMax_Eta) return false;
-    if (v0.ArmenterosQt() / std::abs(v0.ArmenterosAlpha()) > Cuts::Lambda::AbsMax_ArmQtOverAlpha) return false;
-    if (v0.CPAwrt(fPropagator.PrimaryVertex()) < Cuts::Lambda::Min_CPAwrtPV || v0.CPAwrt(fPropagator.PrimaryVertex()) > Cuts::Lambda::Max_CPAwrtPV) {
+bool Manager::PassesLambdaCuts(const std::shared_ptr<Neutral>& v0) const {
+    /*
+        INFO("m%f dbd%f z%f r%f dn%f dp%f pt%f et%f qt%f a%f cpv%f dpv%f", v0->Mass(), v0->DCAbtwDaughters(), v0->DecayZ(), v0->DecayRadius(),
+             v0->DCANegWrtV0(), v0->DCAPosWrtV0(), v0->Pt(), v0->Eta(), v0->ArmenterosQt(), v0->ArmenterosAlpha(),
+             v0->CPAwrt(fPropagator.PrimaryVertex()), v0->DCAwrt(fPropagator.PrimaryVertex()));
+    */
+    if (v0->Mass() < Cuts::Lambda::Min_Mass || v0->Mass() > Cuts::Lambda::Max_Mass) return false;
+    if (v0->DCAbtwDaughters() > Cuts::Lambda::Max_DCAbtwDau) return false;
+    if (std::abs(v0->DecayZ()) > Cuts::Lambda::AbsMax_Zv) return false;
+    if (v0->DecayRadius() < Cuts::Lambda::Min_Radius || v0->DecayRadius() > Cuts::Lambda::Max_Radius) return false;
+    if (v0->DCANegWrtV0() > Cuts::Lambda::Max_DCAnegV0) return false;
+    if (v0->DCAPosWrtV0() > Cuts::Lambda::Max_DCAposV0) return false;
+    if (v0->Pt() < Cuts::Lambda::Min_Pt) return false;
+    if (std::abs(v0->Eta()) > Cuts::Lambda::AbsMax_Eta) return false;
+    if (v0->ArmenterosQt() / std::abs(v0->ArmenterosAlpha()) > Cuts::Lambda::AbsMax_ArmQtOverAlpha) return false;
+    if (v0->CPAwrt(fPropagator.PrimaryVertex()) < Cuts::Lambda::Min_CPAwrtPV ||
+        v0->CPAwrt(fPropagator.PrimaryVertex()) > Cuts::Lambda::Max_CPAwrtPV) {
         return false;
     }
-    if (v0.DCAwrt(fPropagator.PrimaryVertex()) < Cuts::Lambda::Min_DCAwrtPV) return false;
-    /*
-        INFO("m%f dbd%f z%f r%f dn%f dp%f pt%f et%f qt%f a%f cpv%f dpv%f", v0.Mass(), v0.DCAbtwDaughters(), v0.DecayZ(), v0.DecayRadius(),
-        v0.DCANegWrtV0(), v0.DCAPosWrtV0(), v0.Pt(), v0.Eta(), v0.ArmenterosQt(), v0.ArmenterosAlpha(), v0.CPAwrt(PrimaryVertex()),
-        (v0.XYZ(res.ds) - PrimaryVertex()).R());
-    */
+    if (v0->DCAwrt(fPropagator.PrimaryVertex()) < Cuts::Lambda::Min_DCAwrtPV) return false;
 
     return true;
 }
 
-bool Manager::PassesKaonZeroCuts(const Neutral& v0) const {
-
-    if (v0.DCAbtwDaughters() > Cuts::KaonZeroShort::Max_DCAbtwDau) return false;
-    if (v0.Pt() < Cuts::KaonZeroShort::Min_Pt) return false;
-    if (v0.Mass() < Cuts::KaonZeroShort::Min_Mass || v0.Mass() > Cuts::KaonZeroShort::Max_Mass) return false;
-    if (std::abs(v0.Eta()) > Cuts::KaonZeroShort::AbsMax_Eta) return false;
-    if (std::abs(v0.DecayZ()) > Cuts::KaonZeroShort::AbsMax_Zv) return false;
-    if (v0.DecayRadius() < Cuts::KaonZeroShort::Min_Radius || v0.DecayRadius() > Cuts::KaonZeroShort::Max_Radius) return false;
-    if (v0.DCANegWrtV0() > Cuts::KaonZeroShort::Max_DCAnegV0) return false;
-    if (v0.DCAPosWrtV0() > Cuts::KaonZeroShort::Max_DCAposV0) return false;
-    if (v0.CPAwrt(fPropagator.PrimaryVertex()) < Cuts::KaonZeroShort::Min_CPAwrtPV ||
-        v0.CPAwrt(fPropagator.PrimaryVertex()) > Cuts::KaonZeroShort::Max_CPAwrtPV) {
+bool Manager::PassesKaonZeroCuts(const std::shared_ptr<Neutral>& v0) const {
+    /*
+        INFO("m%f dbd%f z%f r%f dn%f dp%f pt%f et%f qt%f a%f cpv%f dpv%f", v0->Mass(), v0->DCAbtwDaughters(), v0->DecayZ(), v0->DecayRadius(),
+             v0->DCANegWrtV0(), v0->DCAPosWrtV0(), v0->Pt(), v0->Eta(), v0->ArmenterosQt(), v0->ArmenterosAlpha(),
+             v0->CPAwrt(fPropagator.PrimaryVertex()), v0->DCAwrt(fPropagator.PrimaryVertex()));
+    */
+    if (v0->DCAbtwDaughters() > Cuts::KaonZeroShort::Max_DCAbtwDau) return false;
+    if (v0->Pt() < Cuts::KaonZeroShort::Min_Pt) return false;
+    if (v0->Mass() < Cuts::KaonZeroShort::Min_Mass || v0->Mass() > Cuts::KaonZeroShort::Max_Mass) return false;
+    if (std::abs(v0->Eta()) > Cuts::KaonZeroShort::AbsMax_Eta) return false;
+    if (std::abs(v0->DecayZ()) > Cuts::KaonZeroShort::AbsMax_Zv) return false;
+    if (v0->DecayRadius() < Cuts::KaonZeroShort::Min_Radius || v0->DecayRadius() > Cuts::KaonZeroShort::Max_Radius) return false;
+    if (v0->DCANegWrtV0() > Cuts::KaonZeroShort::Max_DCAnegV0) return false;
+    if (v0->DCAPosWrtV0() > Cuts::KaonZeroShort::Max_DCAposV0) return false;
+    if (v0->CPAwrt(fPropagator.PrimaryVertex()) < Cuts::KaonZeroShort::Min_CPAwrtPV ||
+        v0->CPAwrt(fPropagator.PrimaryVertex()) > Cuts::KaonZeroShort::Max_CPAwrtPV) {
         return false;
     }
-    if (v0.DCAwrt(fPropagator.PrimaryVertex()) < Cuts::KaonZeroShort::Min_DCAwrtPV) return false;
-    /*
-    INFO("m%f dbd%f z%f r%f dn%f dp%f pt%f et%f qt%f a%f cpv%f dpv%f", v0.Mass(), v0.DCAbtwDaughters(), v0.DecayZ(), v0.DecayRadius(),
-    v0.DCANegWrtV0(), v0.DCAPosWrtV0(), v0.Pt(), v0.Eta(), v0.ArmenterosQt(), v0.ArmenterosAlpha(), v0.CPAwrt(PrimaryVertex()),
-    (v0.XYZ(res.ds) - PrimaryVertex()).R());
-    */
+    if (v0->DCAwrt(fPropagator.PrimaryVertex()) < Cuts::KaonZeroShort::Min_DCAwrtPV) return false;
 
     return true;
 }
