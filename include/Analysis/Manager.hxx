@@ -6,7 +6,7 @@
 
 #include "Math/Point3D.h"
 #include "TFile.h"
-#include "TTree.h"
+#include "TChain.h"
 
 #include "Analysis/InputFormat.hxx"
 #include "Analysis/OutputFormat.hxx"
@@ -31,8 +31,6 @@ class Manager {
     [[nodiscard]] ReactionChannel GetReactionChannel() const { return fSettings.Channel; }
 
     bool Initialize();
-    bool OpenInputFile();
-    bool LoadInputTree();
     void ConnectInputBranches();
 
     void ConnectBranchesEvents();
@@ -98,8 +96,7 @@ class Manager {
     static void Store(const std::shared_ptr<Neutral> &v0, const Output::V0s &out_branches);
 
     Settings fSettings;
-    std::unique_ptr<TFile> fInputFile;
-    std::unique_ptr<TTree> fEventsTree;
+    std::unique_ptr<TChain> fEventsTree;
 
     std::unique_ptr<TFile> fOutputFile;
     std::unique_ptr<TTree> fOutputTree;

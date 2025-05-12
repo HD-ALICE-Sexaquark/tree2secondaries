@@ -3,6 +3,7 @@
 
 #include <cctype>
 #include <string>
+#include <vector>
 
 #include "Math/Constants.hxx"
 #include "Utilities/Logger.hxx"
@@ -19,14 +20,17 @@ struct Settings {
         INFO("SETTINGS");
         INFO("========");
         INFO("ReactionChannel = %s", StrReactionChannel().c_str());
-        INFO("InputFiles      = %s", PathInputFiles.c_str());
+        INFO("InputFiles:");
+        for (const auto& path : PathInputFiles) {
+            INFO("- %s", path.c_str());
+        }
         INFO("OutputFile      = %s", PathOutputFile.c_str());
         INFO("IsMC            = %i", IsMC);
         INFO("IsSignalMC      = %i", IsSignalMC);
         INFO("LimitToNEvents  = %lld", LimitToNEvents);
     }
 
-    std::string PathInputFiles;
+    std::vector<std::string> PathInputFiles;
     std::string PathOutputFile;
     long long LimitToNEvents{0};
     ReactionChannel Channel{ReactionChannel::A};

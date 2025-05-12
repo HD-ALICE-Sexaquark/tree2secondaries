@@ -24,7 +24,9 @@ class Parser {
 
     void AddOptions(Settings& settings) {
         // input/output paths //
-        CLI_APP.add_option("-i,--input", settings.PathInputFiles, "Path of input files")->required();
+        CLI_APP.add_option("-i,--input", settings.PathInputFiles, "Path(s) of input file(s)")
+            ->required()
+            ->expected(1, -1);
         CLI_APP.add_option("-o,--output", settings.PathOutputFile, "Path of output file")->expected(1);
         // data type flags //
         CLI_APP.add_flag("-m,--mc", settings.IsMC, "Process MC");

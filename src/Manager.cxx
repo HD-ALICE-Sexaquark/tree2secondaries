@@ -19,8 +19,19 @@ namespace Tree2Secondaries::Analysis {
 // Initialize the manager.
 bool Manager::Initialize() {
 
-    if (!OpenInputFile()) return false;
-    if (!LoadInputTree()) return false;
+    fEventsTree = std::make_unique<TChain>("Events");
+    for (const auto& path : fSettings.PathInputFiles) {
+        INFO("Adding TFile \"%s\"", path.c_str());
+        if (fEventsTree->Add(path.c_str()) == 0) {
+            WARNING("Couldn't add TFile to chain or file is empty/invalid: %s", path.c_str());
+        }
+    }
+    if (!fEventsTree->GetEntries()) {
+        ERROR("Couldn't manage to read any entry.");
+        return false;
+    }
+    INFO("TChain 'Events' created successfully with %d trees and %lld total entries.", fEventsTree->GetNtrees(), fEventsTree->GetEntries());
+
     ConnectInputBranches();
 
     if (!PrepareOutputFile()) return false;
@@ -32,32 +43,6 @@ bool Manager::Initialize() {
 }
 
 // ## INPUT ZONE ## //
-
-bool Manager::OpenInputFile() {
-
-    fInputFile = std::unique_ptr<TFile>(TFile::Open(fSettings.PathInputFiles.c_str(), "READ"));
-    if (!fInputFile || fInputFile->IsZombie()) {
-        ERROR("TFile \"%s\" couldn't be opened", fSettings.PathInputFiles.c_str());
-        return false;
-    }
-    INFO("TFile \"%s\" opened successfully", fSettings.PathInputFiles.c_str());
-
-    return true;
-}
-
-// Load the event tree from the input file.
-bool Manager::LoadInputTree() {
-
-    fEventsTree = std::unique_ptr<TTree>(fInputFile->Get<TTree>("Events"));
-    if (!fEventsTree) {
-        ERROR("TTree \"Events\" couldn't be found in TFile \"%s\"", fSettings.PathInputFiles.c_str());
-        return false;
-    }
-    INFO("TTree \"Events\" found in TFile \"%s\"", fSettings.PathInputFiles.c_str());
-    INFO("TTree \"Events\" has %lld entries", fEventsTree->GetEntries());
-
-    return true;
-}
 
 // Connect branches to the event tree.
 void Manager::ConnectInputBranches() {
