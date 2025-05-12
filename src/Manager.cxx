@@ -7,9 +7,9 @@
 #include "Analysis/Cuts.hxx"
 #include "Analysis/InputFormat.hxx"
 #include "Analysis/Manager.hxx"
-#include "App/Logger.hxx"
 #include "Math/Constants.hxx"
 #include "Math/Vertexer.hxx"
+#include "Utilities/Logger.hxx"
 
 using XYZPoint = ROOT::Math::XYZPoint;
 using PxPyPzMVector = ROOT::Math::PxPyPzMVector;
@@ -35,12 +35,12 @@ bool Manager::Initialize() {
 
 bool Manager::OpenInputFile() {
 
-    fInputFile = std::unique_ptr<TFile>(TFile::Open(fSettings.pathInputFile.c_str(), "READ"));
+    fInputFile = std::unique_ptr<TFile>(TFile::Open(fSettings.PathInputFiles.c_str(), "READ"));
     if (!fInputFile || fInputFile->IsZombie()) {
-        ERROR("TFile \"%s\" couldn't be opened", fSettings.pathInputFile.c_str());
+        ERROR("TFile \"%s\" couldn't be opened", fSettings.PathInputFiles.c_str());
         return false;
     }
-    INFO("TFile \"%s\" opened successfully", fSettings.pathInputFile.c_str());
+    INFO("TFile \"%s\" opened successfully", fSettings.PathInputFiles.c_str());
 
     return true;
 }
@@ -50,10 +50,10 @@ bool Manager::LoadInputTree() {
 
     fEventsTree = std::unique_ptr<TTree>(fInputFile->Get<TTree>("Events"));
     if (!fEventsTree) {
-        ERROR("TTree \"Events\" couldn't be found in TFile \"%s\"", fSettings.pathInputFile.c_str());
+        ERROR("TTree \"Events\" couldn't be found in TFile \"%s\"", fSettings.PathInputFiles.c_str());
         return false;
     }
-    INFO("TTree \"Events\" found in TFile \"%s\"", fSettings.pathInputFile.c_str());
+    INFO("TTree \"Events\" found in TFile \"%s\"", fSettings.PathInputFiles.c_str());
     INFO("TTree \"Events\" has %lld entries", fEventsTree->GetEntries());
 
     return true;
@@ -170,12 +170,12 @@ void Manager::ConnectBranchesTracks() {
 //
 bool Manager::PrepareOutputFile() {
 
-    fOutputFile = std::unique_ptr<TFile>(TFile::Open(fSettings.pathOutputFile.c_str(), "RECREATE"));
+    fOutputFile = std::unique_ptr<TFile>(TFile::Open(fSettings.PathOutputFile.c_str(), "RECREATE"));
     if (!fOutputFile) {
-        ERROR("TFile \"%s\" couldn't be created", fSettings.pathOutputFile.c_str());
+        ERROR("TFile \"%s\" couldn't be created", fSettings.PathOutputFile.c_str());
         return false;
     }
-    INFO("TFile \"%s\" (re)created successfully", fSettings.pathOutputFile.c_str());
+    INFO("TFile \"%s\" (re)created successfully", fSettings.PathOutputFile.c_str());
 
     return true;
 }
@@ -192,16 +192,11 @@ bool Manager::PrepareOutputTree() {
     return true;
 }
 
-//
 void Manager::PrepareOutputBranches() {
-    //
     PrepareBranchesEvents();
     PrepareBranchesV0s();
-    // PrepareBranchesTypeA();
-    // PrepareBranchesTypeD();
 }
 
-//
 void Manager::PrepareBranchesEvents() {
     fOutputTree->Branch("RunNumber", &fOutput_Event.RunNumber);
     fOutputTree->Branch("DirNumber", &fOutput_Event.DirNumber);
@@ -247,74 +242,6 @@ void Manager::PrepareBranchesV0s() {
         // PENDING
     }
 }
-/*
-void Manager::PrepareBranchesTypeA() {
-    fOutputTree->Branch("ASA_Xv", &fOutput_ChannelA.Xv);
-    fOutputTree->Branch("ASA_Yv", &fOutput_ChannelA.Yv);
-    fOutputTree->Branch("ASA_Zv", &fOutput_ChannelA.Zv);
-    fOutputTree->Branch("ASA_Px", &fOutput_ChannelA.Px);
-    fOutputTree->Branch("ASA_Py", &fOutput_ChannelA.Py);
-    fOutputTree->Branch("ASA_Pz", &fOutput_ChannelA.Pz);
-    fOutputTree->Branch("ASA_Energy", &fOutput_ChannelA.Energy);
-    fOutputTree->Branch("ASA_EnergyAsDecay", &fOutput_ChannelA.EnergyAsDecay);
-    fOutputTree->Branch("ASA_Lambda_Index", &fOutput_ChannelA.Lambda_Index);
-    fOutputTree->Branch("ASA_Lambda_Xv", &fOutput_ChannelA.Lambda_Xv);
-    fOutputTree->Branch("ASA_Lambda_Yv", &fOutput_ChannelA.Lambda_Yv);
-    fOutputTree->Branch("ASA_Lambda_Zv", &fOutput_ChannelA.Lambda_Zv);
-    fOutputTree->Branch("ASA_Lambda_Px", &fOutput_ChannelA.Lambda_Px);
-    fOutputTree->Branch("ASA_Lambda_Py", &fOutput_ChannelA.Lambda_Py);
-    fOutputTree->Branch("ASA_Lambda_Pz", &fOutput_ChannelA.Lambda_Pz);
-    fOutputTree->Branch("ASA_Lambda_E", &fOutput_ChannelA.Lambda_E);
-    fOutputTree->Branch("ASA_KaonZero_Index", &fOutput_ChannelA.KaonZero_Index);
-    fOutputTree->Branch("ASA_KaonZero_Xv", &fOutput_ChannelA.KaonZero_Xv);
-    fOutputTree->Branch("ASA_KaonZero_Yv", &fOutput_ChannelA.KaonZero_Yv);
-    fOutputTree->Branch("ASA_KaonZero_Zv", &fOutput_ChannelA.KaonZero_Zv);
-    fOutputTree->Branch("ASA_KaonZero_Px", &fOutput_ChannelA.KaonZero_Px);
-    fOutputTree->Branch("ASA_KaonZero_Py", &fOutput_ChannelA.KaonZero_Py);
-    fOutputTree->Branch("ASA_KaonZero_Pz", &fOutput_ChannelA.KaonZero_Pz);
-    fOutputTree->Branch("ASA_KaonZero_E", &fOutput_ChannelA.KaonZero_E);
-    if (IsMC()) {
-        // PENDING
-    }
-}
- */
-/*
-void Manager::PrepareBranchesTypeD() {
-    //
-    fOutputTree->Branch("ASD_Xv", &fOutput_ChannelD.Xv);
-    fOutputTree->Branch("ASD_Yv", &fOutput_ChannelD.Yv);
-    fOutputTree->Branch("ASD_Zv", &fOutput_ChannelD.Zv);
-    fOutputTree->Branch("ASD_Px", &fOutput_ChannelD.Px);
-    fOutputTree->Branch("ASD_Py", &fOutput_ChannelD.Py);
-    fOutputTree->Branch("ASD_Pz", &fOutput_ChannelD.Pz);
-    fOutputTree->Branch("ASD_Energy", &fOutput_ChannelD.Energy);
-    fOutputTree->Branch("ASD_EnergyAsDecay", &fOutput_ChannelD.EnergyAsDecay);
-    //
-    fOutputTree->Branch("ASD_Lambda_Index", &fOutput_ChannelD.Lambda_Index);
-    fOutputTree->Branch("ASD_Lambda_Xv", &fOutput_ChannelD.Lambda_Xv);
-    fOutputTree->Branch("ASD_Lambda_Yv", &fOutput_ChannelD.Lambda_Yv);
-    fOutputTree->Branch("ASD_Lambda_Zv", &fOutput_ChannelD.Lambda_Zv);
-    fOutputTree->Branch("ASD_Lambda_Px", &fOutput_ChannelD.Lambda_Px);
-    fOutputTree->Branch("ASD_Lambda_Py", &fOutput_ChannelD.Lambda_Py);
-    fOutputTree->Branch("ASD_Lambda_Pz", &fOutput_ChannelD.Lambda_Pz);
-    fOutputTree->Branch("ASD_Lambda_E", &fOutput_ChannelD.Lambda_E);
-    //
-    fOutputTree->Branch("ASD_Kaon_Entry", &fOutput_ChannelD.Kaon_Entry);
-    fOutputTree->Branch("ASD_Kaon_Xv", &fOutput_ChannelD.Kaon_Xv);
-    fOutputTree->Branch("ASD_Kaon_Yv", &fOutput_ChannelD.Kaon_Yv);
-    fOutputTree->Branch("ASD_Kaon_Zv", &fOutput_ChannelD.Kaon_Zv);
-    fOutputTree->Branch("ASD_Kaon_Px", &fOutput_ChannelD.Kaon_Px);
-    fOutputTree->Branch("ASD_Kaon_Py", &fOutput_ChannelD.Kaon_Py);
-    fOutputTree->Branch("ASD_Kaon_Pz", &fOutput_ChannelD.Kaon_Pz);
-    fOutputTree->Branch("ASD_Kaon_E", &fOutput_ChannelD.Kaon_E);
-    if (IsMC()) {
-        // PENDING
-    }
-}
- */
-
-// void Manager::PrepareBranchesTypeE() {}
-// void Manager::PrepareBranchesTypeH() {}
 
 // Read and copy the event data.
 void Manager::ProcessEvent() {
@@ -508,155 +435,6 @@ void Manager::Store(const std::shared_ptr<Neutral>& v0, int pdg_code_v0) {
     fOutput_V0s.Pos_Pz->push_back(v0->PosMomentum().Z());
 }
 
-// ## Sexaquark ZONE : Channel A ## //
-/*
-void Manager::FindSexaquarks_TypeA(int pdg_struck_nucleon, const std::vector<int>& pdg_products) {
-    // loop over all possible pairs of (anti)lambda - K0S //
-    int n_sexa{0};
-    for (const auto& v0a : (pdg_products[0] == PdgCode::AntiLambda ? fAntiLambdas : fLambdas)) {
-        for (const auto& v0b : fNeutralKaons) {
-            // sanity check //
-            std::set<int> unique_track_entries{v0a->NegEntry(), v0a->PosEntry(), v0b->NegEntry(), v0b->PosEntry()};
-            if (unique_track_entries.size() < 4) continue;
-            // fit //
-            Struct::PartPartResults res{Vertexer::MinimizeDistanceLineLine(*v0a, *v0b)};
-            auto Sexaquark = std::make_unique<TypeA>(n_sexa, v0a, v0b, res, Const::MassNeutron);
-            // apply cuts //
-            if (!PassesSexaquarkCuts(*Sexaquark)) continue;
-            ++n_sexa;
-            // store //
-            Store(Sexaquark);
-        }
-    }
-}
-
-bool Manager::PassesSexaquarkCuts(const TypeA& sexa) const {
-
-    if (sexa.Radius() < Cuts::ChannelA::Min_Radius || sexa.Radius() > Cuts::ChannelA::Max_Radius) return false;
-    if (std::abs(sexa.Rapidity()) > Cuts::ChannelA::AbsMax_Rapidity) return false;
-    if (sexa.MassAsDecay() < Cuts::ChannelA::Min_MassAsDecay || sexa.MassAsDecay() > Cuts::ChannelA::Max_MassAsDecay) return false;
-    if (sexa.CPAwrt(PrimaryVertex()) < Cuts::ChannelA::Min_CPAwrtPV || sexa.CPAwrt(PrimaryVertex()) > Cuts::ChannelA::Max_CPAwrtPV) return false;
-    if (sexa.DecayLengthLa() > Cuts::ChannelA::Max_DecayLengthLa) return false;
-    if (sexa.DecayLengthK0() > Cuts::ChannelA::Max_DecayLengthK0) return false;
-    if (sexa.DCALaSV() > Cuts::ChannelA::Max_DCALaSV) return false;
-    if (sexa.DCAK0SV() > Cuts::ChannelA::Max_DCAK0SV) return false;
-    if (sexa.DCAbtwV0s() > Cuts::ChannelA::Max_DCAbtwV0s) return false;
-    if (sexa.DCALaNegSV() > Cuts::ChannelA::Max_DCALaNegSV) return false;
-    if (sexa.DCALaPosSV() > Cuts::ChannelA::Max_DCALaPosSV) return false;
-    if (sexa.DCAK0NegSV() > Cuts::ChannelA::Max_DCAK0NegSV) return false;
-    if (sexa.DCAK0PosSV() > Cuts::ChannelA::Max_DCAK0PosSV) return false;
-
-    return true;
-}
-
-void Manager::Store(const std::unique_ptr<TypeA>& sexa) {
-    // fill branches //
-    fOutput_ChannelA.Xv->push_back(sexa->SecondaryX());
-    fOutput_ChannelA.Yv->push_back(sexa->SecondaryY());
-    fOutput_ChannelA.Zv->push_back(sexa->SecondaryZ());
-    fOutput_ChannelA.Px->push_back(sexa->Px());
-    fOutput_ChannelA.Py->push_back(sexa->Py());
-    fOutput_ChannelA.Pz->push_back(sexa->Pz());
-    fOutput_ChannelA.Energy->push_back(sexa->Energy());
-    fOutput_ChannelA.EnergyAsDecay->push_back(sexa->EnergyAsDecay());
-    fOutput_ChannelA.Lambda_Index->push_back(sexa->Lambda()->Index());
-    fOutput_ChannelA.Lambda_Xv->push_back(sexa->LambdaPCA().X());
-    fOutput_ChannelA.Lambda_Yv->push_back(sexa->LambdaPCA().Y());
-    fOutput_ChannelA.Lambda_Zv->push_back(sexa->LambdaPCA().Z());
-    fOutput_ChannelA.Lambda_Px->push_back(sexa->LambdaMom().Px());
-    fOutput_ChannelA.Lambda_Py->push_back(sexa->LambdaMom().Py());
-    fOutput_ChannelA.Lambda_Pz->push_back(sexa->LambdaMom().Pz());
-    fOutput_ChannelA.Lambda_E->push_back(sexa->LambdaMom().E());
-    fOutput_ChannelA.KaonZero_Index->push_back(sexa->KaonZero()->Index());
-    fOutput_ChannelA.KaonZero_Xv->push_back(sexa->KaonZeroPCA().X());
-    fOutput_ChannelA.KaonZero_Yv->push_back(sexa->KaonZeroPCA().Y());
-    fOutput_ChannelA.KaonZero_Zv->push_back(sexa->KaonZeroPCA().Z());
-    fOutput_ChannelA.KaonZero_Px->push_back(sexa->KaonZeroMom().Px());
-    fOutput_ChannelA.KaonZero_Py->push_back(sexa->KaonZeroMom().Py());
-    fOutput_ChannelA.KaonZero_Pz->push_back(sexa->KaonZeroMom().Pz());
-    fOutput_ChannelA.KaonZero_E->push_back(sexa->KaonZeroMom().E());
-}
- */
-// ## Sexaquark ZONE : Channel D ## //
-/*
-void Manager::FindSexaquarks_TypeD(int pdg_struck_nucleon, const std::vector<int>& pdg_products) {
-    // loop over all possible pairs of (anti)lambda - (pos/neg)kaons //
-    int n_sexa{0};
-    for (const auto& v0 : (pdg_products[0] == PdgCode::AntiLambda ? fAntiLambdas : fLambdas)) {
-        for (const auto& kaon : (pdg_products[0] == PdgCode::PosKaon ? fPosKaons : fNegKaons)) {
-            // sanity check //
-            std::set<int> unique_track_entries{v0->NegEntry(), v0->PosEntry(), kaon->Entry()};
-            if (unique_track_entries.size() < 3) continue;
-            // fit //
-            Struct::PartPartResults res{Vertexer::MinimizeDistanceHelixLine(*kaon, *v0)};
-            auto Sexaquark = std::make_unique<TypeD>(n_sexa, v0, kaon, res, Const::MassProton);
-            // apply cuts //
-            if (!PassesSexaquarkCuts(*Sexaquark)) continue;
-            ++n_sexa;
-            // store //
-            Store(Sexaquark);
-        }
-    }
-}
-
-bool Manager::PassesSexaquarkCuts(const TypeD& sexa) const {
-
-    if (sexa.Radius() < Cuts::ChannelD::Min_Radius || sexa.Radius() > Cuts::ChannelD::Max_Radius) return false;
-    if (TMath::Abs(sexa.Rapidity()) > Cuts::ChannelD::AbsMax_Rapidity) return false;
-    if (sexa.CPAwrt(PrimaryVertex()) < Cuts::ChannelD::Min_CPAwrtPV || sexa.CPAwrt(PrimaryVertex()) > Cuts::ChannelD::Max_CPAwrtPV) return false;
-    if (sexa.DCALaSV() > Cuts::ChannelD::Max_DCALaSV) return false;
-    if (sexa.DCAKaSV() > Cuts::ChannelD::Max_DCAKaSV) return false;
-    if (sexa.DCAKaLa() > Cuts::ChannelD::Max_DCAKaLa) return false;
-    if (sexa.DCALaNegSV() > Cuts::ChannelD::Max_DCALaNegSV) return false;
-    if (sexa.DCALaPosSV() > Cuts::ChannelD::Max_DCALaPosSV) return false;
-    // if (sexa.DCALaNegKa() > Cuts::ChannelD::Max_DCALaNegKa) return false; // PENDING: a bit strange...
-    // if (sexa.DCALaPosKa() > Cuts::ChannelD::Max_DCALaPosKa) return false; // PENDING: a bit strange...
-
-    return true;
-}
-
-void Manager::Store(const std::unique_ptr<TypeD>& sexa) {
-    // fill branches //
-    fOutput_ChannelD.Xv->push_back(sexa->SecondaryX());
-    fOutput_ChannelD.Yv->push_back(sexa->SecondaryY());
-    fOutput_ChannelD.Zv->push_back(sexa->SecondaryZ());
-    fOutput_ChannelD.Px->push_back(sexa->Px());
-    fOutput_ChannelD.Py->push_back(sexa->Py());
-    fOutput_ChannelD.Pz->push_back(sexa->Pz());
-    fOutput_ChannelD.Energy->push_back(sexa->Energy());
-    fOutput_ChannelD.EnergyAsDecay->push_back(sexa->EnergyAsDecay());
-
-    fOutput_ChannelD.Lambda_Index->push_back(sexa->Lambda()->Index());
-    fOutput_ChannelD.Lambda_Xv->push_back(sexa->LambdaPCA().X());
-    fOutput_ChannelD.Lambda_Yv->push_back(sexa->LambdaPCA().Y());
-    fOutput_ChannelD.Lambda_Zv->push_back(sexa->LambdaPCA().Z());
-    fOutput_ChannelD.Lambda_Px->push_back(sexa->LambdaMom().Px());
-    fOutput_ChannelD.Lambda_Py->push_back(sexa->LambdaMom().Py());
-    fOutput_ChannelD.Lambda_Pz->push_back(sexa->LambdaMom().Pz());
-    fOutput_ChannelD.Lambda_E->push_back(sexa->LambdaMom().E());
-
-    fOutput_ChannelD.Kaon_Entry->push_back(sexa->Kaon()->Entry());
-    fOutput_ChannelD.Kaon_Xv->push_back(sexa->KaonPCA().X());
-    fOutput_ChannelD.Kaon_Yv->push_back(sexa->KaonPCA().Y());
-    fOutput_ChannelD.Kaon_Zv->push_back(sexa->KaonPCA().Z());
-    fOutput_ChannelD.Kaon_Px->push_back(sexa->KaonMom().Px());
-    fOutput_ChannelD.Kaon_Py->push_back(sexa->KaonMom().Py());
-    fOutput_ChannelD.Kaon_Pz->push_back(sexa->KaonMom().Pz());
-    fOutput_ChannelD.Kaon_E->push_back(sexa->KaonMom().E());
-}
- */
-// ## Sexaquark ZONE : Channel E ## //
-
-// void Manager::FindSexaquarks_TypeE(int pdg_struck_nucleon, const std::vector<int>& pdg_products) {}
-// bool Manager::PassesSexaquarkCuts(const TypeE& sexa) const {}
-// void Manager::Store(const std::unique_ptr<TypeE>& sexa) {}
-
-// ## Sexaquark ZONE : Channel H ## //
-
-// void Manager::FindSexaquarks_TypeH(int pdg_struck_nucleon, const std::vector<int>& pdg_products) {}
-// bool Manager::PassesSexaquarkCuts(const TypeH& sexa) const {}
-// void Manager::Store(const std::unique_ptr<TypeH>& sexa) {}
-
 // ## END OF CYCLES ## //
 
 // Fill output tree and clean transitory containers.
@@ -677,8 +455,6 @@ void Manager::EndOfEvent() {
     fNeutralKaons.clear();
     // clear output branches //
     fOutput_V0s.Clear();
-    // fOutput_ChannelA.Clear();
-    // fOutput_ChannelD.Clear();
 }
 
 //

@@ -1,19 +1,17 @@
 #include "Analysis/Manager.hxx"
-#include "App/Parser.hxx"
-#include "App/Settings.hxx"
+#include "Analysis/Settings.hxx"
 #include "Math/Constants.hxx"
+#include "Utilities/Parser.hxx"
 
 using namespace Tree2Secondaries;
 
 int main(int argc, char *argv[]) {
 
-    Settings settings{"AnalysisResults.root",   //
-                      "SecondaryResults.root",  //
-                      false,                    //
-                      false,                    //
-                      0};
-    Parser parser(argc, argv);
-    if (!parser.Parse(settings)) return parser.exitCode;
+    // default //
+    Settings settings{"../files/AnalysisResults.root", "SecondaryResults_SignalMC.root", true, true, 0};
+
+    Parser parser(argc, argv, settings, "II. Tree2Secondaries");
+    if (parser.HelpOrError) return parser.ExitCode;
     settings.Print();
 
     Analysis::Manager mgr(settings);
@@ -30,9 +28,6 @@ int main(int argc, char *argv[]) {
         mgr.FindV0s(PdgCode::Lambda, PdgCode::PiMinus, PdgCode::Proton);
         mgr.FindV0s(PdgCode::AntiLambda, PdgCode::AntiProton, PdgCode::PiPlus);
         mgr.FindV0s(PdgCode::KaonZeroShort, PdgCode::PiMinus, PdgCode::PiPlus);
-
-        // mgr.FindSexaquarks(Channel::A);
-        // mgr.FindSexaquarks(Channel::D);
 
         mgr.EndOfEvent();
     }

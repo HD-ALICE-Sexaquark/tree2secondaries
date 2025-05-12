@@ -3,8 +3,6 @@
 
 namespace Tree2Secondaries {
 
-enum class Channel { A, D, E, H, AntiA, AntiD, AntiE, AntiH };
-
 namespace PdgCode {
 constexpr int AntiLambda{-3122};
 constexpr int Lambda{3122};

@@ -1,5 +1,5 @@
-#ifndef LOGGER_HXX
-#define LOGGER_HXX
+#ifndef T2S_LOGGER_HXX
+#define T2S_LOGGER_HXX
 
 #include <iostream>
 #include <sstream>
@@ -29,4 +29,4 @@
         std::cerr << '\n';                                 \
     } while (0)
 
-#endif  // LOGGER_HXX
+#endif  // T2S_LOGGER_HXX

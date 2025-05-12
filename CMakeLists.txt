@@ -57,5 +57,4 @@ message(STATUS "Using compiler flags: ${CMAKE_CXX_FLAGS}")
 
 # main targets of the project in various subdirectories. order matters. #
 
-add_subdirectory(src/Analysis)
-add_subdirectory(src/App)
+add_subdirectory(src)

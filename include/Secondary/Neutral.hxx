@@ -7,10 +7,10 @@
 #include "Math/Vector3D.h"
 #include "Math/Vector4D.h"
 
-#include "App/Logger.hxx"
 #include "Math/Common.hxx"
 #include "Math/Propagator.hxx"
 #include "Secondary/Particle.hxx"
+#include "Utilities/Logger.hxx"
 
 namespace Tree2Secondaries {
 
