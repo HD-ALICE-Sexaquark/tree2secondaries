@@ -5,16 +5,17 @@
 #include <utility>
 
 #include "Math/Point3D.h"
-#include "TFile.h"
 #include "TChain.h"
+#include "TFile.h"
 
 #include "Analysis/InputFormat.hxx"
 #include "Analysis/OutputFormat.hxx"
 #include "Analysis/Settings.hxx"
+#include "Analysis/TruthHandler.hxx"
 #include "Math/Constants.hxx"
+#include "Math/Propagator.hxx"
 #include "Secondary/Charged.hxx"
 #include "Secondary/Neutral.hxx"
-// #include "Secondary/True.hxx"
 
 namespace Tree2Secondaries::Analysis {
 
@@ -43,15 +44,15 @@ class Manager {
     void CreateOutputBranches();
 
     void CreateOutputBranchesEvents();
-    void CreateOutputBranchesV0s(std::string_view v0_sv, Output::V0s &out_branches);
-    void CreateOutputBranchesTracks(std::string_view charged_sv, Output::Tracks &out_branches);
+    void CreateOutputBranchesInjected();
+    void CreateOutputBranchesV0s(std::string_view v0_sv, OutputSOA::V0s &out_branches);
+    void CreateOutputBranchesTracks(std::string_view charged_sv, OutputSOA::Tracks &out_branches);
 
     [[nodiscard]] long long NumberEventsToRead() const { return fSettings.LimitToNEvents ? fSettings.LimitToNEvents : fEventsTree->GetEntries(); }
     [[nodiscard]] bool IsMC() const { return fSettings.IsMC; }
     [[nodiscard]] bool IsSignalMC() const { return fSettings.IsSignalMC; }
     void GetEvent(long long i_event) { fEventsTree->GetEntry(i_event); }
 
-    [[nodiscard]] int NumberMC() const { return static_cast<int>(fInput_MC.PdgCode->size()); }
     [[nodiscard]] int NumberInjected() const { return static_cast<int>(fInput_Injected.ReactionID->size()); }
     [[nodiscard]] int NumberTracks() const { return static_cast<int>(fInput_Tracks.Px->size()); }
 
@@ -89,11 +90,11 @@ class Manager {
     void EndOfAnalysis();
 
    private:
-    static void StoreTracks(const std::vector<std::shared_ptr<Charged>> &charged_vec, const Output::Tracks &out_branch);
+    void StoreTracks(const std::vector<std::shared_ptr<Charged>> &charged_vec, OutputSOA::Tracks &out_branch);
     [[nodiscard]] bool PassesLambdaCuts(const std::shared_ptr<Neutral> &this_v0) const;
     [[nodiscard]] bool PassesKaonZeroCuts(const std::shared_ptr<Neutral> &this_v0) const;
 
-    static void Store(const std::shared_ptr<Neutral> &v0, const Output::V0s &out_branches);
+    void Store(const std::shared_ptr<Neutral> &v0, OutputSOA::V0s &out_branches);
 
     Settings fSettings;
     std::unique_ptr<TChain> fEventsTree;
@@ -102,16 +103,18 @@ class Manager {
     std::unique_ptr<TTree> fOutputTree;
 
     // input structs //
+
     Struct::Event fInput_Event;
-    Input::Injected fInput_Injected;
-    Input::MC fInput_MC;
-    Input::Tracks fInput_Tracks;
+    Struct::InjectedSOA fInput_Injected;
+
+    InputSOA::Tracks fInput_Tracks;
 
     // helpers //
+
     Helper::Propagator fPropagator{0.};
+    Helper::TruthHandler fTruthHandler;
 
     // transitory containers //
-    // std::vector<std::shared_ptr<True>> fMCParticles;
 
     std::vector<std::shared_ptr<Charged>> fVec_AntiProtons;
     std::vector<std::shared_ptr<Charged>> fVec_Protons;
@@ -121,16 +124,20 @@ class Manager {
     std::vector<std::shared_ptr<Charged>> fVec_PiPlus;
 
     // output structs //
+
     Struct::Event fOutput_Event;
-    Output::V0s fOutput_AntiLambdas;
-    Output::V0s fOutput_Lambdas;
-    Output::V0s fOutput_NeutralKaons;
-    Output::Tracks fOutput_AntiProtons;
-    Output::Tracks fOutput_Protons;
-    Output::Tracks fOutput_NegKaons;
-    Output::Tracks fOutput_PosKaons;
-    Output::Tracks fOutput_PiMinus;
-    Output::Tracks fOutput_PiPlus;
+    Struct::InjectedSOA fOutput_Injected;
+
+    OutputSOA::V0s fOutput_AntiLambdas;
+    OutputSOA::V0s fOutput_Lambdas;
+    OutputSOA::V0s fOutput_NeutralKaons;
+
+    OutputSOA::Tracks fOutput_AntiProtons;
+    OutputSOA::Tracks fOutput_Protons;
+    OutputSOA::Tracks fOutput_NegKaons;
+    OutputSOA::Tracks fOutput_PosKaons;
+    OutputSOA::Tracks fOutput_PiMinus;
+    OutputSOA::Tracks fOutput_PiPlus;
 };
 
 }  // namespace Tree2Secondaries::Analysis

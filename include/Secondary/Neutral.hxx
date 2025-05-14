@@ -14,7 +14,7 @@
 
 namespace Tree2Secondaries {
 
-class alignas(256) Neutral {
+class Neutral {
    public:
     Neutral(const Neutral&) = delete;
     Neutral(Neutral&&) noexcept = default;
@@ -24,26 +24,33 @@ class alignas(256) Neutral {
 
     Neutral(ROOT::Math::XYZPoint vtx, ROOT::Math::PxPyPzEVector momentum) : fState{std::move(momentum), std::move(vtx)} {}
 
-    Neutral(int neg_idx, int pos_idx, ROOT::Math::XYZPoint vtx, ROOT::Math::PxPyPzEVector momentum)
+    Neutral(int entry, int neg_entry, int pos_entry, ROOT::Math::XYZPoint vtx, ROOT::Math::PxPyPzEVector momentum)
         : fState{std::move(momentum), std::move(vtx)},  //
-          fNegIndex{neg_idx},
-          fPosIndex{pos_idx} {}
+          fEntry{entry},
+          fNegEntry{neg_entry},
+          fPosEntry{pos_entry} {}
 
-    Neutral(int neg_idx, int pos_idx, const Particle::Pair& pair)
+    Neutral(int entry, int neg_entry, int pos_entry, const Particle::Pair& pair)
         : fState{pair.first.Momentum + pair.second.Momentum,                 //
                  Math::MiddlePoint(pair.first.Vertex, pair.second.Vertex)},  //
           fNegative(pair.first),
           fPositive(pair.second),
-          fNegIndex{neg_idx},
-          fPosIndex{pos_idx} {}
+          fEntry{entry},
+          fNegEntry{neg_entry},
+          fPosEntry{pos_entry} {}
 
-    [[nodiscard]] int NegIndex() const { return fNegIndex; }
+    [[nodiscard]] int Entry() const { return fEntry; }
+    [[nodiscard]] int NegEntry() const { return fNegEntry; }
+    [[nodiscard]] int PosEntry() const { return fPosEntry; }
+
     [[nodiscard]] ROOT::Math::XYZPoint NegVertex() const { return fNegative.Vertex; }
     [[nodiscard]] ROOT::Math::XYZPoint PosVertex() const { return fPositive.Vertex; }
 
-    [[nodiscard]] int PosIndex() const { return fPosIndex; }
     [[nodiscard]] ROOT::Math::XYZVector NegMomentum() const { return fNegative.Momentum.Vect(); }
-    [[nodiscard]] ROOT::Math::XYZVector PosMomentum() const { return fNegative.Momentum.Vect(); }
+    [[nodiscard]] ROOT::Math::XYZVector PosMomentum() const { return fPositive.Momentum.Vect(); }
+
+    [[nodiscard]] ROOT::Math::PxPyPzEVector NegPxPyPzE() const { return fNegative.Momentum; }
+    [[nodiscard]] ROOT::Math::PxPyPzEVector PosPxPyPzE() const { return fPositive.Momentum; }
 
     [[nodiscard]] ROOT::Math::XYZPoint DecayVertex() const { return fState.Vertex; }
     [[nodiscard]] double DecayX() const { return fState.Vertex.X(); }
@@ -77,7 +84,7 @@ class alignas(256) Neutral {
     [[nodiscard]] Particle::State PropagatedState(double s, const Helper::Propagator& prop) const { return {PxPyPzE(), XYZ(s, prop)}; }
 
     void Print(int pdg_code_v0, const Helper::Propagator& prop) {
-        INFO("Searching %i {%i,%i},P={%f,%f,%f,m=%f,e=%f},V={%f,%f,%f}", pdg_code_v0, fNegIndex, fPosIndex, fState.Momentum.Px(),
+        INFO("Searching %i {%i,%i},P={%f,%f,%f,m=%f,e=%f},V={%f,%f,%f}", pdg_code_v0, fNegEntry, fPosEntry, fState.Momentum.Px(),
              fState.Momentum.Py(), fState.Momentum.Pz(), fState.Momentum.M(), fState.Momentum.E(), fState.Vertex.X(), fState.Vertex.Y(),
              fState.Vertex.Z());
         fNegative.Print();
@@ -90,8 +97,9 @@ class alignas(256) Neutral {
     Particle::State fState;
     Particle::State fNegative{{0., 0., 0., 0.}, {0., 0., 0.}};
     Particle::State fPositive{{0., 0., 0., 0.}, {0., 0., 0.}};
-    int fNegIndex{0};
-    int fPosIndex{0};
+    int fEntry{0};
+    int fNegEntry{0};
+    int fPosEntry{0};
 };
 
 }  // namespace Tree2Secondaries

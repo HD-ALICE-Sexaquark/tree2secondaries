@@ -3,11 +3,10 @@
 
 #include <vector>
 
-namespace Tree2Secondaries::Output {
+namespace Tree2Secondaries::OutputSOA {
 
-struct V0s {
-    std::vector<int>* Neg_Entry{nullptr};
-    std::vector<int>* Pos_Entry{nullptr};
+struct Particle {
+    std::vector<int>* Entry{nullptr};
 
     std::vector<float>* Xv{nullptr};
     std::vector<float>* Yv{nullptr};
@@ -17,33 +16,8 @@ struct V0s {
     std::vector<float>* Pz{nullptr};
     std::vector<float>* E{nullptr};
 
-    std::vector<float>* Neg_Xv{nullptr};
-    std::vector<float>* Neg_Yv{nullptr};
-    std::vector<float>* Neg_Zv{nullptr};
-    std::vector<float>* Neg_Px{nullptr};
-    std::vector<float>* Neg_Py{nullptr};
-    std::vector<float>* Neg_Pz{nullptr};
-
-    std::vector<float>* Pos_Xv{nullptr};
-    std::vector<float>* Pos_Yv{nullptr};
-    std::vector<float>* Pos_Zv{nullptr};
-    std::vector<float>* Pos_Px{nullptr};
-    std::vector<float>* Pos_Py{nullptr};
-    std::vector<float>* Pos_Pz{nullptr};
-
-    /*
-    // PENDING
-    unsigned int reaction_id{};
-    unsigned int index{};
-    int pdg_code{};
-    bool is_signal{};
-    bool is_hybrid{};
-    */
-
-    void Clear() {
-        Neg_Entry->clear();
-        Pos_Entry->clear();
-
+    void ClearParticle() {
+        Entry->clear();
         Xv->clear();
         Yv->clear();
         Zv->clear();
@@ -51,42 +25,49 @@ struct V0s {
         Py->clear();
         Pz->clear();
         E->clear();
-
-        Neg_Xv->clear();
-        Neg_Yv->clear();
-        Neg_Zv->clear();
-        Neg_Px->clear();
-        Neg_Py->clear();
-        Neg_Pz->clear();
-
-        Pos_Xv->clear();
-        Pos_Yv->clear();
-        Pos_Zv->clear();
-        Pos_Px->clear();
-        Pos_Py->clear();
-        Pos_Pz->clear();
     }
 };
 
-struct Tracks {
-    std::vector<int>* Entry{nullptr};
-    std::vector<float>* Px{nullptr};
-    std::vector<float>* Py{nullptr};
-    std::vector<float>* Pz{nullptr};
-    std::vector<float>* Xv{nullptr};
-    std::vector<float>* Yv{nullptr};
-    std::vector<float>* Zv{nullptr};
-    void Clear() {
-        Entry->clear();
-        Px->clear();
-        Py->clear();
-        Pz->clear();
-        Xv->clear();
-        Yv->clear();
-        Zv->clear();
+struct MC : public Particle {
+    std::vector<int>* PdgCode{nullptr};
+    std::vector<int>* MotherEntry{nullptr};
+    std::vector<bool>* IsSignal{nullptr};
+    std::vector<bool>* IsPrimary{nullptr};
+    std::vector<bool>* IsSecFromMat{nullptr};
+    std::vector<bool>* IsSecFromWeak{nullptr};
+    std::vector<int>* ReactionID{nullptr};
+
+    void ClearMC() {
+        PdgCode->clear();
+        MotherEntry->clear();
+        IsSignal->clear();
+        IsPrimary->clear();
+        IsSecFromMat->clear();
+        IsSecFromWeak->clear();
+        ReactionID->clear();
     }
 };
 
-}  // namespace Tree2Secondaries::Output
+struct Tracks : public Particle {
+    MC True;
+    void Clear(bool is_mc = false) {
+        ClearParticle();
+        if (is_mc) True.ClearMC();
+    }
+};
+
+struct V0s : public Particle {
+    Tracks Neg;
+    Tracks Pos;
+    MC True;
+    void Clear(bool is_mc = false) {
+        ClearParticle();
+        Neg.ClearParticle();
+        Pos.ClearParticle();
+        if (is_mc) True.ClearMC();
+    }
+};
+
+}  // namespace Tree2Secondaries::OutputSOA
 
 #endif  // T2S_OUTPUT_FORMAT_HXX

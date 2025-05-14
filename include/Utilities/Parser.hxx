@@ -13,10 +13,8 @@
 namespace Tree2Secondaries {
 
 class Parser {
-
    public:
-    Parser(int argc, char* argv[], Settings& settings, std::string app_description)
-        : ExitCode(0), HelpOrError(false), CLI_APP(std::move(app_description)) {
+    Parser(int argc, char* argv[], Settings& settings, std::string app_description) : CLI_APP{std::move(app_description)} {
         AddOptions(settings);
         Parse(argc, argv, settings);
     }
@@ -24,9 +22,7 @@ class Parser {
 
     void AddOptions(Settings& settings) {
         // input/output paths //
-        CLI_APP.add_option("-i,--input", settings.PathInputFiles, "Path(s) of input file(s)")
-            ->required()
-            ->expected(1, -1);
+        CLI_APP.add_option("-i,--input", settings.PathInputFiles, "Path(s) of input file(s)")->required()->expected(1, -1);
         CLI_APP.add_option("-o,--output", settings.PathOutputFile, "Path of output file")->expected(1);
         // data type flags //
         CLI_APP.add_flag("-m,--mc", settings.IsMC, "Process MC");
@@ -67,9 +63,9 @@ class Parser {
         if (settings.PathOutputFile.empty()) {
             if (settings.IsMC) {
                 if (settings.IsSignalMC) {
-                    settings.PathOutputFile = "Packed_Channel" + settings.StrReactionChannel() + "_BkgMC.root";
-                } else {
                     settings.PathOutputFile = "Packed_Channel" + settings.StrReactionChannel() + "_SignalMC.root";
+                } else {
+                    settings.PathOutputFile = "Packed_Channel" + settings.StrReactionChannel() + "_BkgMC.root";
                 }
             } else {
                 settings.PathOutputFile = "Packed_Channel" + settings.StrReactionChannel() + "_Data.root";
@@ -77,8 +73,8 @@ class Parser {
         }
         return 0;
     }
-    int ExitCode;
-    bool HelpOrError;
+    int ExitCode{0};
+    bool HelpOrError{false};
 
    protected:
     void AddOptions();

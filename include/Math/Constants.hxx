@@ -41,6 +41,8 @@ static constexpr double MassPion{0.13957040};     // (GeV/c^2)
 static constexpr double Kappa{0.000299792458};    // (GeV/c) / (kG/cm)
 static constexpr double LocalSmall{1.E-6};
 static constexpr double AlmostZero{1.E-8};
+static constexpr int DummyInt{-1};
+static constexpr float DummyFloat{-999.};
 }  // namespace Const
 
 }  // namespace Tree2Secondaries

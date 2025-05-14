@@ -20,9 +20,37 @@ struct Event {
     float PV_TrueZv{0.};
 };
 
+struct InjectedSOA {
+    std::vector<int> *ReactionID{nullptr};
+    std::vector<float> *Px{nullptr};
+    std::vector<float> *Py{nullptr};
+    std::vector<float> *Pz{nullptr};
+    std::vector<float> *Nucleon_Px{nullptr};
+    std::vector<float> *Nucleon_Py{nullptr};
+    std::vector<float> *Nucleon_Pz{nullptr};
+};
+
 }  // namespace Tree2Secondaries::Struct
 
-namespace Tree2Secondaries::Input {
+namespace Tree2Secondaries::InputSOA {
+
+struct MC {
+    std::vector<float> *Xv{nullptr};
+    std::vector<float> *Yv{nullptr};
+    std::vector<float> *Zv{nullptr};
+    std::vector<float> *Px{nullptr};
+    std::vector<float> *Py{nullptr};
+    std::vector<float> *Pz{nullptr};
+    std::vector<float> *E{nullptr};
+
+    std::vector<int> *PdgCode{nullptr};
+    std::vector<int> *MotherEntry{nullptr};
+    std::vector<int> *Status{nullptr};
+    std::vector<int> *Generator{nullptr};
+    std::vector<bool> *IsPrimary{nullptr};
+    std::vector<bool> *IsSecFromMat{nullptr};
+    std::vector<bool> *IsSecFromWeak{nullptr};
+};
 
 struct Tracks {
     std::vector<float> *Px{nullptr};
@@ -39,23 +67,6 @@ struct Tracks {
     std::vector<int> *McEntry{nullptr};
 };
 
-struct Injected {
-    std::vector<int> *ReactionID{nullptr};
-    std::vector<float> *Px{nullptr};
-    std::vector<float> *Py{nullptr};
-    std::vector<float> *Pz{nullptr};
-    std::vector<float> *Nucleon_Px{nullptr};
-    std::vector<float> *Nucleon_Py{nullptr};
-    std::vector<float> *Nucleon_Pz{nullptr};
-};
-
-struct MC {
-    std::vector<int> *PdgCode{nullptr};
-    std::vector<int> *Mother_McEntry{nullptr};
-    std::vector<int> *Status{nullptr};
-    std::vector<int> *Generator{nullptr};
-};
-
-}  // namespace Tree2Secondaries::Input
+}  // namespace Tree2Secondaries::InputSOA
 
 #endif  // T2S_INPUT_FORMAT_HXX

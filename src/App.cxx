@@ -17,11 +17,9 @@ int main(int argc, char *argv[]) {
 
     for (long long i_event{0}; i_event < mgr.NumberEventsToRead(); i_event++) {
         mgr.GetEvent(i_event);
+
         mgr.ProcessEvent();
-        // if (mgr.IsMC()) {
-        // mgr.ProcessMC();
-        // if (mgr.IsSignalMC()) mgr.ProcessInjected(); // PENDING
-        // }
+        if (mgr.IsSignalMC()) mgr.ProcessInjected();
         mgr.ProcessTracks();
 
         switch (mgr.GetReactionChannel()) {
