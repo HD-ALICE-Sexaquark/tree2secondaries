@@ -38,6 +38,9 @@ class TruthHandler {
     // derived operations //
 
     [[nodiscard]] bool IsSignal(int mc_entry) const { return Generator(mc_entry) == 2; }
+    [[nodiscard]] bool IsSignal(int v0_mc_entry, int hypothesis_pid) const {
+        return Generator(v0_mc_entry) == 2 && PdgCode(v0_mc_entry) == hypothesis_pid;
+    }
     [[nodiscard]] int ReactionID(int mc_entry) const {
         if (IsSignal(mc_entry)) {
             int mother_entry{MotherEntry(mc_entry)};

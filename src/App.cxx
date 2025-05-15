@@ -39,7 +39,7 @@ int main(int argc, char *argv[]) {
                 mgr.StoreTracks(PdgCode::PiPlus);
                 break;
             case ReactionChannel::H:
-                // SUPER PENDING
+                mgr.StoreTracks(PdgCode::PosKaon);
                 break;
             // anti-channels //
             case ReactionChannel::AntiA:
@@ -57,7 +57,7 @@ int main(int argc, char *argv[]) {
                 mgr.StoreTracks(PdgCode::PiPlus);
                 break;
             case ReactionChannel::AntiH:
-                // SUPER PENDING
+                mgr.StoreTracks(PdgCode::NegKaon);
                 break;
         }  // end of switch statement
 

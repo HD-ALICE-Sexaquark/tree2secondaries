@@ -38,6 +38,7 @@ struct MC : public Particle {
     std::vector<int>* ReactionID{nullptr};
 
     void ClearMC() {
+        ClearParticle();
         PdgCode->clear();
         MotherEntry->clear();
         IsSignal->clear();
@@ -62,8 +63,8 @@ struct V0s : public Particle {
     MC True;
     void Clear(bool is_mc = false) {
         ClearParticle();
-        Neg.ClearParticle();
-        Pos.ClearParticle();
+        Neg.Clear(is_mc);
+        Pos.Clear(is_mc);
         if (is_mc) True.ClearMC();
     }
 };

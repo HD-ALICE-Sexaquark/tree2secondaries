@@ -24,24 +24,20 @@ class Neutral {
 
     Neutral(ROOT::Math::XYZPoint vtx, ROOT::Math::PxPyPzEVector momentum) : fState{std::move(momentum), std::move(vtx)} {}
 
-    Neutral(int entry, int neg_entry, int pos_entry, ROOT::Math::XYZPoint vtx, ROOT::Math::PxPyPzEVector momentum)
-        : fState{std::move(momentum), std::move(vtx)},  //
-          fEntry{entry},
-          fNegEntry{neg_entry},
-          fPosEntry{pos_entry} {}
-
-    Neutral(int entry, int neg_entry, int pos_entry, const Particle::Pair& pair)
+    Neutral(int entry, int neg_entry, int pos_entry, int hypothesis_pid, const Particle::Pair& pair)
         : fState{pair.first.Momentum + pair.second.Momentum,                 //
                  Math::MiddlePoint(pair.first.Vertex, pair.second.Vertex)},  //
           fNegative(pair.first),
           fPositive(pair.second),
           fEntry{entry},
           fNegEntry{neg_entry},
-          fPosEntry{pos_entry} {}
+          fPosEntry{pos_entry},
+          fHypothesisPID{hypothesis_pid} {}
 
     [[nodiscard]] int Entry() const { return fEntry; }
     [[nodiscard]] int NegEntry() const { return fNegEntry; }
     [[nodiscard]] int PosEntry() const { return fPosEntry; }
+    [[nodiscard]] int HypothesisPID() const { return fHypothesisPID; }
 
     [[nodiscard]] ROOT::Math::XYZPoint NegVertex() const { return fNegative.Vertex; }
     [[nodiscard]] ROOT::Math::XYZPoint PosVertex() const { return fPositive.Vertex; }
@@ -100,6 +96,7 @@ class Neutral {
     int fEntry{0};
     int fNegEntry{0};
     int fPosEntry{0};
+    int fHypothesisPID{0};
 };
 
 }  // namespace Tree2Secondaries

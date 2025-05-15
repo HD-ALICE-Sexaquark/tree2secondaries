@@ -12,30 +12,39 @@
 namespace Tree2Secondaries::Vertexer {
 
 // Calculate the DCA between two charged particles (assuming both have helicoidal trajectory).
-inline Particle::Pair MinimizeDistanceHelixHelix(const Charged& q, const Charged& t, const Helper::Propagator& prop) {
+inline Particle::Pair MinimizeDistanceHelixHelix(const Charged& q, const Charged& t, const Helper::Propagator& prop, double dca_threshold) {
 
     // 1st approximation : DCA in XY //
 
     double omega1{q.Omega(prop)};
     double omega1_sq{omega1 * omega1};
-    double omega2{t.Omega(prop)};
-    double omega2_sq{omega2 * omega2};
+
+    double x01{q.X0()};
+    double y01{q.Y0()};
+    double z01{q.Z0()};
 
     double px01{q.Px0()};
     double py01{q.Py0()};
     double pz01{q.Pz0()};
+    double ene1{q.Energy()};
+
+    double xc1{q.X0() + py01 / omega1};
+    double yc1{q.Y0() - px01 / omega1};
+
+    double omega2{t.Omega(prop)};
+    double omega2_sq{omega2 * omega2};
+
+    double x02{t.X0()};
+    double y02{t.Y0()};
+    double z02{t.Z0()};
 
     double px02{t.Px0()};
     double py02{t.Py0()};
     double pz02{t.Pz0()};
-
-    double xc1{q.X0() + py01 / omega1};
-    double yc1{q.Y0() - px01 / omega1};
-    double z01{q.Z0()};
+    double ene2{t.Energy()};
 
     double xc2{t.X0() + py02 / omega2};
     double yc2{t.Y0() - px02 / omega2};
-    double z02{t.Z0()};
 
     double rx{xc1 - xc2};
     double ry{yc1 - yc2};
@@ -50,7 +59,7 @@ inline Particle::Pair MinimizeDistanceHelixHelix(const Charged& q, const Charged
 
     double radius1{q.Pt() / std::abs(omega1)};
     double radius2{t.Pt() / std::abs(omega2)};
-    // double dist_btw_centers{std::sqrt(r2)};
+    double dist_btw_centers{std::sqrt(r2)};
     double radius_sum_sq{(radius1 + radius2) * (radius1 + radius2)};
     double radius_diff_sq{(radius1 - radius2) * (radius1 - radius2)};
 
@@ -68,6 +77,11 @@ inline Particle::Pair MinimizeDistanceHelixHelix(const Charged& q, const Charged
 
     // opposite of intersection condition, which is: "D < R1+R2" && "D > |R1-R2|"
     if (r2 > radius_sum_sq || r2 < radius_diff_sq) {
+        // optimization : early DCA cut //
+        if (dist_btw_centers - radius1 - radius2 > dca_threshold) {
+            return {{{px01, py01, pz01, ene1}, {x01, y01, z01}},  //
+                    {{px02, py02, pz02, ene2}, {x02, y02, z02}}};
+        }
         // then, PCA are colinear to both circle centers //
         // 4 possible solutions, choose the one that minimizes distance in 3D //
         for (auto sign1 : {+1, -1}) {
@@ -153,8 +167,6 @@ inline Particle::Pair MinimizeDistanceHelixHelix(const Charged& q, const Charged
         }
     }
 
-    // 2nd approximation: add Z-component //
-
     double px1{px01 * cos_theta1 + py01 * sin_theta1};
     double py1{-px01 * sin_theta1 + py01 * cos_theta1};
 
@@ -170,10 +182,8 @@ inline Particle::Pair MinimizeDistanceHelixHelix(const Charged& q, const Charged
     double dd{-pz02 * pz02 - omega2 * Pxy2crossDR - omega2 / omega1 * Pxy1dotPxy2};
     double den{bb * dd + P1dotP2 * P1dotP2};
 
-    double ene1{q.Energy()};
-    double ene2{t.Energy()};
+    // 2nd approximation: add Z-component //
 
-    // protection against zero
     if (std::abs(den) < Const::AlmostZero) {
         return {
             {{px1, py1, pz01, ene1}, pca1},

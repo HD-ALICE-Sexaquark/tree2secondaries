@@ -175,7 +175,6 @@ bool Manager::PrepareOutputFile() {
         ERROR("TFile \"%s\" couldn't be created", fSettings.PathOutputFile.c_str());
         return false;
     }
-    INFO("TFile \"%s\" (re)created successfully", fSettings.PathOutputFile.c_str());
 
     return true;
 }
@@ -213,7 +212,7 @@ void Manager::CreateOutputBranches() {
             CreateOutputBranchesTracks(Acronym::PiPlus, fOutput_PiPlus);
             break;
         case ReactionChannel::H:
-            // SUPER PENDING
+            CreateOutputBranchesTracks(Acronym::PosKaon, fOutput_PosKaons);
             break;
         // anti-channels //
         case ReactionChannel::AntiA:
@@ -231,7 +230,7 @@ void Manager::CreateOutputBranches() {
             CreateOutputBranchesTracks(Acronym::PiPlus, fOutput_PiPlus);
             break;
         case ReactionChannel::AntiH:
-            // SUPER PENDING
+            CreateOutputBranchesTracks(Acronym::NegKaon, fOutput_NegKaons);
             break;
     }  // end of switch statement
 }
@@ -423,7 +422,7 @@ void Manager::ProcessTracks() {
     const int n_tracks{NumberTracks()};
     if (IsMC()) fTruthHandler.InitMap(n_tracks);
     for (auto track_entry{0}; track_entry < n_tracks; ++track_entry) {
-        // Get properties //
+        // get properties //
         auto charge{fInput_Tracks.Charge->at(track_entry)};
         XYZPoint xyz0{fInput_Tracks.X->at(track_entry), fInput_Tracks.Y->at(track_entry), fInput_Tracks.Z->at(track_entry)};
         auto px0{fInput_Tracks.Px->at(track_entry)};
@@ -514,6 +513,7 @@ void Manager::FindV0s(int pdg_code_v0, int pdg_code_neg, int pdg_code_pos) {
     // choose tracks species to loop over //
     const auto& neg_vec{pdg_code_neg == PdgCode::AntiProton ? fVec_AntiProtons : fVec_PiMinus};
     const auto& pos_vec{pdg_code_pos == PdgCode::Proton ? fVec_Protons : fVec_PiPlus};
+    const double dca_threshold{std::abs(pdg_code_v0) == PdgCode::Lambda ? Cuts::Lambda::Max_DCAbtwDau : Cuts::KaonZeroShort::Max_DCAbtwDau};
     // loop over all possible pairs of tracks //
     int v0_entry{0};
     for (const auto& neg : neg_vec) {
@@ -521,10 +521,16 @@ void Manager::FindV0s(int pdg_code_v0, int pdg_code_neg, int pdg_code_pos) {
             // sanity check //
             if (neg->Entry() == pos->Entry()) continue;
             // fit //
-            Particle::Pair res{Vertexer::MinimizeDistanceHelixHelix(*neg, *pos, fPropagator)};
-            auto V0 = std::make_shared<Neutral>(v0_entry, neg->Entry(), pos->Entry(), res);
+            Particle::Pair res{Vertexer::MinimizeDistanceHelixHelix(*neg, *pos, fPropagator, dca_threshold)};
+            auto V0 = std::make_shared<Neutral>(v0_entry, neg->Entry(), pos->Entry(), pdg_code_v0, res);
             // apply cuts //
             if (!PassesV0Cuts(V0, pdg_code_v0)) continue;
+            /*
+                INFO("neg%i pos%i m%f dbd%f z%f r%f dn%f dp%f pt%f et%f qt%f a%f cpv%f dpv%f", fInput_EsdIdx->at(neg->Entry()),
+                    fInput_EsdIdx->at(pos->Entry()), V0->Mass(), V0->DCAbtwDaughters(), V0->DecayZ(), V0->DecayRadius(), V0->DCANegWrtV0(),
+                    V0->DCAPosWrtV0(), V0->Pt(), V0->Eta(), V0->ArmenterosQt(), V0->ArmenterosAlpha(),
+                    V0->CPAwrt(fPropagator.PrimaryVertex()), V0->DCAwrt(fPropagator.PrimaryVertex()));
+            */
             // store //
             Store(V0, pdg_code_v0);
             ++v0_entry;
@@ -699,7 +705,7 @@ void Manager::Store(const std::shared_ptr<Neutral>& v0, OutputSOA::V0s& out_bran
 
             out_branches.True.PdgCode->push_back(fTruthHandler.PdgCode(v0_mc_entry));
             out_branches.True.MotherEntry->push_back(fTruthHandler.MotherEntry(v0_mc_entry));
-            out_branches.True.IsSignal->push_back(fTruthHandler.IsSignal(v0_mc_entry));
+            out_branches.True.IsSignal->push_back(fTruthHandler.IsSignal(v0_mc_entry, v0->HypothesisPID()));
             out_branches.True.IsPrimary->push_back(fTruthHandler.IsPrimary(v0_mc_entry));
             out_branches.True.IsSecFromMat->push_back(fTruthHandler.IsSecFromMat(v0_mc_entry));
             out_branches.True.IsSecFromWeak->push_back(fTruthHandler.IsSecFromWeak(v0_mc_entry));
@@ -755,7 +761,7 @@ void Manager::EndOfEvent() {
             fOutput_PiPlus.Clear(IsMC());
             break;
         case ReactionChannel::H:
-            // SUPER PENDING
+            fOutput_PosKaons.Clear(IsMC());
             break;
         // anti-channels //
         case ReactionChannel::AntiA:
@@ -773,16 +779,19 @@ void Manager::EndOfEvent() {
             fOutput_PiPlus.Clear(IsMC());
             break;
         case ReactionChannel::AntiH:
-            // SUPER PENDING
+            fOutput_NegKaons.Clear(IsMC());
             break;
     }
 }
 
 void Manager::EndOfAnalysis() {
     fOutputTree->Write();
+    INFO("TTree \"%s\" has been written onto TFile \"%s\".", fOutputTree->GetName(), fSettings.PathOutputFile.c_str());
 
     fEventsTree->ResetBranchAddresses();
     fOutputTree->ResetBranchAddresses();
+
+    INFO("Done.");
 }
 
 }  // namespace Tree2Secondaries::Analysis
