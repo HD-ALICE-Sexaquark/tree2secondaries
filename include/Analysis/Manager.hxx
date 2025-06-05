@@ -29,7 +29,7 @@ class Manager {
 
     explicit Manager(Settings settings) : fSettings{std::move(settings)} {}
 
-    [[nodiscard]] ReactionChannel GetReactionChannel() const { return fSettings.Channel; }
+    ReactionChannel GetReactionChannel() const { return fSettings.Channel; }
 
     bool Initialize();
     void ConnectInputBranches();
@@ -48,13 +48,13 @@ class Manager {
     void CreateOutputBranchesV0s(std::string_view v0_sv, OutputSOA::V0s &out_branches);
     void CreateOutputBranchesTracks(std::string_view charged_sv, OutputSOA::Tracks &out_branches);
 
-    [[nodiscard]] long long NumberEventsToRead() const { return fSettings.LimitToNEvents ? fSettings.LimitToNEvents : fEventsTree->GetEntries(); }
-    [[nodiscard]] bool IsMC() const { return fSettings.IsMC; }
-    [[nodiscard]] bool IsSignalMC() const { return fSettings.IsSignalMC; }
+    long long NumberEventsToRead() const { return fSettings.LimitToNEvents ? fSettings.LimitToNEvents : fEventsTree->GetEntries(); }
+    bool IsMC() const { return fSettings.IsMC; }
+    bool IsSignalMC() const { return fSettings.IsSignalMC; }
     void GetEvent(long long i_event) { fEventsTree->GetEntry(i_event); }
 
-    [[nodiscard]] int NumberInjected() const { return static_cast<int>(fInput_Injected.ReactionID->size()); }
-    [[nodiscard]] int NumberTracks() const { return static_cast<int>(fInput_Tracks.Px->size()); }
+    int NumberInjected() const { return static_cast<int>(fInput_Injected.ReactionID->size()); }
+    int NumberTracks() const { return static_cast<int>(fInput_Tracks.Px->size()); }
 
     void ProcessEvent();
     void ProcessInjected();
@@ -72,7 +72,7 @@ class Manager {
 
     void FindV0s(int pdg_code_v0, int pdg_code_neg, int pdg_code_pos);
 
-    [[nodiscard]] bool PassesV0Cuts(const std::shared_ptr<Neutral> &this_v0, int pdg_code_v0) const {
+    bool PassesV0Cuts(const std::shared_ptr<Neutral> &this_v0, int pdg_code_v0) const {
         if (std::abs(pdg_code_v0) == PdgCode::Lambda) return PassesLambdaCuts(this_v0);
         return PassesKaonZeroCuts(this_v0);
     }
@@ -91,8 +91,8 @@ class Manager {
 
    private:
     void StoreTracks(const std::vector<std::shared_ptr<Charged>> &charged_vec, OutputSOA::Tracks &out_branch);
-    [[nodiscard]] bool PassesLambdaCuts(const std::shared_ptr<Neutral> &this_v0) const;
-    [[nodiscard]] bool PassesKaonZeroCuts(const std::shared_ptr<Neutral> &this_v0) const;
+    bool PassesLambdaCuts(const std::shared_ptr<Neutral> &this_v0) const;
+    bool PassesKaonZeroCuts(const std::shared_ptr<Neutral> &this_v0) const;
 
     void Store(const std::shared_ptr<Neutral> &v0, OutputSOA::V0s &out_branches);
 

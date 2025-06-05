@@ -1,17 +1,43 @@
 # tree2secondaries
 
-ROOT-based standalone application for the Sexaquark Search in ALICE.
+Second step.
+ROOT-based standalone application that groups ROOT trees in a simple vector format into V0s.
 
 ## Requirements
 
-- ROOT
+- [ROOT](https://root.cern.ch)
 
 ## Building
 
 ```
 mkdir build && cd build
-cmake ../ -DCMAKE_EXPORT_COMPILE_COMMANDS=1
+cmake ../ <options>
 cmake --build .
+```
+
+Additional `<options>`:
+
+* `-DCMAKE_EXPORT_COMPILE_COMMANDS=1` -- export `compile_commands.json` file
+* `-DT2S_DEBUG` -- enable debug messages
+* `-DENABLE_PROFILING=ON` -- enable profiling (see below)
+
+## Usage
+
+```
+./src/App [OPTIONS] SUBCOMMAND [SUBOPTIONS]
+
+OPTIONS:
+  -h,--help                 Print help message and exit
+  -i,--input [REQUIRED]     Path(s) of input file(s)
+  -o,--output               Path of output file
+  -n,--nevents              Limit to N events
+SUBCOMMANDS:
+  data                      Process data
+  mc                        Process MC
+    SUBOPTIONS:
+    -s,--signal             Process Signal MC
+    -c,--channel {A,D,E,H}  Process a standard reaction channel
+    -a,--anti    {A,D,E,H}  Process an anti-reaction channel
 ```
 
 ## Debugging
@@ -53,22 +79,4 @@ cmake --build .
 cd apps/
 ./App [options] # will generate gmon.out
 gprof App > gprof.log
-```
-
-## Usage
-
-```
-Usage: ./apps/App [OPTIONS]
-
-Options:
-  -h,--help                   Print this help message and exit
-  -i,--input TEXT:TEXT REQUIRED
-                              Path of input files
-  -o,--output TEXT            Path of output file
-  -m,--mc                     Flag to process MC
-  -s,--signal Needs: --mc     Flag to process Signal MC
-  -n,--nevents UINT:(NONNEGATIVE) AND (UINT) Excludes: --nthreads
-                              Limit to N events
-  -j,--nthreads UINT:(POSITIVE) AND (UINT) Excludes: --nevents
-                              Number of threads
 ```

@@ -3,19 +3,19 @@
 #include "Math/Constants.hxx"
 #include "Utilities/Parser.hxx"
 
-using namespace Tree2Secondaries;
+namespace T2S = Tree2Secondaries;
 
 int main(int argc, char *argv[]) {
 
-    Settings settings;
-    Parser parser(argc, argv, settings, "II. Tree2Secondaries");
+    T2S::Settings settings;
+    T2S::Parser parser(argc, argv, settings, "II. Tree2Secondaries");
     if (parser.HelpOrError) return parser.ExitCode;
     settings.Print();
 
-    Analysis::Manager mgr(settings);
+    T2S::Analysis::Manager mgr(settings);
     if (!mgr.Initialize()) return 1;
 
-    for (long long i_event{0}; i_event < mgr.NumberEventsToRead(); i_event++) {
+    for (long long i_event{0}; i_event < mgr.NumberEventsToRead(); ++i_event) {
         mgr.GetEvent(i_event);
 
         mgr.ProcessEvent();
@@ -24,40 +24,50 @@ int main(int argc, char *argv[]) {
 
         switch (mgr.GetReactionChannel()) {
             // standard channels //
-            case ReactionChannel::A:
-                mgr.FindV0s(PdgCode::AntiLambda, PdgCode::AntiProton, PdgCode::PiPlus);
-                mgr.FindV0s(PdgCode::KaonZeroShort, PdgCode::PiMinus, PdgCode::PiPlus);
+            case T2S::ReactionChannel::A:
+                mgr.FindV0s(T2S::PdgCode::AntiLambda, T2S::PdgCode::AntiProton, T2S::PdgCode::PiPlus);
+                mgr.FindV0s(T2S::PdgCode::KaonZeroShort, T2S::PdgCode::PiMinus, T2S::PdgCode::PiPlus);
                 break;
-            case ReactionChannel::D:
-                mgr.FindV0s(PdgCode::AntiLambda, PdgCode::AntiProton, PdgCode::PiPlus);
-                mgr.StoreTracks(PdgCode::PosKaon);
+            case T2S::ReactionChannel::D:
+                mgr.FindV0s(T2S::PdgCode::AntiLambda, T2S::PdgCode::AntiProton, T2S::PdgCode::PiPlus);
+                mgr.StoreTracks(T2S::PdgCode::PosKaon);
                 break;
-            case ReactionChannel::E:
-                mgr.FindV0s(PdgCode::AntiLambda, PdgCode::AntiProton, PdgCode::PiPlus);
-                mgr.StoreTracks(PdgCode::PosKaon);
-                mgr.StoreTracks(PdgCode::PiMinus);
-                mgr.StoreTracks(PdgCode::PiPlus);
+            case T2S::ReactionChannel::E:
+                mgr.FindV0s(T2S::PdgCode::AntiLambda, T2S::PdgCode::AntiProton, T2S::PdgCode::PiPlus);
+                mgr.StoreTracks(T2S::PdgCode::PosKaon);
+                mgr.StoreTracks(T2S::PdgCode::PiMinus);
+                mgr.StoreTracks(T2S::PdgCode::PiPlus);
                 break;
-            case ReactionChannel::H:
-                mgr.StoreTracks(PdgCode::PosKaon);
+            case T2S::ReactionChannel::H:
+                mgr.StoreTracks(T2S::PdgCode::PosKaon);
                 break;
             // anti-channels //
-            case ReactionChannel::AntiA:
-                mgr.FindV0s(PdgCode::Lambda, PdgCode::PiMinus, PdgCode::Proton);
-                mgr.FindV0s(PdgCode::KaonZeroShort, PdgCode::PiMinus, PdgCode::PiPlus);
+            case T2S::ReactionChannel::AntiA:
+                mgr.FindV0s(T2S::PdgCode::Lambda, T2S::PdgCode::PiMinus, T2S::PdgCode::Proton);
+                mgr.FindV0s(T2S::PdgCode::KaonZeroShort, T2S::PdgCode::PiMinus, T2S::PdgCode::PiPlus);
                 break;
-            case ReactionChannel::AntiD:
-                mgr.FindV0s(PdgCode::Lambda, PdgCode::PiMinus, PdgCode::Proton);
-                mgr.StoreTracks(PdgCode::NegKaon);
+            case T2S::ReactionChannel::AntiD:
+                mgr.FindV0s(T2S::PdgCode::Lambda, T2S::PdgCode::PiMinus, T2S::PdgCode::Proton);
+                mgr.StoreTracks(T2S::PdgCode::NegKaon);
                 break;
-            case ReactionChannel::AntiE:
-                mgr.FindV0s(PdgCode::Lambda, PdgCode::PiMinus, PdgCode::Proton);
-                mgr.StoreTracks(PdgCode::NegKaon);
-                mgr.StoreTracks(PdgCode::PiMinus);
-                mgr.StoreTracks(PdgCode::PiPlus);
+            case T2S::ReactionChannel::AntiE:
+                mgr.FindV0s(T2S::PdgCode::Lambda, T2S::PdgCode::PiMinus, T2S::PdgCode::Proton);
+                mgr.StoreTracks(T2S::PdgCode::NegKaon);
+                mgr.StoreTracks(T2S::PdgCode::PiMinus);
+                mgr.StoreTracks(T2S::PdgCode::PiPlus);
                 break;
-            case ReactionChannel::AntiH:
-                mgr.StoreTracks(PdgCode::NegKaon);
+            case T2S::ReactionChannel::AntiH:
+                mgr.StoreTracks(T2S::PdgCode::NegKaon);
+                break;
+            // for data //
+            case T2S::ReactionChannel::All:
+                mgr.FindV0s(T2S::PdgCode::AntiLambda, T2S::PdgCode::AntiProton, T2S::PdgCode::PiPlus);
+                mgr.FindV0s(T2S::PdgCode::Lambda, T2S::PdgCode::PiMinus, T2S::PdgCode::Proton);
+                mgr.FindV0s(T2S::PdgCode::KaonZeroShort, T2S::PdgCode::PiMinus, T2S::PdgCode::PiPlus);
+                mgr.StoreTracks(T2S::PdgCode::NegKaon);
+                mgr.StoreTracks(T2S::PdgCode::PosKaon);
+                mgr.StoreTracks(T2S::PdgCode::PiMinus);
+                mgr.StoreTracks(T2S::PdgCode::PiPlus);
                 break;
         }  // end of switch statement
 

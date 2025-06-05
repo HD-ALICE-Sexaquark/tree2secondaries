@@ -34,50 +34,50 @@ class Neutral {
           fPosEntry{pos_entry},
           fHypothesisPID{hypothesis_pid} {}
 
-    [[nodiscard]] int Entry() const { return fEntry; }
-    [[nodiscard]] int NegEntry() const { return fNegEntry; }
-    [[nodiscard]] int PosEntry() const { return fPosEntry; }
-    [[nodiscard]] int HypothesisPID() const { return fHypothesisPID; }
+    int Entry() const { return fEntry; }
+    int NegEntry() const { return fNegEntry; }
+    int PosEntry() const { return fPosEntry; }
+    int HypothesisPID() const { return fHypothesisPID; }
 
-    [[nodiscard]] ROOT::Math::XYZPoint NegVertex() const { return fNegative.Vertex; }
-    [[nodiscard]] ROOT::Math::XYZPoint PosVertex() const { return fPositive.Vertex; }
+    ROOT::Math::XYZPoint NegVertex() const { return fNegative.Vertex; }
+    ROOT::Math::XYZPoint PosVertex() const { return fPositive.Vertex; }
 
-    [[nodiscard]] ROOT::Math::XYZVector NegMomentum() const { return fNegative.Momentum.Vect(); }
-    [[nodiscard]] ROOT::Math::XYZVector PosMomentum() const { return fPositive.Momentum.Vect(); }
+    ROOT::Math::XYZVector NegMomentum() const { return fNegative.Momentum.Vect(); }
+    ROOT::Math::XYZVector PosMomentum() const { return fPositive.Momentum.Vect(); }
 
-    [[nodiscard]] ROOT::Math::PxPyPzEVector NegPxPyPzE() const { return fNegative.Momentum; }
-    [[nodiscard]] ROOT::Math::PxPyPzEVector PosPxPyPzE() const { return fPositive.Momentum; }
+    ROOT::Math::PxPyPzEVector NegPxPyPzE() const { return fNegative.Momentum; }
+    ROOT::Math::PxPyPzEVector PosPxPyPzE() const { return fPositive.Momentum; }
 
-    [[nodiscard]] ROOT::Math::XYZPoint DecayVertex() const { return fState.Vertex; }
-    [[nodiscard]] double DecayX() const { return fState.Vertex.X(); }
-    [[nodiscard]] double DecayY() const { return fState.Vertex.Y(); }
-    [[nodiscard]] double DecayZ() const { return fState.Vertex.Z(); }
-    [[nodiscard]] double DecayRadius() const { return fState.Vertex.Rho(); }
+    ROOT::Math::XYZPoint DecayVertex() const { return fState.Vertex; }
+    double DecayX() const { return fState.Vertex.X(); }
+    double DecayY() const { return fState.Vertex.Y(); }
+    double DecayZ() const { return fState.Vertex.Z(); }
+    double DecayRadius() const { return fState.Vertex.Rho(); }
 
-    [[nodiscard]] double X(double s, const Helper::Propagator& prop) const { return prop.NeutralCoord(s, DecayX(), Px()); }
-    [[nodiscard]] double Y(double s, const Helper::Propagator& prop) const { return prop.NeutralCoord(s, DecayY(), Py()); }
-    [[nodiscard]] double Z(double s, const Helper::Propagator& prop) const { return prop.NeutralCoord(s, DecayZ(), Pz()); }
-    [[nodiscard]] ROOT::Math::XYZPoint XYZ(double s, const Helper::Propagator& prop) const { return {X(s, prop), Y(s, prop), Z(s, prop)}; }
+    double X(double s, const Helper::Propagator& prop) const { return prop.NeutralCoord(s, DecayX(), Px()); }
+    double Y(double s, const Helper::Propagator& prop) const { return prop.NeutralCoord(s, DecayY(), Py()); }
+    double Z(double s, const Helper::Propagator& prop) const { return prop.NeutralCoord(s, DecayZ(), Pz()); }
+    ROOT::Math::XYZPoint XYZ(double s, const Helper::Propagator& prop) const { return {X(s, prop), Y(s, prop), Z(s, prop)}; }
 
-    [[nodiscard]] double Px() const { return fState.Momentum.Px(); }
-    [[nodiscard]] double Py() const { return fState.Momentum.Py(); }
-    [[nodiscard]] double Pz() const { return fState.Momentum.Pz(); }
-    [[nodiscard]] ROOT::Math::XYZVector PxPyPz() const { return fState.Momentum.Vect(); }
-    [[nodiscard]] ROOT::Math::PxPyPzEVector PxPyPzE() const { return fState.Momentum; }
-    [[nodiscard]] double Eta() const { return fState.Momentum.Eta(); }
-    [[nodiscard]] double Pt() const { return fState.Momentum.Pt(); }
-    [[nodiscard]] double P2() const { return fState.Momentum.P2(); }
-    [[nodiscard]] double Mass() const { return fState.Momentum.M(); }
-    [[nodiscard]] double Energy() const { return fState.Momentum.E(); }
+    double Px() const { return fState.Momentum.Px(); }
+    double Py() const { return fState.Momentum.Py(); }
+    double Pz() const { return fState.Momentum.Pz(); }
+    ROOT::Math::XYZVector PxPyPz() const { return fState.Momentum.Vect(); }
+    ROOT::Math::PxPyPzEVector PxPyPzE() const { return fState.Momentum; }
+    double Eta() const { return fState.Momentum.Eta(); }
+    double Pt() const { return fState.Momentum.Pt(); }
+    double P2() const { return fState.Momentum.P2(); }
+    double Mass() const { return fState.Momentum.M(); }
+    double Energy() const { return fState.Momentum.E(); }
 
-    [[nodiscard]] double CPAwrt(const ROOT::Math::XYZPoint& v) const { return Math::CosinePointingAngle(PxPyPz(), fState.Vertex, v); }
-    [[nodiscard]] double DCAwrt(const ROOT::Math::XYZPoint& v) const { return Math::FastDCALineVertex(fState.Momentum.Vect(), fState.Vertex, v); }
-    [[nodiscard]] double ArmenterosAlpha() const { return Math::ArmenterosAlpha(PxPyPz(), fNegative.Momentum.Vect(), fPositive.Momentum.Vect()); }
-    [[nodiscard]] double ArmenterosQt() const { return Math::ArmenterosQt(PxPyPz(), fNegative.Momentum.Vect()); }
-    [[nodiscard]] double DCANegWrtV0() const { return (fNegative.Vertex - DecayVertex()).R(); }
-    [[nodiscard]] double DCAPosWrtV0() const { return (fPositive.Vertex - DecayVertex()).R(); }
-    [[nodiscard]] double DCAbtwDaughters() const { return (fNegative.Vertex - fPositive.Vertex).R(); }
-    [[nodiscard]] Particle::State PropagatedState(double s, const Helper::Propagator& prop) const { return {PxPyPzE(), XYZ(s, prop)}; }
+    double CPAwrt(const ROOT::Math::XYZPoint& v) const { return Math::CosinePointingAngle(PxPyPz(), fState.Vertex, v); }
+    double DCAwrt(const ROOT::Math::XYZPoint& v) const { return Math::FastDCALineVertex(fState.Momentum.Vect(), fState.Vertex, v); }
+    double ArmenterosAlpha() const { return Math::ArmenterosAlpha(PxPyPz(), fNegative.Momentum.Vect(), fPositive.Momentum.Vect()); }
+    double ArmenterosQt() const { return Math::ArmenterosQt(PxPyPz(), fNegative.Momentum.Vect()); }
+    double DCANegWrtV0() const { return (fNegative.Vertex - DecayVertex()).R(); }
+    double DCAPosWrtV0() const { return (fPositive.Vertex - DecayVertex()).R(); }
+    double DCAbtwDaughters() const { return (fNegative.Vertex - fPositive.Vertex).R(); }
+    Particle::State PropagatedState(double s, const Helper::Propagator& prop) const { return {PxPyPzE(), XYZ(s, prop)}; }
 
     void Print(int pdg_code_v0, const Helper::Propagator& prop) {
         INFO("Searching %i {%i,%i},P={%f,%f,%f,m=%f,e=%f},V={%f,%f,%f}", pdg_code_v0, fNegEntry, fPosEntry, fState.Momentum.Px(),

@@ -1,6 +1,7 @@
 #ifndef T2S_SECONDARY_VERTEXER_HXX
 #define T2S_SECONDARY_VERTEXER_HXX
 
+#include "Math/Constants.hxx"
 #include "Math/Point3D.h"
 #include "Math/Vector3D.h"
 
@@ -73,7 +74,7 @@ inline Particle::Pair MinimizeDistanceHelixHelix(const Charged& q, const Charged
     double cos_theta2{0.};
     ROOT::Math::XYZPoint pca2{0., 0., 0.};
 
-    double dca_3d{std::numeric_limits<double>::max()};
+    double dca_3d{Const::BigNumber};
 
     // opposite of intersection condition, which is: "D < R1+R2" && "D > |R1-R2|"
     if (r2 > radius_sum_sq || r2 < radius_diff_sq) {
@@ -129,8 +130,8 @@ inline Particle::Pair MinimizeDistanceHelixHelix(const Charged& q, const Charged
         double sqrt_dk{dk > 0 ? std::sqrt(dk) : 0.};
         double d1{std::abs(omega1) * std::abs(Pxy1dotDR) * sqrt_dk};
         double d2{std::abs(omega2) * std::abs(Pxy2dotDR) * sqrt_dk};
-        if (std::abs(Pxy1dotDR) < Const::AlmostZero) Pxy1dotDR = Const::LocalSmall;
-        if (std::abs(Pxy2dotDR) < Const::AlmostZero) Pxy2dotDR = Const::LocalSmall;
+        if (std::abs(Pxy1dotDR) < Const::AbsAlmostZero) Pxy1dotDR = Const::AbsAlmostZero;
+        if (std::abs(Pxy2dotDR) < Const::AbsAlmostZero) Pxy2dotDR = Const::AbsAlmostZero;
         // 2 possible solutions, choose the one that minimizes distance in 3D //
         for (auto sign : {+1, -1}) {
             //
@@ -184,7 +185,7 @@ inline Particle::Pair MinimizeDistanceHelixHelix(const Charged& q, const Charged
 
     // 2nd approximation: add Z-component //
 
-    if (std::abs(den) < Const::AlmostZero) {
+    if (std::abs(den) < Const::AbsAlmostZero) {
         return {
             {{px1, py1, pz01, ene1}, pca1},
             {{px2, py2, pz02, ene2}, pca2},
@@ -244,7 +245,7 @@ inline Particle::State MinimizeDistanceHelixVertex(const Charged& q, const ROOT:
     double PxydotDR{q.Px0() * rx + q.Py0() * ry};
     double PxycrossDR{q.Px0() * ry - q.Py0() * rx};
 
-    double dca_3d{std::numeric_limits<double>::max()};
+    double dca_3d{Const::BigNumber};
     double sr{0.};
 
     // PCA is colinear to circle center and vertex //
@@ -269,7 +270,7 @@ inline Particle::State MinimizeDistanceHelixVertex(const Charged& q, const ROOT:
 
     double sz{0.};
     double det{q.Pz0() * q.Pz0() - omega * PxycrossDR};
-    if (std::abs(det) > Const::AlmostZero) {
+    if (std::abs(det) > Const::AbsAlmostZero) {
         sz = (-q.Pz0() * q.Pz0() * sr - P1dotDR) / det;
     }
 
@@ -295,7 +296,7 @@ inline Particle::Pair MinimizeDistanceHelixLine(const Charged& q, const Neutral&
     double Pxy2dotDR{n.Px() * rx + n.Py() * ry};
     double Pxy2crossDR{n.Px() * ry - n.Py() * rx};
 
-    double dca_3d{std::numeric_limits<double>::max()};
+    double dca_3d{Const::BigNumber};
     double sr1{0.}, sr2{0.};
 
     double discrim{omega1_sq * (pt1sq * pt2sq - omega1_sq * Pxy2crossDR * Pxy2crossDR)};
@@ -350,7 +351,7 @@ inline Particle::Pair MinimizeDistanceHelixLine(const Charged& q, const Neutral&
     double sz1{0.};
     double sz2{0.};
     double den{P1dotP2 * P1dotP2 - bb * n.P2()};
-    if (std::abs(den) > Const::AlmostZero) {
+    if (std::abs(den) > Const::AbsAlmostZero) {
         sz1 = (aa * n.P2() - cc * P1dotP2) / den;
         sz2 = (-bb * cc + aa * P1dotP2) / den;
     }
@@ -371,7 +372,7 @@ inline Particle::Pair MinimizeDistanceLineLine(const Neutral& n, const Neutral& 
     double p2p2{m.P2()};
 
     double det{p1p2 * p1p2 - p1p1 * p2p2};
-    if (std::abs(det) < Const::AlmostZero) {
+    if (std::abs(det) < Const::AbsAlmostZero) {
         // rare case : particles are parallel, minimize both to a same arbitrary vertex (origin) //
         return {MinimizeDistanceLineVertex(n, {0., 0., 0.}, prop),  //
                 MinimizeDistanceLineVertex(m, {0., 0., 0.}, prop)};

@@ -5,7 +5,7 @@
 
 namespace Tree2Secondaries {
 
-enum class ReactionChannel : char { A = 'A', D = 'D', E = 'E', H = 'H', AntiA = 'a', AntiD = 'd', AntiE = 'e', AntiH = 'h' };
+enum class ReactionChannel : char { A = 'A', D = 'D', E = 'E', H = 'H', AntiA = 'a', AntiD = 'd', AntiE = 'e', AntiH = 'h', All = ' ' };
 
 namespace Acronym {
 static constexpr std::string_view AntiLambda{"AL"};
@@ -33,14 +33,19 @@ static constexpr int PiMinus{-211};
 static constexpr int PiPlus{211};
 }  // namespace PdgCode
 
+namespace PdgMass {
+static constexpr double Lambda{1.1156830};          // (GeV/c^2)
+static constexpr double KaonZeroShort{0.49761100};  // (GeV/c^2)
+static constexpr double Neutron{0.93956540};        // (GeV/c^2)
+static constexpr double Proton{0.93827210};         // (GeV/c^2)
+static constexpr double Kaon{0.49367700};           // (GeV/c^2)
+static constexpr double Pion{0.13957040};           // (GeV/c^2)
+}  // namespace PdgMass
+
 namespace Const {
-static constexpr double MassNeutron{0.93956540};  // (GeV/c^2)
-static constexpr double MassProton{0.93827210};   // (GeV/c^2)
-static constexpr double MassKaon{0.49367700};     // (GeV/c^2)
-static constexpr double MassPion{0.13957040};     // (GeV/c^2)
-static constexpr double Kappa{0.000299792458};    // (GeV/c) / (kG/cm)
-static constexpr double LocalSmall{1.E-6};
-static constexpr double AlmostZero{1.E-8};
+static constexpr double Kappa{0.000299792458};  // (GeV/c) / (kG/cm)
+static constexpr double AbsAlmostZero{1.E-8};
+static constexpr double BigNumber{1.E8};
 static constexpr int DummyInt{-1};
 static constexpr float DummyFloat{-999.};
 }  // namespace Const

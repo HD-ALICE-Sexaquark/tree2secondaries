@@ -4,3 +4,5 @@ build/
 files/
 compile_commands.json
 test/
+.env
+deprecated/

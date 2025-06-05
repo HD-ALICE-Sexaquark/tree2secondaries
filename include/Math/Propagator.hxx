@@ -20,8 +20,8 @@ class Propagator {
     void SetPrimaryVertex(double x, double y, double z) { fPV.SetCoordinates(x, y, z); }
 
     // getters //
-    [[nodiscard]] double Bz() const { return fBz; }
-    [[nodiscard]] ROOT::Math::XYZPoint PrimaryVertex() const { return fPV; }
+    double Bz() const { return fBz; }
+    ROOT::Math::XYZPoint PrimaryVertex() const { return fPV; }
 
     // Parametrization of charged particles: (helix)                    //
     //   X(s)  = X0 + Sin(omega s) Px/omega + (1-Cos(omega s)) Py/omega //
@@ -30,40 +30,38 @@ class Propagator {
     //   Px(s) = Cos(omega s) Px + Sin(omega s) Py                      //
     //   Py(s) = -Sin(omega s) Px + Cos(omega s) Py                     //
     //   Pz    = (constant)                                             //
-    [[nodiscard]] double Omega(double charge) const { return fBz * charge * Const::Kappa; }
-    [[nodiscard]] double ChargedX(double s, double charge, double x0, double px0, double py0) const {
+    double Omega(double charge) const { return fBz * charge * Const::Kappa; }
+    double ChargedX(double s, double charge, double x0, double px0, double py0) const {
         return x0 + (std::sin(Omega(charge) * s) * px0 + (1. - std::cos(Omega(charge) * s)) * py0) / Omega(charge);
     }
-    [[nodiscard]] double ChargedY(double s, double charge, double y0, double px0, double py0) const {
+    double ChargedY(double s, double charge, double y0, double px0, double py0) const {
         return y0 + (-(1. - std::cos(Omega(charge) * s)) * px0 + std::sin(Omega(charge) * s) * py0) / Omega(charge);
     }
-    [[nodiscard]] double ChargedZ(double s, double z0, double pz0) const { return z0 + pz0 * s; }
-    [[nodiscard]] double ChargedPx(double s, double charge, double px0, double py0) const {
+    double ChargedZ(double s, double z0, double pz0) const { return z0 + pz0 * s; }
+    double ChargedPx(double s, double charge, double px0, double py0) const {
         return px0 * std::cos(Omega(charge) * s) + py0 * std::sin(Omega(charge) * s);
     }
-    [[nodiscard]] double ChargedPy(double s, double charge, double px0, double py0) const {
+    double ChargedPy(double s, double charge, double px0, double py0) const {
         return -px0 * std::sin(Omega(charge) * s) + py0 * std::cos(Omega(charge) * s);
     }
 
     // test //
 
-    [[nodiscard]] double FastChargedX(double sin_theta, double cos_theta, double one_over_omega, double x0, double px0, double py0) const {
+    double FastChargedX(double sin_theta, double cos_theta, double one_over_omega, double x0, double px0, double py0) const {
         return x0 + (sin_theta * px0 + (1. - cos_theta) * py0) * one_over_omega;
     }
-    [[nodiscard]] double FastChargedY(double sin_theta, double cos_theta, double one_over_omega, double y0, double px0, double py0) const {
+    double FastChargedY(double sin_theta, double cos_theta, double one_over_omega, double y0, double px0, double py0) const {
         return y0 + (-(1. - cos_theta) * px0 + sin_theta * py0) * one_over_omega;
     }
-    [[nodiscard]] double FastChargedZ(double theta, double omega, double z0, double pz0) const { return z0 + pz0 * omega * theta; }
-    [[nodiscard]] double FastChargedPx(double sin_theta, double cos_theta, double px0, double py0) const { return px0 * cos_theta + py0 * sin_theta; }
-    [[nodiscard]] double FastChargedPy(double sin_theta, double cos_theta, double px0, double py0) const {
-        return -px0 * sin_theta + py0 * cos_theta;
-    }
+    double FastChargedZ(double theta, double omega, double z0, double pz0) const { return z0 + pz0 * omega * theta; }
+    double FastChargedPx(double sin_theta, double cos_theta, double px0, double py0) const { return px0 * cos_theta + py0 * sin_theta; }
+    double FastChargedPy(double sin_theta, double cos_theta, double px0, double py0) const { return -px0 * sin_theta + py0 * cos_theta; }
 
     // Parametrization of neutral particles: (line) //
     //   X(s)  = X0 + Px s                          //
     //   Y(s)  = Y0 + Py s                          //
     //   Z(s)  = Z0 + Pz s                          //
-    [[nodiscard]] double NeutralCoord(double s, double xi0, double pi0) const { return xi0 + pi0 * s; }
+    double NeutralCoord(double s, double xi0, double pi0) const { return xi0 + pi0 * s; }
 
    protected:
     ROOT::Math::XYZPoint fPV{0., 0., 0.};

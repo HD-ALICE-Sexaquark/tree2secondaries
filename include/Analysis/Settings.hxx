@@ -11,7 +11,8 @@
 namespace Tree2Secondaries {
 
 struct Settings {
-    [[nodiscard]] std::string StrReactionChannel() const {
+    std::string StrReactionChannel() const {
+        if (Channel == ReactionChannel::All) return "All";
         std::string prefix{std::islower(static_cast<char>(Channel)) ? "Anti" : ""};
         std::string suffix{static_cast<char>(std::toupper(static_cast<char>(Channel)))};
         return prefix + suffix;
@@ -33,7 +34,7 @@ struct Settings {
     std::vector<std::string> PathInputFiles;
     std::string PathOutputFile;
     long long LimitToNEvents{0};
-    ReactionChannel Channel{ReactionChannel::A};
+    ReactionChannel Channel{ReactionChannel::All};
     bool IsMC{false};
     bool IsSignalMC{false};
 };
