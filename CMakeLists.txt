@@ -51,6 +51,13 @@ if(ROOT_FOUND)
   message(STATUS "ROOT ${ROOT_VERSION} found at ${ROOT_BINDIR}")
 endif()
 
+message(STATUS "Looking for KFParticle")
+find_package(KFParticle)
+if(KFParticle_FOUND)
+  message(STATUS "Looking for KFParticle -- found")
+  message(STATUS "KFParticle found at ${KFParticle_LIB_DIR}")
+endif()
+
 # get ready to build target #
 
 message(STATUS "Using compiler flags: ${CMAKE_CXX_FLAGS}")

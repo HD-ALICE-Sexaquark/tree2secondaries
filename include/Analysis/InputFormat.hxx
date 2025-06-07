@@ -64,6 +64,26 @@ struct Tracks {
     std::vector<float> *NSigmaKaon{nullptr};
     std::vector<float> *NSigmaProton{nullptr};
 
+    std::vector<float> *Alpha{nullptr};
+    std::vector<float> *Snp{nullptr};
+    std::vector<float> *Tgl{nullptr};
+    std::vector<float> *Signed1Pt{nullptr};
+    std::vector<float> *SigmaY2{nullptr};
+    std::vector<float> *SigmaZY{nullptr};
+    std::vector<float> *SigmaZ2{nullptr};
+    std::vector<float> *SigmaSnpY{nullptr};
+    std::vector<float> *SigmaSnpZ{nullptr};
+    std::vector<float> *SigmaSnp2{nullptr};
+    std::vector<float> *SigmaTglY{nullptr};
+    std::vector<float> *SigmaTglZ{nullptr};
+    std::vector<float> *SigmaTglSnp{nullptr};
+    std::vector<float> *SigmaTgl2{nullptr};
+    std::vector<float> *Sigma1PtY{nullptr};
+    std::vector<float> *Sigma1PtZ{nullptr};
+    std::vector<float> *Sigma1PtSnp{nullptr};
+    std::vector<float> *Sigma1PtTgl{nullptr};
+    std::vector<float> *Sigma1Pt2{nullptr};
+
     std::vector<int> *McEntry{nullptr};
 };
 

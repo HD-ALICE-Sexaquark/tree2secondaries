@@ -20,7 +20,7 @@ inline double CosinePointingAngle(double v0_px, double v0_py, double v0_pz,  //
 }
 
 // Calculate Armenteros-Podolanski qT.
-// Based on https://github.com/alisw/AliRoot (STEER/ESD/AliESDv0::PtArmV0())
+// Based on https://github.com/alisw/AliRoot (`STEER/ESD/AliESDv0::PtArmV0()`)
 inline double ArmenterosQt(const ROOT::Math::XYZVector& mom_v0, const ROOT::Math::XYZVector& mom_dau) {
     return ROOT::Math::VectorUtil::Perp(mom_v0, mom_dau);
 }
@@ -32,7 +32,7 @@ inline double ArmenterosQt(double v0_px, double v0_py, double v0_pz,  //
 }
 
 // Calculate Armenteros-Podolanski alpha.
-// Based on https://github.com/alisw/AliRoot (STEER/ESD/AliESDv0::AlphaV0())
+// Based on https://github.com/alisw/AliRoot (`STEER/ESD/AliESDv0::AlphaV0()`)
 inline double ArmenterosAlpha(const ROOT::Math::XYZVector& mom_v0, const ROOT::Math::XYZVector& mom_neg, const ROOT::Math::XYZVector& mom_pos) {
     double lQlNeg = mom_neg.Dot(mom_v0) / mom_v0.R();
     double lQlPos = mom_pos.Dot(mom_v0) / mom_v0.R();
@@ -52,9 +52,9 @@ inline double FastDCALineVertex(const ROOT::Math::XYZVector& mom_v0, const ROOT:
     return std::abs(mom_v0.Dot(pos_v0 - pos_ref) / mom_v0.R());
 }
 
-// Calculate the half-point between two points in 3D space.
+// Calculate the middle-point between two points in 3D space.
 inline ROOT::Math::XYZPoint MiddlePoint(const ROOT::Math::XYZPoint& p1, const ROOT::Math::XYZPoint& p2) {
-    return {0.5 * (p1.X() + p2.X()), 0.5 * (p1.Y() + p2.Y()), 0.5 * (p1.Z() + p2.Z())};
+    return {(p1.X() + p2.X()) / 2., (p1.Y() + p2.Y()) / 2., (p1.Z() + p2.Z()) / 2.};
 }
 
 // Calculate square of the distance between two points in 3D space.

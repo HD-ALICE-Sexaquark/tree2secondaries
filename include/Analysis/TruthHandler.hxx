@@ -1,6 +1,7 @@
 #ifndef T2S_TRUTH_HANDLER_HXX
 #define T2S_TRUTH_HANDLER_HXX
 
+#include <cstddef>
 #include <vector>
 
 #include "Analysis/InputFormat.hxx"
@@ -11,13 +12,19 @@ namespace Tree2Secondaries::Helper {
 // Contains all logical operations that involve true information.
 class TruthHandler {
    public:
+    TruthHandler(const TruthHandler &) = delete;
+    TruthHandler(TruthHandler &&) = delete;
+    TruthHandler &operator=(const TruthHandler &) = delete;
+    TruthHandler &operator=(TruthHandler &&) = delete;
+
+    TruthHandler() = default;
     ~TruthHandler() = default;
 
-    void InitMap(int n) { fMcEntry.resize(n, -1); };
-    void Link(int track_entry, int mc_entry) { fMcEntry[track_entry] = mc_entry; }
+    void InitMap(size_t n) { fMcEntry.resize(n, -1); };
+    void Link(size_t track_entry, int mc_entry) { fMcEntry[track_entry] = mc_entry; }
     void Clear() { fMcEntry.clear(); };
 
-    int McEntry(int track_entry) const { return fMcEntry[track_entry]; }
+    int McEntry(size_t track_entry) const { return fMcEntry[track_entry]; }
 
     float Xv(int mc_entry) const { return fInput_MC.Xv->at(mc_entry); }
     float Yv(int mc_entry) const { return fInput_MC.Yv->at(mc_entry); }

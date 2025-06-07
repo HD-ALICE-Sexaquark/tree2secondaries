@@ -19,19 +19,19 @@ static constexpr std::string_view PiMinus{"PM"};
 static constexpr std::string_view PiPlus{"PP"};
 }  // namespace Acronym
 
-namespace PdgCode {
-static constexpr int AntiLambda{-3122};
-static constexpr int Lambda{3122};
-static constexpr int KaonZeroShort{310};
-static constexpr int AntiNeutron{-2112};
-static constexpr int Neutron{2112};
-static constexpr int AntiProton{-2212};
-static constexpr int Proton{2212};
-static constexpr int NegKaon{-321};
-static constexpr int PosKaon{321};
-static constexpr int PiMinus{-211};
-static constexpr int PiPlus{211};
-}  // namespace PdgCode
+enum class PdgCode : short {
+    AntiLambda = -3122,
+    Lambda = 3122,
+    KaonZeroShort = 310,
+    AntiNeutron = -2112,
+    Neutron = 2112,
+    AntiProton = -2212,
+    Proton = 2212,
+    NegKaon = -321,
+    PosKaon = 321,
+    PiMinus = -211,
+    PiPlus = 211
+};
 
 namespace PdgMass {
 static constexpr double Lambda{1.1156830};          // (GeV/c^2)
