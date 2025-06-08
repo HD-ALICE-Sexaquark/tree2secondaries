@@ -4,10 +4,10 @@
 #include <cstddef>
 #include <vector>
 
-#include "Analysis/InputFormat.hxx"
 #include "Math/Constants.hxx"
+#include "Structures/Events.hxx"
 
-namespace Tree2Secondaries::Helper {
+namespace Tree2Secondaries {
 
 // Contains all logical operations that involve true information.
 class TruthHandler {
@@ -59,12 +59,12 @@ class TruthHandler {
         return Const::DummyInt;
     }
 
-    InputSOA::MC fInput_MC;
+    Events::MC fInput_MC;
 
    private:
     std::vector<int> fMcEntry;
 };
 
-}  // namespace Tree2Secondaries::Helper
+}  // namespace Tree2Secondaries
 
 #endif

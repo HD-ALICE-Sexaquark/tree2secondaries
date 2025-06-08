@@ -5,8 +5,8 @@
 #include <cmath>
 #include <cstddef>
 
-#include "Analysis/InputFormat.hxx"
 #include "Math/Math.hxx"
+#include "Structures/Events.hxx"
 
 #include "KFParticle.hxx"
 #include "KFParticle_Math.hxx"
@@ -50,6 +50,22 @@ struct alignas(32) V0 : Particle {
     }
 };
 
+struct alignas(32) ChannelA : Particle {
+    // PENDING
+};
+
+struct alignas(32) ChannelD : Particle {
+    // PENDING
+};
+
+struct alignas(32) ChannelE : Particle {
+    // PENDING
+};
+
+struct alignas(32) ChannelH : Particle {
+    // PENDING
+};
+
 struct Extended : Particle {
     long mc_idx{};
     unsigned long neg_idx{};
@@ -57,7 +73,7 @@ struct Extended : Particle {
     unsigned int reaction_id{};
 };
 
-inline std::array<double, 6> PackParams(const Tree2Secondaries::InputSOA::Tracks& soa, size_t esd_idx) {
+inline std::array<double, 6> PackParams(const Tree2Secondaries::Events::Tracks& soa, size_t esd_idx) {
     return {soa.X->at(esd_idx),  soa.Y->at(esd_idx),  soa.Z->at(esd_idx),  //
             soa.Px->at(esd_idx), soa.Py->at(esd_idx), soa.Pz->at(esd_idx)};
 }
@@ -112,12 +128,12 @@ inline Particle CreateParticle(const std::array<double, 6>& kf_params, const std
 
 namespace ALICE {
 
-inline std::array<float, 5> PackParams(const Tree2Secondaries::InputSOA::Tracks& soa, size_t esd_idx) {
+inline std::array<float, 5> PackParams(const Tree2Secondaries::Events::Tracks& soa, size_t esd_idx) {
     return {soa.Y->at(esd_idx), soa.Z->at(esd_idx), soa.Snp->at(esd_idx),  //
             soa.Tgl->at(esd_idx), soa.Signed1Pt->at(esd_idx)};
 };
 
-inline std::array<float, 15> PackCovMatrix(const Tree2Secondaries::InputSOA::Tracks& soa, size_t esd_idx) {
+inline std::array<float, 15> PackCovMatrix(const Tree2Secondaries::Events::Tracks& soa, size_t esd_idx) {
     return {soa.SigmaY2->at(esd_idx),                                                                                          //
             soa.SigmaZY->at(esd_idx),   soa.SigmaZ2->at(esd_idx),                                                              //
             soa.SigmaSnpY->at(esd_idx), soa.SigmaSnpZ->at(esd_idx), soa.SigmaSnp2->at(esd_idx),                                //

@@ -1,12 +1,12 @@
-#ifndef T2S_OUTPUT_FORMAT_HXX
-#define T2S_OUTPUT_FORMAT_HXX
+#ifndef T2S_STRUCTS_PACKED_HXX
+#define T2S_STRUCTS_PACKED_HXX
 
 #include <cstddef>
 #include <vector>
 
-namespace Tree2Secondaries::OutputSOA {
+namespace Tree2Secondaries::PackedEvents {
 
-struct Particle {
+struct Particles {
     std::vector<size_t>* Entry{nullptr};
 
     std::vector<float>* Xv{nullptr};
@@ -46,7 +46,7 @@ struct Particle {
     std::vector<float>* SigmaPzE{nullptr};
     std::vector<float>* SigmaE2{nullptr};
 
-    void ClearParticle() {
+    void ClearParticles() {
         Entry->clear();
 
         Xv->clear();
@@ -88,7 +88,7 @@ struct Particle {
     }
 };
 
-struct MC : public Particle {
+struct MC : public Particles {
     std::vector<int>* PdgCode{nullptr};
     std::vector<int>* MotherEntry{nullptr};
     std::vector<bool>* IsSignal{nullptr};
@@ -98,7 +98,7 @@ struct MC : public Particle {
     std::vector<int>* ReactionID{nullptr};
 
     void ClearMC() {
-        ClearParticle();
+        ClearParticles();
         PdgCode->clear();
         MotherEntry->clear();
         IsSignal->clear();
@@ -109,15 +109,15 @@ struct MC : public Particle {
     }
 };
 
-struct Tracks : public Particle {
+struct Tracks : public Particles {
     MC True;
     void Clear(bool is_mc = false) {
-        ClearParticle();
+        ClearParticles();
         if (is_mc) True.ClearMC();
     }
 };
 
-struct V0s : public Particle {
+struct V0s : public Particles {
     std::vector<size_t>* Neg_Entry{nullptr};
     std::vector<float>* Neg_Xv{nullptr};
     std::vector<float>* Neg_Yv{nullptr};
@@ -134,7 +134,7 @@ struct V0s : public Particle {
     std::vector<float>* Pos_Pz{nullptr};
     MC True;
     void Clear(bool is_mc = false) {
-        ClearParticle();
+        ClearParticles();
         Neg_Entry->clear();
         Neg_Xv->clear();
         Neg_Yv->clear();
@@ -153,6 +153,6 @@ struct V0s : public Particle {
     }
 };
 
-}  // namespace Tree2Secondaries::OutputSOA
+}  // namespace Tree2Secondaries::PackedEvents
 
-#endif  // T2S_OUTPUT_FORMAT_HXX
+#endif  // T2S_STRUCTS_PACKED_HXX

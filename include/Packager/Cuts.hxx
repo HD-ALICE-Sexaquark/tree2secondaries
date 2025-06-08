@@ -1,5 +1,5 @@
-#ifndef T2S_CUTS_HXX
-#define T2S_CUTS_HXX
+#ifndef T2S_PACKAGER_CUTS_HXX
+#define T2S_PACKAGER_CUTS_HXX
 
 namespace Tree2Secondaries::Cuts {
 
@@ -46,4 +46,4 @@ constexpr double Max_DCAbtwDau{2.};
 
 }  // namespace Tree2Secondaries::Cuts
 
-#endif  // T2S_CUTS_HXX
+#endif  // T2S_PACKAGER_CUTS_HXX

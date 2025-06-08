@@ -1,9 +1,9 @@
-#ifndef T2S_INPUT_FORMAT_HXX
-#define T2S_INPUT_FORMAT_HXX
+#ifndef T2S_STRUCTS_EVENTS_HXX
+#define T2S_STRUCTS_EVENTS_HXX
 
 #include <vector>
 
-namespace Tree2Secondaries::Struct {
+namespace Tree2Secondaries::Events {
 
 struct Event {
     unsigned int RunNumber{0};
@@ -20,7 +20,7 @@ struct Event {
     float PV_TrueZv{0.};
 };
 
-struct InjectedSOA {
+struct Injected {
     std::vector<int> *ReactionID{nullptr};
     std::vector<float> *Px{nullptr};
     std::vector<float> *Py{nullptr};
@@ -29,10 +29,6 @@ struct InjectedSOA {
     std::vector<float> *Nucleon_Py{nullptr};
     std::vector<float> *Nucleon_Pz{nullptr};
 };
-
-}  // namespace Tree2Secondaries::Struct
-
-namespace Tree2Secondaries::InputSOA {
 
 struct MC {
     std::vector<float> *Xv{nullptr};
@@ -87,6 +83,6 @@ struct Tracks {
     std::vector<int> *McEntry{nullptr};
 };
 
-}  // namespace Tree2Secondaries::InputSOA
+}  // namespace Tree2Secondaries::Events
 
-#endif  // T2S_INPUT_FORMAT_HXX
+#endif  // T2S_STRUCTS_EVENTS_HXX

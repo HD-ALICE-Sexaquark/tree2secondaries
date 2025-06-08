@@ -7,7 +7,7 @@
 
 #include "CLI11.hpp"
 
-#include "Analysis/Settings.hxx"
+#include "App/Settings.hxx"
 #include "Math/Constants.hxx"
 
 namespace Tree2Secondaries {
@@ -35,13 +35,16 @@ class Parser {
             ->expected(1)
             ->check(CLI::NonNegativeNumber);
 
-        // MC //
-        auto* mc_cmd = CLI_APP.add_subcommand("mc", "Process MC");
+        // # package mode //
+        auto* package_cmd = CLI_APP.add_subcommand("pack", "Package V0s and necessary tracks");
 
-        // is signal MC //
+        // -- MC //
+        auto* mc_cmd = package_cmd->add_subcommand("mc", "Process MC");
+
+        //    -- is signal MC //
         mc_cmd->add_flag("-s,--signal", settings.IsSignalMC, "Process Signal MC");
 
-        // reaction channel //
+        //    -- reaction channel //
         auto* ch_opt_group = mc_cmd->add_option_group("channels");
         const std::set<char> allowed_channels{'A', 'D', 'E', 'H'};
         ch_opt_group
@@ -58,8 +61,41 @@ class Parser {
             ->check(CLI::IsMember(allowed_channels));
         ch_opt_group->require_option(1);
 
-        // data //
-        CLI_APP.add_subcommand("data", "Process data");
+        // -- data //
+        package_cmd->add_subcommand("data", "Process data");
+
+        package_cmd->require_subcommand(1);
+
+        // # search mode //
+
+        auto* search_cmd = CLI_APP.add_subcommand("search", "Search for anti-sexaquark reactions");
+
+        // -- reaction channel //
+        auto* ch_opt_group2 = search_cmd->add_option_group("channels");
+        ch_opt_group2
+            ->add_option_function<char>(
+                "-c,--channel", [&settings](char val) { settings.Channel = static_cast<ReactionChannel>(val); },
+                "Process a standard reaction channel")
+            ->expected(1)
+            ->check(CLI::IsMember(allowed_channels));
+        ch_opt_group2
+            ->add_option_function<char>(
+                "-a,--anti", [&settings](char val) { settings.Channel = static_cast<ReactionChannel>(std::tolower(val)); },
+                "Process an anti-reaction channel")
+            ->expected(1)
+            ->check(CLI::IsMember(allowed_channels));
+        ch_opt_group2->require_option(1);
+
+        // -- MC //
+        auto* mc_cmd2 = search_cmd->add_subcommand("mc", "Process MC");
+
+        //    -- is signal MC //
+        mc_cmd2->add_flag("-s,--signal", settings.IsSignalMC, "Process Signal MC");
+
+        // -- data //
+        search_cmd->add_subcommand("data", "Process data");
+
+        search_cmd->require_subcommand(1);
 
         CLI_APP.require_subcommand(1);
     }
@@ -69,6 +105,7 @@ class Parser {
         try {
             CLI_APP.parse(argc, argv);
             settings.IsMC = CLI_APP.got_subcommand("mc");
+            settings.DoTheSearch = CLI_APP.got_subcommand("search");
         } catch (const CLI::ParseError& e) {
             ExitCode = e.get_exit_code();
             HelpOrError = (e.get_name() == "CallForHelp") || (ExitCode != 0);
@@ -76,15 +113,15 @@ class Parser {
         }
         // default options //
         if (settings.PathOutputFile.empty()) {
-            if (settings.IsMC) {
-                if (settings.IsSignalMC) {
-                    settings.PathOutputFile = "Packed_Channel" + settings.StrReactionChannel() + "_SignalMC.root";
-                } else {
-                    settings.PathOutputFile = "Packed_Channel" + settings.StrReactionChannel() + "_BkgMC.root";
-                }
-            } else {
-                settings.PathOutputFile = "Packed_Data.root";
-            }
+            std::string prefix_file{settings.DoTheSearch ? "Searched" : "Packed"};
+            std::string suffix_file{".root"};
+            if (settings.IsMC && settings.IsSignalMC)
+                suffix_file = "SignalMC" + suffix_file;
+            else if (settings.IsMC && !settings.IsSignalMC)
+                suffix_file = "BkgMC" + suffix_file;
+            else
+                suffix_file = "Data" + suffix_file;
+            settings.PathOutputFile = prefix_file + "_" + settings.StrReactionChannel() + "_" + suffix_file;
         }
         return 0;
     }

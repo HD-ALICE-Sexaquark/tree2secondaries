@@ -12,14 +12,15 @@ namespace Tree2Secondaries {
 
 struct Settings {
     std::string StrReactionChannel() const {
-        if (Channel == ReactionChannel::All) return "All";
-        std::string prefix{std::islower(static_cast<char>(Channel)) ? "Anti" : ""};
+        if (Channel == ReactionChannel::All) return "AllChannels";
+        std::string prefix{std::islower(static_cast<char>(Channel)) ? "Anti" : "Channel"};
         std::string suffix{static_cast<char>(std::toupper(static_cast<char>(Channel)))};
         return prefix + suffix;
     }
     void Print() const {
         std::cout << "SETTINGS" << '\n';
         std::cout << "========" << '\n';
+        std::cout << "Mode            = " << (DoTheSearch ? "FINDER" : "PACKAGER") << '\n';
         std::cout << "ReactionChannel = " << StrReactionChannel() << '\n';
         std::cout << "InputFiles:" << '\n';
         for (const auto& path : PathInputFiles) {
@@ -37,6 +38,7 @@ struct Settings {
     ReactionChannel Channel{ReactionChannel::All};
     bool IsMC{false};
     bool IsSignalMC{false};
+    bool DoTheSearch{false};
 };
 
 }  // namespace Tree2Secondaries

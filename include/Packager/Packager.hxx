@@ -1,5 +1,5 @@
-#ifndef T2S_ANALYSIS_MANAGER_HXX
-#define T2S_ANALYSIS_MANAGER_HXX
+#ifndef T2S_PACKAGER_HXX
+#define T2S_PACKAGER_HXX
 
 #include <memory>
 #include <utility>
@@ -7,24 +7,25 @@
 #include "TChain.h"
 #include "TFile.h"
 
-#include "Analysis/InputFormat.hxx"
-#include "Analysis/OutputFormat.hxx"
-#include "Analysis/Settings.hxx"
-#include "Analysis/TruthHandler.hxx"
+#include "App/Settings.hxx"
 #include "Math/Constants.hxx"
 #include "Math/KFWrapper.hxx"
+#include "Packager/TruthHandler.hxx"
+#include "Structures/Events.hxx"
+#include "Structures/PackedEvents.hxx"
 
-namespace Tree2Secondaries::Analysis {
+namespace Tree2Secondaries {
 
-class Manager {
+// Pack secondary V0s and tracks.
+class Packager {
    public:
-    Manager(const Manager &) = delete;
-    Manager(Manager &&) = delete;
-    Manager &operator=(const Manager &) = delete;
-    Manager &operator=(Manager &&) = delete;
-    ~Manager() = default;
+    Packager(const Packager &) = delete;
+    Packager(Packager &&) = delete;
+    Packager &operator=(const Packager &) = delete;
+    Packager &operator=(Packager &&) = delete;
+    ~Packager() = default;
 
-    explicit Manager(Settings settings) : fSettings{std::move(settings)} {}
+    explicit Packager(Settings settings) : fSettings{std::move(settings)} {}
 
     ReactionChannel GetReactionChannel() const { return fSettings.Channel; }
 
@@ -42,8 +43,8 @@ class Manager {
 
     void CreateOutputBranchesEvents();
     void CreateOutputBranchesInjected();
-    void CreateOutputBranchesV0s(std::string_view v0_sv, OutputSOA::V0s &out_branches);
-    void CreateOutputBranchesTracks(std::string_view charged_sv, OutputSOA::Tracks &out_branches);
+    void CreateOutputBranchesV0s(const std::string &name_v0, PackedEvents::V0s &out_branches);
+    void CreateOutputBranchesTracks(const std::string &name_part, PackedEvents::Tracks &out_branches);
 
     long long NumberEventsToRead() const { return fSettings.LimitToNEvents ? fSettings.LimitToNEvents : fEventsTree->GetEntries(); }
     bool IsMC() const { return fSettings.IsMC; }
@@ -58,16 +59,16 @@ class Manager {
     void ProcessMC();
     void ProcessTracks();
 
-    void StoreTracks(PdgCode pdg_code);
+    void PackTracks(PdgCode pdg_code);
 
-    void FindV0s(PdgCode pdg_code_v0);
-    bool PassesV0Cuts(const KF::V0 &v0, PdgCode pdg_code_v0) const {
-        switch (pdg_code_v0) {
+    void FindV0s(PdgCode pdg_code);
+    bool PassesCuts(const KF::V0 &v0, PdgCode pdg_code) const {
+        switch (pdg_code) {
             case PdgCode::AntiLambda:
             case PdgCode::Lambda:
-                return PassesLambdaCuts(v0);
+                return PassesCuts_Lambda(v0);
             case PdgCode::KaonZeroShort:
-                return PassesKaonZeroCuts(v0);
+                return PassesCuts_KaonZeroShort(v0);
             default:
                 return false;
         }
@@ -81,11 +82,11 @@ class Manager {
     std::array<float, 5> PackParams_ALICE(size_t esd_idx) { return ALICE::PackParams(fInput_Tracks, esd_idx); }
     std::array<float, 15> PackCovMatrix_ALICE(size_t esd_idx) { return ALICE::PackCovMatrix(fInput_Tracks, esd_idx); }
 
-    void Store(const KF::Track &track, OutputSOA::Tracks &out_branches);
+    void Store(const KF::Track &track, PackedEvents::Tracks &out_branches);
 
-    bool PassesLambdaCuts(const KF::V0 &v0) const;
-    bool PassesKaonZeroCuts(const KF::V0 &v0) const;
-    void Store(const KF::V0 &v0, OutputSOA::V0s &out_branches);
+    bool PassesCuts_Lambda(const KF::V0 &v0) const;
+    bool PassesCuts_KaonZeroShort(const KF::V0 &v0) const;
+    void Store(const KF::V0 &v0, PackedEvents::V0s &out_branches);
 
     Settings fSettings;
     std::unique_ptr<TChain> fEventsTree;
@@ -95,14 +96,13 @@ class Manager {
 
     // input structs //
 
-    Struct::Event fInput_Event;
-    Struct::InjectedSOA fInput_Injected;
-
-    InputSOA::Tracks fInput_Tracks;
+    Events::Event fInput_Event;
+    Events::Injected fInput_Injected;
+    Events::Tracks fInput_Tracks;
 
     // helpers //
 
-    Helper::TruthHandler fTruthHandler;
+    TruthHandler fTruthHandler;
 
     // indices //
 
@@ -115,19 +115,19 @@ class Manager {
 
     // output structs //
 
-    Struct::Event fOutput_Event;
-    Struct::InjectedSOA fOutput_Injected;
+    Events::Event fOutput_Event;
+    Events::Injected fOutput_Injected;
 
-    OutputSOA::V0s fOutput_AntiLambdas;
-    OutputSOA::V0s fOutput_Lambdas;
-    OutputSOA::V0s fOutput_KaonsZeroShort;
+    PackedEvents::V0s fOutput_AntiLambdas;
+    PackedEvents::V0s fOutput_Lambdas;
+    PackedEvents::V0s fOutput_KaonsZeroShort;
 
-    OutputSOA::Tracks fOutput_NegKaons;
-    OutputSOA::Tracks fOutput_PosKaons;
-    OutputSOA::Tracks fOutput_PiMinus;
-    OutputSOA::Tracks fOutput_PiPlus;
+    PackedEvents::Tracks fOutput_NegKaons;
+    PackedEvents::Tracks fOutput_PosKaons;
+    PackedEvents::Tracks fOutput_PiMinus;
+    PackedEvents::Tracks fOutput_PiPlus;
 };
 
-}  // namespace Tree2Secondaries::Analysis
+}  // namespace Tree2Secondaries
 
-#endif  // T2S_ANALYSIS_MANAGER_HXX
+#endif  // T2S_PACKAGER_HXX

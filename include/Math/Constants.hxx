@@ -7,6 +7,19 @@ namespace Tree2Secondaries {
 
 enum class ReactionChannel : char { A = 'A', D = 'D', E = 'E', H = 'H', AntiA = 'a', AntiD = 'd', AntiE = 'e', AntiH = 'h', All = ' ' };
 
+namespace Name {
+static constexpr std::string_view Events{"Events"};
+static constexpr std::string_view PackedEvents{"PackedEvents"};
+static constexpr std::string_view ChannelA{"ChannelA"};
+static constexpr std::string_view AntiA{"AntiA"};
+static constexpr std::string_view ChannelD{"ChannelD"};
+static constexpr std::string_view AntiD{"AntiD"};
+static constexpr std::string_view ChannelE{"ChannelE"};
+static constexpr std::string_view AntiE{"AntiE"};
+static constexpr std::string_view ChannelH{"ChannelH"};
+static constexpr std::string_view AntiH{"AntiH"};
+}  // namespace Name
+
 namespace Acronym {
 static constexpr std::string_view AntiLambda{"AL"};
 static constexpr std::string_view Lambda{"L"};
