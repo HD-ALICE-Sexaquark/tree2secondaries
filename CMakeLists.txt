@@ -22,6 +22,13 @@ set(CMAKE_CXX_FLAGS
     "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wshadow -Wnon-virtual-dtor -O3 -DNDEBUG -march=native -mtune=native"
 )
 
+# options
+
+option(T2S_DEBUG "Print debug messages." OFF)
+if(T2S_DEBUG)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DT2S_DEBUG")
+endif(T2S_DEBUG)
+
 # enable LTO #
 
 include(CheckIPOSupported)

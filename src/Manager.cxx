@@ -1,3 +1,4 @@
+#include <iostream>
 #include <memory>
 #include <string_view>
 
@@ -6,23 +7,26 @@
 #include "Analysis/Manager.hxx"
 #include "Math/Constants.hxx"
 #include "Math/KFWrapper.hxx"
-#include "Utilities/Logger.hxx"
 
 namespace Tree2Secondaries::Analysis {
 
 bool Manager::Initialize() {
+#ifdef T2S_DEBUG
+    std::cout << "-- starting (" << __FUNCTION__ << ") --" << '\n';
+#endif
 
     fEventsTree = std::make_unique<TChain>("Events");
     for (const auto& path : fSettings.PathInputFiles) {
         if (fEventsTree->Add(path.c_str()) == 0) {
-            WARNING("Couldn't add TFile \"%s\"", path.c_str());
+            std::cerr << "Couldn't add TFile \"" << path << "\"" << '\n';
         }
     }
     if (!fEventsTree->GetEntries()) {
-        ERROR("Couldn't manage to read any entry.");
+        std::cerr << "Couldn't manage to read any entry." << '\n';
         return false;
     }
-    INFO("TChain \"Events\" loaded successfully with %i trees and %lld total entries.", fEventsTree->GetNtrees(), fEventsTree->GetEntries());
+    std::cout << "TChain \"Events\" loaded successfully with " << fEventsTree->GetNtrees() << " trees and " << fEventsTree->GetEntries()
+              << " total entries." << '\n';
 
     ConnectInputBranches();
 
@@ -30,7 +34,11 @@ bool Manager::Initialize() {
     if (!PrepareOutputTree()) return false;
     CreateOutputBranches();
 
-    INFO("Manager initialized successfully");
+    std::cout << "Manager initialized successfully" << '\n';
+
+#ifdef T2S_DEBUG
+    std::cout << "-- finished (" << __FUNCTION__ << ") --" << '\n';
+#endif
     return true;
 }
 
@@ -78,6 +86,9 @@ void Manager::ConnectBranchesEvents() {
 }
 
 void Manager::ConnectBranchesInjected() {
+#ifdef T2S_DEBUG
+    std::cout << "-- starting (" << __FUNCTION__ << ") --" << '\n';
+#endif
     fEventsTree->SetBranchStatus("ReactionID", true);
     fEventsTree->SetBranchStatus("Sexaquark_Px", true);
     fEventsTree->SetBranchStatus("Sexaquark_Py", true);
@@ -93,9 +104,15 @@ void Manager::ConnectBranchesInjected() {
     fEventsTree->SetBranchAddress("Nucleon_Px", &fInput_Injected.Nucleon_Px);
     fEventsTree->SetBranchAddress("Nucleon_Py", &fInput_Injected.Nucleon_Py);
     fEventsTree->SetBranchAddress("Nucleon_Pz", &fInput_Injected.Nucleon_Pz);
+#ifdef T2S_DEBUG
+    std::cout << "-- finished (" << __FUNCTION__ << ") --" << '\n';
+#endif
 }
 
 void Manager::ConnectBranchesMC() {
+#ifdef T2S_DEBUG
+    std::cout << "-- starting (" << __FUNCTION__ << ") --" << '\n';
+#endif
     fEventsTree->SetBranchStatus("MC_Xv", true);
     fEventsTree->SetBranchStatus("MC_Yv", true);
     fEventsTree->SetBranchStatus("MC_Zv", true);
@@ -127,9 +144,15 @@ void Manager::ConnectBranchesMC() {
     fEventsTree->SetBranchAddress("MC_IsPrimary", &fTruthHandler.fInput_MC.IsPrimary);
     fEventsTree->SetBranchAddress("MC_IsSecFromMat", &fTruthHandler.fInput_MC.IsSecFromMat);
     fEventsTree->SetBranchAddress("MC_IsSecFromWeak", &fTruthHandler.fInput_MC.IsSecFromWeak);
+#ifdef T2S_DEBUG
+    std::cout << "-- finished (" << __FUNCTION__ << ") --" << '\n';
+#endif
 }
 
 void Manager::ConnectBranchesTracks() {
+#ifdef T2S_DEBUG
+    std::cout << "-- starting (" << __FUNCTION__ << ") --" << '\n';
+#endif
     fEventsTree->SetBranchStatus("Track_Px", true);
     fEventsTree->SetBranchStatus("Track_Py", true);
     fEventsTree->SetBranchStatus("Track_Pz", true);
@@ -197,33 +220,49 @@ void Manager::ConnectBranchesTracks() {
 
         fEventsTree->SetBranchAddress("Track_McEntry", &fInput_Tracks.McEntry);
     }
+#ifdef T2S_DEBUG
+    std::cout << "-- finished (" << __FUNCTION__ << ") --" << '\n';
+#endif
 }
 
 // ## OUTPUT ZONE ## //
 
 bool Manager::PrepareOutputFile() {
-
+#ifdef T2S_DEBUG
+    std::cout << "-- starting (" << __FUNCTION__ << ") --" << '\n';
+#endif
     fOutputFile = std::unique_ptr<TFile>(TFile::Open(fSettings.PathOutputFile.c_str(), "RECREATE"));
     if (!fOutputFile) {
-        ERROR("TFile \"%s\" couldn't be created", fSettings.PathOutputFile.c_str());
+        std::cerr << "TFile \"" << fSettings.PathOutputFile << "\" couldn't be created" << '\n';
         return false;
     }
-
+#ifdef T2S_DEBUG
+    std::cout << "-- finished (" << __FUNCTION__ << ") --" << '\n';
+#endif
     return true;
 }
 
 bool Manager::PrepareOutputTree() {
+#ifdef T2S_DEBUG
+    std::cout << "-- starting (" << __FUNCTION__ << ") --" << '\n';
+#endif
 
-    fOutputTree = std::make_unique<TTree>("ProEvents", "Processed Events");
+    fOutputTree = std::make_unique<TTree>("PackedEvents", "Packed Events");
     if (!fOutputTree) {
-        ERROR("TTree \"ProEvents\" couldn't be created");
+        std::cerr << "TTree \"PackedEvents\" couldn't be created" << '\n';
         return false;
     }
 
+#ifdef T2S_DEBUG
+    std::cout << "-- finished (" << __FUNCTION__ << ") --" << '\n';
+#endif
     return true;
 }
 
 void Manager::CreateOutputBranches() {
+#ifdef T2S_DEBUG
+    std::cout << "-- starting (" << __FUNCTION__ << ") --" << '\n';
+#endif
 
     CreateOutputBranchesEvents();
     if (IsSignalMC()) CreateOutputBranchesInjected();
@@ -276,9 +315,16 @@ void Manager::CreateOutputBranches() {
             CreateOutputBranchesTracks(Acronym::PiPlus, fOutput_PiPlus);
             break;
     }  // end of switch statement
+#ifdef T2S_DEBUG
+    std::cout << "-- finished (" << __FUNCTION__ << ") --" << '\n';
+#endif
 }
 
 void Manager::CreateOutputBranchesEvents() {
+#ifdef T2S_DEBUG
+    std::cout << "-- starting (" << __FUNCTION__ << ") --" << '\n';
+#endif
+
     fOutputTree->Branch("RunNumber", &fOutput_Event.RunNumber);
     fOutputTree->Branch("DirNumber", &fOutput_Event.DirNumber);
     fOutputTree->Branch("EventNumber", &fOutput_Event.EventNumber);
@@ -293,9 +339,16 @@ void Manager::CreateOutputBranchesEvents() {
         fOutputTree->Branch("MC_PV_Yv", &fOutput_Event.PV_TrueYv);
         fOutputTree->Branch("MC_PV_Zv", &fOutput_Event.PV_TrueZv);
     }
+#ifdef T2S_DEBUG
+    std::cout << "-- finished (" << __FUNCTION__ << ") --" << '\n';
+#endif
 }
 
 void Manager::CreateOutputBranchesInjected() {
+#ifdef T2S_DEBUG
+    std::cout << "-- starting (" << __FUNCTION__ << ") --" << '\n';
+#endif
+
     fOutputTree->Branch("ReactionID", &fOutput_Injected.ReactionID);
     fOutputTree->Branch("Sexaquark_Px", &fOutput_Injected.Px);
     fOutputTree->Branch("Sexaquark_Py", &fOutput_Injected.Py);
@@ -303,9 +356,16 @@ void Manager::CreateOutputBranchesInjected() {
     fOutputTree->Branch("Nucleon_Px", &fOutput_Injected.Nucleon_Px);
     fOutputTree->Branch("Nucleon_Py", &fOutput_Injected.Nucleon_Py);
     fOutputTree->Branch("Nucleon_Pz", &fOutput_Injected.Nucleon_Pz);
+#ifdef T2S_DEBUG
+    std::cout << "-- finished (" << __FUNCTION__ << ") --" << '\n';
+#endif
 }
 
 void Manager::CreateOutputBranchesV0s(std::string_view v0_sv, OutputSOA::V0s& out_branches) {
+#ifdef T2S_DEBUG
+    std::cout << "-- starting (" << __FUNCTION__ << ") --" << '\n';
+#endif
+
     const std::string v0_name{v0_sv};
 
     fOutputTree->Branch((v0_name + "_Entry").c_str(), &out_branches.Entry);
@@ -318,32 +378,32 @@ void Manager::CreateOutputBranchesV0s(std::string_view v0_sv, OutputSOA::V0s& ou
     fOutputTree->Branch((v0_name + "_E").c_str(), &out_branches.E);
 
     fOutputTree->Branch((v0_name + "_SigmaX2").c_str(), &out_branches.SigmaX2);
-    fOutputTree->Branch((v0_name + "_SigmaYX").c_str(), &out_branches.SigmaYX);
+    fOutputTree->Branch((v0_name + "_SigmaXY").c_str(), &out_branches.SigmaXY);
     fOutputTree->Branch((v0_name + "_SigmaY2").c_str(), &out_branches.SigmaY2);
-    fOutputTree->Branch((v0_name + "_SigmaZX").c_str(), &out_branches.SigmaZX);
-    fOutputTree->Branch((v0_name + "_SigmaZY").c_str(), &out_branches.SigmaZY);
+    fOutputTree->Branch((v0_name + "_SigmaXZ").c_str(), &out_branches.SigmaXZ);
+    fOutputTree->Branch((v0_name + "_SigmaYZ").c_str(), &out_branches.SigmaYZ);
     fOutputTree->Branch((v0_name + "_SigmaZ2").c_str(), &out_branches.SigmaZ2);
-    fOutputTree->Branch((v0_name + "_SigmaPxX").c_str(), &out_branches.SigmaPxX);
-    fOutputTree->Branch((v0_name + "_SigmaPxY").c_str(), &out_branches.SigmaPxY);
-    fOutputTree->Branch((v0_name + "_SigmaPxZ").c_str(), &out_branches.SigmaPxZ);
+    fOutputTree->Branch((v0_name + "_SigmaXPx").c_str(), &out_branches.SigmaXPx);
+    fOutputTree->Branch((v0_name + "_SigmaYPx").c_str(), &out_branches.SigmaYPx);
+    fOutputTree->Branch((v0_name + "_SigmaZPx").c_str(), &out_branches.SigmaZPx);
     fOutputTree->Branch((v0_name + "_SigmaPx2").c_str(), &out_branches.SigmaPx2);
-    fOutputTree->Branch((v0_name + "_SigmaPyX").c_str(), &out_branches.SigmaPyX);
-    fOutputTree->Branch((v0_name + "_SigmaPyY").c_str(), &out_branches.SigmaPyY);
-    fOutputTree->Branch((v0_name + "_SigmaPyZ").c_str(), &out_branches.SigmaPyZ);
-    fOutputTree->Branch((v0_name + "_SigmaPyPx").c_str(), &out_branches.SigmaPyPx);
+    fOutputTree->Branch((v0_name + "_SigmaXPy").c_str(), &out_branches.SigmaXPy);
+    fOutputTree->Branch((v0_name + "_SigmYaPy").c_str(), &out_branches.SigmaYPy);
+    fOutputTree->Branch((v0_name + "_SigmaZPy").c_str(), &out_branches.SigmaZPy);
+    fOutputTree->Branch((v0_name + "_SigmaPxPy").c_str(), &out_branches.SigmaPxPy);
     fOutputTree->Branch((v0_name + "_SigmaPy2").c_str(), &out_branches.SigmaPy2);
-    fOutputTree->Branch((v0_name + "_SigmaPzX").c_str(), &out_branches.SigmaPzX);
-    fOutputTree->Branch((v0_name + "_SigmaPzY").c_str(), &out_branches.SigmaPzY);
-    fOutputTree->Branch((v0_name + "_SigmaPzZ").c_str(), &out_branches.SigmaPzZ);
-    fOutputTree->Branch((v0_name + "_SigmaPzPx").c_str(), &out_branches.SigmaPzPx);
-    fOutputTree->Branch((v0_name + "_SigmaPzPy").c_str(), &out_branches.SigmaPzPy);
+    fOutputTree->Branch((v0_name + "_SigmaXPz").c_str(), &out_branches.SigmaXPz);
+    fOutputTree->Branch((v0_name + "_SigmaYPz").c_str(), &out_branches.SigmaYPz);
+    fOutputTree->Branch((v0_name + "_SigmaZPz").c_str(), &out_branches.SigmaZPz);
+    fOutputTree->Branch((v0_name + "_SigmaPxPz").c_str(), &out_branches.SigmaPxPz);
+    fOutputTree->Branch((v0_name + "_SigmaPyPz").c_str(), &out_branches.SigmaPyPz);
     fOutputTree->Branch((v0_name + "_SigmaPz2").c_str(), &out_branches.SigmaPz2);
-    fOutputTree->Branch((v0_name + "_SigmaEX").c_str(), &out_branches.SigmaEX);
-    fOutputTree->Branch((v0_name + "_SigmaEY").c_str(), &out_branches.SigmaEY);
-    fOutputTree->Branch((v0_name + "_SigmaEZ").c_str(), &out_branches.SigmaEZ);
-    fOutputTree->Branch((v0_name + "_SigmaEPx").c_str(), &out_branches.SigmaEPx);
-    fOutputTree->Branch((v0_name + "_SigmaEPy").c_str(), &out_branches.SigmaEPy);
-    fOutputTree->Branch((v0_name + "_SigmaEPz").c_str(), &out_branches.SigmaEPz);
+    fOutputTree->Branch((v0_name + "_SigmaXE").c_str(), &out_branches.SigmaXE);
+    fOutputTree->Branch((v0_name + "_SigmaYE").c_str(), &out_branches.SigmaYE);
+    fOutputTree->Branch((v0_name + "_SigmaZE").c_str(), &out_branches.SigmaZE);
+    fOutputTree->Branch((v0_name + "_SigmaPxE").c_str(), &out_branches.SigmaPxE);
+    fOutputTree->Branch((v0_name + "_SigmaPyE").c_str(), &out_branches.SigmaPyE);
+    fOutputTree->Branch((v0_name + "_SigmaPzE").c_str(), &out_branches.SigmaPzE);
     fOutputTree->Branch((v0_name + "_SigmaE2").c_str(), &out_branches.SigmaE2);
 
     fOutputTree->Branch((v0_name + "_Neg_Entry").c_str(), &out_branches.Neg_Entry);
@@ -418,9 +478,16 @@ void Manager::CreateOutputBranchesV0s(std::string_view v0_sv, OutputSOA::V0s& ou
                 fOutputTree->Branch((v0_name + "_MC_Pos_ReactionID").c_str(), &out_branches.Pos.True.ReactionID);
                 */
     }
+#ifdef T2S_DEBUG
+    std::cout << "-- finished (" << __FUNCTION__ << ") --" << '\n';
+#endif
 }
 
 void Manager::CreateOutputBranchesTracks(std::string_view charged_sv, OutputSOA::Tracks& out_branches) {
+#ifdef T2S_DEBUG
+    std::cout << "-- starting (" << __FUNCTION__ << ") --" << '\n';
+#endif
+
     const std::string charged_name{charged_sv};
 
     fOutputTree->Branch((charged_name + "_Entry").c_str(), &out_branches.Entry);
@@ -434,32 +501,32 @@ void Manager::CreateOutputBranchesTracks(std::string_view charged_sv, OutputSOA:
     fOutputTree->Branch((charged_name + "_E").c_str(), &out_branches.E);
 
     fOutputTree->Branch((charged_name + "_SigmaX2").c_str(), &out_branches.SigmaX2);
-    fOutputTree->Branch((charged_name + "_SigmaYX").c_str(), &out_branches.SigmaYX);
+    fOutputTree->Branch((charged_name + "_SigmaXY").c_str(), &out_branches.SigmaXY);
     fOutputTree->Branch((charged_name + "_SigmaY2").c_str(), &out_branches.SigmaY2);
-    fOutputTree->Branch((charged_name + "_SigmaZX").c_str(), &out_branches.SigmaZX);
-    fOutputTree->Branch((charged_name + "_SigmaZY").c_str(), &out_branches.SigmaZY);
+    fOutputTree->Branch((charged_name + "_SigmaXZ").c_str(), &out_branches.SigmaXZ);
+    fOutputTree->Branch((charged_name + "_SigmaYZ").c_str(), &out_branches.SigmaYZ);
     fOutputTree->Branch((charged_name + "_SigmaZ2").c_str(), &out_branches.SigmaZ2);
-    fOutputTree->Branch((charged_name + "_SigmaPxX").c_str(), &out_branches.SigmaPxX);
-    fOutputTree->Branch((charged_name + "_SigmaPxY").c_str(), &out_branches.SigmaPxY);
-    fOutputTree->Branch((charged_name + "_SigmaPxZ").c_str(), &out_branches.SigmaPxZ);
+    fOutputTree->Branch((charged_name + "_SigmaXPx").c_str(), &out_branches.SigmaXPx);
+    fOutputTree->Branch((charged_name + "_SigmaYPx").c_str(), &out_branches.SigmaYPx);
+    fOutputTree->Branch((charged_name + "_SigmaZPx").c_str(), &out_branches.SigmaZPx);
     fOutputTree->Branch((charged_name + "_SigmaPx2").c_str(), &out_branches.SigmaPx2);
-    fOutputTree->Branch((charged_name + "_SigmaPyX").c_str(), &out_branches.SigmaPyX);
-    fOutputTree->Branch((charged_name + "_SigmaPyY").c_str(), &out_branches.SigmaPyY);
-    fOutputTree->Branch((charged_name + "_SigmaPyZ").c_str(), &out_branches.SigmaPyZ);
-    fOutputTree->Branch((charged_name + "_SigmaPyPx").c_str(), &out_branches.SigmaPyPx);
+    fOutputTree->Branch((charged_name + "_SigmaXPy").c_str(), &out_branches.SigmaXPy);
+    fOutputTree->Branch((charged_name + "_SigmYaPy").c_str(), &out_branches.SigmaYPy);
+    fOutputTree->Branch((charged_name + "_SigmaZPy").c_str(), &out_branches.SigmaZPy);
+    fOutputTree->Branch((charged_name + "_SigmaPxPy").c_str(), &out_branches.SigmaPxPy);
     fOutputTree->Branch((charged_name + "_SigmaPy2").c_str(), &out_branches.SigmaPy2);
-    fOutputTree->Branch((charged_name + "_SigmaPzX").c_str(), &out_branches.SigmaPzX);
-    fOutputTree->Branch((charged_name + "_SigmaPzY").c_str(), &out_branches.SigmaPzY);
-    fOutputTree->Branch((charged_name + "_SigmaPzZ").c_str(), &out_branches.SigmaPzZ);
-    fOutputTree->Branch((charged_name + "_SigmaPzPx").c_str(), &out_branches.SigmaPzPx);
-    fOutputTree->Branch((charged_name + "_SigmaPzPy").c_str(), &out_branches.SigmaPzPy);
+    fOutputTree->Branch((charged_name + "_SigmaXPz").c_str(), &out_branches.SigmaXPz);
+    fOutputTree->Branch((charged_name + "_SigmaYPz").c_str(), &out_branches.SigmaYPz);
+    fOutputTree->Branch((charged_name + "_SigmaZPz").c_str(), &out_branches.SigmaZPz);
+    fOutputTree->Branch((charged_name + "_SigmaPxPz").c_str(), &out_branches.SigmaPxPz);
+    fOutputTree->Branch((charged_name + "_SigmaPyPz").c_str(), &out_branches.SigmaPyPz);
     fOutputTree->Branch((charged_name + "_SigmaPz2").c_str(), &out_branches.SigmaPz2);
-    fOutputTree->Branch((charged_name + "_SigmaEX").c_str(), &out_branches.SigmaEX);
-    fOutputTree->Branch((charged_name + "_SigmaEY").c_str(), &out_branches.SigmaEY);
-    fOutputTree->Branch((charged_name + "_SigmaEZ").c_str(), &out_branches.SigmaEZ);
-    fOutputTree->Branch((charged_name + "_SigmaEPx").c_str(), &out_branches.SigmaEPx);
-    fOutputTree->Branch((charged_name + "_SigmaEPy").c_str(), &out_branches.SigmaEPy);
-    fOutputTree->Branch((charged_name + "_SigmaEPz").c_str(), &out_branches.SigmaEPz);
+    fOutputTree->Branch((charged_name + "_SigmaXE").c_str(), &out_branches.SigmaXE);
+    fOutputTree->Branch((charged_name + "_SigmaYE").c_str(), &out_branches.SigmaYE);
+    fOutputTree->Branch((charged_name + "_SigmaZE").c_str(), &out_branches.SigmaZE);
+    fOutputTree->Branch((charged_name + "_SigmaPxE").c_str(), &out_branches.SigmaPxE);
+    fOutputTree->Branch((charged_name + "_SigmaPyE").c_str(), &out_branches.SigmaPyE);
+    fOutputTree->Branch((charged_name + "_SigmaPzE").c_str(), &out_branches.SigmaPzE);
     fOutputTree->Branch((charged_name + "_SigmaE2").c_str(), &out_branches.SigmaE2);
 
     if (IsMC()) {
@@ -481,9 +548,15 @@ void Manager::CreateOutputBranchesTracks(std::string_view charged_sv, OutputSOA:
         fOutputTree->Branch((charged_name + "_MC_IsSecFromWeak").c_str(), &out_branches.True.IsSecFromWeak);
         fOutputTree->Branch((charged_name + "_MC_ReactionID").c_str(), &out_branches.True.ReactionID);
     }
+#ifdef T2S_DEBUG
+    std::cout << "-- finished (" << __FUNCTION__ << ") --" << '\n';
+#endif
 }
 
 void Manager::ProcessEvent() {
+#ifdef T2S_DEBUG
+    std::cout << "-- starting (" << __FUNCTION__ << ") --" << '\n';
+#endif
     fOutput_Event.RunNumber = fInput_Event.RunNumber;
     fOutput_Event.DirNumber = fInput_Event.DirNumber;
     fOutput_Event.EventNumber = fInput_Event.EventNumber;
@@ -498,9 +571,15 @@ void Manager::ProcessEvent() {
         fOutput_Event.PV_TrueYv = fInput_Event.PV_TrueYv;
         fOutput_Event.PV_TrueZv = fInput_Event.PV_TrueZv;
     }
+#ifdef T2S_DEBUG
+    std::cout << "-- finished (" << __FUNCTION__ << ") --" << '\n';
+#endif
 }
 
 void Manager::ProcessInjected() {
+#ifdef T2S_DEBUG
+    std::cout << "-- starting (" << __FUNCTION__ << ") --" << '\n';
+#endif
     fOutput_Injected.ReactionID = fInput_Injected.ReactionID;
     fOutput_Injected.Px = fInput_Injected.Px;
     fOutput_Injected.Py = fInput_Injected.Py;
@@ -508,12 +587,18 @@ void Manager::ProcessInjected() {
     fOutput_Injected.Nucleon_Px = fInput_Injected.Nucleon_Px;
     fOutput_Injected.Nucleon_Py = fInput_Injected.Nucleon_Py;
     fOutput_Injected.Nucleon_Pz = fInput_Injected.Nucleon_Pz;
+#ifdef T2S_DEBUG
+    std::cout << "-- finished (" << __FUNCTION__ << ") --" << '\n';
+#endif
 }
 
 // ## Tracks ZONE ## //
 
 // Store tracks' ESD indices into vectors, according to their respective track PID and charge.
 void Manager::ProcessTracks() {
+#ifdef T2S_DEBUG
+    std::cout << "-- starting (" << __FUNCTION__ << ") --" << '\n';
+#endif
     const auto n_tracks = NumberTracks();
     if (IsMC()) fTruthHandler.InitMap(n_tracks);
     for (size_t esd_track{0}; esd_track < n_tracks; ++esd_track) {
@@ -536,15 +621,21 @@ void Manager::ProcessTracks() {
         if (IsMC()) fTruthHandler.Link(esd_track, fInput_Tracks.McEntry->at(esd_track));  // PENDING: should i add protection?
     }
 #ifdef T2S_DEBUG
-    INFO("finished ProcessTracks() with n_protons = %zu, n_poskaons = %zu, n_piplus = %zu", fProtons.size(), fPosKaons.size(), fPiPlus.size());
-    INFO("finished ProcessTracks() with n_antiprotons = %zu, n_negkaons = %zu, n_piminus = %zu", fAntiProtons.size(), fNegKaons.size(),
-         fPiMinus.size());
+    std::cout << "   " << __FUNCTION__ << " :: n_antiprotons = " << fVec_AntiProtons.size() << '\n';
+    std::cout << "   " << __FUNCTION__ << " :: n_protons     = " << fVec_Protons.size() << '\n';
+    std::cout << "   " << __FUNCTION__ << " :: n_negkaons    = " << fVec_NegKaons.size() << '\n';
+    std::cout << "   " << __FUNCTION__ << " :: n_poskaons    = " << fVec_PosKaons.size() << '\n';
+    std::cout << "   " << __FUNCTION__ << " :: n_piminus     = " << fVec_PiMinus.size() << '\n';
+    std::cout << "   " << __FUNCTION__ << " :: n_piplus      = " << fVec_PiPlus.size() << '\n';
+    std::cout << "-- finished (" << __FUNCTION__ << ") --" << '\n';
 #endif
 }
 
-// Note: intended for light particles only, i.e., kaons and pions
+// Note: intended for light particles only, i.e., kaons and pions.
 void Manager::StoreTracks(PdgCode pdg_code) {
-
+#ifdef T2S_DEBUG
+    std::cout << "-- starting (" << __FUNCTION__ << ") --" << '\n';
+#endif
     // determine rules based on particle pdg code //
     const std::vector<size_t>* vec;
     OutputSOA::Tracks* out;
@@ -589,6 +680,9 @@ void Manager::StoreTracks(PdgCode pdg_code) {
         static_cast<KF::Particle&>(kf_track) = kf;
         Store(kf_track, *out);
     }  // end of loop over selected tracks
+#ifdef T2S_DEBUG
+    std::cout << "-- finished (" << __FUNCTION__ << ") --" << '\n';
+#endif
 }
 
 void Manager::Store(const KF::Track& track, OutputSOA::Tracks& out_branches) {
@@ -604,32 +698,32 @@ void Manager::Store(const KF::Track& track, OutputSOA::Tracks& out_branches) {
     out_branches.E->push_back(static_cast<float>(track.GetParameter(6)));
 
     out_branches.SigmaX2->push_back(static_cast<float>(track.GetCovariance(0)));
-    out_branches.SigmaYX->push_back(static_cast<float>(track.GetCovariance(1)));
+    out_branches.SigmaXY->push_back(static_cast<float>(track.GetCovariance(1)));
     out_branches.SigmaY2->push_back(static_cast<float>(track.GetCovariance(2)));
-    out_branches.SigmaZX->push_back(static_cast<float>(track.GetCovariance(3)));
-    out_branches.SigmaZY->push_back(static_cast<float>(track.GetCovariance(4)));
+    out_branches.SigmaXZ->push_back(static_cast<float>(track.GetCovariance(3)));
+    out_branches.SigmaYZ->push_back(static_cast<float>(track.GetCovariance(4)));
     out_branches.SigmaZ2->push_back(static_cast<float>(track.GetCovariance(5)));
-    out_branches.SigmaPxX->push_back(static_cast<float>(track.GetCovariance(6)));
-    out_branches.SigmaPxY->push_back(static_cast<float>(track.GetCovariance(7)));
-    out_branches.SigmaPxZ->push_back(static_cast<float>(track.GetCovariance(8)));
+    out_branches.SigmaXPx->push_back(static_cast<float>(track.GetCovariance(6)));
+    out_branches.SigmaYPx->push_back(static_cast<float>(track.GetCovariance(7)));
+    out_branches.SigmaZPx->push_back(static_cast<float>(track.GetCovariance(8)));
     out_branches.SigmaPx2->push_back(static_cast<float>(track.GetCovariance(9)));
-    out_branches.SigmaPyX->push_back(static_cast<float>(track.GetCovariance(10)));
-    out_branches.SigmaPyY->push_back(static_cast<float>(track.GetCovariance(11)));
-    out_branches.SigmaPyZ->push_back(static_cast<float>(track.GetCovariance(12)));
-    out_branches.SigmaPyPx->push_back(static_cast<float>(track.GetCovariance(13)));
+    out_branches.SigmaXPy->push_back(static_cast<float>(track.GetCovariance(10)));
+    out_branches.SigmaYPy->push_back(static_cast<float>(track.GetCovariance(11)));
+    out_branches.SigmaZPy->push_back(static_cast<float>(track.GetCovariance(12)));
+    out_branches.SigmaPxPy->push_back(static_cast<float>(track.GetCovariance(13)));
     out_branches.SigmaPy2->push_back(static_cast<float>(track.GetCovariance(14)));
-    out_branches.SigmaPzX->push_back(static_cast<float>(track.GetCovariance(15)));
-    out_branches.SigmaPzY->push_back(static_cast<float>(track.GetCovariance(16)));
-    out_branches.SigmaPzZ->push_back(static_cast<float>(track.GetCovariance(17)));
-    out_branches.SigmaPzPx->push_back(static_cast<float>(track.GetCovariance(18)));
-    out_branches.SigmaPzPy->push_back(static_cast<float>(track.GetCovariance(19)));
+    out_branches.SigmaXPz->push_back(static_cast<float>(track.GetCovariance(15)));
+    out_branches.SigmaYPz->push_back(static_cast<float>(track.GetCovariance(16)));
+    out_branches.SigmaZPz->push_back(static_cast<float>(track.GetCovariance(17)));
+    out_branches.SigmaPxPz->push_back(static_cast<float>(track.GetCovariance(18)));
+    out_branches.SigmaPyPz->push_back(static_cast<float>(track.GetCovariance(19)));
     out_branches.SigmaPz2->push_back(static_cast<float>(track.GetCovariance(20)));
-    out_branches.SigmaEX->push_back(static_cast<float>(track.GetCovariance(21)));
-    out_branches.SigmaEY->push_back(static_cast<float>(track.GetCovariance(22)));
-    out_branches.SigmaEZ->push_back(static_cast<float>(track.GetCovariance(23)));
-    out_branches.SigmaEPx->push_back(static_cast<float>(track.GetCovariance(24)));
-    out_branches.SigmaEPy->push_back(static_cast<float>(track.GetCovariance(25)));
-    out_branches.SigmaEPz->push_back(static_cast<float>(track.GetCovariance(26)));
+    out_branches.SigmaXE->push_back(static_cast<float>(track.GetCovariance(21)));
+    out_branches.SigmaYE->push_back(static_cast<float>(track.GetCovariance(22)));
+    out_branches.SigmaZE->push_back(static_cast<float>(track.GetCovariance(23)));
+    out_branches.SigmaPxE->push_back(static_cast<float>(track.GetCovariance(24)));
+    out_branches.SigmaPyE->push_back(static_cast<float>(track.GetCovariance(25)));
+    out_branches.SigmaPzE->push_back(static_cast<float>(track.GetCovariance(26)));
     out_branches.SigmaE2->push_back(static_cast<float>(track.GetCovariance(27)));
 
     if (IsMC()) {
@@ -657,6 +751,9 @@ void Manager::Store(const KF::Track& track, OutputSOA::Tracks& out_branches) {
 // ## V0s ZONE ## //
 
 void Manager::FindV0s(PdgCode pdg_code_v0) {
+#ifdef T2S_DEBUG
+    std::cout << "-- starting (" << __FUNCTION__ << ") --" << '\n';
+#endif
 
     // determine rules based on V0 pdg code //
     const std::vector<size_t>* vec_neg;
@@ -728,12 +825,22 @@ void Manager::FindV0s(PdgCode pdg_code_v0) {
 
             // apply cuts //
             if (!PassesV0Cuts(v0, pdg_code_v0)) continue;
-
 #ifdef T2S_DEBUG
-            INFO("neg%i pos%i m%f dbd%f z%f r%f dn%f dp%f pt%f et%f qt%f a%f cpv%f dpv%f", fInput_EsdIdx->at(neg->Entry()),
-                 fInput_EsdIdx->at(pos->Entry()), V0->Mass(), V0->DCAbtwDaughters(), V0->DecayZ(), V0->DecayRadius(), V0->DCANegWrtV0(),
-                 V0->DCAPosWrtV0(), V0->Pt(), V0->Eta(), V0->ArmenterosQt(), V0->ArmenterosAlpha(), V0->CPAwrt(fPropagator.PrimaryVertex()),
-                 V0->DCAwrt(fPropagator.PrimaryVertex()));
+            std::cout << "   " << __FUNCTION__ << " :: idx,neg,pos=" << v0.idx << "," << v0.idx_neg << "," << v0.idx_pos;
+            std::cout << ";x,y,z=" << v0.X() << "," << v0.Y() << "," << v0.Z();
+            std::cout << ";x,y,z(neg)=" << v0.PCA_Neg()[0] << "," << v0.PCA_Neg()[1] << "," << v0.PCA_Neg()[2];
+            std::cout << ";x,y,z(pos)=" << v0.PCA_Pos()[0] << "," << v0.PCA_Pos()[1] << "," << v0.PCA_Pos()[2];
+            std::cout << ";mass=" << v0.Mass();
+            std::cout << ";dca_dau=" << v0.DCA_Daughters();
+            std::cout << ";radius=" << v0.Radius();
+            std::cout << ";dca_neg=" << v0.DCA_Neg_V0();
+            std::cout << ";dca_pos=" << v0.DCA_Pos_V0();
+            std::cout << ";pt=" << v0.Pt();
+            std::cout << ";eta=" << v0.Eta();
+            std::cout << ";qt=" << v0.ArmenterosQt();
+            std::cout << ";alpha=" << v0.ArmenterosAlpha();
+            std::cout << ";cpa_pv=" << v0.CPA_Point(fInput_Event.PV_Xv, fInput_Event.PV_Yv, fInput_Event.PV_Zv);
+            std::cout << ";dca_pv=" << v0.DCA_Point(fInput_Event.PV_Xv, fInput_Event.PV_Yv, fInput_Event.PV_Zv) << '\n';
 #endif
 
             // store //
@@ -741,14 +848,12 @@ void Manager::FindV0s(PdgCode pdg_code_v0) {
             ++v0_entry;
         }  // end of loop over pos
     }  // end of loop over neg
+#ifdef T2S_DEBUG
+    std::cout << "-- finished (" << __FUNCTION__ << ") --" << '\n';
+#endif
 }
 
 bool Manager::PassesLambdaCuts(const KF::V0& v0) const {
-#ifdef T2S_DEBUG
-    INFO("m%f dbd%f z%f r%f dn%f dp%f pt%f et%f qt%f a%f cpv%f dpv%f", v0.Mass(), v0.DCAbtwDaughters(), v0.DecayZ(), v0.DecayRadius(),
-         v0.DCANegWrtV0(), v0.DCAPosWrtV0(), v0.Pt(), v0.Eta(), v0.ArmenterosQt(), v0.ArmenterosAlpha(), v0.CPAwrt(fPropagator.PrimaryVertex()),
-         v0.DCAwrt(fPropagator.PrimaryVertex()));
-#endif
     if (v0.Mass() < Cuts::Lambda::Min_Mass || v0.Mass() > Cuts::Lambda::Max_Mass) return false;
     if (v0.DCA_Daughters() > Cuts::Lambda::Max_DCAbtwDau) return false;
     if (v0.AbsZ() > Cuts::Lambda::AbsMax_Zv) return false;
@@ -768,11 +873,6 @@ bool Manager::PassesLambdaCuts(const KF::V0& v0) const {
 }
 
 bool Manager::PassesKaonZeroCuts(const KF::V0& v0) const {
-#ifdef T2S_DEBUG
-    INFO("m%f dbd%f z%f r%f dn%f dp%f pt%f et%f qt%f a%f cpv%f dpv%f", v0.Mass(), v0.DCAbtwDaughters(), v0.DecayZ(), v0.DecayRadius(),
-         v0.DCANegWrtV0(), v0.DCAPosWrtV0(), v0.Pt(), v0.Eta(), v0.ArmenterosQt(), v0.ArmenterosAlpha(), v0.CPAwrt(fPropagator.PrimaryVertex()),
-         v0.DCAwrt(fPropagator.PrimaryVertex()));
-#endif
     if (v0.DCA_Daughters() > Cuts::KaonZeroShort::Max_DCAbtwDau) return false;
     if (v0.Pt() < Cuts::KaonZeroShort::Min_Pt) return false;
     if (v0.Mass() < Cuts::KaonZeroShort::Min_Mass || v0.Mass() > Cuts::KaonZeroShort::Max_Mass) return false;
@@ -803,32 +903,32 @@ void Manager::Store(const KF::V0& v0, OutputSOA::V0s& out_branches) {
     out_branches.E->push_back(static_cast<float>(v0.E()));
 
     out_branches.SigmaX2->push_back(static_cast<float>(v0.GetCovariance(0)));
-    out_branches.SigmaYX->push_back(static_cast<float>(v0.GetCovariance(1)));
+    out_branches.SigmaXY->push_back(static_cast<float>(v0.GetCovariance(1)));
     out_branches.SigmaY2->push_back(static_cast<float>(v0.GetCovariance(2)));
-    out_branches.SigmaZX->push_back(static_cast<float>(v0.GetCovariance(3)));
-    out_branches.SigmaZY->push_back(static_cast<float>(v0.GetCovariance(4)));
+    out_branches.SigmaXZ->push_back(static_cast<float>(v0.GetCovariance(3)));
+    out_branches.SigmaYZ->push_back(static_cast<float>(v0.GetCovariance(4)));
     out_branches.SigmaZ2->push_back(static_cast<float>(v0.GetCovariance(5)));
-    out_branches.SigmaPxX->push_back(static_cast<float>(v0.GetCovariance(6)));
-    out_branches.SigmaPxY->push_back(static_cast<float>(v0.GetCovariance(7)));
-    out_branches.SigmaPxZ->push_back(static_cast<float>(v0.GetCovariance(8)));
+    out_branches.SigmaXPx->push_back(static_cast<float>(v0.GetCovariance(6)));
+    out_branches.SigmaYPx->push_back(static_cast<float>(v0.GetCovariance(7)));
+    out_branches.SigmaZPx->push_back(static_cast<float>(v0.GetCovariance(8)));
     out_branches.SigmaPx2->push_back(static_cast<float>(v0.GetCovariance(9)));
-    out_branches.SigmaPyX->push_back(static_cast<float>(v0.GetCovariance(10)));
-    out_branches.SigmaPyY->push_back(static_cast<float>(v0.GetCovariance(11)));
-    out_branches.SigmaPyZ->push_back(static_cast<float>(v0.GetCovariance(12)));
-    out_branches.SigmaPyPx->push_back(static_cast<float>(v0.GetCovariance(13)));
+    out_branches.SigmaXPy->push_back(static_cast<float>(v0.GetCovariance(10)));
+    out_branches.SigmaYPy->push_back(static_cast<float>(v0.GetCovariance(11)));
+    out_branches.SigmaZPy->push_back(static_cast<float>(v0.GetCovariance(12)));
+    out_branches.SigmaPxPy->push_back(static_cast<float>(v0.GetCovariance(13)));
     out_branches.SigmaPy2->push_back(static_cast<float>(v0.GetCovariance(14)));
-    out_branches.SigmaPzX->push_back(static_cast<float>(v0.GetCovariance(15)));
-    out_branches.SigmaPzY->push_back(static_cast<float>(v0.GetCovariance(16)));
-    out_branches.SigmaPzZ->push_back(static_cast<float>(v0.GetCovariance(17)));
-    out_branches.SigmaPzPx->push_back(static_cast<float>(v0.GetCovariance(18)));
-    out_branches.SigmaPzPy->push_back(static_cast<float>(v0.GetCovariance(19)));
+    out_branches.SigmaXPz->push_back(static_cast<float>(v0.GetCovariance(15)));
+    out_branches.SigmaYPz->push_back(static_cast<float>(v0.GetCovariance(16)));
+    out_branches.SigmaZPz->push_back(static_cast<float>(v0.GetCovariance(17)));
+    out_branches.SigmaPxPz->push_back(static_cast<float>(v0.GetCovariance(18)));
+    out_branches.SigmaPyPz->push_back(static_cast<float>(v0.GetCovariance(19)));
     out_branches.SigmaPz2->push_back(static_cast<float>(v0.GetCovariance(20)));
-    out_branches.SigmaEX->push_back(static_cast<float>(v0.GetCovariance(21)));
-    out_branches.SigmaEY->push_back(static_cast<float>(v0.GetCovariance(22)));
-    out_branches.SigmaEZ->push_back(static_cast<float>(v0.GetCovariance(23)));
-    out_branches.SigmaEPx->push_back(static_cast<float>(v0.GetCovariance(24)));
-    out_branches.SigmaEPy->push_back(static_cast<float>(v0.GetCovariance(25)));
-    out_branches.SigmaEPz->push_back(static_cast<float>(v0.GetCovariance(26)));
+    out_branches.SigmaXE->push_back(static_cast<float>(v0.GetCovariance(21)));
+    out_branches.SigmaYE->push_back(static_cast<float>(v0.GetCovariance(22)));
+    out_branches.SigmaZE->push_back(static_cast<float>(v0.GetCovariance(23)));
+    out_branches.SigmaPxE->push_back(static_cast<float>(v0.GetCovariance(24)));
+    out_branches.SigmaPyE->push_back(static_cast<float>(v0.GetCovariance(25)));
+    out_branches.SigmaPzE->push_back(static_cast<float>(v0.GetCovariance(26)));
     out_branches.SigmaE2->push_back(static_cast<float>(v0.GetCovariance(27)));
 
     out_branches.Neg_Entry->push_back(v0.idx_neg);
@@ -930,6 +1030,10 @@ void Manager::Store(const KF::V0& v0, OutputSOA::V0s& out_branches) {
 // ## END OF CYCLES ## //
 
 void Manager::EndOfEvent() {
+#ifdef T2S_DEBUG
+    std::cout << "-- starting (" << __FUNCTION__ << ") --" << '\n';
+#endif
+
     // fill tree //
     fOutputTree->Fill();
     // clear temporary containers //
@@ -989,16 +1093,26 @@ void Manager::EndOfEvent() {
             fOutput_PiPlus.Clear(IsMC());
             break;
     }
+#ifdef T2S_DEBUG
+    std::cout << "-- finished (" << __FUNCTION__ << ") --" << '\n';
+#endif
 }
 
 void Manager::EndOfAnalysis() {
+#ifdef T2S_DEBUG
+    std::cout << "-- starting (" << __FUNCTION__ << ") --" << '\n';
+#endif
+
     fOutputTree->Write();
-    INFO("TTree \"%s\" has been written onto TFile \"%s\".", fOutputTree->GetName(), fSettings.PathOutputFile.c_str());
+    std::cout << "TTree \"" << fOutputTree->GetName() << "\" has been written onto TFile \"" << fSettings.PathOutputFile << "\"" << '\n';
 
     fEventsTree->ResetBranchAddresses();
     fOutputTree->ResetBranchAddresses();
 
-    INFO("Done.");
+    std::cout << "Done." << '\n';
+#ifdef T2S_DEBUG
+    std::cout << "-- finished (" << __FUNCTION__ << ") --" << '\n';
+#endif
 }
 
 }  // namespace Tree2Secondaries::Analysis

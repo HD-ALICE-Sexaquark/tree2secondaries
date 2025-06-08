@@ -2,11 +2,11 @@
 #define T2S_SETTINGS_HXX
 
 #include <cctype>
+#include <iostream>
 #include <string>
 #include <vector>
 
 #include "Math/Constants.hxx"
-#include "Utilities/Logger.hxx"
 
 namespace Tree2Secondaries {
 
@@ -18,17 +18,17 @@ struct Settings {
         return prefix + suffix;
     }
     void Print() const {
-        INFO("SETTINGS");
-        INFO("========");
-        INFO("ReactionChannel = %s", StrReactionChannel().c_str());
-        INFO("InputFiles:");
+        std::cout << "SETTINGS" << '\n';
+        std::cout << "========" << '\n';
+        std::cout << "ReactionChannel = " << StrReactionChannel() << '\n';
+        std::cout << "InputFiles:" << '\n';
         for (const auto& path : PathInputFiles) {
-            INFO("- %s", path.c_str());
+            std::cout << "- " << path << '\n';
         }
-        INFO("OutputFile      = %s", PathOutputFile.c_str());
-        INFO("IsMC            = %i", IsMC);
-        INFO("IsSignalMC      = %i", IsSignalMC);
-        INFO("LimitToNEvents  = %lld", LimitToNEvents);
+        std::cout << "OutputFile      = " << PathOutputFile << '\n';
+        std::cout << "IsMC            = " << IsMC << '\n';
+        std::cout << "IsSignalMC      = " << IsSignalMC << '\n';
+        std::cout << "LimitToNEvents  = " << LimitToNEvents << '\n';
     }
 
     std::vector<std::string> PathInputFiles;

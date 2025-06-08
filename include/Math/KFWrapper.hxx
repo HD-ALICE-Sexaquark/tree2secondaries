@@ -6,7 +6,7 @@
 #include <cstddef>
 
 #include "Analysis/InputFormat.hxx"
-#include "Math/Common.hxx"
+#include "Math/Math.hxx"
 
 #include "KFParticle.hxx"
 #include "KFParticle_Math.hxx"
@@ -32,13 +32,16 @@ struct alignas(32) V0 : Particle {
     KF::Vector<3> Mom_Pos() const { return GetPCA(1).dir; };
     double AbsZ() const { return std::abs(Z()); }
     double AbsEta() const { return std::abs(Eta()); }
-    double AbsArmQtOverAlpha() const {
+    double ArmenterosQt() const {
         return Tree2Secondaries::Math::ArmenterosQt(Px(), Py(), Pz(),  //
-                                                    Mom_Neg()[0], Mom_Neg()[1], Mom_Neg()[2]) /
-               std::abs(Tree2Secondaries::Math::ArmenterosAlpha(Px(), Py(), Pz(),                          //
-                                                                Mom_Neg()[0], Mom_Neg()[1], Mom_Neg()[2],  //
-                                                                Mom_Pos()[0], Mom_Pos()[1], Mom_Pos()[2]));
-    };
+                                                    Mom_Neg()[0], Mom_Neg()[1], Mom_Neg()[2]);
+    }
+    double ArmenterosAlpha() const {
+        return Tree2Secondaries::Math::ArmenterosAlpha(Px(), Py(), Pz(),                          //
+                                                       Mom_Neg()[0], Mom_Neg()[1], Mom_Neg()[2],  //
+                                                       Mom_Pos()[0], Mom_Pos()[1], Mom_Pos()[2]);
+    }
+    double AbsArmQtOverAlpha() const { return ArmenterosQt() / std::abs(ArmenterosAlpha()); };
     double DCA_Point(float x, float y, float z) const {
         return Tree2Secondaries::Math::FastDCALineVertex({Px(), Py(), Pz()}, {X(), Y(), Z()}, {x, y, z});
     }

@@ -8,7 +8,7 @@ namespace T2S = Tree2Secondaries;
 int main(int argc, char *argv[]) {
 
     T2S::Settings settings;
-    T2S::Parser parser(argc, argv, settings, "II. Tree2Secondaries");
+    T2S::Parser parser(argc, argv, settings, "Tree2Secondaries");
     if (parser.HelpOrError) return parser.ExitCode;
     settings.Print();
 
