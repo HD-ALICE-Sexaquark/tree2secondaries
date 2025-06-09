@@ -23,8 +23,8 @@ bool Packager::Initialize() {
         std::cerr << "Couldn't manage to read any entry." << '\n';
         return false;
     }
-    std::cout << "TChain \"Events\" loaded successfully with " << fEventsTree->GetNtrees() << " trees and " << fEventsTree->GetEntries()
-              << " total entries." << '\n';
+    std::cout << "TChain \"" << fEventsTree->GetName() << "\" loaded successfully with " << fEventsTree->GetNtrees() << " trees and "
+              << fEventsTree->GetEntries() << " total entries." << '\n';
 
     ConnectInputBranches();
 
@@ -56,6 +56,7 @@ void Packager::ConnectInputBranches() {
 void Packager::ConnectBranchesEvents() {
     fEventsTree->SetBranchStatus("RunNumber", true);
     fEventsTree->SetBranchStatus("DirNumber", true);
+    if (!IsMC()) fEventsTree->SetBranchStatus("DirNumberB", true);
     fEventsTree->SetBranchStatus("EventNumber", true);
     fEventsTree->SetBranchStatus("Centrality", true);
     fEventsTree->SetBranchStatus("MagneticField", true);
@@ -65,6 +66,7 @@ void Packager::ConnectBranchesEvents() {
 
     fEventsTree->SetBranchAddress("RunNumber", &fInput_Event.RunNumber);
     fEventsTree->SetBranchAddress("DirNumber", &fInput_Event.DirNumber);
+    if (!IsMC()) fEventsTree->SetBranchAddress("DirNumberB", &fInput_Event.DirNumberB);
     fEventsTree->SetBranchAddress("EventNumber", &fInput_Event.EventNumber);
     fEventsTree->SetBranchAddress("Centrality", &fInput_Event.Centrality);
     fEventsTree->SetBranchAddress("MagneticField", &fInput_Event.MagneticField);
@@ -77,9 +79,9 @@ void Packager::ConnectBranchesEvents() {
         fEventsTree->SetBranchStatus("MC_PV_Yv", true);
         fEventsTree->SetBranchStatus("MC_PV_Zv", true);
 
-        fEventsTree->SetBranchAddress("MC_PV_Xv", &fInput_Event.PV_TrueXv);
-        fEventsTree->SetBranchAddress("MC_PV_Yv", &fInput_Event.PV_TrueYv);
-        fEventsTree->SetBranchAddress("MC_PV_Zv", &fInput_Event.PV_TrueZv);
+        fEventsTree->SetBranchAddress("MC_PV_Xv", &fInput_Event.MC_PV_Xv);
+        fEventsTree->SetBranchAddress("MC_PV_Yv", &fInput_Event.MC_PV_Yv);
+        fEventsTree->SetBranchAddress("MC_PV_Zv", &fInput_Event.MC_PV_Zv);
     }
 }
 
@@ -111,9 +113,9 @@ void Packager::ConnectBranchesMC() {
 #ifdef T2S_DEBUG
     std::cout << "-- starting (" << __FUNCTION__ << ") --" << '\n';
 #endif
-    fEventsTree->SetBranchStatus("MC_Xv", true);
-    fEventsTree->SetBranchStatus("MC_Yv", true);
-    fEventsTree->SetBranchStatus("MC_Zv", true);
+    fEventsTree->SetBranchStatus("MC_X", true);
+    fEventsTree->SetBranchStatus("MC_Y", true);
+    fEventsTree->SetBranchStatus("MC_Z", true);
     fEventsTree->SetBranchStatus("MC_Px", true);
     fEventsTree->SetBranchStatus("MC_Py", true);
     fEventsTree->SetBranchStatus("MC_Pz", true);
@@ -127,9 +129,9 @@ void Packager::ConnectBranchesMC() {
     fEventsTree->SetBranchStatus("MC_IsSecFromMat", true);
     fEventsTree->SetBranchStatus("MC_IsSecFromWeak", true);
 
-    fEventsTree->SetBranchAddress("MC_Xv", &fTruthHandler.fInput_MC.Xv);
-    fEventsTree->SetBranchAddress("MC_Yv", &fTruthHandler.fInput_MC.Yv);
-    fEventsTree->SetBranchAddress("MC_Zv", &fTruthHandler.fInput_MC.Zv);
+    fEventsTree->SetBranchAddress("MC_X", &fTruthHandler.fInput_MC.X);
+    fEventsTree->SetBranchAddress("MC_Y", &fTruthHandler.fInput_MC.Y);
+    fEventsTree->SetBranchAddress("MC_Z", &fTruthHandler.fInput_MC.Z);
     fEventsTree->SetBranchAddress("MC_Px", &fTruthHandler.fInput_MC.Px);
     fEventsTree->SetBranchAddress("MC_Py", &fTruthHandler.fInput_MC.Py);
     fEventsTree->SetBranchAddress("MC_Pz", &fTruthHandler.fInput_MC.Pz);
@@ -151,12 +153,12 @@ void Packager::ConnectBranchesTracks() {
 #ifdef T2S_DEBUG
     std::cout << "-- starting (" << __FUNCTION__ << ") --" << '\n';
 #endif
-    fEventsTree->SetBranchStatus("Track_Px", true);
-    fEventsTree->SetBranchStatus("Track_Py", true);
-    fEventsTree->SetBranchStatus("Track_Pz", true);
     fEventsTree->SetBranchStatus("Track_X", true);
     fEventsTree->SetBranchStatus("Track_Y", true);
     fEventsTree->SetBranchStatus("Track_Z", true);
+    fEventsTree->SetBranchStatus("Track_Px", true);
+    fEventsTree->SetBranchStatus("Track_Py", true);
+    fEventsTree->SetBranchStatus("Track_Pz", true);
     fEventsTree->SetBranchStatus("Track_Charge", true);
     fEventsTree->SetBranchStatus("Track_NSigmaPion", true);
     fEventsTree->SetBranchStatus("Track_NSigmaKaon", true);
@@ -182,12 +184,12 @@ void Packager::ConnectBranchesTracks() {
     fEventsTree->SetBranchStatus("Track_Sigma1PtTgl", true);
     fEventsTree->SetBranchStatus("Track_Sigma1Pt2", true);
 
-    fEventsTree->SetBranchAddress("Track_Px", &fInput_Tracks.Px);
-    fEventsTree->SetBranchAddress("Track_Py", &fInput_Tracks.Py);
-    fEventsTree->SetBranchAddress("Track_Pz", &fInput_Tracks.Pz);
     fEventsTree->SetBranchAddress("Track_X", &fInput_Tracks.X);
     fEventsTree->SetBranchAddress("Track_Y", &fInput_Tracks.Y);
     fEventsTree->SetBranchAddress("Track_Z", &fInput_Tracks.Z);
+    fEventsTree->SetBranchAddress("Track_Px", &fInput_Tracks.Px);
+    fEventsTree->SetBranchAddress("Track_Py", &fInput_Tracks.Py);
+    fEventsTree->SetBranchAddress("Track_Pz", &fInput_Tracks.Pz);
     fEventsTree->SetBranchAddress("Track_Charge", &fInput_Tracks.Charge);
     fEventsTree->SetBranchAddress("Track_NSigmaPion", &fInput_Tracks.NSigmaPion);
     fEventsTree->SetBranchAddress("Track_NSigmaKaon", &fInput_Tracks.NSigmaKaon);
@@ -325,6 +327,7 @@ void Packager::CreateOutputBranchesEvents() {
 
     fOutputTree->Branch("RunNumber", &fOutput_Event.RunNumber);
     fOutputTree->Branch("DirNumber", &fOutput_Event.DirNumber);
+    if (!IsMC()) fOutputTree->Branch("DirNumberB", &fOutput_Event.DirNumberB);
     fOutputTree->Branch("EventNumber", &fOutput_Event.EventNumber);
     fOutputTree->Branch("Centrality", &fOutput_Event.Centrality);
     fOutputTree->Branch("MagneticField", &fOutput_Event.MagneticField);
@@ -333,9 +336,9 @@ void Packager::CreateOutputBranchesEvents() {
     fOutputTree->Branch("PV_Zv", &fOutput_Event.PV_Zv);
 
     if (IsMC()) {
-        fOutputTree->Branch("MC_PV_Xv", &fOutput_Event.PV_TrueXv);
-        fOutputTree->Branch("MC_PV_Yv", &fOutput_Event.PV_TrueYv);
-        fOutputTree->Branch("MC_PV_Zv", &fOutput_Event.PV_TrueZv);
+        fOutputTree->Branch("MC_PV_Xv", &fOutput_Event.MC_PV_Xv);
+        fOutputTree->Branch("MC_PV_Yv", &fOutput_Event.MC_PV_Yv);
+        fOutputTree->Branch("MC_PV_Zv", &fOutput_Event.MC_PV_Zv);
     }
 #ifdef T2S_DEBUG
     std::cout << "-- finished (" << __FUNCTION__ << ") --" << '\n';
@@ -365,65 +368,67 @@ void Packager::CreateOutputBranchesV0s(const std::string& name_v0, PackedEvents:
 #endif
 
     fOutputTree->Branch((name_v0 + "_Entry").c_str(), &out_branches.Entry);
-    fOutputTree->Branch((name_v0 + "_Xv").c_str(), &out_branches.Xv);
-    fOutputTree->Branch((name_v0 + "_Yv").c_str(), &out_branches.Yv);
-    fOutputTree->Branch((name_v0 + "_Zv").c_str(), &out_branches.Zv);
+    fOutputTree->Branch((name_v0 + "_X").c_str(), &out_branches.X);
+    fOutputTree->Branch((name_v0 + "_Y").c_str(), &out_branches.Y);
+    fOutputTree->Branch((name_v0 + "_Z").c_str(), &out_branches.Z);
     fOutputTree->Branch((name_v0 + "_Px").c_str(), &out_branches.Px);
     fOutputTree->Branch((name_v0 + "_Py").c_str(), &out_branches.Py);
     fOutputTree->Branch((name_v0 + "_Pz").c_str(), &out_branches.Pz);
     fOutputTree->Branch((name_v0 + "_E").c_str(), &out_branches.E);
 
-    fOutputTree->Branch((name_v0 + "_SigmaX2").c_str(), &out_branches.SigmaX2);
-    fOutputTree->Branch((name_v0 + "_SigmaXY").c_str(), &out_branches.SigmaXY);
-    fOutputTree->Branch((name_v0 + "_SigmaY2").c_str(), &out_branches.SigmaY2);
-    fOutputTree->Branch((name_v0 + "_SigmaXZ").c_str(), &out_branches.SigmaXZ);
-    fOutputTree->Branch((name_v0 + "_SigmaYZ").c_str(), &out_branches.SigmaYZ);
-    fOutputTree->Branch((name_v0 + "_SigmaZ2").c_str(), &out_branches.SigmaZ2);
-    fOutputTree->Branch((name_v0 + "_SigmaXPx").c_str(), &out_branches.SigmaXPx);
-    fOutputTree->Branch((name_v0 + "_SigmaYPx").c_str(), &out_branches.SigmaYPx);
-    fOutputTree->Branch((name_v0 + "_SigmaZPx").c_str(), &out_branches.SigmaZPx);
-    fOutputTree->Branch((name_v0 + "_SigmaPx2").c_str(), &out_branches.SigmaPx2);
-    fOutputTree->Branch((name_v0 + "_SigmaXPy").c_str(), &out_branches.SigmaXPy);
-    fOutputTree->Branch((name_v0 + "_SigmYaPy").c_str(), &out_branches.SigmaYPy);
-    fOutputTree->Branch((name_v0 + "_SigmaZPy").c_str(), &out_branches.SigmaZPy);
-    fOutputTree->Branch((name_v0 + "_SigmaPxPy").c_str(), &out_branches.SigmaPxPy);
-    fOutputTree->Branch((name_v0 + "_SigmaPy2").c_str(), &out_branches.SigmaPy2);
-    fOutputTree->Branch((name_v0 + "_SigmaXPz").c_str(), &out_branches.SigmaXPz);
-    fOutputTree->Branch((name_v0 + "_SigmaYPz").c_str(), &out_branches.SigmaYPz);
-    fOutputTree->Branch((name_v0 + "_SigmaZPz").c_str(), &out_branches.SigmaZPz);
-    fOutputTree->Branch((name_v0 + "_SigmaPxPz").c_str(), &out_branches.SigmaPxPz);
-    fOutputTree->Branch((name_v0 + "_SigmaPyPz").c_str(), &out_branches.SigmaPyPz);
-    fOutputTree->Branch((name_v0 + "_SigmaPz2").c_str(), &out_branches.SigmaPz2);
-    fOutputTree->Branch((name_v0 + "_SigmaXE").c_str(), &out_branches.SigmaXE);
-    fOutputTree->Branch((name_v0 + "_SigmaYE").c_str(), &out_branches.SigmaYE);
-    fOutputTree->Branch((name_v0 + "_SigmaZE").c_str(), &out_branches.SigmaZE);
-    fOutputTree->Branch((name_v0 + "_SigmaPxE").c_str(), &out_branches.SigmaPxE);
-    fOutputTree->Branch((name_v0 + "_SigmaPyE").c_str(), &out_branches.SigmaPyE);
-    fOutputTree->Branch((name_v0 + "_SigmaPzE").c_str(), &out_branches.SigmaPzE);
-    fOutputTree->Branch((name_v0 + "_SigmaE2").c_str(), &out_branches.SigmaE2);
+    fOutputTree->Branch((name_v0 + "_SigmaX2").c_str(), &out_branches.Sigma.X2);
+    fOutputTree->Branch((name_v0 + "_SigmaXY").c_str(), &out_branches.Sigma.XY);
+    fOutputTree->Branch((name_v0 + "_SigmaY2").c_str(), &out_branches.Sigma.Y2);
+    fOutputTree->Branch((name_v0 + "_SigmaXZ").c_str(), &out_branches.Sigma.XZ);
+    fOutputTree->Branch((name_v0 + "_SigmaYZ").c_str(), &out_branches.Sigma.YZ);
+    fOutputTree->Branch((name_v0 + "_SigmaZ2").c_str(), &out_branches.Sigma.Z2);
+    fOutputTree->Branch((name_v0 + "_SigmaXPx").c_str(), &out_branches.Sigma.XPx);
+    fOutputTree->Branch((name_v0 + "_SigmaYPx").c_str(), &out_branches.Sigma.YPx);
+    fOutputTree->Branch((name_v0 + "_SigmaZPx").c_str(), &out_branches.Sigma.ZPx);
+    fOutputTree->Branch((name_v0 + "_SigmaPx2").c_str(), &out_branches.Sigma.Px2);
+    fOutputTree->Branch((name_v0 + "_SigmaXPy").c_str(), &out_branches.Sigma.XPy);
+    fOutputTree->Branch((name_v0 + "_SigmaYPy").c_str(), &out_branches.Sigma.YPy);
+    fOutputTree->Branch((name_v0 + "_SigmaZPy").c_str(), &out_branches.Sigma.ZPy);
+    fOutputTree->Branch((name_v0 + "_SigmaPxPy").c_str(), &out_branches.Sigma.PxPy);
+    fOutputTree->Branch((name_v0 + "_SigmaPy2").c_str(), &out_branches.Sigma.Py2);
+    fOutputTree->Branch((name_v0 + "_SigmaXPz").c_str(), &out_branches.Sigma.XPz);
+    fOutputTree->Branch((name_v0 + "_SigmaYPz").c_str(), &out_branches.Sigma.YPz);
+    fOutputTree->Branch((name_v0 + "_SigmaZPz").c_str(), &out_branches.Sigma.ZPz);
+    fOutputTree->Branch((name_v0 + "_SigmaPxPz").c_str(), &out_branches.Sigma.PxPz);
+    fOutputTree->Branch((name_v0 + "_SigmaPyPz").c_str(), &out_branches.Sigma.PyPz);
+    fOutputTree->Branch((name_v0 + "_SigmaPz2").c_str(), &out_branches.Sigma.Pz2);
+    fOutputTree->Branch((name_v0 + "_SigmaXE").c_str(), &out_branches.Sigma.XE);
+    fOutputTree->Branch((name_v0 + "_SigmaYE").c_str(), &out_branches.Sigma.YE);
+    fOutputTree->Branch((name_v0 + "_SigmaZE").c_str(), &out_branches.Sigma.ZE);
+    fOutputTree->Branch((name_v0 + "_SigmaPxE").c_str(), &out_branches.Sigma.PxE);
+    fOutputTree->Branch((name_v0 + "_SigmaPyE").c_str(), &out_branches.Sigma.PyE);
+    fOutputTree->Branch((name_v0 + "_SigmaPzE").c_str(), &out_branches.Sigma.PzE);
+    fOutputTree->Branch((name_v0 + "_SigmaE2").c_str(), &out_branches.Sigma.E2);
 
-    fOutputTree->Branch((name_v0 + "_Neg_Entry").c_str(), &out_branches.Neg_Entry);
-    fOutputTree->Branch((name_v0 + "_Neg_Xv").c_str(), &out_branches.Neg_Xv);
-    fOutputTree->Branch((name_v0 + "_Neg_Yv").c_str(), &out_branches.Neg_Yv);
-    fOutputTree->Branch((name_v0 + "_Neg_Zv").c_str(), &out_branches.Neg_Zv);
-    fOutputTree->Branch((name_v0 + "_Neg_Px").c_str(), &out_branches.Neg_Px);
-    fOutputTree->Branch((name_v0 + "_Neg_Py").c_str(), &out_branches.Neg_Py);
-    fOutputTree->Branch((name_v0 + "_Neg_Pz").c_str(), &out_branches.Neg_Pz);
+    fOutputTree->Branch((name_v0 + "_Neg_Entry").c_str(), &out_branches.Neg.Entry);
+    fOutputTree->Branch((name_v0 + "_Neg_X").c_str(), &out_branches.Neg.X);
+    fOutputTree->Branch((name_v0 + "_Neg_Y").c_str(), &out_branches.Neg.Y);
+    fOutputTree->Branch((name_v0 + "_Neg_Z").c_str(), &out_branches.Neg.Z);
+    fOutputTree->Branch((name_v0 + "_Neg_Px").c_str(), &out_branches.Neg.Px);
+    fOutputTree->Branch((name_v0 + "_Neg_Py").c_str(), &out_branches.Neg.Py);
+    fOutputTree->Branch((name_v0 + "_Neg_Pz").c_str(), &out_branches.Neg.Pz);
+    fOutputTree->Branch((name_v0 + "_Neg_E").c_str(), &out_branches.Neg.E);
 
-    fOutputTree->Branch((name_v0 + "_Pos_Entry").c_str(), &out_branches.Pos_Entry);
-    fOutputTree->Branch((name_v0 + "_Pos_Xv").c_str(), &out_branches.Pos_Xv);
-    fOutputTree->Branch((name_v0 + "_Pos_Yv").c_str(), &out_branches.Pos_Yv);
-    fOutputTree->Branch((name_v0 + "_Pos_Zv").c_str(), &out_branches.Pos_Zv);
-    fOutputTree->Branch((name_v0 + "_Pos_Px").c_str(), &out_branches.Pos_Px);
-    fOutputTree->Branch((name_v0 + "_Pos_Py").c_str(), &out_branches.Pos_Py);
-    fOutputTree->Branch((name_v0 + "_Pos_Pz").c_str(), &out_branches.Pos_Pz);
+    fOutputTree->Branch((name_v0 + "_Pos_Entry").c_str(), &out_branches.Pos.Entry);
+    fOutputTree->Branch((name_v0 + "_Pos_X").c_str(), &out_branches.Pos.X);
+    fOutputTree->Branch((name_v0 + "_Pos_Y").c_str(), &out_branches.Pos.Y);
+    fOutputTree->Branch((name_v0 + "_Pos_Z").c_str(), &out_branches.Pos.Z);
+    fOutputTree->Branch((name_v0 + "_Pos_Px").c_str(), &out_branches.Pos.Px);
+    fOutputTree->Branch((name_v0 + "_Pos_Py").c_str(), &out_branches.Pos.Py);
+    fOutputTree->Branch((name_v0 + "_Pos_Pz").c_str(), &out_branches.Pos.Pz);
+    fOutputTree->Branch((name_v0 + "_Pos_E").c_str(), &out_branches.Pos.E);
 
     if (IsMC()) {
         fOutputTree->Branch((name_v0 + "_MC_Entry").c_str(), &out_branches.True.Entry);
 
-        fOutputTree->Branch((name_v0 + "_MC_Xv").c_str(), &out_branches.True.Xv);
-        fOutputTree->Branch((name_v0 + "_MC_Yv").c_str(), &out_branches.True.Yv);
-        fOutputTree->Branch((name_v0 + "_MC_Zv").c_str(), &out_branches.True.Zv);
+        fOutputTree->Branch((name_v0 + "_MC_X").c_str(), &out_branches.True.X);
+        fOutputTree->Branch((name_v0 + "_MC_Y").c_str(), &out_branches.True.Y);
+        fOutputTree->Branch((name_v0 + "_MC_Z").c_str(), &out_branches.True.Z);
         fOutputTree->Branch((name_v0 + "_MC_Px").c_str(), &out_branches.True.Px);
         fOutputTree->Branch((name_v0 + "_MC_Py").c_str(), &out_branches.True.Py);
         fOutputTree->Branch((name_v0 + "_MC_Pz").c_str(), &out_branches.True.Pz);
@@ -439,9 +444,9 @@ void Packager::CreateOutputBranchesV0s(const std::string& name_v0, PackedEvents:
         /*
                 fOutputTree->Branch((name_v0 + "_MC_Neg_Entry").c_str(), &out_branches.Neg.True.Entry);
 
-                fOutputTree->Branch((name_v0 + "_MC_Neg_Xv").c_str(), &out_branches.Neg.True.Xv);
-                fOutputTree->Branch((name_v0 + "_MC_Neg_Yv").c_str(), &out_branches.Neg.True.Yv);
-                fOutputTree->Branch((name_v0 + "_MC_Neg_Zv").c_str(), &out_branches.Neg.True.Zv);
+                fOutputTree->Branch((name_v0 + "_MC_Neg_X").c_str(), &out_branches.Neg.True.X);
+                fOutputTree->Branch((name_v0 + "_MC_Neg_Y").c_str(), &out_branches.Neg.True.Y);
+                fOutputTree->Branch((name_v0 + "_MC_Neg_Z").c_str(), &out_branches.Neg.True.Z);
                 fOutputTree->Branch((name_v0 + "_MC_Neg_Px").c_str(), &out_branches.Neg.True.Px);
                 fOutputTree->Branch((name_v0 + "_MC_Neg_Py").c_str(), &out_branches.Neg.True.Py);
                 fOutputTree->Branch((name_v0 + "_MC_Neg_Pz").c_str(), &out_branches.Neg.True.Pz);
@@ -486,49 +491,49 @@ void Packager::CreateOutputBranchesTracks(const std::string& name_part, PackedEv
 
     fOutputTree->Branch((name_part + "_Entry").c_str(), &out_branches.Entry);
 
-    fOutputTree->Branch((name_part + "_Xv").c_str(), &out_branches.Xv);
-    fOutputTree->Branch((name_part + "_Yv").c_str(), &out_branches.Yv);
-    fOutputTree->Branch((name_part + "_Zv").c_str(), &out_branches.Zv);
+    fOutputTree->Branch((name_part + "_X").c_str(), &out_branches.X);
+    fOutputTree->Branch((name_part + "_Y").c_str(), &out_branches.Y);
+    fOutputTree->Branch((name_part + "_Z").c_str(), &out_branches.Z);
     fOutputTree->Branch((name_part + "_Px").c_str(), &out_branches.Px);
     fOutputTree->Branch((name_part + "_Py").c_str(), &out_branches.Py);
     fOutputTree->Branch((name_part + "_Pz").c_str(), &out_branches.Pz);
     fOutputTree->Branch((name_part + "_E").c_str(), &out_branches.E);
 
-    fOutputTree->Branch((name_part + "_SigmaX2").c_str(), &out_branches.SigmaX2);
-    fOutputTree->Branch((name_part + "_SigmaXY").c_str(), &out_branches.SigmaXY);
-    fOutputTree->Branch((name_part + "_SigmaY2").c_str(), &out_branches.SigmaY2);
-    fOutputTree->Branch((name_part + "_SigmaXZ").c_str(), &out_branches.SigmaXZ);
-    fOutputTree->Branch((name_part + "_SigmaYZ").c_str(), &out_branches.SigmaYZ);
-    fOutputTree->Branch((name_part + "_SigmaZ2").c_str(), &out_branches.SigmaZ2);
-    fOutputTree->Branch((name_part + "_SigmaXPx").c_str(), &out_branches.SigmaXPx);
-    fOutputTree->Branch((name_part + "_SigmaYPx").c_str(), &out_branches.SigmaYPx);
-    fOutputTree->Branch((name_part + "_SigmaZPx").c_str(), &out_branches.SigmaZPx);
-    fOutputTree->Branch((name_part + "_SigmaPx2").c_str(), &out_branches.SigmaPx2);
-    fOutputTree->Branch((name_part + "_SigmaXPy").c_str(), &out_branches.SigmaXPy);
-    fOutputTree->Branch((name_part + "_SigmYaPy").c_str(), &out_branches.SigmaYPy);
-    fOutputTree->Branch((name_part + "_SigmaZPy").c_str(), &out_branches.SigmaZPy);
-    fOutputTree->Branch((name_part + "_SigmaPxPy").c_str(), &out_branches.SigmaPxPy);
-    fOutputTree->Branch((name_part + "_SigmaPy2").c_str(), &out_branches.SigmaPy2);
-    fOutputTree->Branch((name_part + "_SigmaXPz").c_str(), &out_branches.SigmaXPz);
-    fOutputTree->Branch((name_part + "_SigmaYPz").c_str(), &out_branches.SigmaYPz);
-    fOutputTree->Branch((name_part + "_SigmaZPz").c_str(), &out_branches.SigmaZPz);
-    fOutputTree->Branch((name_part + "_SigmaPxPz").c_str(), &out_branches.SigmaPxPz);
-    fOutputTree->Branch((name_part + "_SigmaPyPz").c_str(), &out_branches.SigmaPyPz);
-    fOutputTree->Branch((name_part + "_SigmaPz2").c_str(), &out_branches.SigmaPz2);
-    fOutputTree->Branch((name_part + "_SigmaXE").c_str(), &out_branches.SigmaXE);
-    fOutputTree->Branch((name_part + "_SigmaYE").c_str(), &out_branches.SigmaYE);
-    fOutputTree->Branch((name_part + "_SigmaZE").c_str(), &out_branches.SigmaZE);
-    fOutputTree->Branch((name_part + "_SigmaPxE").c_str(), &out_branches.SigmaPxE);
-    fOutputTree->Branch((name_part + "_SigmaPyE").c_str(), &out_branches.SigmaPyE);
-    fOutputTree->Branch((name_part + "_SigmaPzE").c_str(), &out_branches.SigmaPzE);
-    fOutputTree->Branch((name_part + "_SigmaE2").c_str(), &out_branches.SigmaE2);
+    fOutputTree->Branch((name_part + "_SigmaX2").c_str(), &out_branches.Sigma.X2);
+    fOutputTree->Branch((name_part + "_SigmaXY").c_str(), &out_branches.Sigma.XY);
+    fOutputTree->Branch((name_part + "_SigmaY2").c_str(), &out_branches.Sigma.Y2);
+    fOutputTree->Branch((name_part + "_SigmaXZ").c_str(), &out_branches.Sigma.XZ);
+    fOutputTree->Branch((name_part + "_SigmaYZ").c_str(), &out_branches.Sigma.YZ);
+    fOutputTree->Branch((name_part + "_SigmaZ2").c_str(), &out_branches.Sigma.Z2);
+    fOutputTree->Branch((name_part + "_SigmaXPx").c_str(), &out_branches.Sigma.XPx);
+    fOutputTree->Branch((name_part + "_SigmaYPx").c_str(), &out_branches.Sigma.YPx);
+    fOutputTree->Branch((name_part + "_SigmaZPx").c_str(), &out_branches.Sigma.ZPx);
+    fOutputTree->Branch((name_part + "_SigmaPx2").c_str(), &out_branches.Sigma.Px2);
+    fOutputTree->Branch((name_part + "_SigmaXPy").c_str(), &out_branches.Sigma.XPy);
+    fOutputTree->Branch((name_part + "_SigmYaPy").c_str(), &out_branches.Sigma.YPy);
+    fOutputTree->Branch((name_part + "_SigmaZPy").c_str(), &out_branches.Sigma.ZPy);
+    fOutputTree->Branch((name_part + "_SigmaPxPy").c_str(), &out_branches.Sigma.PxPy);
+    fOutputTree->Branch((name_part + "_SigmaPy2").c_str(), &out_branches.Sigma.Py2);
+    fOutputTree->Branch((name_part + "_SigmaXPz").c_str(), &out_branches.Sigma.XPz);
+    fOutputTree->Branch((name_part + "_SigmaYPz").c_str(), &out_branches.Sigma.YPz);
+    fOutputTree->Branch((name_part + "_SigmaZPz").c_str(), &out_branches.Sigma.ZPz);
+    fOutputTree->Branch((name_part + "_SigmaPxPz").c_str(), &out_branches.Sigma.PxPz);
+    fOutputTree->Branch((name_part + "_SigmaPyPz").c_str(), &out_branches.Sigma.PyPz);
+    fOutputTree->Branch((name_part + "_SigmaPz2").c_str(), &out_branches.Sigma.Pz2);
+    fOutputTree->Branch((name_part + "_SigmaXE").c_str(), &out_branches.Sigma.XE);
+    fOutputTree->Branch((name_part + "_SigmaYE").c_str(), &out_branches.Sigma.YE);
+    fOutputTree->Branch((name_part + "_SigmaZE").c_str(), &out_branches.Sigma.ZE);
+    fOutputTree->Branch((name_part + "_SigmaPxE").c_str(), &out_branches.Sigma.PxE);
+    fOutputTree->Branch((name_part + "_SigmaPyE").c_str(), &out_branches.Sigma.PyE);
+    fOutputTree->Branch((name_part + "_SigmaPzE").c_str(), &out_branches.Sigma.PzE);
+    fOutputTree->Branch((name_part + "_SigmaE2").c_str(), &out_branches.Sigma.E2);
 
     if (IsMC()) {
         fOutputTree->Branch((name_part + "_MC_Entry").c_str(), &out_branches.True.Entry);
 
-        fOutputTree->Branch((name_part + "_MC_Xv").c_str(), &out_branches.True.Xv);
-        fOutputTree->Branch((name_part + "_MC_Yv").c_str(), &out_branches.True.Yv);
-        fOutputTree->Branch((name_part + "_MC_Zv").c_str(), &out_branches.True.Zv);
+        fOutputTree->Branch((name_part + "_MC_X").c_str(), &out_branches.True.X);
+        fOutputTree->Branch((name_part + "_MC_Y").c_str(), &out_branches.True.Y);
+        fOutputTree->Branch((name_part + "_MC_Z").c_str(), &out_branches.True.Z);
         fOutputTree->Branch((name_part + "_MC_Px").c_str(), &out_branches.True.Px);
         fOutputTree->Branch((name_part + "_MC_Py").c_str(), &out_branches.True.Py);
         fOutputTree->Branch((name_part + "_MC_Pz").c_str(), &out_branches.True.Pz);
@@ -553,6 +558,7 @@ void Packager::ProcessEvent() {
 #endif
     fOutput_Event.RunNumber = fInput_Event.RunNumber;
     fOutput_Event.DirNumber = fInput_Event.DirNumber;
+    if (!IsMC()) fOutput_Event.DirNumberB = fInput_Event.DirNumberB;
     fOutput_Event.EventNumber = fInput_Event.EventNumber;
     fOutput_Event.Centrality = fInput_Event.Centrality;
     fOutput_Event.MagneticField = fInput_Event.MagneticField;
@@ -561,9 +567,9 @@ void Packager::ProcessEvent() {
     fOutput_Event.PV_Zv = fInput_Event.PV_Zv;
 
     if (IsMC()) {
-        fOutput_Event.PV_TrueXv = fInput_Event.PV_TrueXv;
-        fOutput_Event.PV_TrueYv = fInput_Event.PV_TrueYv;
-        fOutput_Event.PV_TrueZv = fInput_Event.PV_TrueZv;
+        fOutput_Event.MC_PV_Xv = fInput_Event.MC_PV_Xv;
+        fOutput_Event.MC_PV_Yv = fInput_Event.MC_PV_Yv;
+        fOutput_Event.MC_PV_Zv = fInput_Event.MC_PV_Zv;
     }
 #ifdef T2S_DEBUG
     std::cout << "-- finished (" << __FUNCTION__ << ") --" << '\n';
@@ -682,51 +688,50 @@ void Packager::PackTracks(PdgCode pdg_code) {
 void Packager::Store(const KF::Track& track, PackedEvents::Tracks& out_branches) {
 
     out_branches.Entry->push_back(track.idx);
-
-    out_branches.Xv->push_back(static_cast<float>(track.GetParameter(0)));
-    out_branches.Yv->push_back(static_cast<float>(track.GetParameter(1)));
-    out_branches.Zv->push_back(static_cast<float>(track.GetParameter(2)));
+    out_branches.X->push_back(static_cast<float>(track.GetParameter(0)));
+    out_branches.Y->push_back(static_cast<float>(track.GetParameter(1)));
+    out_branches.Z->push_back(static_cast<float>(track.GetParameter(2)));
     out_branches.Px->push_back(static_cast<float>(track.GetParameter(3)));
     out_branches.Py->push_back(static_cast<float>(track.GetParameter(4)));
     out_branches.Pz->push_back(static_cast<float>(track.GetParameter(5)));
     out_branches.E->push_back(static_cast<float>(track.GetParameter(6)));
 
-    out_branches.SigmaX2->push_back(static_cast<float>(track.GetCovariance(0)));
-    out_branches.SigmaXY->push_back(static_cast<float>(track.GetCovariance(1)));
-    out_branches.SigmaY2->push_back(static_cast<float>(track.GetCovariance(2)));
-    out_branches.SigmaXZ->push_back(static_cast<float>(track.GetCovariance(3)));
-    out_branches.SigmaYZ->push_back(static_cast<float>(track.GetCovariance(4)));
-    out_branches.SigmaZ2->push_back(static_cast<float>(track.GetCovariance(5)));
-    out_branches.SigmaXPx->push_back(static_cast<float>(track.GetCovariance(6)));
-    out_branches.SigmaYPx->push_back(static_cast<float>(track.GetCovariance(7)));
-    out_branches.SigmaZPx->push_back(static_cast<float>(track.GetCovariance(8)));
-    out_branches.SigmaPx2->push_back(static_cast<float>(track.GetCovariance(9)));
-    out_branches.SigmaXPy->push_back(static_cast<float>(track.GetCovariance(10)));
-    out_branches.SigmaYPy->push_back(static_cast<float>(track.GetCovariance(11)));
-    out_branches.SigmaZPy->push_back(static_cast<float>(track.GetCovariance(12)));
-    out_branches.SigmaPxPy->push_back(static_cast<float>(track.GetCovariance(13)));
-    out_branches.SigmaPy2->push_back(static_cast<float>(track.GetCovariance(14)));
-    out_branches.SigmaXPz->push_back(static_cast<float>(track.GetCovariance(15)));
-    out_branches.SigmaYPz->push_back(static_cast<float>(track.GetCovariance(16)));
-    out_branches.SigmaZPz->push_back(static_cast<float>(track.GetCovariance(17)));
-    out_branches.SigmaPxPz->push_back(static_cast<float>(track.GetCovariance(18)));
-    out_branches.SigmaPyPz->push_back(static_cast<float>(track.GetCovariance(19)));
-    out_branches.SigmaPz2->push_back(static_cast<float>(track.GetCovariance(20)));
-    out_branches.SigmaXE->push_back(static_cast<float>(track.GetCovariance(21)));
-    out_branches.SigmaYE->push_back(static_cast<float>(track.GetCovariance(22)));
-    out_branches.SigmaZE->push_back(static_cast<float>(track.GetCovariance(23)));
-    out_branches.SigmaPxE->push_back(static_cast<float>(track.GetCovariance(24)));
-    out_branches.SigmaPyE->push_back(static_cast<float>(track.GetCovariance(25)));
-    out_branches.SigmaPzE->push_back(static_cast<float>(track.GetCovariance(26)));
-    out_branches.SigmaE2->push_back(static_cast<float>(track.GetCovariance(27)));
+    out_branches.Sigma.X2->push_back(static_cast<float>(track.GetCovariance(0)));
+    out_branches.Sigma.XY->push_back(static_cast<float>(track.GetCovariance(1)));
+    out_branches.Sigma.Y2->push_back(static_cast<float>(track.GetCovariance(2)));
+    out_branches.Sigma.XZ->push_back(static_cast<float>(track.GetCovariance(3)));
+    out_branches.Sigma.YZ->push_back(static_cast<float>(track.GetCovariance(4)));
+    out_branches.Sigma.Z2->push_back(static_cast<float>(track.GetCovariance(5)));
+    out_branches.Sigma.XPx->push_back(static_cast<float>(track.GetCovariance(6)));
+    out_branches.Sigma.YPx->push_back(static_cast<float>(track.GetCovariance(7)));
+    out_branches.Sigma.ZPx->push_back(static_cast<float>(track.GetCovariance(8)));
+    out_branches.Sigma.Px2->push_back(static_cast<float>(track.GetCovariance(9)));
+    out_branches.Sigma.XPy->push_back(static_cast<float>(track.GetCovariance(10)));
+    out_branches.Sigma.YPy->push_back(static_cast<float>(track.GetCovariance(11)));
+    out_branches.Sigma.ZPy->push_back(static_cast<float>(track.GetCovariance(12)));
+    out_branches.Sigma.PxPy->push_back(static_cast<float>(track.GetCovariance(13)));
+    out_branches.Sigma.Py2->push_back(static_cast<float>(track.GetCovariance(14)));
+    out_branches.Sigma.XPz->push_back(static_cast<float>(track.GetCovariance(15)));
+    out_branches.Sigma.YPz->push_back(static_cast<float>(track.GetCovariance(16)));
+    out_branches.Sigma.ZPz->push_back(static_cast<float>(track.GetCovariance(17)));
+    out_branches.Sigma.PxPz->push_back(static_cast<float>(track.GetCovariance(18)));
+    out_branches.Sigma.PyPz->push_back(static_cast<float>(track.GetCovariance(19)));
+    out_branches.Sigma.Pz2->push_back(static_cast<float>(track.GetCovariance(20)));
+    out_branches.Sigma.XE->push_back(static_cast<float>(track.GetCovariance(21)));
+    out_branches.Sigma.YE->push_back(static_cast<float>(track.GetCovariance(22)));
+    out_branches.Sigma.ZE->push_back(static_cast<float>(track.GetCovariance(23)));
+    out_branches.Sigma.PxE->push_back(static_cast<float>(track.GetCovariance(24)));
+    out_branches.Sigma.PyE->push_back(static_cast<float>(track.GetCovariance(25)));
+    out_branches.Sigma.PzE->push_back(static_cast<float>(track.GetCovariance(26)));
+    out_branches.Sigma.E2->push_back(static_cast<float>(track.GetCovariance(27)));
 
     if (IsMC()) {
         const int mc_entry{fTruthHandler.McEntry(track.idx)};
         out_branches.True.Entry->push_back(mc_entry);
         if (mc_entry == Const::DummyInt) return;
-        out_branches.True.Xv->push_back(fTruthHandler.Xv(mc_entry));
-        out_branches.True.Yv->push_back(fTruthHandler.Yv(mc_entry));
-        out_branches.True.Zv->push_back(fTruthHandler.Zv(mc_entry));
+        out_branches.True.X->push_back(fTruthHandler.X(mc_entry));
+        out_branches.True.Y->push_back(fTruthHandler.Y(mc_entry));
+        out_branches.True.Z->push_back(fTruthHandler.Z(mc_entry));
         out_branches.True.Px->push_back(fTruthHandler.Px(mc_entry));
         out_branches.True.Py->push_back(fTruthHandler.Py(mc_entry));
         out_branches.True.Pz->push_back(fTruthHandler.Pz(mc_entry));
@@ -809,16 +814,18 @@ void Packager::FindV0s(PdgCode pdg_code_v0) {
 
             // build v0 //
             KF::V0 v0;
-            v0.idx = v0_entry;
-            v0.idx_neg = esd_neg;
-            v0.idx_pos = esd_pos;
-            v0.pdg_code_hyp = static_cast<int>(pdg_code_v0);
             v0.AddDaughter(neg, fInput_Event.MagneticField);
             v0.AddDaughter(pos, fInput_Event.MagneticField);
             v0.AddMassConstraint(mass_v0);
 
             // apply cuts //
             if (!PassesCuts(v0, pdg_code_v0)) continue;
+
+            // add info //
+            v0.SetIndices({v0_entry, esd_neg, esd_pos});
+            v0.Neg_Energy = neg.E();
+            v0.Pos_Energy = pos.E();
+            v0.pdg_code_hyp = static_cast<int>(pdg_code_v0);
 #ifdef T2S_DEBUG
             std::cout << "   " << __FUNCTION__ << " :: idx,neg,pos=" << v0.idx << "," << v0.idx_neg << "," << v0.idx_pos;
             std::cout << ";x,y,z=" << v0.X() << "," << v0.Y() << "," << v0.Z();
@@ -889,59 +896,60 @@ bool Packager::PassesCuts_KaonZeroShort(const KF::V0& v0) const {
 void Packager::Store(const KF::V0& v0, PackedEvents::V0s& out_branches) {
 
     out_branches.Entry->push_back(v0.idx);
-
-    out_branches.Xv->push_back(static_cast<float>(v0.X()));
-    out_branches.Yv->push_back(static_cast<float>(v0.Y()));
-    out_branches.Zv->push_back(static_cast<float>(v0.Z()));
+    out_branches.X->push_back(static_cast<float>(v0.X()));
+    out_branches.Y->push_back(static_cast<float>(v0.Y()));
+    out_branches.Z->push_back(static_cast<float>(v0.Z()));
     out_branches.Px->push_back(static_cast<float>(v0.Px()));
     out_branches.Py->push_back(static_cast<float>(v0.Py()));
     out_branches.Pz->push_back(static_cast<float>(v0.Pz()));
     out_branches.E->push_back(static_cast<float>(v0.E()));
 
-    out_branches.SigmaX2->push_back(static_cast<float>(v0.GetCovariance(0)));
-    out_branches.SigmaXY->push_back(static_cast<float>(v0.GetCovariance(1)));
-    out_branches.SigmaY2->push_back(static_cast<float>(v0.GetCovariance(2)));
-    out_branches.SigmaXZ->push_back(static_cast<float>(v0.GetCovariance(3)));
-    out_branches.SigmaYZ->push_back(static_cast<float>(v0.GetCovariance(4)));
-    out_branches.SigmaZ2->push_back(static_cast<float>(v0.GetCovariance(5)));
-    out_branches.SigmaXPx->push_back(static_cast<float>(v0.GetCovariance(6)));
-    out_branches.SigmaYPx->push_back(static_cast<float>(v0.GetCovariance(7)));
-    out_branches.SigmaZPx->push_back(static_cast<float>(v0.GetCovariance(8)));
-    out_branches.SigmaPx2->push_back(static_cast<float>(v0.GetCovariance(9)));
-    out_branches.SigmaXPy->push_back(static_cast<float>(v0.GetCovariance(10)));
-    out_branches.SigmaYPy->push_back(static_cast<float>(v0.GetCovariance(11)));
-    out_branches.SigmaZPy->push_back(static_cast<float>(v0.GetCovariance(12)));
-    out_branches.SigmaPxPy->push_back(static_cast<float>(v0.GetCovariance(13)));
-    out_branches.SigmaPy2->push_back(static_cast<float>(v0.GetCovariance(14)));
-    out_branches.SigmaXPz->push_back(static_cast<float>(v0.GetCovariance(15)));
-    out_branches.SigmaYPz->push_back(static_cast<float>(v0.GetCovariance(16)));
-    out_branches.SigmaZPz->push_back(static_cast<float>(v0.GetCovariance(17)));
-    out_branches.SigmaPxPz->push_back(static_cast<float>(v0.GetCovariance(18)));
-    out_branches.SigmaPyPz->push_back(static_cast<float>(v0.GetCovariance(19)));
-    out_branches.SigmaPz2->push_back(static_cast<float>(v0.GetCovariance(20)));
-    out_branches.SigmaXE->push_back(static_cast<float>(v0.GetCovariance(21)));
-    out_branches.SigmaYE->push_back(static_cast<float>(v0.GetCovariance(22)));
-    out_branches.SigmaZE->push_back(static_cast<float>(v0.GetCovariance(23)));
-    out_branches.SigmaPxE->push_back(static_cast<float>(v0.GetCovariance(24)));
-    out_branches.SigmaPyE->push_back(static_cast<float>(v0.GetCovariance(25)));
-    out_branches.SigmaPzE->push_back(static_cast<float>(v0.GetCovariance(26)));
-    out_branches.SigmaE2->push_back(static_cast<float>(v0.GetCovariance(27)));
+    out_branches.Sigma.X2->push_back(static_cast<float>(v0.GetCovariance(0)));
+    out_branches.Sigma.XY->push_back(static_cast<float>(v0.GetCovariance(1)));
+    out_branches.Sigma.Y2->push_back(static_cast<float>(v0.GetCovariance(2)));
+    out_branches.Sigma.XZ->push_back(static_cast<float>(v0.GetCovariance(3)));
+    out_branches.Sigma.YZ->push_back(static_cast<float>(v0.GetCovariance(4)));
+    out_branches.Sigma.Z2->push_back(static_cast<float>(v0.GetCovariance(5)));
+    out_branches.Sigma.XPx->push_back(static_cast<float>(v0.GetCovariance(6)));
+    out_branches.Sigma.YPx->push_back(static_cast<float>(v0.GetCovariance(7)));
+    out_branches.Sigma.ZPx->push_back(static_cast<float>(v0.GetCovariance(8)));
+    out_branches.Sigma.Px2->push_back(static_cast<float>(v0.GetCovariance(9)));
+    out_branches.Sigma.XPy->push_back(static_cast<float>(v0.GetCovariance(10)));
+    out_branches.Sigma.YPy->push_back(static_cast<float>(v0.GetCovariance(11)));
+    out_branches.Sigma.ZPy->push_back(static_cast<float>(v0.GetCovariance(12)));
+    out_branches.Sigma.PxPy->push_back(static_cast<float>(v0.GetCovariance(13)));
+    out_branches.Sigma.Py2->push_back(static_cast<float>(v0.GetCovariance(14)));
+    out_branches.Sigma.XPz->push_back(static_cast<float>(v0.GetCovariance(15)));
+    out_branches.Sigma.YPz->push_back(static_cast<float>(v0.GetCovariance(16)));
+    out_branches.Sigma.ZPz->push_back(static_cast<float>(v0.GetCovariance(17)));
+    out_branches.Sigma.PxPz->push_back(static_cast<float>(v0.GetCovariance(18)));
+    out_branches.Sigma.PyPz->push_back(static_cast<float>(v0.GetCovariance(19)));
+    out_branches.Sigma.Pz2->push_back(static_cast<float>(v0.GetCovariance(20)));
+    out_branches.Sigma.XE->push_back(static_cast<float>(v0.GetCovariance(21)));
+    out_branches.Sigma.YE->push_back(static_cast<float>(v0.GetCovariance(22)));
+    out_branches.Sigma.ZE->push_back(static_cast<float>(v0.GetCovariance(23)));
+    out_branches.Sigma.PxE->push_back(static_cast<float>(v0.GetCovariance(24)));
+    out_branches.Sigma.PyE->push_back(static_cast<float>(v0.GetCovariance(25)));
+    out_branches.Sigma.PzE->push_back(static_cast<float>(v0.GetCovariance(26)));
+    out_branches.Sigma.E2->push_back(static_cast<float>(v0.GetCovariance(27)));
 
-    out_branches.Neg_Entry->push_back(v0.idx_neg);
-    out_branches.Neg_Xv->push_back(static_cast<float>(v0.PCA_Neg()[0]));
-    out_branches.Neg_Yv->push_back(static_cast<float>(v0.PCA_Neg()[1]));
-    out_branches.Neg_Zv->push_back(static_cast<float>(v0.PCA_Neg()[2]));
-    out_branches.Neg_Px->push_back(static_cast<float>(v0.Mom_Neg()[0]));
-    out_branches.Neg_Py->push_back(static_cast<float>(v0.Mom_Neg()[1]));
-    out_branches.Neg_Pz->push_back(static_cast<float>(v0.Mom_Neg()[2]));
+    out_branches.Neg.Entry->push_back(v0.idx_neg);
+    out_branches.Neg.X->push_back(static_cast<float>(v0.PCA_Neg()[0]));
+    out_branches.Neg.Y->push_back(static_cast<float>(v0.PCA_Neg()[1]));
+    out_branches.Neg.Z->push_back(static_cast<float>(v0.PCA_Neg()[2]));
+    out_branches.Neg.Px->push_back(static_cast<float>(v0.Mom_Neg()[0]));
+    out_branches.Neg.Py->push_back(static_cast<float>(v0.Mom_Neg()[1]));
+    out_branches.Neg.Pz->push_back(static_cast<float>(v0.Mom_Neg()[2]));
+    out_branches.Neg.E->push_back(static_cast<float>(v0.Neg_Energy));
 
-    out_branches.Pos_Entry->push_back(v0.idx_pos);
-    out_branches.Pos_Xv->push_back(static_cast<float>(v0.PCA_Pos()[0]));
-    out_branches.Pos_Yv->push_back(static_cast<float>(v0.PCA_Pos()[1]));
-    out_branches.Pos_Zv->push_back(static_cast<float>(v0.PCA_Pos()[2]));
-    out_branches.Pos_Px->push_back(static_cast<float>(v0.Mom_Pos()[0]));
-    out_branches.Pos_Py->push_back(static_cast<float>(v0.Mom_Pos()[1]));
-    out_branches.Pos_Pz->push_back(static_cast<float>(v0.Mom_Pos()[2]));
+    out_branches.Pos.Entry->push_back(v0.idx_pos);
+    out_branches.Pos.X->push_back(static_cast<float>(v0.PCA_Pos()[0]));
+    out_branches.Pos.Y->push_back(static_cast<float>(v0.PCA_Pos()[1]));
+    out_branches.Pos.Z->push_back(static_cast<float>(v0.PCA_Pos()[2]));
+    out_branches.Pos.Px->push_back(static_cast<float>(v0.Mom_Pos()[0]));
+    out_branches.Pos.Py->push_back(static_cast<float>(v0.Mom_Pos()[1]));
+    out_branches.Pos.Pz->push_back(static_cast<float>(v0.Mom_Pos()[2]));
+    out_branches.Pos.E->push_back(static_cast<float>(v0.Pos_Energy));
 
     if (IsMC()) {
         /*
@@ -988,9 +996,9 @@ void Packager::Store(const KF::V0& v0, PackedEvents::V0s& out_branches) {
         const int v0_mc_entry{fTruthHandler.SameMother(fTruthHandler.McEntry(v0.idx_neg), fTruthHandler.McEntry(v0.idx_pos))};
         out_branches.True.Entry->push_back(v0_mc_entry);
         if (v0_mc_entry > Const::DummyInt) {
-            out_branches.True.Xv->push_back(fTruthHandler.Xv(v0_mc_entry));
-            out_branches.True.Yv->push_back(fTruthHandler.Yv(v0_mc_entry));
-            out_branches.True.Zv->push_back(fTruthHandler.Zv(v0_mc_entry));
+            out_branches.True.X->push_back(fTruthHandler.X(v0_mc_entry));
+            out_branches.True.Y->push_back(fTruthHandler.Y(v0_mc_entry));
+            out_branches.True.Z->push_back(fTruthHandler.Z(v0_mc_entry));
             out_branches.True.Px->push_back(fTruthHandler.Px(v0_mc_entry));
             out_branches.True.Py->push_back(fTruthHandler.Py(v0_mc_entry));
             out_branches.True.Pz->push_back(fTruthHandler.Pz(v0_mc_entry));
@@ -1004,9 +1012,9 @@ void Packager::Store(const KF::V0& v0, PackedEvents::V0s& out_branches) {
             out_branches.True.IsSecFromWeak->push_back(fTruthHandler.IsSecFromWeak(v0_mc_entry));
             out_branches.True.ReactionID->push_back(fTruthHandler.ReactionID(v0_mc_entry));
         } else {
-            out_branches.True.Xv->push_back(Const::DummyFloat);
-            out_branches.True.Yv->push_back(Const::DummyFloat);
-            out_branches.True.Zv->push_back(Const::DummyFloat);
+            out_branches.True.X->push_back(Const::DummyFloat);
+            out_branches.True.Y->push_back(Const::DummyFloat);
+            out_branches.True.Z->push_back(Const::DummyFloat);
             out_branches.True.Px->push_back(Const::DummyFloat);
             out_branches.True.Py->push_back(Const::DummyFloat);
             out_branches.True.Pz->push_back(Const::DummyFloat);
@@ -1032,6 +1040,7 @@ void Packager::EndOfEvent() {
 
     // fill tree //
     fOutputTree->Fill();
+
     // clear temporary containers //
     if (IsMC()) fTruthHandler.Clear();
     fVec_AntiProtons.clear();
@@ -1040,6 +1049,7 @@ void Packager::EndOfEvent() {
     fVec_PosKaons.clear();
     fVec_PiMinus.clear();
     fVec_PiPlus.clear();
+
     // clear output branches //
     switch (GetReactionChannel()) {
         // standard channels //
@@ -1089,6 +1099,7 @@ void Packager::EndOfEvent() {
             fOutput_PiPlus.Clear(IsMC());
             break;
     }
+
 #ifdef T2S_DEBUG
     std::cout << "-- finished (" << __FUNCTION__ << ") --" << '\n';
 #endif

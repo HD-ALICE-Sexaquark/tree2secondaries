@@ -5,9 +5,10 @@
 
 namespace Tree2Secondaries::Events {
 
-struct Event {
+struct alignas(32) Event {
     unsigned int RunNumber{0};
     unsigned int DirNumber{0};
+    unsigned int DirNumberB{0};
     unsigned int EventNumber{0};
     float Centrality{0.};
     float MagneticField{0.};
@@ -15,12 +16,12 @@ struct Event {
     float PV_Yv{0.};
     float PV_Zv{0.};
 
-    float PV_TrueXv{0.};
-    float PV_TrueYv{0.};
-    float PV_TrueZv{0.};
+    float MC_PV_Xv{0.};
+    float MC_PV_Yv{0.};
+    float MC_PV_Zv{0.};
 };
 
-struct Injected {
+struct alignas(32) Injected {
     std::vector<int> *ReactionID{nullptr};
     std::vector<float> *Px{nullptr};
     std::vector<float> *Py{nullptr};
@@ -30,10 +31,10 @@ struct Injected {
     std::vector<float> *Nucleon_Pz{nullptr};
 };
 
-struct MC {
-    std::vector<float> *Xv{nullptr};
-    std::vector<float> *Yv{nullptr};
-    std::vector<float> *Zv{nullptr};
+struct alignas(32) MC {
+    std::vector<float> *X{nullptr};
+    std::vector<float> *Y{nullptr};
+    std::vector<float> *Z{nullptr};
     std::vector<float> *Px{nullptr};
     std::vector<float> *Py{nullptr};
     std::vector<float> *Pz{nullptr};
@@ -48,13 +49,13 @@ struct MC {
     std::vector<bool> *IsSecFromWeak{nullptr};
 };
 
-struct Tracks {
-    std::vector<float> *Px{nullptr};
-    std::vector<float> *Py{nullptr};
-    std::vector<float> *Pz{nullptr};
+struct alignas(32) Tracks {
     std::vector<float> *X{nullptr};
     std::vector<float> *Y{nullptr};
     std::vector<float> *Z{nullptr};
+    std::vector<float> *Px{nullptr};
+    std::vector<float> *Py{nullptr};
+    std::vector<float> *Pz{nullptr};
     std::vector<int> *Charge{nullptr};
     std::vector<float> *NSigmaPion{nullptr};
     std::vector<float> *NSigmaKaon{nullptr};

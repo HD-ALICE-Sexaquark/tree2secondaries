@@ -8,8 +8,8 @@ namespace ChannelA {
 constexpr double AbsMax_Rapidity{0.7};
 constexpr double Min_CPAwrtPV{0.9};
 constexpr double Max_CPAwrtPV{1.};
-constexpr double Min_MassAsDecay{0.};
-constexpr double Max_MassAsDecay{6.};
+constexpr double Min_MassMinusNucleon{0.};
+constexpr double Max_MassMinusNucleon{6.};
 // geometry //
 constexpr double Min_Radius{20.};
 constexpr double Max_Radius{150.};

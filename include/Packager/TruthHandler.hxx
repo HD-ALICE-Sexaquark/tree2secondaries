@@ -26,9 +26,9 @@ class TruthHandler {
 
     int McEntry(size_t track_entry) const { return fMcEntry[track_entry]; }
 
-    float Xv(int mc_entry) const { return fInput_MC.Xv->at(mc_entry); }
-    float Yv(int mc_entry) const { return fInput_MC.Yv->at(mc_entry); }
-    float Zv(int mc_entry) const { return fInput_MC.Zv->at(mc_entry); }
+    float X(int mc_entry) const { return fInput_MC.X->at(mc_entry); }
+    float Y(int mc_entry) const { return fInput_MC.Y->at(mc_entry); }
+    float Z(int mc_entry) const { return fInput_MC.Z->at(mc_entry); }
     float Px(int mc_entry) const { return fInput_MC.Px->at(mc_entry); }
     float Py(int mc_entry) const { return fInput_MC.Py->at(mc_entry); }
     float Pz(int mc_entry) const { return fInput_MC.Pz->at(mc_entry); }

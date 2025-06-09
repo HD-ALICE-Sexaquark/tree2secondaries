@@ -10,10 +10,7 @@
 #include "App/Settings.hxx"
 #include "Math/Constants.hxx"
 #include "Math/KFWrapper.hxx"
-#include "Structures/ChannelA.hxx"
-#include "Structures/ChannelD.hxx"
-#include "Structures/ChannelE.hxx"
-#include "Structures/ChannelH.hxx"
+#include "Structures/Found.hxx"
 #include "Structures/PackedEvents.hxx"
 
 namespace Tree2Secondaries {
