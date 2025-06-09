@@ -164,13 +164,13 @@ struct alignas(32) ChannelD : Sexaquark {
         V0_DecayVtx = decay_vtx;
         V0_Energy = energy;
     }
-    KF::Vector<3> PCA_First() const { return GetPCA(0).xyz; };
-    KF::Vector<3> PCA_Second() const { return GetPCA(1).xyz; };
-    KF::Vector<3> Mom_First() const { return GetPCA(0).dir; };
-    KF::Vector<3> Mom_Second() const { return GetPCA(1).dir; };
+    KF::Vector<3> PCA_V0() const { return GetPCA(0).xyz; };
+    KF::Vector<3> PCA_Kaon() const { return GetPCA(1).xyz; };
+    KF::Vector<3> Mom_V0() const { return GetPCA(0).dir; };
+    KF::Vector<3> Mom_Kaon() const { return GetPCA(1).dir; };
 
     // cuts //
-    double DCA_Kaon_V0() const { return GetDCA(0, 1); };
+    double DCA_V0_Kaon() const { return GetDCA(0, 1); };
     double DCA_V0() const { return GetDCA(0); };
     double DCA_Kaon() const { return GetDCA(1); };
     double DCA_V0_Neg() const;       // PENDING: not trivial

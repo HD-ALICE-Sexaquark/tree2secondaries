@@ -1,6 +1,7 @@
 #include <iostream>
 #include <memory>
 
+#include "App/Utilities.hxx"
 #include "Math/Constants.hxx"
 #include "Math/KFWrapper.hxx"
 #include "Packager/Cuts.hxx"
@@ -54,34 +55,21 @@ void Packager::ConnectInputBranches() {
 }
 
 void Packager::ConnectBranchesEvents() {
-    fEventsTree->SetBranchStatus("RunNumber", true);
-    fEventsTree->SetBranchStatus("DirNumber", true);
-    if (!IsMC()) fEventsTree->SetBranchStatus("DirNumberB", true);
-    fEventsTree->SetBranchStatus("EventNumber", true);
-    fEventsTree->SetBranchStatus("Centrality", true);
-    fEventsTree->SetBranchStatus("MagneticField", true);
-    fEventsTree->SetBranchStatus("PV_Xv", true);
-    fEventsTree->SetBranchStatus("PV_Yv", true);
-    fEventsTree->SetBranchStatus("PV_Zv", true);
 
-    fEventsTree->SetBranchAddress("RunNumber", &fInput_Event.RunNumber);
-    fEventsTree->SetBranchAddress("DirNumber", &fInput_Event.DirNumber);
-    if (!IsMC()) fEventsTree->SetBranchAddress("DirNumberB", &fInput_Event.DirNumberB);
-    fEventsTree->SetBranchAddress("EventNumber", &fInput_Event.EventNumber);
-    fEventsTree->SetBranchAddress("Centrality", &fInput_Event.Centrality);
-    fEventsTree->SetBranchAddress("MagneticField", &fInput_Event.MagneticField);
-    fEventsTree->SetBranchAddress("PV_Xv", &fInput_Event.PV_Xv);
-    fEventsTree->SetBranchAddress("PV_Yv", &fInput_Event.PV_Yv);
-    fEventsTree->SetBranchAddress("PV_Zv", &fInput_Event.PV_Zv);
+    Utils::ConnectBranch(fEventsTree.get(), "RunNumber", &fInput_Event.RunNumber);
+    Utils::ConnectBranch(fEventsTree.get(), "DirNumber", &fInput_Event.DirNumber);
+    if (!IsMC()) Utils::ConnectBranch(fEventsTree.get(), "DirNumberB", &fInput_Event.DirNumberB);
+    Utils::ConnectBranch(fEventsTree.get(), "EventNumber", &fInput_Event.EventNumber);
+    Utils::ConnectBranch(fEventsTree.get(), "Centrality", &fInput_Event.Centrality);
+    Utils::ConnectBranch(fEventsTree.get(), "MagneticField", &fInput_Event.MagneticField);
+    Utils::ConnectBranch(fEventsTree.get(), "PV_Xv", &fInput_Event.PV_Xv);
+    Utils::ConnectBranch(fEventsTree.get(), "PV_Yv", &fInput_Event.PV_Yv);
+    Utils::ConnectBranch(fEventsTree.get(), "PV_Zv", &fInput_Event.PV_Zv);
 
     if (IsMC()) {
-        fEventsTree->SetBranchStatus("MC_PV_Xv", true);
-        fEventsTree->SetBranchStatus("MC_PV_Yv", true);
-        fEventsTree->SetBranchStatus("MC_PV_Zv", true);
-
-        fEventsTree->SetBranchAddress("MC_PV_Xv", &fInput_Event.MC_PV_Xv);
-        fEventsTree->SetBranchAddress("MC_PV_Yv", &fInput_Event.MC_PV_Yv);
-        fEventsTree->SetBranchAddress("MC_PV_Zv", &fInput_Event.MC_PV_Zv);
+        Utils::ConnectBranch(fEventsTree.get(), "MC_PV_Xv", &fInput_Event.MC_PV_Xv);
+        Utils::ConnectBranch(fEventsTree.get(), "MC_PV_Yv", &fInput_Event.MC_PV_Yv);
+        Utils::ConnectBranch(fEventsTree.get(), "MC_PV_Zv", &fInput_Event.MC_PV_Zv);
     }
 }
 
@@ -89,21 +77,15 @@ void Packager::ConnectBranchesInjected() {
 #ifdef T2S_DEBUG
     std::cout << "-- starting (" << __FUNCTION__ << ") --" << '\n';
 #endif
-    fEventsTree->SetBranchStatus("ReactionID", true);
-    fEventsTree->SetBranchStatus("Sexaquark_Px", true);
-    fEventsTree->SetBranchStatus("Sexaquark_Py", true);
-    fEventsTree->SetBranchStatus("Sexaquark_Pz", true);
-    fEventsTree->SetBranchStatus("Nucleon_Px", true);
-    fEventsTree->SetBranchStatus("Nucleon_Py", true);
-    fEventsTree->SetBranchStatus("Nucleon_Pz", true);
 
-    fEventsTree->SetBranchAddress("ReactionID", &fInput_Injected.ReactionID);
-    fEventsTree->SetBranchAddress("Sexaquark_Px", &fInput_Injected.Px);
-    fEventsTree->SetBranchAddress("Sexaquark_Py", &fInput_Injected.Py);
-    fEventsTree->SetBranchAddress("Sexaquark_Pz", &fInput_Injected.Pz);
-    fEventsTree->SetBranchAddress("Nucleon_Px", &fInput_Injected.Nucleon_Px);
-    fEventsTree->SetBranchAddress("Nucleon_Py", &fInput_Injected.Nucleon_Py);
-    fEventsTree->SetBranchAddress("Nucleon_Pz", &fInput_Injected.Nucleon_Pz);
+    Utils::ConnectBranch(fEventsTree.get(), "ReactionID", &fInput_Injected.ReactionID);
+    Utils::ConnectBranch(fEventsTree.get(), "Sexaquark_Px", &fInput_Injected.Px);
+    Utils::ConnectBranch(fEventsTree.get(), "Sexaquark_Py", &fInput_Injected.Py);
+    Utils::ConnectBranch(fEventsTree.get(), "Sexaquark_Pz", &fInput_Injected.Pz);
+    Utils::ConnectBranch(fEventsTree.get(), "Nucleon_Px", &fInput_Injected.Nucleon_Px);
+    Utils::ConnectBranch(fEventsTree.get(), "Nucleon_Py", &fInput_Injected.Nucleon_Py);
+    Utils::ConnectBranch(fEventsTree.get(), "Nucleon_Pz", &fInput_Injected.Nucleon_Pz);
+
 #ifdef T2S_DEBUG
     std::cout << "-- finished (" << __FUNCTION__ << ") --" << '\n';
 #endif
@@ -113,37 +95,23 @@ void Packager::ConnectBranchesMC() {
 #ifdef T2S_DEBUG
     std::cout << "-- starting (" << __FUNCTION__ << ") --" << '\n';
 #endif
-    fEventsTree->SetBranchStatus("MC_X", true);
-    fEventsTree->SetBranchStatus("MC_Y", true);
-    fEventsTree->SetBranchStatus("MC_Z", true);
-    fEventsTree->SetBranchStatus("MC_Px", true);
-    fEventsTree->SetBranchStatus("MC_Py", true);
-    fEventsTree->SetBranchStatus("MC_Pz", true);
-    fEventsTree->SetBranchStatus("MC_E", true);
 
-    fEventsTree->SetBranchStatus("MC_PdgCode", true);
-    fEventsTree->SetBranchStatus("MC_Mother_McEntry", true);
-    fEventsTree->SetBranchStatus("MC_Status", true);
-    fEventsTree->SetBranchStatus("MC_Generator", true);
-    fEventsTree->SetBranchStatus("MC_IsPrimary", true);
-    fEventsTree->SetBranchStatus("MC_IsSecFromMat", true);
-    fEventsTree->SetBranchStatus("MC_IsSecFromWeak", true);
+    Utils::ConnectBranch(fEventsTree.get(), "MC_X", &fTruthHandler.fInput_MC.X);
+    Utils::ConnectBranch(fEventsTree.get(), "MC_Y", &fTruthHandler.fInput_MC.Y);
+    Utils::ConnectBranch(fEventsTree.get(), "MC_Z", &fTruthHandler.fInput_MC.Z);
+    Utils::ConnectBranch(fEventsTree.get(), "MC_Px", &fTruthHandler.fInput_MC.Px);
+    Utils::ConnectBranch(fEventsTree.get(), "MC_Py", &fTruthHandler.fInput_MC.Py);
+    Utils::ConnectBranch(fEventsTree.get(), "MC_Pz", &fTruthHandler.fInput_MC.Pz);
+    Utils::ConnectBranch(fEventsTree.get(), "MC_E", &fTruthHandler.fInput_MC.E);
 
-    fEventsTree->SetBranchAddress("MC_X", &fTruthHandler.fInput_MC.X);
-    fEventsTree->SetBranchAddress("MC_Y", &fTruthHandler.fInput_MC.Y);
-    fEventsTree->SetBranchAddress("MC_Z", &fTruthHandler.fInput_MC.Z);
-    fEventsTree->SetBranchAddress("MC_Px", &fTruthHandler.fInput_MC.Px);
-    fEventsTree->SetBranchAddress("MC_Py", &fTruthHandler.fInput_MC.Py);
-    fEventsTree->SetBranchAddress("MC_Pz", &fTruthHandler.fInput_MC.Pz);
-    fEventsTree->SetBranchAddress("MC_E", &fTruthHandler.fInput_MC.E);
+    Utils::ConnectBranch(fEventsTree.get(), "MC_PdgCode", &fTruthHandler.fInput_MC.PdgCode);
+    Utils::ConnectBranch(fEventsTree.get(), "MC_Mother_McEntry", &fTruthHandler.fInput_MC.MotherEntry);
+    Utils::ConnectBranch(fEventsTree.get(), "MC_Status", &fTruthHandler.fInput_MC.Status);
+    Utils::ConnectBranch(fEventsTree.get(), "MC_Generator", &fTruthHandler.fInput_MC.Generator);
+    Utils::ConnectBranch(fEventsTree.get(), "MC_IsPrimary", &fTruthHandler.fInput_MC.IsPrimary);
+    Utils::ConnectBranch(fEventsTree.get(), "MC_IsSecFromMat", &fTruthHandler.fInput_MC.IsSecFromMat);
+    Utils::ConnectBranch(fEventsTree.get(), "MC_IsSecFromWeak", &fTruthHandler.fInput_MC.IsSecFromWeak);
 
-    fEventsTree->SetBranchAddress("MC_PdgCode", &fTruthHandler.fInput_MC.PdgCode);
-    fEventsTree->SetBranchAddress("MC_Mother_McEntry", &fTruthHandler.fInput_MC.MotherEntry);
-    fEventsTree->SetBranchAddress("MC_Status", &fTruthHandler.fInput_MC.Status);
-    fEventsTree->SetBranchAddress("MC_Generator", &fTruthHandler.fInput_MC.Generator);
-    fEventsTree->SetBranchAddress("MC_IsPrimary", &fTruthHandler.fInput_MC.IsPrimary);
-    fEventsTree->SetBranchAddress("MC_IsSecFromMat", &fTruthHandler.fInput_MC.IsSecFromMat);
-    fEventsTree->SetBranchAddress("MC_IsSecFromWeak", &fTruthHandler.fInput_MC.IsSecFromWeak);
 #ifdef T2S_DEBUG
     std::cout << "-- finished (" << __FUNCTION__ << ") --" << '\n';
 #endif
@@ -153,73 +121,40 @@ void Packager::ConnectBranchesTracks() {
 #ifdef T2S_DEBUG
     std::cout << "-- starting (" << __FUNCTION__ << ") --" << '\n';
 #endif
-    fEventsTree->SetBranchStatus("Track_X", true);
-    fEventsTree->SetBranchStatus("Track_Y", true);
-    fEventsTree->SetBranchStatus("Track_Z", true);
-    fEventsTree->SetBranchStatus("Track_Px", true);
-    fEventsTree->SetBranchStatus("Track_Py", true);
-    fEventsTree->SetBranchStatus("Track_Pz", true);
-    fEventsTree->SetBranchStatus("Track_Charge", true);
-    fEventsTree->SetBranchStatus("Track_NSigmaPion", true);
-    fEventsTree->SetBranchStatus("Track_NSigmaKaon", true);
-    fEventsTree->SetBranchStatus("Track_NSigmaProton", true);
 
-    fEventsTree->SetBranchStatus("Track_Alpha", true);
-    fEventsTree->SetBranchStatus("Track_Snp", true);
-    fEventsTree->SetBranchStatus("Track_Tgl", true);
-    fEventsTree->SetBranchStatus("Track_Signed1Pt", true);
-    fEventsTree->SetBranchStatus("Track_SigmaY2", true);
-    fEventsTree->SetBranchStatus("Track_SigmaZY", true);
-    fEventsTree->SetBranchStatus("Track_SigmaZ2", true);
-    fEventsTree->SetBranchStatus("Track_SigmaSnpY", true);
-    fEventsTree->SetBranchStatus("Track_SigmaSnpZ", true);
-    fEventsTree->SetBranchStatus("Track_SigmaSnp2", true);
-    fEventsTree->SetBranchStatus("Track_SigmaTglY", true);
-    fEventsTree->SetBranchStatus("Track_SigmaTglZ", true);
-    fEventsTree->SetBranchStatus("Track_SigmaTglSnp", true);
-    fEventsTree->SetBranchStatus("Track_SigmaTgl2", true);
-    fEventsTree->SetBranchStatus("Track_Sigma1PtY", true);
-    fEventsTree->SetBranchStatus("Track_Sigma1PtZ", true);
-    fEventsTree->SetBranchStatus("Track_Sigma1PtSnp", true);
-    fEventsTree->SetBranchStatus("Track_Sigma1PtTgl", true);
-    fEventsTree->SetBranchStatus("Track_Sigma1Pt2", true);
+    Utils::ConnectBranch(fEventsTree.get(), "Track_X", &fInput_Tracks.X);
+    Utils::ConnectBranch(fEventsTree.get(), "Track_Y", &fInput_Tracks.Y);
+    Utils::ConnectBranch(fEventsTree.get(), "Track_Z", &fInput_Tracks.Z);
+    Utils::ConnectBranch(fEventsTree.get(), "Track_Px", &fInput_Tracks.Px);
+    Utils::ConnectBranch(fEventsTree.get(), "Track_Py", &fInput_Tracks.Py);
+    Utils::ConnectBranch(fEventsTree.get(), "Track_Pz", &fInput_Tracks.Pz);
+    Utils::ConnectBranch(fEventsTree.get(), "Track_Charge", &fInput_Tracks.Charge);
+    Utils::ConnectBranch(fEventsTree.get(), "Track_NSigmaPion", &fInput_Tracks.NSigmaPion);
+    Utils::ConnectBranch(fEventsTree.get(), "Track_NSigmaKaon", &fInput_Tracks.NSigmaKaon);
+    Utils::ConnectBranch(fEventsTree.get(), "Track_NSigmaProton", &fInput_Tracks.NSigmaProton);
 
-    fEventsTree->SetBranchAddress("Track_X", &fInput_Tracks.X);
-    fEventsTree->SetBranchAddress("Track_Y", &fInput_Tracks.Y);
-    fEventsTree->SetBranchAddress("Track_Z", &fInput_Tracks.Z);
-    fEventsTree->SetBranchAddress("Track_Px", &fInput_Tracks.Px);
-    fEventsTree->SetBranchAddress("Track_Py", &fInput_Tracks.Py);
-    fEventsTree->SetBranchAddress("Track_Pz", &fInput_Tracks.Pz);
-    fEventsTree->SetBranchAddress("Track_Charge", &fInput_Tracks.Charge);
-    fEventsTree->SetBranchAddress("Track_NSigmaPion", &fInput_Tracks.NSigmaPion);
-    fEventsTree->SetBranchAddress("Track_NSigmaKaon", &fInput_Tracks.NSigmaKaon);
-    fEventsTree->SetBranchAddress("Track_NSigmaProton", &fInput_Tracks.NSigmaProton);
+    Utils::ConnectBranch(fEventsTree.get(), "Track_Alpha", &fInput_Tracks.Alpha);
+    Utils::ConnectBranch(fEventsTree.get(), "Track_Snp", &fInput_Tracks.Snp);
+    Utils::ConnectBranch(fEventsTree.get(), "Track_Tgl", &fInput_Tracks.Tgl);
+    Utils::ConnectBranch(fEventsTree.get(), "Track_Signed1Pt", &fInput_Tracks.Signed1Pt);
+    Utils::ConnectBranch(fEventsTree.get(), "Track_SigmaY2", &fInput_Tracks.SigmaY2);
+    Utils::ConnectBranch(fEventsTree.get(), "Track_SigmaZY", &fInput_Tracks.SigmaZY);
+    Utils::ConnectBranch(fEventsTree.get(), "Track_SigmaZ2", &fInput_Tracks.SigmaZ2);
+    Utils::ConnectBranch(fEventsTree.get(), "Track_SigmaSnpY", &fInput_Tracks.SigmaSnpY);
+    Utils::ConnectBranch(fEventsTree.get(), "Track_SigmaSnpZ", &fInput_Tracks.SigmaSnpZ);
+    Utils::ConnectBranch(fEventsTree.get(), "Track_SigmaSnp2", &fInput_Tracks.SigmaSnp2);
+    Utils::ConnectBranch(fEventsTree.get(), "Track_SigmaTglY", &fInput_Tracks.SigmaTglY);
+    Utils::ConnectBranch(fEventsTree.get(), "Track_SigmaTglZ", &fInput_Tracks.SigmaTglZ);
+    Utils::ConnectBranch(fEventsTree.get(), "Track_SigmaTglSnp", &fInput_Tracks.SigmaTglSnp);
+    Utils::ConnectBranch(fEventsTree.get(), "Track_SigmaTgl2", &fInput_Tracks.SigmaTgl2);
+    Utils::ConnectBranch(fEventsTree.get(), "Track_Sigma1PtY", &fInput_Tracks.Sigma1PtY);
+    Utils::ConnectBranch(fEventsTree.get(), "Track_Sigma1PtZ", &fInput_Tracks.Sigma1PtZ);
+    Utils::ConnectBranch(fEventsTree.get(), "Track_Sigma1PtSnp", &fInput_Tracks.Sigma1PtSnp);
+    Utils::ConnectBranch(fEventsTree.get(), "Track_Sigma1PtTgl", &fInput_Tracks.Sigma1PtTgl);
+    Utils::ConnectBranch(fEventsTree.get(), "Track_Sigma1Pt2", &fInput_Tracks.Sigma1Pt2);
 
-    fEventsTree->SetBranchAddress("Track_Alpha", &fInput_Tracks.Alpha);
-    fEventsTree->SetBranchAddress("Track_Snp", &fInput_Tracks.Snp);
-    fEventsTree->SetBranchAddress("Track_Tgl", &fInput_Tracks.Tgl);
-    fEventsTree->SetBranchAddress("Track_Signed1Pt", &fInput_Tracks.Signed1Pt);
-    fEventsTree->SetBranchAddress("Track_SigmaY2", &fInput_Tracks.SigmaY2);
-    fEventsTree->SetBranchAddress("Track_SigmaZY", &fInput_Tracks.SigmaZY);
-    fEventsTree->SetBranchAddress("Track_SigmaZ2", &fInput_Tracks.SigmaZ2);
-    fEventsTree->SetBranchAddress("Track_SigmaSnpY", &fInput_Tracks.SigmaSnpY);
-    fEventsTree->SetBranchAddress("Track_SigmaSnpZ", &fInput_Tracks.SigmaSnpZ);
-    fEventsTree->SetBranchAddress("Track_SigmaSnp2", &fInput_Tracks.SigmaSnp2);
-    fEventsTree->SetBranchAddress("Track_SigmaTglY", &fInput_Tracks.SigmaTglY);
-    fEventsTree->SetBranchAddress("Track_SigmaTglZ", &fInput_Tracks.SigmaTglZ);
-    fEventsTree->SetBranchAddress("Track_SigmaTglSnp", &fInput_Tracks.SigmaTglSnp);
-    fEventsTree->SetBranchAddress("Track_SigmaTgl2", &fInput_Tracks.SigmaTgl2);
-    fEventsTree->SetBranchAddress("Track_Sigma1PtY", &fInput_Tracks.Sigma1PtY);
-    fEventsTree->SetBranchAddress("Track_Sigma1PtZ", &fInput_Tracks.Sigma1PtZ);
-    fEventsTree->SetBranchAddress("Track_Sigma1PtSnp", &fInput_Tracks.Sigma1PtSnp);
-    fEventsTree->SetBranchAddress("Track_Sigma1PtTgl", &fInput_Tracks.Sigma1PtTgl);
-    fEventsTree->SetBranchAddress("Track_Sigma1Pt2", &fInput_Tracks.Sigma1Pt2);
+    if (IsMC()) Utils::ConnectBranch(fEventsTree.get(), "Track_McEntry", &fInput_Tracks.McEntry);
 
-    if (IsMC()) {
-        fEventsTree->SetBranchStatus("Track_McEntry", true);
-
-        fEventsTree->SetBranchAddress("Track_McEntry", &fInput_Tracks.McEntry);
-    }
 #ifdef T2S_DEBUG
     std::cout << "-- finished (" << __FUNCTION__ << ") --" << '\n';
 #endif
@@ -510,7 +445,7 @@ void Packager::CreateOutputBranchesTracks(const std::string& name_part, PackedEv
     fOutputTree->Branch((name_part + "_SigmaZPx").c_str(), &out_branches.Sigma.ZPx);
     fOutputTree->Branch((name_part + "_SigmaPx2").c_str(), &out_branches.Sigma.Px2);
     fOutputTree->Branch((name_part + "_SigmaXPy").c_str(), &out_branches.Sigma.XPy);
-    fOutputTree->Branch((name_part + "_SigmYaPy").c_str(), &out_branches.Sigma.YPy);
+    fOutputTree->Branch((name_part + "_SigmaYPy").c_str(), &out_branches.Sigma.YPy);
     fOutputTree->Branch((name_part + "_SigmaZPy").c_str(), &out_branches.Sigma.ZPy);
     fOutputTree->Branch((name_part + "_SigmaPxPy").c_str(), &out_branches.Sigma.PxPy);
     fOutputTree->Branch((name_part + "_SigmaPy2").c_str(), &out_branches.Sigma.Py2);
@@ -849,6 +784,7 @@ void Packager::FindV0s(PdgCode pdg_code_v0) {
             ++v0_entry;
         }  // end of loop over pos
     }  // end of loop over neg
+
 #ifdef T2S_DEBUG
     std::cout << "-- finished (" << __FUNCTION__ << ") --" << '\n';
 #endif

@@ -21,6 +21,9 @@ class Parser {
     ~Parser() = default;
 
     void AddOptions(Settings& settings) {
+
+        const std::set<char> allowed_channels{'A', 'D', 'E', 'H'};
+
         // input/output paths //
         CLI_APP
             .add_option("-i,--input", settings.PathInputFiles, "Path(s) of input file(s)")  //
@@ -29,6 +32,7 @@ class Parser {
         CLI_APP
             .add_option("-o,--output", settings.PathOutputFile, "Path of output file")  //
             ->expected(1);
+
         // n events //
         CLI_APP
             .add_option("-n,--nevents", settings.LimitToNEvents, "Limit to N events")  //
@@ -46,7 +50,6 @@ class Parser {
 
         //    -- reaction channel //
         auto* ch_opt_group = mc_cmd->add_option_group("channels");
-        const std::set<char> allowed_channels{'A', 'D', 'E', 'H'};
         ch_opt_group
             ->add_option_function<char>(
                 "-c,--channel", [&settings](char val) { settings.Channel = static_cast<ReactionChannel>(val); },
@@ -70,8 +73,14 @@ class Parser {
 
         auto* search_cmd = CLI_APP.add_subcommand("search", "Search for anti-sexaquark reactions");
 
-        // -- reaction channel //
-        auto* ch_opt_group2 = search_cmd->add_option_group("channels");
+        // -- MC //
+        auto* mc_cmd2 = search_cmd->add_subcommand("mc", "Process MC");
+
+        //    -- is signal MC //
+        mc_cmd2->add_flag("-s,--signal", settings.IsSignalMC, "Process Signal MC");
+
+        //    -- reaction channel //
+        auto* ch_opt_group2 = mc_cmd2->add_option_group("channels");
         ch_opt_group2
             ->add_option_function<char>(
                 "-c,--channel", [&settings](char val) { settings.Channel = static_cast<ReactionChannel>(val); },
@@ -86,14 +95,24 @@ class Parser {
             ->check(CLI::IsMember(allowed_channels));
         ch_opt_group2->require_option(1);
 
-        // -- MC //
-        auto* mc_cmd2 = search_cmd->add_subcommand("mc", "Process MC");
-
-        //    -- is signal MC //
-        mc_cmd2->add_flag("-s,--signal", settings.IsSignalMC, "Process Signal MC");
-
         // -- data //
-        search_cmd->add_subcommand("data", "Process data");
+        auto* data_cmd = search_cmd->add_subcommand("data", "Process data");
+
+        //    -- reaction channel //
+        auto* ch_opt_group3 = data_cmd->add_option_group("channels");
+        ch_opt_group3
+            ->add_option_function<char>(
+                "-c,--channel", [&settings](char val) { settings.Channel = static_cast<ReactionChannel>(val); },
+                "Process a standard reaction channel")
+            ->expected(1)
+            ->check(CLI::IsMember(allowed_channels));
+        ch_opt_group3
+            ->add_option_function<char>(
+                "-a,--anti", [&settings](char val) { settings.Channel = static_cast<ReactionChannel>(std::tolower(val)); },
+                "Process an anti-reaction channel")
+            ->expected(1)
+            ->check(CLI::IsMember(allowed_channels));
+        ch_opt_group3->require_option(1);
 
         search_cmd->require_subcommand(1);
 
