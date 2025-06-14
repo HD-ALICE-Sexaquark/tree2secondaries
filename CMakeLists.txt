@@ -65,6 +65,16 @@ if(KFParticle_FOUND)
   message(STATUS "KFParticle found at ${KFParticle_LIB_DIR}")
 endif()
 
+include(FetchContent)
+message(STATUS "Fetching https://github.com/CLIUtils/CLI11")
+FetchContent_Declare(
+  cli11_proj
+  QUIET
+  GIT_REPOSITORY https://github.com/CLIUtils/CLI11.git
+  GIT_TAG v2.5.0)
+FetchContent_MakeAvailable(cli11_proj)
+message(STATUS "Fetching https://github.com/CLIUtils/CLI11 -- fetched")
+
 # get ready to build target #
 
 message(STATUS "Using compiler flags: ${CMAKE_CXX_FLAGS}")
