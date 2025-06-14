@@ -1,5 +1,5 @@
-#ifndef T2S_STRUCTS_CHANNEL_A_HXX
-#define T2S_STRUCTS_CHANNEL_A_HXX
+#ifndef T2S_STRUCTS_FOUND_HXX
+#define T2S_STRUCTS_FOUND_HXX
 
 #include <cstddef>
 
@@ -66,4 +66,4 @@ struct alignas(32) ChannelH : Sexaquark {
 
 }  // namespace Tree2Secondaries::Found
 
-#endif  // T2S_STRUCTS_CHANNEL_A_HXX
+#endif  // T2S_STRUCTS_FOUND_HXX

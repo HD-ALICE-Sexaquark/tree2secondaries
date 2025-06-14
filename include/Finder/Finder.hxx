@@ -8,10 +8,11 @@
 #include "TFile.h"
 
 #include "App/Settings.hxx"
+#include "DataFormats/Events.hxx"
+#include "DataFormats/Found.hxx"
+#include "DataFormats/PackedEvents.hxx"
+#include "KF/Extensions.hxx"
 #include "Math/Constants.hxx"
-#include "Math/KFWrapper.hxx"
-#include "Structures/Found.hxx"
-#include "Structures/PackedEvents.hxx"
 
 namespace Tree2Secondaries {
 

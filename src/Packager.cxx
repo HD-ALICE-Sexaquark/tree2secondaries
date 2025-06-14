@@ -2,8 +2,8 @@
 #include <memory>
 
 #include "App/Utilities.hxx"
+#include "KF/Utilities.hxx"
 #include "Math/Constants.hxx"
-#include "Math/KFWrapper.hxx"
 #include "Packager/Cuts.hxx"
 #include "Packager/Packager.hxx"
 
@@ -658,8 +658,8 @@ void Packager::PackTracks(PdgCode pdg_code) {
 
         // prepare kf object //
         KF::Vector<6> neg_kf_params = KF::PackParams(fInput_Tracks, esd_idx);
-        std::array<float, 5> neg_alice_params = ALICE::PackParams(fInput_Tracks, esd_idx);
-        std::array<float, 15> neg_alice_cov = ALICE::PackCovMatrix(fInput_Tracks, esd_idx);
+        std::array<float, 5> neg_alice_params = KF::PackParams_ALICE(fInput_Tracks, esd_idx);
+        std::array<float, 15> neg_alice_cov = KF::PackCovMatrix_ALICE(fInput_Tracks, esd_idx);
         KF::Track kf_track{KF::CreateParticle(neg_kf_params, neg_alice_params, neg_alice_cov, fInput_Tracks.Alpha->at(esd_idx),
                                               fInput_Tracks.Charge->at(esd_idx), mass),
                            esd_idx};
@@ -806,15 +806,15 @@ void Packager::FindV0s(PdgCode pdg_code) {
 
             // prepare neg //
             std::array<double, 6> neg_kf_params = KF::PackParams(fInput_Tracks, esd_neg);
-            std::array<float, 5> neg_alice_params = ALICE::PackParams(fInput_Tracks, esd_neg);
-            std::array<float, 15> neg_alice_cov = ALICE::PackCovMatrix(fInput_Tracks, esd_neg);
+            std::array<float, 5> neg_alice_params = KF::PackParams_ALICE(fInput_Tracks, esd_neg);
+            std::array<float, 15> neg_alice_cov = KF::PackCovMatrix_ALICE(fInput_Tracks, esd_neg);
             auto neg = KF::CreateParticle(neg_kf_params, neg_alice_params, neg_alice_cov, fInput_Tracks.Alpha->at(esd_neg),
                                           fInput_Tracks.Charge->at(esd_neg), mass_neg);
 
             // prepare pos //
             std::array<double, 6> pos_kf_params = KF::PackParams(fInput_Tracks, esd_pos);
-            std::array<float, 5> pos_alice_params = ALICE::PackParams(fInput_Tracks, esd_pos);
-            std::array<float, 15> pos_alice_cov = ALICE::PackCovMatrix(fInput_Tracks, esd_pos);
+            std::array<float, 5> pos_alice_params = KF::PackParams_ALICE(fInput_Tracks, esd_pos);
+            std::array<float, 15> pos_alice_cov = KF::PackCovMatrix_ALICE(fInput_Tracks, esd_pos);
             auto pos = KF::CreateParticle(pos_kf_params, pos_alice_params, pos_alice_cov, fInput_Tracks.Alpha->at(esd_pos),
                                           fInput_Tracks.Charge->at(esd_pos), mass_pos);
 

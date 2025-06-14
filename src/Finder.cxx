@@ -3,11 +3,11 @@
 #include <set>
 
 #include "App/Utilities.hxx"
+#include "DataFormats/PackedEvents.hxx"
 #include "Finder/Cuts.hxx"
 #include "Finder/Finder.hxx"
+#include "KF/Utilities.hxx"
 #include "Math/Constants.hxx"
-#include "Math/KFWrapper.hxx"
-#include "Structures/PackedEvents.hxx"
 
 namespace Tree2Secondaries {
 
@@ -94,6 +94,7 @@ void Finder::ConnectInputBranches() {
         default:
             break;
     }  // end of switch statement
+
 #ifdef T2S_DEBUG
     std::cout << "-- finished (" << __FUNCTION__ << ") --" << '\n';
 #endif
@@ -245,11 +246,13 @@ bool Finder::PrepareOutputFile() {
 #ifdef T2S_DEBUG
     std::cout << "-- starting (" << __FUNCTION__ << ") --" << '\n';
 #endif
+
     fOutputFile = std::unique_ptr<TFile>(TFile::Open(fSettings.PathOutputFile.c_str(), "RECREATE"));
     if (!fOutputFile) {
-        std::cerr << "TFile \"" << fSettings.PathOutputFile << "\" couldn't be created" << '\n';
+        std::cerr << "   " << __FUNCTION__ << " :: TFile \"" << fSettings.PathOutputFile << "\" couldn't be created" << '\n';
         return false;
     }
+
 #ifdef T2S_DEBUG
     std::cout << "-- finished (" << __FUNCTION__ << ") --" << '\n';
 #endif
@@ -294,7 +297,7 @@ bool Finder::PrepareOutputTree() {
 
     fOutputTree = std::make_unique<TTree>(tree_name.c_str(), "Final results");
     if (!fOutputTree) {
-        std::cerr << "TTree \"" << tree_name << "\" couldn't be created" << '\n';
+        std::cerr << "   " << __FUNCTION__ << " :: TTree \"" << tree_name << "\" couldn't be created" << '\n';
         return false;
     }
 
