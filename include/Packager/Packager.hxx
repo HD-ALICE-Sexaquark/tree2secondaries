@@ -10,7 +10,6 @@
 #include "App/Settings.hxx"
 #include "Math/Constants.hxx"
 #include "Math/KFWrapper.hxx"
-#include "Packager/TruthHandler.hxx"
 #include "Structures/Events.hxx"
 #include "Structures/PackedEvents.hxx"
 
@@ -32,19 +31,21 @@ class Packager {
     bool Initialize();
     void ConnectInputBranches();
 
-    void ConnectBranchesEvents();
-    void ConnectBranchesInjected();
-    void ConnectBranchesMC();
-    void ConnectBranchesTracks();
+    void ConnectBranches_Events();
+    void ConnectBranches_Injected();
+    void ConnectBranches_MC();
+    void ConnectBranches_Tracks();
 
     bool PrepareOutputFile();
     bool PrepareOutputTree();
     void CreateOutputBranches();
 
-    void CreateOutputBranchesEvents();
-    void CreateOutputBranchesInjected();
-    void CreateOutputBranchesV0s(const std::string &name_v0, PackedEvents::V0s &out_branches);
-    void CreateOutputBranchesTracks(const std::string &name_part, PackedEvents::Tracks &out_branches);
+    void CreateOutputBranches_Events();
+    void CreateOutputBranches_Injected();
+    void CreateOutputBranches_V0s(const std::string &name_v0, PackedEvents::V0s &sov);
+    void CreateOutputBranches_Tracks(const std::string &name_part, PackedEvents::Tracks &sov);
+    void CreateOutputBranches_MC_V0s(const std::string &name_v0, PackedEvents::MC_V0s &sov);
+    void CreateOutputBranches_MC_Tracks(const std::string &name_part, PackedEvents::MC_Tracks &sov);
 
     long long NumberEventsToRead() const { return fSettings.LimitToNEvents ? fSettings.LimitToNEvents : fEventsTree->GetEntries(); }
     bool IsMC() const { return fSettings.IsMC; }
@@ -78,15 +79,13 @@ class Packager {
     void EndOfAnalysis();
 
    private:
-    std::array<double, 6> PackParams_KF(size_t esd_idx) { return KF::PackParams(fInput_Tracks, esd_idx); }
-    std::array<float, 5> PackParams_ALICE(size_t esd_idx) { return ALICE::PackParams(fInput_Tracks, esd_idx); }
-    std::array<float, 15> PackCovMatrix_ALICE(size_t esd_idx) { return ALICE::PackCovMatrix(fInput_Tracks, esd_idx); }
-
-    void Store(const KF::Track &track, PackedEvents::Tracks &out_branches);
+    void Store(const KF::Track &track, PackedEvents::Tracks &sov);
+    void StoreMC(const MC::Track &track, PackedEvents::MC_Tracks &sov);
 
     bool PassesCuts_Lambda(const KF::V0 &v0) const;
     bool PassesCuts_KaonZeroShort(const KF::V0 &v0) const;
-    void Store(const KF::V0 &v0, PackedEvents::V0s &out_branches);
+    void Store(const KF::V0 &v0, PackedEvents::V0s &sov);
+    void StoreMC(const MC::V0 &v0, PackedEvents::MC_V0s &sov);
 
     Settings fSettings;
     std::unique_ptr<TChain> fEventsTree;
@@ -94,15 +93,12 @@ class Packager {
     std::unique_ptr<TFile> fOutputFile;
     std::unique_ptr<TTree> fOutputTree;
 
-    // input structs //
+    // input branches //
 
     Events::Event fInput_Event;
     Events::Injected fInput_Injected;
+    Events::MC fInput_MC;
     Events::Tracks fInput_Tracks;
-
-    // helpers //
-
-    TruthHandler fTruthHandler;
 
     // indices //
 
@@ -113,10 +109,19 @@ class Packager {
     std::vector<size_t> fVec_PiMinus;
     std::vector<size_t> fVec_PiPlus;
 
-    // output structs //
+    // output branches //
 
     Events::Event fOutput_Event;
     Events::Injected fOutput_Injected;
+
+    PackedEvents::MC_V0s fOutput_MC_AntiLambdas;
+    PackedEvents::MC_V0s fOutput_MC_Lambdas;
+    PackedEvents::MC_V0s fOutput_MC_KaonsZeroShort;
+
+    PackedEvents::MC_Tracks fOutput_MC_NegKaons;
+    PackedEvents::MC_Tracks fOutput_MC_PosKaons;
+    PackedEvents::MC_Tracks fOutput_MC_PiMinus;
+    PackedEvents::MC_Tracks fOutput_MC_PiPlus;
 
     PackedEvents::V0s fOutput_AntiLambdas;
     PackedEvents::V0s fOutput_Lambdas;

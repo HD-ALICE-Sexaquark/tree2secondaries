@@ -5,13 +5,123 @@
 #include <cmath>
 #include <cstddef>
 
-#include "KFParticle.hxx"
-#include "KFParticle_Math.hxx"
+#include <KFParticle.hxx>
+#include <KFParticle_Math.hxx>
 
 #include "Math/Constants.hxx"
 #include "Math/Math.hxx"
 #include "Structures/Events.hxx"
 #include "Structures/PackedEvents.hxx"
+
+namespace MC {
+
+struct alignas(32) Particle {
+    // utilities //
+    void FillBasic(const Tree2Secondaries::Events::MC& soa, long mc_idx) {
+        if (mc_idx >= 0) {
+            Entry = mc_idx;
+            X = soa.X->at(mc_idx);
+            Y = soa.Y->at(mc_idx);
+            Z = soa.Z->at(mc_idx);
+            Px = soa.Px->at(mc_idx);
+            Py = soa.Py->at(mc_idx);
+            Pz = soa.Pz->at(mc_idx);
+            Energy = soa.E->at(mc_idx);
+
+            PdgCode = soa.PdgCode->at(mc_idx);
+            MotherEntry = soa.MotherEntry->at(mc_idx);
+            if (MotherEntry >= 0) PdgCode_Mother = soa.PdgCode->at(MotherEntry);
+        }
+    }
+
+    // member vars //
+    long Entry{Tree2Secondaries::Const::DummyInt};
+    long MotherEntry{Tree2Secondaries::Const::DummyInt};
+    float X{Tree2Secondaries::Const::DummyFloat};
+    float Y{Tree2Secondaries::Const::DummyFloat};
+    float Z{Tree2Secondaries::Const::DummyFloat};
+    float Px{Tree2Secondaries::Const::DummyFloat};
+    float Py{Tree2Secondaries::Const::DummyFloat};
+    float Pz{Tree2Secondaries::Const::DummyFloat};
+    float Energy{Tree2Secondaries::Const::DummyFloat};
+    int PdgCode{Tree2Secondaries::Const::DummyInt};
+    int PdgCode_Mother{Tree2Secondaries::Const::DummyInt};
+};
+
+struct alignas(32) Track : Particle {
+    // constructors //
+    Track() = default;
+    Track(const Tree2Secondaries::Events::MC& soa, long mc_idx, Tree2Secondaries::PdgCode hypothesis) { Init(soa, mc_idx, hypothesis); }
+
+    // utilities //
+    void Init(const Tree2Secondaries::Events::MC& soa, long mc_idx, Tree2Secondaries::PdgCode hypothesis) {
+        FillBasic(soa, mc_idx);
+        FillDerived(soa, mc_idx, hypothesis);
+    }
+    void FillDerived(const Tree2Secondaries::Events::MC& soa, long mc_idx, Tree2Secondaries::PdgCode hypothesis) {
+        if (mc_idx >= 0) {
+            IsTrue = PdgCode == static_cast<int>(hypothesis);
+            IsSignal = IsTrue && soa.Generator->at(mc_idx) == 2;
+            IsSecondary = soa.IsSecFromMat->at(mc_idx) || soa.IsSecFromWeak->at(mc_idx) || IsSignal;
+            if (MotherEntry >= 0) {
+                if (IsSignal) ReactionID = static_cast<int>(soa.Status->at(MotherEntry));
+                GrandMotherEntry = soa.MotherEntry->at(MotherEntry);
+                if (GrandMotherEntry >= 0) PdgCode_GrandMother = soa.PdgCode->at(GrandMotherEntry);
+            }
+        }
+    }
+
+    // member vars //
+    long GrandMotherEntry{Tree2Secondaries::Const::DummyInt};
+    int PdgCode_GrandMother{Tree2Secondaries::Const::DummyInt};
+    int ReactionID{Tree2Secondaries::Const::DummyInt};
+    bool IsTrue{false};
+    bool IsSignal{false};
+    bool IsSecondary{false};
+};
+
+struct alignas(32) V0 : Particle {
+    // constructors //
+    V0() = default;
+    V0(const Tree2Secondaries::Events::MC& soa, long mc_neg, long mc_pos,  //
+       Tree2Secondaries::PdgCode hyp_v0, Tree2Secondaries::PdgCode hyp_neg, Tree2Secondaries::PdgCode hyp_pos) {
+        if (mc_neg < 0 || mc_pos < 0) return;  // protection
+        neg.Init(soa, mc_neg, hyp_neg);
+        pos.Init(soa, mc_pos, hyp_pos);
+
+        long mc_mother_neg{soa.MotherEntry->at(mc_neg)};
+        long mc_mother_pos{soa.MotherEntry->at(mc_pos)};
+        if (mc_mother_neg >= 0 && mc_mother_neg == mc_mother_pos) {
+            long mc_v0{mc_mother_neg};
+            FillBasic(soa, mc_v0);
+
+            // fill derived props //
+            IsTrue = PdgCode == static_cast<int>(hyp_v0) && neg.PdgCode == static_cast<int>(hyp_neg) && pos.PdgCode == static_cast<int>(hyp_pos);
+            IsSignal = IsTrue && soa.Generator->at(mc_v0) == 2 && neg.ReactionID == pos.ReactionID;
+            IsSecondary = soa.IsSecFromMat->at(mc_v0) || soa.IsSecFromWeak->at(mc_v0) || IsSignal;
+            if (IsSignal)
+                ReactionID = static_cast<int>(soa.Status->at(mc_v0));
+            else
+                IsHybrid = (neg.IsSignal && !pos.IsSignal) || (!neg.IsSignal && pos.IsSignal);
+        }
+    }
+
+    // utilities //
+    float DecayX() const { return neg.Entry >= 0 ? neg.X : pos.X; };
+    float DecayY() const { return neg.Entry >= 0 ? neg.Y : pos.Y; };
+    float DecayZ() const { return neg.Entry >= 0 ? neg.Z : pos.Z; };
+
+    // member vars //
+    MC::Track neg;
+    MC::Track pos;
+    int ReactionID{Tree2Secondaries::Const::DummyInt};
+    bool IsHybrid{false};
+    bool IsTrue{false};
+    bool IsSignal{false};
+    bool IsSecondary{false};
+};
+
+}  // namespace MC
 
 namespace KF {
 
@@ -20,6 +130,7 @@ namespace KF {
 struct alignas(32) Track : Particle {
     // constructors //
     Track() = default;
+    Track(const Particle& p, size_t idx_track) : Particle{p}, idx{idx_track} {}
     Track(const Vector<7>& p, const SymMatrix<7>& cov, int charge, size_t idx_track) : Particle{p, cov, charge}, idx{idx_track} {}
 
     // member vars //
@@ -209,21 +320,23 @@ inline KF::Vector<6> PackParams(const Tree2Secondaries::Events::Tracks& soa, siz
             soa.Px->at(esd_idx), soa.Py->at(esd_idx), soa.Pz->at(esd_idx)};
 }
 
-inline KF::Vector<7> UnpackParams(const Tree2Secondaries::PackedEvents::Particle& sov, size_t entry) {
-    return {sov.X->at(entry),  sov.Y->at(entry),  sov.Z->at(entry),  //
-            sov.Px->at(entry), sov.Py->at(entry), sov.Pz->at(entry), sov.Pz->at(entry)};
+inline KF::Vector<7> UnpackParams(const Tree2Secondaries::PackedEvents::Particle& sov, size_t esd_idx) {
+    return {sov.X->at(esd_idx),  sov.Y->at(esd_idx),  sov.Z->at(esd_idx),  //
+            sov.Px->at(esd_idx), sov.Py->at(esd_idx), sov.Pz->at(esd_idx), sov.Pz->at(esd_idx)};
 }
 
-inline KF::SymMatrix<7> UnpackCovMatrix(const Tree2Secondaries::PackedEvents::Particle& sov, size_t entry) {
-    return {sov.Sigma.X2->at(entry),                                                                                                            //
-            sov.Sigma.XY->at(entry),  sov.Sigma.Y2->at(entry),                                                                                  //
-            sov.Sigma.XZ->at(entry),  sov.Sigma.YZ->at(entry),  sov.Sigma.Z2->at(entry),                                                        //
-            sov.Sigma.XPx->at(entry), sov.Sigma.YPx->at(entry), sov.Sigma.ZPx->at(entry), sov.Sigma.Px2->at(entry),                             //
-            sov.Sigma.XPy->at(entry), sov.Sigma.YPy->at(entry), sov.Sigma.ZPy->at(entry), sov.Sigma.PxPy->at(entry), sov.Sigma.Py2->at(entry),  //
-            sov.Sigma.XPz->at(entry), sov.Sigma.YPz->at(entry), sov.Sigma.ZPz->at(entry), sov.Sigma.PxPz->at(entry), sov.Sigma.PyPz->at(entry),
-            sov.Sigma.Pz2->at(entry),  //
-            sov.Sigma.XE->at(entry),  sov.Sigma.YE->at(entry),  sov.Sigma.ZE->at(entry),  sov.Sigma.PxE->at(entry),  sov.Sigma.PyE->at(entry),
-            sov.Sigma.PzE->at(entry), sov.Sigma.E2->at(entry)};
+inline KF::SymMatrix<7> UnpackCovMatrix(const Tree2Secondaries::PackedEvents::Particle& sov, size_t esd_idx) {
+    return {sov.Sigma.X2->at(esd_idx),                                                                                        //
+            sov.Sigma.XY->at(esd_idx),   sov.Sigma.Y2->at(esd_idx),                                                           //
+            sov.Sigma.XZ->at(esd_idx),   sov.Sigma.YZ->at(esd_idx),  sov.Sigma.Z2->at(esd_idx),                               //
+            sov.Sigma.XPx->at(esd_idx),  sov.Sigma.YPx->at(esd_idx), sov.Sigma.ZPx->at(esd_idx), sov.Sigma.Px2->at(esd_idx),  //
+            sov.Sigma.XPy->at(esd_idx),  sov.Sigma.YPy->at(esd_idx), sov.Sigma.ZPy->at(esd_idx), sov.Sigma.PxPy->at(esd_idx),
+            sov.Sigma.Py2->at(esd_idx),  //
+            sov.Sigma.XPz->at(esd_idx),  sov.Sigma.YPz->at(esd_idx), sov.Sigma.ZPz->at(esd_idx), sov.Sigma.PxPz->at(esd_idx),
+            sov.Sigma.PyPz->at(esd_idx),
+            sov.Sigma.Pz2->at(esd_idx),  //
+            sov.Sigma.XE->at(esd_idx),   sov.Sigma.YE->at(esd_idx),  sov.Sigma.ZE->at(esd_idx),  sov.Sigma.PxE->at(esd_idx),
+            sov.Sigma.PyE->at(esd_idx),  sov.Sigma.PzE->at(esd_idx), sov.Sigma.E2->at(esd_idx)};
 }
 
 inline Particle CreateParticle(const KF::Vector<6>& kf_params, const std::array<float, 5>& alice_params, const std::array<float, 15>& alice_cov,

@@ -35,7 +35,7 @@ struct alignas(32) Cov {
     std::vector<float>* PyE{nullptr};
     std::vector<float>* PzE{nullptr};
     std::vector<float>* E2{nullptr};
-    void Clear() {
+    void ClearCov() {
         X2->clear();
         XY->clear();
         Y2->clear();
@@ -92,51 +92,123 @@ struct alignas(32) Particle : State {
     Cov Sigma;
     void ClearParticle() {
         ClearState();
-        Sigma.Clear();
+        Sigma.ClearCov();
     }
 };
 
-struct alignas(32) MC : public State {
-    std::vector<int>* PdgCode{nullptr};
-    std::vector<int>* MotherEntry{nullptr};
-    std::vector<bool>* IsSignal{nullptr};
-    std::vector<bool>* IsPrimary{nullptr};
-    std::vector<bool>* IsSecFromMat{nullptr};
-    std::vector<bool>* IsSecFromWeak{nullptr};
-    std::vector<int>* ReactionID{nullptr};
-    void ClearMC() {
-        ClearState();
-        PdgCode->clear();
-        MotherEntry->clear();
-        IsSignal->clear();
-        IsPrimary->clear();
-        IsSecFromMat->clear();
-        IsSecFromWeak->clear();
-        ReactionID->clear();
-    }
+struct alignas(32) Tracks : Particle {
+    void Clear() { ClearParticle(); }
 };
 
-struct alignas(32) Tracks : public Particle {
-    MC True;
-    void Clear(bool is_mc = false) {
-        ClearParticle();
-        Sigma.Clear();
-        if (is_mc) True.ClearMC();
-    }
-};
-
-struct alignas(32) V0s : public Particle {
-    MC True;
+struct alignas(32) V0s : Particle {
     State Neg;
     State Pos;
-    void Clear(bool is_mc = false) {
+    void Clear() {
         ClearParticle();
         Neg.ClearState();
         Pos.ClearState();
-        if (is_mc) True.ClearMC();
+    }
+};
+
+struct alignas(32) MC_Tracks : State {
+    std::vector<long>* MotherEntry{nullptr};
+    std::vector<long>* GrandMotherEntry{nullptr};
+    std::vector<int>* PdgCode{nullptr};
+    std::vector<int>* PdgCode_Mother{nullptr};
+    std::vector<int>* PdgCode_GrandMother{nullptr};
+    std::vector<int>* ReactionID{nullptr};
+    std::vector<bool>* IsTrue{nullptr};
+    std::vector<bool>* IsSignal{nullptr};
+    std::vector<bool>* IsSecondary{nullptr};
+    void Clear() {
+        ClearState();
+        MotherEntry->clear();
+        GrandMotherEntry->clear();
+        PdgCode->clear();
+        PdgCode_Mother->clear();
+        PdgCode_GrandMother->clear();
+        ReactionID->clear();
+        IsTrue->clear();
+        IsSignal->clear();
+        IsSecondary->clear();
+    }
+};
+
+struct alignas(32) MC_V0s : State {
+    std::vector<float>* DecayX{nullptr};
+    std::vector<float>* DecayY{nullptr};
+    std::vector<float>* DecayZ{nullptr};
+
+    std::vector<int>* PdgCode{nullptr};
+    std::vector<long>* MotherEntry{nullptr};
+    std::vector<int>* PdgCode_Mother{nullptr};
+    std::vector<bool>* IsTrue{nullptr};
+    std::vector<bool>* IsSignal{nullptr};
+    std::vector<bool>* IsSecondary{nullptr};
+    std::vector<int>* ReactionID{nullptr};
+    std::vector<bool>* IsHybrid{nullptr};
+
+    // neg //
+    std::vector<long>* Neg_Entry{nullptr};
+    std::vector<float>* Neg_Px{nullptr};
+    std::vector<float>* Neg_Py{nullptr};
+    std::vector<float>* Neg_Pz{nullptr};
+    std::vector<int>* Neg_PdgCode{nullptr};
+    std::vector<bool>* Neg_IsTrue{nullptr};
+    std::vector<bool>* Neg_IsSignal{nullptr};
+    std::vector<bool>* Neg_IsSecondary{nullptr};
+    std::vector<int>* Neg_ReactionID{nullptr};
+
+    // pos //
+    std::vector<long>* Pos_Entry{nullptr};
+    std::vector<float>* Pos_Px{nullptr};
+    std::vector<float>* Pos_Py{nullptr};
+    std::vector<float>* Pos_Pz{nullptr};
+    std::vector<int>* Pos_PdgCode{nullptr};
+    std::vector<bool>* Pos_IsTrue{nullptr};
+    std::vector<bool>* Pos_IsSignal{nullptr};
+    std::vector<bool>* Pos_IsSecondary{nullptr};
+    std::vector<int>* Pos_ReactionID{nullptr};
+
+    void Clear() {
+        ClearState();
+        DecayX->clear();
+        DecayY->clear();
+        DecayZ->clear();
+
+        PdgCode->clear();
+        MotherEntry->clear();
+        PdgCode_Mother->clear();
+        IsTrue->clear();
+        IsSignal->clear();
+        IsSecondary->clear();
+        ReactionID->clear();
+        IsHybrid->clear();
+
+        // neg //
+        Neg_Entry->clear();
+        Neg_Px->clear();
+        Neg_Py->clear();
+        Neg_Pz->clear();
+        Neg_PdgCode->clear();
+        Neg_IsTrue->clear();
+        Neg_IsSignal->clear();
+        Neg_IsSecondary->clear();
+        Neg_ReactionID->clear();
+
+        // pos //
+        Pos_Entry->clear();
+        Pos_Px->clear();
+        Pos_Py->clear();
+        Pos_Pz->clear();
+        Pos_PdgCode->clear();
+        Pos_IsTrue->clear();
+        Pos_IsSignal->clear();
+        Pos_IsSecondary->clear();
+        Pos_ReactionID->clear();
     }
 };
 
 }  // namespace Tree2Secondaries::PackedEvents
 
-#endif  // T2S_STRUCTalignas(32)S_PACKED_HXX
+#endif  // T2S_STRUCTS_PACKED_HXX
