@@ -3,7 +3,6 @@
 
 #include <array>
 #include <cmath>
-#include <cstddef>
 
 #include <KFParticle.hxx>
 #include <KFParticle_Math.hxx>
@@ -18,21 +17,21 @@ namespace KF {
 struct alignas(32) Track : Particle {
     // constructors //
     Track() = default;
-    Track(const Particle& p, size_t idx_track) : Particle{p}, idx{idx_track} {}
-    Track(const Vector<7>& p, const SymMatrix<7>& cov, int charge, size_t idx_track) : Particle{p, cov, charge}, idx{idx_track} {}
+    Track(const Particle& p, int idx_track) : Particle{p}, idx{idx_track} {}
+    Track(const Vector<7>& p, const SymMatrix<7>& cov, int charge, int idx_track) : Particle{p, cov, charge}, idx{idx_track} {}
 
     // member vars //
-    size_t idx{};
+    int idx{};
 };
 
 struct alignas(32) V0 : Particle {
     // constructors //
     V0() = default;
-    V0(const Vector<7>& p, const SymMatrix<7>& cov, int charge, size_t idx_v0, size_t idx_v0_neg, size_t idx_v0_pos, int pdg_code_v0_hyp)
+    V0(const Vector<7>& p, const SymMatrix<7>& cov, int charge, int idx_v0, int idx_v0_neg, int idx_v0_pos, int pdg_code_v0_hyp)
         : Particle{p, cov, charge}, idx{idx_v0}, idx_neg{idx_v0_neg}, idx_pos{idx_v0_pos}, pdg_code_hyp{pdg_code_v0_hyp} {}
 
     // utilities //
-    void SetIndices(const std::array<size_t, 3>& indices) {
+    void SetIndices(const std::array<int, 3>& indices) {
         idx = indices[0];
         idx_neg = indices[1];
         idx_pos = indices[2];
@@ -66,11 +65,11 @@ struct alignas(32) V0 : Particle {
     }
 
     // member vars //
-    size_t idx{};
-    size_t idx_neg{};
-    size_t idx_pos{};
     double Neg_Energy{};
     double Pos_Energy{};
+    int idx{};
+    int idx_neg{};
+    int idx_pos{};
     int pdg_code_hyp{};  // hypothesis
 };
 
@@ -90,13 +89,13 @@ struct alignas(32) Sexaquark : Particle {
     }
 
     // member vars //
-    size_t idx{};
     double Nucleon_Mass{};
+    int idx{};
 };
 
 struct alignas(32) ChannelA : Sexaquark {
     // utilities //
-    void SetIndices(const std::array<size_t, 7>& indices) {
+    void SetIndices(const std::array<int, 7>& indices) {
         idx = indices[0];
         idx_lambda = indices[1];
         idx_lambda_neg = indices[2];
@@ -122,12 +121,12 @@ struct alignas(32) ChannelA : Sexaquark {
     double DecayLength_V0A() const {
         KF::Vector<3> diff{};
         for (int i{0}; i < 3; ++i) diff[i] += V0A_DecayVtx[i] - PCA_V0A()[i];
-        return KF::Math::SquaredNorm(diff);
+        return KF::Math::Norm(diff);
     };
     double DecayLength_V0B() const {
         KF::Vector<3> diff{};
         for (int i{0}; i < 3; ++i) diff[i] += V0B_DecayVtx[i] - PCA_V0B()[i];
-        return KF::Math::SquaredNorm(diff);
+        return KF::Math::Norm(diff);
     };
     double DCA_V0s() const { return GetDCA(0, 1); };
     double DCA_V0A() const { return GetDCA(0); };
@@ -142,17 +141,17 @@ struct alignas(32) ChannelA : Sexaquark {
     KF::Vector<3> V0B_DecayVtx{};
     double V0A_Energy{};
     double V0B_Energy{};
-    size_t idx_lambda{};
-    size_t idx_lambda_neg{};
-    size_t idx_lambda_pos{};
-    size_t idx_k0s{};
-    size_t idx_k0s_neg{};
-    size_t idx_k0s_pos{};
+    int idx_lambda{};
+    int idx_lambda_neg{};
+    int idx_lambda_pos{};
+    int idx_k0s{};
+    int idx_k0s_neg{};
+    int idx_k0s_pos{};
 };
 
 struct alignas(32) ChannelD : Sexaquark {
     // utilities //
-    void SetIndices(const std::array<size_t, 5>& indices) {
+    void SetIndices(const std::array<int, 5>& indices) {
         idx = indices[0];
         idx_lambda = indices[1];
         idx_lambda_neg = indices[2];
@@ -181,24 +180,24 @@ struct alignas(32) ChannelD : Sexaquark {
     KF::Vector<3> V0_DecayVtx{};
     double V0_Energy{};
     double Kaon_Energy{};
-    size_t idx_lambda{};
-    size_t idx_lambda_neg{};
-    size_t idx_lambda_pos{};
-    size_t idx_kaon{};
+    int idx_lambda{};
+    int idx_lambda_neg{};
+    int idx_lambda_pos{};
+    int idx_kaon{};
 };
 
 struct alignas(32) ChannelE : Sexaquark {
-    size_t idx_lambda{};
-    size_t idx_lambda_neg{};
-    size_t idx_lambda_pos{};
-    size_t idx_kaon{};
-    size_t idx_pim{};
-    size_t idx_pip{};
+    int idx_lambda{};
+    int idx_lambda_neg{};
+    int idx_lambda_pos{};
+    int idx_kaon{};
+    int idx_pim{};
+    int idx_pip{};
 };
 
 struct alignas(32) ChannelH : Sexaquark {
-    size_t idx_kaon1{};
-    size_t idx_kaon2{};
+    int idx_kaon1{};
+    int idx_kaon2{};
 };
 
 }  // namespace KF

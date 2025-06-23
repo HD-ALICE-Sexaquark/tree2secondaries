@@ -12,6 +12,7 @@
 #include "DataFormats/Found.hxx"
 #include "DataFormats/PackedEvents.hxx"
 #include "KF/Extensions.hxx"
+#include "MC/Particles.hxx"
 #include "Math/Constants.hxx"
 
 namespace Tree2Secondaries {
@@ -33,8 +34,11 @@ class Finder {
     void ConnectInputBranches();
 
     void ConnectBranches_Events();
+    void ConnectBranches_Injected();
     void ConnectBranches_V0s(const std::string &name_v0, PackedEvents::V0s &vec_v0s);
     void ConnectBranches_Tracks(const std::string &name_part, PackedEvents::Tracks &vec_tracks);
+    void ConnectBranches_MC_V0s(const std::string &name_v0, PackedEvents::MC_V0s &sov);
+    void ConnectBranches_MC_Tracks(const std::string &name_part, PackedEvents::MC_Tracks &sov);
 
     bool PrepareOutputFile();
     bool PrepareOutputTree();
@@ -43,16 +47,20 @@ class Finder {
     void CreateOutputBranches(Found::ChannelD &out_branches);
     void CreateOutputBranches(Found::ChannelE &out_branches);
     void CreateOutputBranches(Found::ChannelH &out_branches);
+    void CreateOutputBranches(Found::MC_ChannelA &sov);
+    void CreateOutputBranches(Found::MC_ChannelD &sov);
     void CreateOutputBranches() {
         switch (GetReactionChannel()) {
             // standard channels //
             case ReactionChannel::A:
             case ReactionChannel::AntiA:
                 CreateOutputBranches(fOutput_ChannelA);
+                if (IsMC()) CreateOutputBranches(fOutput_MC_ChannelA);
                 break;
             case ReactionChannel::D:
             case ReactionChannel::AntiD:
                 CreateOutputBranches(fOutput_ChannelD);
+                if (IsMC()) CreateOutputBranches(fOutput_MC_ChannelD);
                 break;
             case ReactionChannel::E:
             case ReactionChannel::AntiE:
@@ -72,7 +80,6 @@ class Finder {
     bool IsSignalMC() const { return fSettings.IsSignalMC; }
     void GetEvent(long long i_event) { fTree_PackedEvents->GetEntry(i_event); }
 
-    void ProcessEvent();
     void UnpackV0s(PdgCode pdg_code);
     void UnpackTracks(PdgCode pdg_code);
 
@@ -112,6 +119,8 @@ class Finder {
     void Store(const KF::ChannelD &sexa);
     void Store(const KF::ChannelE &sexa);
     void Store(const KF::ChannelH &sexa);
+    void StoreMC(const MC::ChannelA &sexa);
+    void StoreMC(const MC::ChannelD &sexa);
 
     void EndOfEvent();
     void EndOfAnalysis();
@@ -126,6 +135,7 @@ class Finder {
     // input structs //
 
     Events::Event fInput_Event;
+    Events::Injected fInput_Injected;
 
     PackedEvents::V0s fPacked_AntiLambdas;
     PackedEvents::V0s fPacked_Lambdas;
@@ -136,7 +146,16 @@ class Finder {
     PackedEvents::Tracks fPacked_PiMinus;
     PackedEvents::Tracks fPacked_PiPlus;
 
-    // kf objects //
+    PackedEvents::MC_V0s fPacked_MC_AntiLambdas;
+    PackedEvents::MC_V0s fPacked_MC_Lambdas;
+    PackedEvents::MC_V0s fPacked_MC_KaonsZeroShort;
+
+    PackedEvents::MC_Tracks fPacked_MC_NegKaons;
+    PackedEvents::MC_Tracks fPacked_MC_PosKaons;
+    PackedEvents::MC_Tracks fPacked_MC_PiMinus;
+    PackedEvents::MC_Tracks fPacked_MC_PiPlus;
+
+    // temporary vectors //
 
     std::vector<KF::V0> fKF_AntiLambdas;
     std::vector<KF::V0> fKF_Lambdas;
@@ -153,6 +172,9 @@ class Finder {
     Found::ChannelD fOutput_ChannelD;
     Found::ChannelE fOutput_ChannelE;
     Found::ChannelH fOutput_ChannelH;
+
+    Found::MC_ChannelA fOutput_MC_ChannelA;
+    Found::MC_ChannelD fOutput_MC_ChannelD;
 };
 
 }  // namespace Tree2Secondaries

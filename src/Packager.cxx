@@ -316,6 +316,7 @@ void Packager::CreateOutputBranches_Events() {
         fOutputTree->Branch("MC_PV_Yv", &fOutput_Event.MC_PV_Yv);
         fOutputTree->Branch("MC_PV_Zv", &fOutput_Event.MC_PV_Zv);
     }
+
 #ifdef T2S_DEBUG
     std::cout << "-- finished (" << __FUNCTION__ << ") --" << '\n';
 #endif
@@ -333,6 +334,7 @@ void Packager::CreateOutputBranches_Injected() {
     fOutputTree->Branch("Nucleon_Px", &fOutput_Injected.Nucleon_Px);
     fOutputTree->Branch("Nucleon_Py", &fOutput_Injected.Nucleon_Py);
     fOutputTree->Branch("Nucleon_Pz", &fOutput_Injected.Nucleon_Pz);
+
 #ifdef T2S_DEBUG
     std::cout << "-- finished (" << __FUNCTION__ << ") --" << '\n';
 #endif
@@ -472,8 +474,8 @@ void Packager::CreateOutputBranches_MC_V0s(const std::string& name_v0, PackedEve
     fOutputTree->Branch((name_v0 + "_MC_DecayZ").c_str(), &sov.DecayZ);
 
     fOutputTree->Branch((name_v0 + "_MC_PdgCode").c_str(), &sov.PdgCode);
-    fOutputTree->Branch((name_v0 + "_MC_MotherEntry").c_str(), &sov.MotherEntry);
-    fOutputTree->Branch((name_v0 + "_MC_PdgCode_Mother").c_str(), &sov.PdgCode_Mother);
+    fOutputTree->Branch((name_v0 + "_MC_Mother_Entry").c_str(), &sov.Mother_Entry);
+    fOutputTree->Branch((name_v0 + "_MC_Mother_PdgCode").c_str(), &sov.Mother_PdgCode);
     fOutputTree->Branch((name_v0 + "_MC_IsTrue").c_str(), &sov.IsTrue);
     fOutputTree->Branch((name_v0 + "_MC_IsSignal").c_str(), &sov.IsSignal);
     fOutputTree->Branch((name_v0 + "_MC_IsSecondary").c_str(), &sov.IsSecondary);
@@ -519,11 +521,11 @@ void Packager::CreateOutputBranches_MC_Tracks(const std::string& name_part, Pack
     fOutputTree->Branch((name_part + "_MC_Pz").c_str(), &sov.Pz);
     fOutputTree->Branch((name_part + "_MC_E").c_str(), &sov.E);
 
-    fOutputTree->Branch((name_part + "_MC_MotherEntry").c_str(), &sov.MotherEntry);
-    fOutputTree->Branch((name_part + "_MC_GrandMotherEntry").c_str(), &sov.MotherEntry);
     fOutputTree->Branch((name_part + "_MC_PdgCode").c_str(), &sov.PdgCode);
-    fOutputTree->Branch((name_part + "_MC_PdgCode_Mother").c_str(), &sov.PdgCode_Mother);
-    fOutputTree->Branch((name_part + "_MC_PdgCode_GrandMother").c_str(), &sov.PdgCode_GrandMother);
+    fOutputTree->Branch((name_part + "_MC_Mother_Entry").c_str(), &sov.Mother_Entry);
+    fOutputTree->Branch((name_part + "_MC_Mother_PdgCode").c_str(), &sov.Mother_PdgCode);
+    fOutputTree->Branch((name_part + "_MC_GrandMother_Entry").c_str(), &sov.GrandMother_Entry);
+    fOutputTree->Branch((name_part + "_MC_GrandMother_PdgCode").c_str(), &sov.GrandMother_PdgCode);
     fOutputTree->Branch((name_part + "_MC_IsTrue").c_str(), &sov.IsTrue);
     fOutputTree->Branch((name_part + "_MC_IsSignal").c_str(), &sov.IsSignal);
     fOutputTree->Branch((name_part + "_MC_IsSecondary").c_str(), &sov.IsSecondary);
@@ -662,7 +664,7 @@ void Packager::PackTracks(PdgCode pdg_code) {
         std::array<float, 15> neg_alice_cov = KF::PackCovMatrix_ALICE(fInput_Tracks, esd_idx);
         KF::Track kf_track{KF::CreateParticle(neg_kf_params, neg_alice_params, neg_alice_cov, fInput_Tracks.Alpha->at(esd_idx),
                                               fInput_Tracks.Charge->at(esd_idx), mass),
-                           esd_idx};
+                           static_cast<int>(esd_idx)};
 
         // store //
         Store(kf_track, *out);
@@ -730,10 +732,10 @@ void Packager::StoreMC(const MC::Track& mc, PackedEvents::MC_Tracks& sov) {
     sov.E->push_back(mc.Energy);
 
     sov.PdgCode->push_back(mc.PdgCode);
-    sov.MotherEntry->push_back(mc.MotherEntry);
-    sov.PdgCode_Mother->push_back(mc.PdgCode_Mother);
-    sov.GrandMotherEntry->push_back(mc.GrandMotherEntry);
-    sov.PdgCode_GrandMother->push_back(mc.PdgCode_GrandMother);
+    sov.Mother_Entry->push_back(mc.Mother_Entry);
+    sov.Mother_PdgCode->push_back(mc.Mother_PdgCode);
+    sov.GrandMother_Entry->push_back(mc.GrandMother_Entry);
+    sov.GrandMother_PdgCode->push_back(mc.GrandMother_PdgCode);
     sov.IsTrue->push_back(mc.IsTrue);
     sov.IsSignal->push_back(mc.IsSignal);
     sov.IsSecondary->push_back(mc.IsSecondary);
@@ -828,7 +830,7 @@ void Packager::FindV0s(PdgCode pdg_code) {
             if (!PassesCuts(v0, pdg_code)) continue;
 
             // add info //
-            v0.SetIndices({v0_entry, esd_neg, esd_pos});
+            v0.SetIndices({static_cast<int>(v0_entry), static_cast<int>(esd_neg), static_cast<int>(esd_pos)});
             v0.Neg_Energy = neg.E();
             v0.Pos_Energy = pos.E();
             v0.pdg_code_hyp = static_cast<int>(pdg_code);
@@ -979,8 +981,8 @@ void Packager::StoreMC(const MC::V0& v0, PackedEvents::MC_V0s& sov) {
     sov.DecayZ->push_back(v0.DecayZ());
 
     sov.PdgCode->push_back(v0.PdgCode);
-    sov.MotherEntry->push_back(v0.MotherEntry);
-    sov.PdgCode_Mother->push_back(v0.PdgCode_Mother);
+    sov.Mother_Entry->push_back(v0.Mother_Entry);
+    sov.Mother_PdgCode->push_back(v0.Mother_PdgCode);
     sov.IsTrue->push_back(v0.IsTrue);
     sov.IsSignal->push_back(v0.IsSignal);
     sov.IsSecondary->push_back(v0.IsSecondary);
@@ -1036,16 +1038,16 @@ void Packager::EndOfEvent() {
             fOutput_AntiLambdas.Clear();
             fOutput_KaonsZeroShort.Clear();
             if (IsMC()) {
-                fOutput_AntiLambdas.Clear();
-                fOutput_KaonsZeroShort.Clear();
+                fOutput_MC_AntiLambdas.Clear();
+                fOutput_MC_KaonsZeroShort.Clear();
             }
             break;
         case ReactionChannel::D:
             fOutput_AntiLambdas.Clear();
             fOutput_PosKaons.Clear();
             if (IsMC()) {
-                fOutput_AntiLambdas.Clear();
-                fOutput_PosKaons.Clear();
+                fOutput_MC_AntiLambdas.Clear();
+                fOutput_MC_PosKaons.Clear();
             }
             break;
         case ReactionChannel::E:
@@ -1054,31 +1056,31 @@ void Packager::EndOfEvent() {
             fOutput_PiMinus.Clear();
             fOutput_PiPlus.Clear();
             if (IsMC()) {
-                fOutput_AntiLambdas.Clear();
-                fOutput_PosKaons.Clear();
-                fOutput_PiMinus.Clear();
-                fOutput_PiPlus.Clear();
+                fOutput_MC_AntiLambdas.Clear();
+                fOutput_MC_PosKaons.Clear();
+                fOutput_MC_PiMinus.Clear();
+                fOutput_MC_PiPlus.Clear();
             }
             break;
         case ReactionChannel::H:
             fOutput_PosKaons.Clear();
-            if (IsMC()) fOutput_PosKaons.Clear();
+            if (IsMC()) fOutput_MC_PosKaons.Clear();
             break;
         // anti-channels //
         case ReactionChannel::AntiA:
             fOutput_Lambdas.Clear();
             fOutput_KaonsZeroShort.Clear();
             if (IsMC()) {
-                fOutput_Lambdas.Clear();
-                fOutput_KaonsZeroShort.Clear();
+                fOutput_MC_Lambdas.Clear();
+                fOutput_MC_KaonsZeroShort.Clear();
             }
             break;
         case ReactionChannel::AntiD:
             fOutput_Lambdas.Clear();
             fOutput_NegKaons.Clear();
             if (IsMC()) {
-                fOutput_Lambdas.Clear();
-                fOutput_NegKaons.Clear();
+                fOutput_MC_Lambdas.Clear();
+                fOutput_MC_NegKaons.Clear();
             }
             break;
         case ReactionChannel::AntiE:
@@ -1087,15 +1089,15 @@ void Packager::EndOfEvent() {
             fOutput_PiMinus.Clear();
             fOutput_PiPlus.Clear();
             if (IsMC()) {
-                fOutput_Lambdas.Clear();
-                fOutput_NegKaons.Clear();
-                fOutput_PiMinus.Clear();
-                fOutput_PiPlus.Clear();
+                fOutput_MC_Lambdas.Clear();
+                fOutput_MC_NegKaons.Clear();
+                fOutput_MC_PiMinus.Clear();
+                fOutput_MC_PiPlus.Clear();
             }
             break;
         case ReactionChannel::AntiH:
             fOutput_NegKaons.Clear();
-            if (IsMC()) fOutput_NegKaons.Clear();
+            if (IsMC()) fOutput_MC_NegKaons.Clear();
             break;
         // for data //
         case ReactionChannel::All:
@@ -1107,13 +1109,13 @@ void Packager::EndOfEvent() {
             fOutput_PiMinus.Clear();
             fOutput_PiPlus.Clear();
             if (IsMC()) {
-                fOutput_AntiLambdas.Clear();
-                fOutput_Lambdas.Clear();
-                fOutput_KaonsZeroShort.Clear();
-                fOutput_NegKaons.Clear();
-                fOutput_PosKaons.Clear();
-                fOutput_PiMinus.Clear();
-                fOutput_PiPlus.Clear();
+                fOutput_MC_AntiLambdas.Clear();
+                fOutput_MC_Lambdas.Clear();
+                fOutput_MC_KaonsZeroShort.Clear();
+                fOutput_MC_NegKaons.Clear();
+                fOutput_MC_PosKaons.Clear();
+                fOutput_MC_PiMinus.Clear();
+                fOutput_MC_PiPlus.Clear();
             }
             break;
     }

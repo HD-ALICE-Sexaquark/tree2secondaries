@@ -98,10 +98,11 @@ class Packager {
 
     Events::Event fInput_Event;
     Events::Injected fInput_Injected;
+
     Events::MC fInput_MC;
     Events::Tracks fInput_Tracks;
 
-    // indices //
+    // indices -- temporary containers //
 
     std::vector<size_t> fVec_AntiProtons;
     std::vector<size_t> fVec_Protons;

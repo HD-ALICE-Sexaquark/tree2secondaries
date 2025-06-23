@@ -82,7 +82,7 @@ inline std::array<float, 15> PackCovMatrix_ALICE(const Tree2Secondaries::Events:
 
 inline KF::Vector<7> UnpackParams(const Tree2Secondaries::PackedEvents::Particle& sov, size_t esd_idx) {
     return {sov.X->at(esd_idx),  sov.Y->at(esd_idx),  sov.Z->at(esd_idx),  //
-            sov.Px->at(esd_idx), sov.Py->at(esd_idx), sov.Pz->at(esd_idx), sov.Pz->at(esd_idx)};
+            sov.Px->at(esd_idx), sov.Py->at(esd_idx), sov.Pz->at(esd_idx), sov.E->at(esd_idx)};
 }
 
 inline KF::SymMatrix<7> UnpackCovMatrix(const Tree2Secondaries::PackedEvents::Particle& sov, size_t esd_idx) {

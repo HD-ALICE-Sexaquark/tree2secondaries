@@ -62,6 +62,7 @@ static constexpr double BigNumber{1.E8};
 static constexpr int DummyInt{-1};
 static constexpr float DummyFloat{-999.};
 static constexpr double DummyDouble{-999.};
+static constexpr double StandardSexaquarkMass{1.8};  // (GeV/c^2)
 }  // namespace Const
 
 }  // namespace Tree2Secondaries

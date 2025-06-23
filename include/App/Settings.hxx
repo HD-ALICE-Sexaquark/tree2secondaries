@@ -20,21 +20,23 @@ struct Settings {
     void Print() const {
         std::cout << "SETTINGS" << '\n';
         std::cout << "========" << '\n';
-        std::cout << "Mode            = " << (DoTheSearch ? "FINDER" : "PACKAGER") << '\n';
-        std::cout << "ReactionChannel = " << StrReactionChannel() << '\n';
-        std::cout << "InputFiles:" << '\n';
+        std::cout << "Mode             = " << (DoTheSearch ? "FINDER" : "PACKAGER") << '\n';
+        std::cout << "ReactionChannel  = " << StrReactionChannel() << '\n';
+        std::cout << "InputFiles       =" << '\n';
         for (const auto& path : PathInputFiles) {
             std::cout << "- " << path << '\n';
         }
-        std::cout << "OutputFile      = " << PathOutputFile << '\n';
-        std::cout << "IsMC            = " << IsMC << '\n';
-        std::cout << "IsSignalMC      = " << IsSignalMC << '\n';
-        std::cout << "LimitToNEvents  = " << LimitToNEvents << '\n';
+        std::cout << "OutputFile       = " << PathOutputFile << '\n';
+        std::cout << "IsMC             = " << IsMC << '\n';
+        std::cout << "IsSignalMC       = " << IsSignalMC << '\n';
+        if (IsSignalMC) std::cout << "   SexaquarkMass = " << SexaquarkMass << '\n';
+        std::cout << "LimitToNEvents   = " << LimitToNEvents << '\n';
     }
 
     std::vector<std::string> PathInputFiles;
     std::string PathOutputFile;
     long long LimitToNEvents{0};
+    double SexaquarkMass{Const::StandardSexaquarkMass};
     ReactionChannel Channel{ReactionChannel::All};
     bool IsMC{false};
     bool IsSignalMC{false};

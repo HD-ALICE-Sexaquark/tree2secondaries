@@ -111,22 +111,22 @@ struct alignas(32) V0s : Particle {
 };
 
 struct alignas(32) MC_Tracks : State {
-    std::vector<long>* MotherEntry{nullptr};
-    std::vector<long>* GrandMotherEntry{nullptr};
+    std::vector<long>* Mother_Entry{nullptr};
+    std::vector<long>* GrandMother_Entry{nullptr};
     std::vector<int>* PdgCode{nullptr};
-    std::vector<int>* PdgCode_Mother{nullptr};
-    std::vector<int>* PdgCode_GrandMother{nullptr};
+    std::vector<int>* Mother_PdgCode{nullptr};
+    std::vector<int>* GrandMother_PdgCode{nullptr};
     std::vector<int>* ReactionID{nullptr};
     std::vector<bool>* IsTrue{nullptr};
     std::vector<bool>* IsSignal{nullptr};
     std::vector<bool>* IsSecondary{nullptr};
     void Clear() {
         ClearState();
-        MotherEntry->clear();
-        GrandMotherEntry->clear();
+        Mother_Entry->clear();
+        GrandMother_Entry->clear();
         PdgCode->clear();
-        PdgCode_Mother->clear();
-        PdgCode_GrandMother->clear();
+        Mother_PdgCode->clear();
+        GrandMother_PdgCode->clear();
         ReactionID->clear();
         IsTrue->clear();
         IsSignal->clear();
@@ -140,8 +140,8 @@ struct alignas(32) MC_V0s : State {
     std::vector<float>* DecayZ{nullptr};
 
     std::vector<int>* PdgCode{nullptr};
-    std::vector<long>* MotherEntry{nullptr};
-    std::vector<int>* PdgCode_Mother{nullptr};
+    std::vector<long>* Mother_Entry{nullptr};
+    std::vector<int>* Mother_PdgCode{nullptr};
     std::vector<bool>* IsTrue{nullptr};
     std::vector<bool>* IsSignal{nullptr};
     std::vector<bool>* IsSecondary{nullptr};
@@ -177,8 +177,8 @@ struct alignas(32) MC_V0s : State {
         DecayZ->clear();
 
         PdgCode->clear();
-        MotherEntry->clear();
-        PdgCode_Mother->clear();
+        Mother_Entry->clear();
+        Mother_PdgCode->clear();
         IsTrue->clear();
         IsSignal->clear();
         IsSecondary->clear();

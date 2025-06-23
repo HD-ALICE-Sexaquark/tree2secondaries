@@ -8,6 +8,7 @@
 #include <CLI/CLI.hpp>
 
 #include "App/Settings.hxx"
+#include "App/Utilities.hxx"
 #include "Math/Constants.hxx"
 
 namespace Tree2Secondaries {
@@ -49,7 +50,9 @@ class Parser {
 
         auto* package_cmd = CLI_APP.add_subcommand("pack", "Package V0s and necessary tracks");
         auto* package_mc = package_cmd->add_subcommand("mc", "Process MC");
-        package_mc->add_flag("-s,--signal", "Process Signal MC");
+        package_mc->add_option("-m,--mass", "Assign Injected Sexaquark Mass")->expected(1)->check(CLI::PositiveNumber);
+        package_mc->add_flag("-s,--signal", "Process Signal MC")->needs("-m");
+        package_mc->get_option("-m")->needs("-s");
         add_channels_opt(package_mc);
         package_cmd->add_subcommand("data", "Process data");
         package_cmd->require_subcommand(1);
@@ -58,7 +61,9 @@ class Parser {
 
         auto* search_cmd = CLI_APP.add_subcommand("search", "Search for anti-sexaquark reactions");
         auto* search_mc = search_cmd->add_subcommand("mc", "Process MC");
-        search_mc->add_flag("-s,--signal", "Process Signal MC");
+        search_mc->add_option("-m,--mass", "Assign Injected Sexaquark Mass")->expected(1)->check(CLI::PositiveNumber);
+        search_mc->add_flag("-s,--signal", "Process Signal MC")->needs("-m");
+        search_mc->get_option("-m")->needs("-s");
         add_channels_opt(search_mc);
         auto* search_data = search_cmd->add_subcommand("data", "Process data");
         add_channels_opt(search_data);
@@ -87,6 +92,7 @@ class Parser {
         settings.IsMC = mode_cmd->got_subcommand("mc");
         auto* type_cmd = settings.IsMC ? mode_cmd->get_subcommand("mc") : mode_cmd->get_subcommand("data");
         if (settings.IsMC) settings.IsSignalMC = type_cmd->get_option("-s")->as<bool>();
+        if (settings.IsSignalMC && settings.DoTheSearch) settings.SexaquarkMass = type_cmd->get_option("-m")->as<double>();
         // reaction channels //
         if (settings.DoTheSearch || settings.IsMC) {
             auto* opt_grp = type_cmd->get_option_group("channels");
@@ -103,16 +109,20 @@ class Parser {
         // n events limit //
         settings.LimitToNEvents = CLI_APP.get_option("-n")->as<long long>();
         // output path //
+        settings.PathOutputFile = CLI_APP.get_option("-o")->as<std::string>();
         if (settings.PathOutputFile.empty()) {
-            std::string prefix_file{settings.DoTheSearch ? "Searched" : "Packed"};
-            std::string suffix_file{".root"};
-            if (settings.IsMC && settings.IsSignalMC)
-                suffix_file = "SignalMC" + suffix_file;
-            else if (settings.IsMC && !settings.IsSignalMC)
-                suffix_file = "BkgMC" + suffix_file;
+            std::string filename_prefix{settings.DoTheSearch ? "Searched" : "Packed"};
+            std::string filename_mid{};
+            std::string filename_suffix{settings.StrReactionChannel()};
+            std::string filename_extension{".root"};
+            if (settings.IsMC && settings.IsSignalMC) {
+                filename_mid = "SignalMC";
+                filename_suffix += "_" + Utils::DoubleToStr(settings.SexaquarkMass);
+            } else if (settings.IsMC && !settings.IsSignalMC)
+                filename_mid = "BkgMC";
             else
-                suffix_file = "Data" + suffix_file;
-            settings.PathOutputFile = prefix_file + "_" + settings.StrReactionChannel() + "_" + suffix_file;
+                filename_mid = "Data";
+            settings.PathOutputFile = filename_prefix + "_" + filename_mid + "_" + filename_suffix + filename_extension;
         }
     }
 
