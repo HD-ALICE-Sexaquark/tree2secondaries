@@ -3,13 +3,14 @@
 
 #include <array>
 #include <cmath>
-#include <cstddef>
 
 #include <KFParticle.hxx>
 #include <KFParticle_Math.hxx>
 
 #include "DataFormats/Events.hxx"
 #include "DataFormats/PackedEvents.hxx"
+#include "KF/Extensions.hxx"
+#include "Math/Constants.hxx"
 
 // Utitilies //
 
@@ -61,17 +62,17 @@ inline Particle CreateParticle(const KF::Vector<6>& kf_params, const std::array<
     return {kf_params, kf_cov, charge, mass};
 }
 
-inline KF::Vector<6> PackParams(const Tree2Secondaries::Events::Tracks& soa, size_t esd_idx) {
+inline KF::Vector<6> PackParams(const Tree2Secondaries::Events::Tracks& soa, int esd_idx) {
     return {soa.X->at(esd_idx),  soa.Y->at(esd_idx),  soa.Z->at(esd_idx),  //
             soa.Px->at(esd_idx), soa.Py->at(esd_idx), soa.Pz->at(esd_idx)};
 }
 
-inline std::array<float, 5> PackParams_ALICE(const Tree2Secondaries::Events::Tracks& soa, size_t esd_idx) {
+inline std::array<float, 5> PackParams_ALICE(const Tree2Secondaries::Events::Tracks& soa, int esd_idx) {
     return {soa.Y->at(esd_idx), soa.Z->at(esd_idx), soa.Snp->at(esd_idx),  //
             soa.Tgl->at(esd_idx), soa.Signed1Pt->at(esd_idx)};
 };
 
-inline std::array<float, 15> PackCovMatrix_ALICE(const Tree2Secondaries::Events::Tracks& soa, size_t esd_idx) {
+inline std::array<float, 15> PackCovMatrix_ALICE(const Tree2Secondaries::Events::Tracks& soa, int esd_idx) {
     return {soa.SigmaY2->at(esd_idx),                                                                                          //
             soa.SigmaZY->at(esd_idx),   soa.SigmaZ2->at(esd_idx),                                                              //
             soa.SigmaSnpY->at(esd_idx), soa.SigmaSnpZ->at(esd_idx), soa.SigmaSnp2->at(esd_idx),                                //
@@ -80,23 +81,44 @@ inline std::array<float, 15> PackCovMatrix_ALICE(const Tree2Secondaries::Events:
             soa.Sigma1Pt2->at(esd_idx)};
 };
 
-inline KF::Vector<7> UnpackParams(const Tree2Secondaries::PackedEvents::Particle& sov, size_t esd_idx) {
-    return {sov.X->at(esd_idx),  sov.Y->at(esd_idx),  sov.Z->at(esd_idx),  //
-            sov.Px->at(esd_idx), sov.Py->at(esd_idx), sov.Pz->at(esd_idx), sov.E->at(esd_idx)};
+inline KF::Vector<7> UnpackParams(const Tree2Secondaries::PackedEvents::State& sov, int idx) {
+    return {sov.X->at(idx),  sov.Y->at(idx),  sov.Z->at(idx),  //
+            sov.Px->at(idx), sov.Py->at(idx), sov.Pz->at(idx), sov.E->at(idx)};
 }
 
-inline KF::SymMatrix<7> UnpackCovMatrix(const Tree2Secondaries::PackedEvents::Particle& sov, size_t esd_idx) {
-    return {sov.Sigma.X2->at(esd_idx),                                                                                        //
-            sov.Sigma.XY->at(esd_idx),   sov.Sigma.Y2->at(esd_idx),                                                           //
-            sov.Sigma.XZ->at(esd_idx),   sov.Sigma.YZ->at(esd_idx),  sov.Sigma.Z2->at(esd_idx),                               //
-            sov.Sigma.XPx->at(esd_idx),  sov.Sigma.YPx->at(esd_idx), sov.Sigma.ZPx->at(esd_idx), sov.Sigma.Px2->at(esd_idx),  //
-            sov.Sigma.XPy->at(esd_idx),  sov.Sigma.YPy->at(esd_idx), sov.Sigma.ZPy->at(esd_idx), sov.Sigma.PxPy->at(esd_idx),
-            sov.Sigma.Py2->at(esd_idx),  //
-            sov.Sigma.XPz->at(esd_idx),  sov.Sigma.YPz->at(esd_idx), sov.Sigma.ZPz->at(esd_idx), sov.Sigma.PxPz->at(esd_idx),
-            sov.Sigma.PyPz->at(esd_idx),
-            sov.Sigma.Pz2->at(esd_idx),  //
-            sov.Sigma.XE->at(esd_idx),   sov.Sigma.YE->at(esd_idx),  sov.Sigma.ZE->at(esd_idx),  sov.Sigma.PxE->at(esd_idx),
-            sov.Sigma.PyE->at(esd_idx),  sov.Sigma.PzE->at(esd_idx), sov.Sigma.E2->at(esd_idx)};
+inline KF::SymMatrix<7> UnpackCovMatrix(const Tree2Secondaries::PackedEvents::Particle& sov, int idx) {
+    return {sov.Sigma.X2->at(idx),                                                                           //
+            sov.Sigma.XY->at(idx),  sov.Sigma.Y2->at(idx),                                                   //
+            sov.Sigma.XZ->at(idx),  sov.Sigma.YZ->at(idx),  sov.Sigma.Z2->at(idx),                           //
+            sov.Sigma.XPx->at(idx), sov.Sigma.YPx->at(idx), sov.Sigma.ZPx->at(idx), sov.Sigma.Px2->at(idx),  //
+            sov.Sigma.XPy->at(idx), sov.Sigma.YPy->at(idx), sov.Sigma.ZPy->at(idx), sov.Sigma.PxPy->at(idx),
+            sov.Sigma.Py2->at(idx),  //
+            sov.Sigma.XPz->at(idx), sov.Sigma.YPz->at(idx), sov.Sigma.ZPz->at(idx), sov.Sigma.PxPz->at(idx), sov.Sigma.PyPz->at(idx),
+            sov.Sigma.Pz2->at(idx),  //
+            sov.Sigma.XE->at(idx),  sov.Sigma.YE->at(idx),  sov.Sigma.ZE->at(idx),  sov.Sigma.PxE->at(idx),  sov.Sigma.PyE->at(idx),
+            sov.Sigma.PzE->at(idx), sov.Sigma.E2->at(idx)};
+}
+
+inline KF::V0 UnpackV0(const Tree2Secondaries::PackedEvents::V0s& sov, int idx, Tree2Secondaries::PdgCode pdg_code_hyp) {
+
+    auto param_v0 = UnpackParams(sov, idx);
+    auto cov_v0 = UnpackCovMatrix(sov, idx);
+
+    auto param_neg = UnpackParams(sov.Neg, idx);
+    KF::Track neg{param_neg, {}, -1, sov.Neg.Entry->at(idx)};
+
+    auto param_pos = UnpackParams(sov.Pos, idx);
+    KF::Track pos{param_pos, {}, +1, sov.Pos.Entry->at(idx)};
+
+    return {idx, pdg_code_hyp, param_v0, cov_v0, neg, pos};
+}
+
+inline KF::Track UnpackTrack(const Tree2Secondaries::PackedEvents::Tracks& sov, int idx, int charge) {
+
+    auto param = UnpackParams(sov, idx);
+    auto cov = UnpackCovMatrix(sov, idx);
+
+    return {param, cov, charge, idx};
 }
 
 }  // namespace KF

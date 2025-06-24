@@ -1,7 +1,6 @@
 #ifndef T2S_KF_EXTENSIONS_HXX
 #define T2S_KF_EXTENSIONS_HXX
 
-#include <array>
 #include <cmath>
 
 #include <KFParticle.hxx>
@@ -16,7 +15,7 @@ namespace KF {
 
 struct alignas(32) Track : Particle {
     // constructors //
-    Track() = default;
+    Track() = delete;
     Track(const Particle& p, int idx_track) : Particle{p}, idx{idx_track} {}
     Track(const Vector<7>& p, const SymMatrix<7>& cov, int charge, int idx_track) : Particle{p, cov, charge}, idx{idx_track} {}
 
@@ -26,31 +25,34 @@ struct alignas(32) Track : Particle {
 
 struct alignas(32) V0 : Particle {
     // constructors //
-    V0() = default;
-    V0(const Vector<7>& p, const SymMatrix<7>& cov, int charge, int idx_v0, int idx_v0_neg, int idx_v0_pos, int pdg_code_v0_hyp)
-        : Particle{p, cov, charge}, idx{idx_v0}, idx_neg{idx_v0_neg}, idx_pos{idx_v0_pos}, pdg_code_hyp{pdg_code_v0_hyp} {}
-
-    // utilities //
-    void SetIndices(const std::array<int, 3>& indices) {
-        idx = indices[0];
-        idx_neg = indices[1];
-        idx_pos = indices[2];
+    V0() = delete;
+    // -- to use when fitting V0 //
+    V0(int idx_v0, Tree2Secondaries::PdgCode pdg_code_v0_hyp, const KF::Track& neg, const KF::Track& pos, float bz, double mass)
+        : Neg(neg), Pos(pos), idx{idx_v0}, pdg_code_hyp{static_cast<int>(pdg_code_v0_hyp)} {
+        AddDaughter(neg, bz);
+        AddDaughter(pos, bz);
+        AddMassConstraint(mass);
     }
-    KF::Vector<3> PCA_Neg() const { return GetPCA(0).xyz; };
-    KF::Vector<3> PCA_Pos() const { return GetPCA(1).xyz; };
-    KF::Vector<3> Mom_Neg() const { return GetPCA(0).dir; };
-    KF::Vector<3> Mom_Pos() const { return GetPCA(1).dir; };
+    // -- to use when unpacking V0 //
+    V0(int idx_v0, Tree2Secondaries::PdgCode pdg_code_v0_hyp, const Vector<7>& p, const SymMatrix<7>& cov, const KF::Track& neg, const KF::Track& pos)
+        : Particle{p, cov, 0}, Neg(neg), Pos(pos), idx{idx_v0}, pdg_code_hyp{static_cast<int>(pdg_code_v0_hyp)} {}
+
+    // utilities -- only usable after vertex fit //
+    KF::Vector<3> Neg_PCA_XYZ() const { return GetPCA(0).xyz; };
+    KF::Vector<3> Pos_PCA_XYZ() const { return GetPCA(1).xyz; };
+    KF::Vector<3> Neg_PCA_PxPyPz() const { return GetPCA(0).dir; };
+    KF::Vector<3> Pos_PCA_PxPyPz() const { return GetPCA(1).dir; };
     double ArmenterosQt() const {
         return Tree2Secondaries::Math::ArmenterosQt(Px(), Py(), Pz(),  //
-                                                    Mom_Neg()[0], Mom_Neg()[1], Mom_Neg()[2]);
+                                                    Neg_PCA_PxPyPz()[0], Neg_PCA_PxPyPz()[1], Neg_PCA_PxPyPz()[2]);
     }
     double ArmenterosAlpha() const {
-        return Tree2Secondaries::Math::ArmenterosAlpha(Px(), Py(), Pz(),                          //
-                                                       Mom_Neg()[0], Mom_Neg()[1], Mom_Neg()[2],  //
-                                                       Mom_Pos()[0], Mom_Pos()[1], Mom_Pos()[2]);
+        return Tree2Secondaries::Math::ArmenterosAlpha(Px(), Py(), Pz(),                                               //
+                                                       Neg_PCA_PxPyPz()[0], Neg_PCA_PxPyPz()[1], Neg_PCA_PxPyPz()[2],  //
+                                                       Pos_PCA_PxPyPz()[0], Pos_PCA_PxPyPz()[1], Pos_PCA_PxPyPz()[2]);
     }
 
-    // cuts //
+    // cuts -- only usable after vertex fit //
     double AbsZ() const { return std::abs(Z()); }
     double AbsEta() const { return std::abs(Eta()); }
     double DCA_Daughters() const { return GetDCA(0, 1); }
@@ -65,15 +67,17 @@ struct alignas(32) V0 : Particle {
     }
 
     // member vars //
-    double Neg_Energy{};
-    double Pos_Energy{};
+    KF::Track Neg;
+    KF::Track Pos;
     int idx{};
-    int idx_neg{};
-    int idx_pos{};
     int pdg_code_hyp{};  // hypothesis
 };
 
 struct alignas(32) Sexaquark : Particle {
+    // constructors //
+    Sexaquark() = delete;
+    explicit Sexaquark(double nucleon_mass) : Nucleon_Mass{nucleon_mass} {};
+
     // utilities //
     double E_MinusNucleon() const { return E() - Nucleon_Mass; };
     double Mass_MinusNucleon() const {
@@ -90,114 +94,75 @@ struct alignas(32) Sexaquark : Particle {
 
     // member vars //
     double Nucleon_Mass{};
-    int idx{};
 };
 
 struct alignas(32) ChannelA : Sexaquark {
+    // constructors //
+    ChannelA() = delete;
+    ChannelA(double nucleon_mass, const KF::V0& v0a, const KF::V0& v0b, float bz)  //
+        : Sexaquark{nucleon_mass}, V0A{v0a}, V0B{v0b} {
+        AddDaughter(v0a, bz);
+        AddDaughter(v0b, bz);
+    };
+
     // utilities //
-    void SetIndices(const std::array<int, 7>& indices) {
-        idx = indices[0];
-        idx_lambda = indices[1];
-        idx_lambda_neg = indices[2];
-        idx_lambda_pos = indices[3];
-        idx_k0s = indices[4];
-        idx_k0s_neg = indices[5];
-        idx_k0s_pos = indices[6];
-    }
-    void SetAdditionalInfo_V0A(const KF::Vector<3>& decay_vtx, double energy) {
-        V0A_DecayVtx = decay_vtx;
-        V0A_Energy = energy;
-    }
-    void SetAdditionalInfo_V0B(const KF::Vector<3>& decay_vtx, double energy) {
-        V0B_DecayVtx = decay_vtx;
-        V0B_Energy = energy;
-    }
-    KF::Vector<3> PCA_V0A() const { return GetPCA(0).xyz; };
-    KF::Vector<3> PCA_V0B() const { return GetPCA(1).xyz; };
-    KF::Vector<3> Mom_V0A() const { return GetPCA(0).dir; };
-    KF::Vector<3> Mom_V0B() const { return GetPCA(1).dir; };
+    KF::Vector<3> V0A_PCA_XYZ() const { return GetPCA(0).xyz; };
+    KF::Vector<3> V0B_PCA_XYZ() const { return GetPCA(1).xyz; };
 
     // cuts //
     double DecayLength_V0A() const {
-        KF::Vector<3> diff{};
-        for (int i{0}; i < 3; ++i) diff[i] += V0A_DecayVtx[i] - PCA_V0A()[i];
-        return KF::Math::Norm(diff);
+        return KF::Math::Norm(KF::Vector<3>{V0A.X() - V0A_PCA_XYZ()[0], V0A.Y() - V0A_PCA_XYZ()[1], V0A.Z() - V0A_PCA_XYZ()[2]});
     };
     double DecayLength_V0B() const {
-        KF::Vector<3> diff{};
-        for (int i{0}; i < 3; ++i) diff[i] += V0B_DecayVtx[i] - PCA_V0B()[i];
-        return KF::Math::Norm(diff);
+        return KF::Math::Norm(KF::Vector<3>{V0B.X() - V0B_PCA_XYZ()[0], V0B.Y() - V0B_PCA_XYZ()[1], V0B.Z() - V0B_PCA_XYZ()[2]});
     };
-    double DCA_V0s() const { return GetDCA(0, 1); };
-    double DCA_V0A() const { return GetDCA(0); };
-    double DCA_V0B() const { return GetDCA(1); };
-    double DCA_V0A_Neg() const;  // PENDING: not trivial
-    double DCA_V0A_Pos() const;  // PENDING: not trivial
-    double DCA_V0B_Neg() const;  // PENDING: not trivial
-    double DCA_V0B_Pos() const;  // PENDING: not trivial
+    double DCA_btw_V0s() const { return GetDCA(0, 1); };
+    double DCA_V0A_wrt_SV() const { return GetDCA(0); };
+    double DCA_V0B_wrt_SV() const { return GetDCA(1); };
+    double DCA_V0ANeg_wrt_SV(float bz) const { return Tree2Secondaries::Math::FastDCAHelixVertex(V0A.Neg, X(), Y(), Z(), bz); };
+    double DCA_V0APos_wrt_SV(float bz) const { return Tree2Secondaries::Math::FastDCAHelixVertex(V0A.Pos, X(), Y(), Z(), bz); };
+    double DCA_V0BNeg_wrt_SV(float bz) const { return Tree2Secondaries::Math::FastDCAHelixVertex(V0B.Neg, X(), Y(), Z(), bz); };
+    double DCA_V0BPos_wrt_SV(float bz) const { return Tree2Secondaries::Math::FastDCAHelixVertex(V0B.Pos, X(), Y(), Z(), bz); };
 
-    // member vars //
-    KF::Vector<3> V0A_DecayVtx{};
-    KF::Vector<3> V0B_DecayVtx{};
-    double V0A_Energy{};
-    double V0B_Energy{};
-    int idx_lambda{};
-    int idx_lambda_neg{};
-    int idx_lambda_pos{};
-    int idx_k0s{};
-    int idx_k0s_neg{};
-    int idx_k0s_pos{};
+    // daughters //
+    KF::V0 V0A;
+    KF::V0 V0B;
 };
 
 struct alignas(32) ChannelD : Sexaquark {
+    // constructors //
+    ChannelD() = delete;
+    ChannelD(double nucleon_mass, const KF::V0& v0, const KF::Track& kaon, float bz)  //
+        : Sexaquark{nucleon_mass}, V0{v0}, Kaon{kaon} {
+        AddDaughter(v0, bz);
+        AddDaughter(kaon, bz);
+    };
+
     // utilities //
-    void SetIndices(const std::array<int, 5>& indices) {
-        idx = indices[0];
-        idx_lambda = indices[1];
-        idx_lambda_neg = indices[2];
-        idx_lambda_pos = indices[3];
-        idx_kaon = indices[4];
-    }
-    void SetAdditionalInfo_V0(const KF::Vector<3>& decay_vtx, double energy) {
-        V0_DecayVtx = decay_vtx;
-        V0_Energy = energy;
-    }
-    KF::Vector<3> PCA_V0() const { return GetPCA(0).xyz; };
-    KF::Vector<3> PCA_Kaon() const { return GetPCA(1).xyz; };
-    KF::Vector<3> Mom_V0() const { return GetPCA(0).dir; };
-    KF::Vector<3> Mom_Kaon() const { return GetPCA(1).dir; };
+    KF::Vector<3> V0_PCA_XYZ() const { return GetPCA(0).xyz; };
+    KF::Vector<3> Kaon_PCA_XYZ() const { return GetPCA(1).xyz; };
+    KF::Vector<3> Kaon_PCA_PxPyPz() const { return GetPCA(1).dir; };
 
     // cuts //
-    double DCA_V0_Kaon() const { return GetDCA(0, 1); };
-    double DCA_V0() const { return GetDCA(0); };
-    double DCA_Kaon() const { return GetDCA(1); };
-    double DCA_V0_Neg() const;       // PENDING: not trivial
-    double DCA_V0_Pos() const;       // PENDING: not trivial
-    double DCA_V0_Neg_Kaon() const;  // PENDING: not trivial
-    double DCA_V0_Pos_Kaon() const;  // PENDING: not trivial
+    double DCA_btw_V0_Kaon() const { return GetDCA(0, 1); };
+    double DCA_V0_wrt_SV() const { return GetDCA(0); };
+    double DCA_Kaon_wrt_SV() const { return GetDCA(1); };
+    double DCA_V0Neg_wrt_SV(float bz) const { return Tree2Secondaries::Math::FastDCAHelixVertex(V0.Neg, X(), Y(), Z(), bz); };
+    double DCA_V0Pos_wrt_SV(float bz) const { return Tree2Secondaries::Math::FastDCAHelixVertex(V0.Pos, X(), Y(), Z(), bz); };
+    double DCA_btw_V0Neg_Kaon(float bz) const { return Tree2Secondaries::Math::FastDCAHelixHelix(V0.Neg, Kaon, bz); };
+    double DCA_btw_V0Pos_Kaon(float bz) const { return Tree2Secondaries::Math::FastDCAHelixHelix(V0.Pos, Kaon, bz); };
 
-    // member vars //
-    KF::Vector<3> V0_DecayVtx{};
-    double V0_Energy{};
-    double Kaon_Energy{};
-    int idx_lambda{};
-    int idx_lambda_neg{};
-    int idx_lambda_pos{};
-    int idx_kaon{};
+    // daughters //
+    KF::V0 V0;
+    KF::Track Kaon;
 };
 
 struct alignas(32) ChannelE : Sexaquark {
-    int idx_lambda{};
-    int idx_lambda_neg{};
-    int idx_lambda_pos{};
-    int idx_kaon{};
-    int idx_pim{};
-    int idx_pip{};
+    // PENDING
 };
 
 struct alignas(32) ChannelH : Sexaquark {
-    int idx_kaon1{};
-    int idx_kaon2{};
+    // PENDING
 };
 
 }  // namespace KF

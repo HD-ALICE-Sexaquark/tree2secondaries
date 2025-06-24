@@ -4,7 +4,6 @@
 namespace Tree2Secondaries::Found {
 
 struct alignas(32) State {
-    int Entry{};
     float X{};
     float Y{};
     float Z{};
@@ -26,30 +25,43 @@ struct alignas(32) ChannelA : Sexaquark {
     State V0A;
     State V0B;
 
+    int V0A_Entry{};
     int V0A_Neg_Entry{};
     int V0A_Pos_Entry{};
+
+    float V0A_X_AtPCA{};
+    float V0A_Y_AtPCA{};
+    float V0A_Z_AtPCA{};
+
+    int V0B_Entry{};
     int V0B_Neg_Entry{};
     int V0B_Pos_Entry{};
 
-    float V0A_DecayX{};
-    float V0A_DecayY{};
-    float V0A_DecayZ{};
-
-    float V0B_DecayX{};
-    float V0B_DecayY{};
-    float V0B_DecayZ{};
+    float V0B_X_AtPCA{};
+    float V0B_Y_AtPCA{};
+    float V0B_Z_AtPCA{};
 };
 
 struct alignas(32) ChannelD : Sexaquark {
     State V0;
     State Kaon;
 
+    int V0_Entry{};
     int V0_Neg_Entry{};
     int V0_Pos_Entry{};
 
-    float V0_DecayX{};
-    float V0_DecayY{};
-    float V0_DecayZ{};
+    float V0_X_AtPCA{};
+    float V0_Y_AtPCA{};
+    float V0_Z_AtPCA{};
+
+    int Kaon_Entry{};
+
+    float Kaon_X_AtPCA{};
+    float Kaon_Y_AtPCA{};
+    float Kaon_Z_AtPCA{};
+    float Kaon_Px_AtPCA{};
+    float Kaon_Py_AtPCA{};
+    float Kaon_Pz_AtPCA{};
 };
 
 struct alignas(32) ChannelE : ChannelD {
@@ -91,10 +103,12 @@ struct alignas(32) MC_ChannelA : MC_Sexaquark {
     float V0A_Py{};
     float V0A_Pz{};
     float V0A_E{};
+
     float V0B_Px{};
     float V0B_Py{};
     float V0B_Pz{};
     float V0B_E{};
+
     int V0A_Entry{};
     int V0A_Mother_Entry{};
     int V0A_Neg_Entry{};
@@ -102,6 +116,7 @@ struct alignas(32) MC_ChannelA : MC_Sexaquark {
     int V0A_PdgCode{};
     int V0A_Mother_PdgCode{};
     int V0A_ReactionID{};
+
     int V0B_Entry{};
     int V0B_Mother_Entry{};
     int V0B_Neg_Entry{};
@@ -109,10 +124,12 @@ struct alignas(32) MC_ChannelA : MC_Sexaquark {
     int V0B_PdgCode{};
     int V0B_Mother_PdgCode{};
     int V0B_ReactionID{};
+
     bool V0A_IsTrue{};
     bool V0A_IsSignal{};
     bool V0A_IsSecondary{};
     bool V0A_IsHybrid{};
+
     bool V0B_IsTrue{};
     bool V0B_IsSignal{};
     bool V0B_IsSecondary{};
@@ -120,34 +137,37 @@ struct alignas(32) MC_ChannelA : MC_Sexaquark {
 };
 
 struct alignas(32) MC_ChannelD : MC_Sexaquark {
-    long V0_Mother_Entry{};
-    long V0_Neg_Entry{};
-    long V0_Pos_Entry{};
-    long Kaon_Mother_Entry{};
-    long Kaon_GrandMother_Entry{};
-    long Kaon_Neg_Entry{};
-    long Kaon_Pos_Entry{};
     float V0_Px{};
     float V0_Py{};
     float V0_Pz{};
     float V0_E{};
+
     float Kaon_Px{};
     float Kaon_Py{};
     float Kaon_Pz{};
     float Kaon_E{};
+
     int V0_Entry{};
+    int V0_Neg_Entry{};
+    int V0_Pos_Entry{};
     int V0_PdgCode{};
+    int V0_Mother_Entry{};
     int V0_Mother_PdgCode{};
     int V0_ReactionID{};
+
     int Kaon_Entry{};
     int Kaon_PdgCode{};
+    int Kaon_Mother_Entry{};
     int Kaon_Mother_PdgCode{};
+    int Kaon_GrandMother_Entry{};
     int Kaon_GrandMother_PdgCode{};
     int Kaon_ReactionID{};
+
     bool V0_IsTrue{};
     bool V0_IsSignal{};
     bool V0_IsSecondary{};
     bool V0_IsHybrid{};
+
     bool Kaon_IsTrue{};
     bool Kaon_IsSignal{};
     bool Kaon_IsSecondary{};

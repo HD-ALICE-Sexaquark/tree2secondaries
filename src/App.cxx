@@ -20,7 +20,7 @@ int main(int argc, char *argv[]) {
         T2S::Packager pkgr(settings);
         if (!pkgr.Initialize()) return 1;
 
-        for (long long i_event{0}; i_event < pkgr.NumberEventsToRead(); ++i_event) {
+        for (int i_event{0}; i_event < pkgr.NumberEventsToRead(); ++i_event) {
             pkgr.GetEvent(i_event);
 
             pkgr.ProcessEvent();
@@ -75,7 +75,6 @@ int main(int argc, char *argv[]) {
                     pkgr.PackTracks(T2S::PdgCode::PiPlus);
                     break;
             }
-
             pkgr.EndOfEvent();
         }
         pkgr.EndOfAnalysis();
@@ -85,53 +84,9 @@ int main(int argc, char *argv[]) {
         T2S::Finder finder(settings);
         if (!finder.Initialize()) return 1;
 
-        for (long long i_event{0}; i_event < finder.NumberEventsToRead(); ++i_event) {
+        for (int i_event{0}; i_event < finder.NumberEventsToRead(); ++i_event) {
             finder.GetEvent(i_event);
-
-            switch (finder.GetReactionChannel()) {
-                // standard channels //
-                case T2S::ReactionChannel::A:
-                    finder.UnpackV0s(T2S::PdgCode::AntiLambda);
-                    finder.UnpackV0s(T2S::PdgCode::KaonZeroShort);
-                    break;
-                case T2S::ReactionChannel::D:
-                    finder.UnpackV0s(T2S::PdgCode::AntiLambda);
-                    finder.UnpackTracks(T2S::PdgCode::PosKaon);
-                    break;
-                case T2S::ReactionChannel::E:
-                    finder.UnpackV0s(T2S::PdgCode::AntiLambda);
-                    finder.UnpackTracks(T2S::PdgCode::PosKaon);
-                    finder.UnpackTracks(T2S::PdgCode::PiMinus);
-                    finder.UnpackTracks(T2S::PdgCode::PiPlus);
-                    break;
-                case T2S::ReactionChannel::H:
-                    finder.UnpackTracks(T2S::PdgCode::PosKaon);
-                    break;
-                // anti-channels //
-                case T2S::ReactionChannel::AntiA:
-                    finder.UnpackV0s(T2S::PdgCode::Lambda);
-                    finder.UnpackV0s(T2S::PdgCode::KaonZeroShort);
-                    break;
-                case T2S::ReactionChannel::AntiD:
-                    finder.UnpackV0s(T2S::PdgCode::Lambda);
-                    finder.UnpackTracks(T2S::PdgCode::NegKaon);
-                    break;
-                case T2S::ReactionChannel::AntiE:
-                    finder.UnpackV0s(T2S::PdgCode::Lambda);
-                    finder.UnpackTracks(T2S::PdgCode::NegKaon);
-                    finder.UnpackTracks(T2S::PdgCode::PiMinus);
-                    finder.UnpackTracks(T2S::PdgCode::PiPlus);
-                    break;
-                case T2S::ReactionChannel::AntiH:
-                    finder.UnpackTracks(T2S::PdgCode::NegKaon);
-                    break;
-                default:
-                    break;
-            }
-
             finder.Find(finder.GetReactionChannel());
-
-            finder.EndOfEvent();
         }
         finder.EndOfAnalysis();
     }

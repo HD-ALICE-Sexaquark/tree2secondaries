@@ -228,6 +228,13 @@ void Finder::ConnectBranches_V0s(const std::string& name_v0, PackedEvents::V0s& 
     Utils::ConnectBranch(fTree_PackedEvents.get(), "_Neg_Pz", &vec_v0s.Neg.Pz, name_v0);
     Utils::ConnectBranch(fTree_PackedEvents.get(), "_Neg_E", &vec_v0s.Neg.E, name_v0);
 
+    Utils::ConnectBranch(fTree_PackedEvents.get(), "_Neg_X_AtPCA", &vec_v0s.Neg_X_AtPCA, name_v0);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), "_Neg_Y_AtPCA", &vec_v0s.Neg_Y_AtPCA, name_v0);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), "_Neg_Z_AtPCA", &vec_v0s.Neg_Z_AtPCA, name_v0);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), "_Neg_Px_AtPCA", &vec_v0s.Neg_Px_AtPCA, name_v0);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), "_Neg_Py_AtPCA", &vec_v0s.Neg_Py_AtPCA, name_v0);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), "_Neg_Pz_AtPCA", &vec_v0s.Neg_Pz_AtPCA, name_v0);
+
     Utils::ConnectBranch(fTree_PackedEvents.get(), "_Pos_Entry", &vec_v0s.Pos.Entry, name_v0);
     Utils::ConnectBranch(fTree_PackedEvents.get(), "_Pos_X", &vec_v0s.Pos.X, name_v0);
     Utils::ConnectBranch(fTree_PackedEvents.get(), "_Pos_Y", &vec_v0s.Pos.Y, name_v0);
@@ -236,6 +243,13 @@ void Finder::ConnectBranches_V0s(const std::string& name_v0, PackedEvents::V0s& 
     Utils::ConnectBranch(fTree_PackedEvents.get(), "_Pos_Py", &vec_v0s.Pos.Py, name_v0);
     Utils::ConnectBranch(fTree_PackedEvents.get(), "_Pos_Pz", &vec_v0s.Pos.Pz, name_v0);
     Utils::ConnectBranch(fTree_PackedEvents.get(), "_Pos_E", &vec_v0s.Pos.E, name_v0);
+
+    Utils::ConnectBranch(fTree_PackedEvents.get(), "_Pos_X_AtPCA", &vec_v0s.Pos_X_AtPCA, name_v0);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), "_Pos_Y_AtPCA", &vec_v0s.Pos_Y_AtPCA, name_v0);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), "_Pos_Z_AtPCA", &vec_v0s.Pos_Z_AtPCA, name_v0);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), "_Pos_Px_AtPCA", &vec_v0s.Pos_Px_AtPCA, name_v0);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), "_Pos_Py_AtPCA", &vec_v0s.Pos_Py_AtPCA, name_v0);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), "_Pos_Pz_AtPCA", &vec_v0s.Pos_Pz_AtPCA, name_v0);
 
 #ifdef T2S_DEBUG
     std::cout << "-- finished (" << __FUNCTION__ << ") --" << '\n';
@@ -446,7 +460,6 @@ void Finder::CreateOutputBranches(Found::ChannelA& out_branches) {
     fOutputTree->Branch("DirNumber", &out_branches.DirNumber);
     if (!IsMC()) fOutputTree->Branch("DirNumberB", &out_branches.DirNumberB);
     fOutputTree->Branch("EventNumber", &out_branches.EventNumber);
-    fOutputTree->Branch("Entry", &out_branches.Entry);
 
     fOutputTree->Branch("X", &out_branches.X);
     fOutputTree->Branch("Y", &out_branches.Y);
@@ -457,33 +470,37 @@ void Finder::CreateOutputBranches(Found::ChannelA& out_branches) {
     fOutputTree->Branch("E", &out_branches.E);
     fOutputTree->Branch("E_MinusNucleon", &out_branches.E_MinusNucleon);
 
-    fOutputTree->Branch("V0A_Entry", &out_branches.V0A.Entry);
-    fOutputTree->Branch("V0A_Neg_Entry", &out_branches.V0A_Neg_Entry);
-    fOutputTree->Branch("V0A_Pos_Entry", &out_branches.V0A_Pos_Entry);
-    fOutputTree->Branch("V0A_X", &out_branches.V0A.X);
-    fOutputTree->Branch("V0A_Y", &out_branches.V0A.Y);
-    fOutputTree->Branch("V0A_Z", &out_branches.V0A.Z);
+    fOutputTree->Branch("V0A_X_AtPCA", &out_branches.V0A_X_AtPCA);
+    fOutputTree->Branch("V0A_Y_AtPCA", &out_branches.V0A_Y_AtPCA);
+    fOutputTree->Branch("V0A_Z_AtPCA", &out_branches.V0A_Z_AtPCA);
+
+    fOutputTree->Branch("V0B_X_AtPCA", &out_branches.V0B_X_AtPCA);
+    fOutputTree->Branch("V0B_Y_AtPCA", &out_branches.V0B_Y_AtPCA);
+    fOutputTree->Branch("V0B_Z_AtPCA", &out_branches.V0B_Z_AtPCA);
+
+    fOutputTree->Branch("V0A_Entry", &out_branches.V0A_Entry);
+    fOutputTree->Branch("V0A_X_AtDecay", &out_branches.V0A.X);
+    fOutputTree->Branch("V0A_Y_AtDecay", &out_branches.V0A.Y);
+    fOutputTree->Branch("V0A_Z_AtDecay", &out_branches.V0A.Z);
     fOutputTree->Branch("V0A_Px", &out_branches.V0A.Px);
     fOutputTree->Branch("V0A_Py", &out_branches.V0A.Py);
     fOutputTree->Branch("V0A_Pz", &out_branches.V0A.Pz);
     fOutputTree->Branch("V0A_E", &out_branches.V0A.E);
-    fOutputTree->Branch("V0A_DecayX", &out_branches.V0A_DecayX);
-    fOutputTree->Branch("V0A_DecayY", &out_branches.V0A_DecayY);
-    fOutputTree->Branch("V0A_DecayZ", &out_branches.V0A_DecayZ);
 
-    fOutputTree->Branch("V0B_Entry", &out_branches.V0B.Entry);
-    fOutputTree->Branch("V0B_Neg_Entry", &out_branches.V0B_Neg_Entry);
-    fOutputTree->Branch("V0B_Pos_Entry", &out_branches.V0B_Pos_Entry);
-    fOutputTree->Branch("V0B_X", &out_branches.V0B.X);
-    fOutputTree->Branch("V0B_Y", &out_branches.V0B.Y);
-    fOutputTree->Branch("V0B_Z", &out_branches.V0B.Z);
+    fOutputTree->Branch("V0A_Neg_Entry", &out_branches.V0A_Neg_Entry);
+    fOutputTree->Branch("V0A_Pos_Entry", &out_branches.V0A_Pos_Entry);
+
+    fOutputTree->Branch("V0B_Entry", &out_branches.V0B_Entry);
+    fOutputTree->Branch("V0B_X_AtDecay", &out_branches.V0B.X);
+    fOutputTree->Branch("V0B_Y_AtDecay", &out_branches.V0B.Y);
+    fOutputTree->Branch("V0B_Z_AtDecay", &out_branches.V0B.Z);
     fOutputTree->Branch("V0B_Px", &out_branches.V0B.Px);
     fOutputTree->Branch("V0B_Py", &out_branches.V0B.Py);
     fOutputTree->Branch("V0B_Pz", &out_branches.V0B.Pz);
     fOutputTree->Branch("V0B_E", &out_branches.V0B.E);
-    fOutputTree->Branch("V0B_DecayX", &out_branches.V0B_DecayX);
-    fOutputTree->Branch("V0B_DecayY", &out_branches.V0B_DecayY);
-    fOutputTree->Branch("V0B_DecayZ", &out_branches.V0B_DecayZ);
+
+    fOutputTree->Branch("V0B_Neg_Entry", &out_branches.V0B_Neg_Entry);
+    fOutputTree->Branch("V0B_Pos_Entry", &out_branches.V0B_Pos_Entry);
 
 #ifdef T2S_DEBUG
     std::cout << "-- finished (" << __FUNCTION__ << ") --" << '\n';
@@ -499,7 +516,6 @@ void Finder::CreateOutputBranches(Found::ChannelD& out_branches) {
     fOutputTree->Branch("DirNumber", &out_branches.DirNumber);
     if (!IsMC()) fOutputTree->Branch("DirNumberB", &out_branches.DirNumberB);
     fOutputTree->Branch("EventNumber", &out_branches.EventNumber);
-    fOutputTree->Branch("Entry", &out_branches.Entry);
 
     fOutputTree->Branch("X", &out_branches.X);
     fOutputTree->Branch("Y", &out_branches.Y);
@@ -510,16 +526,30 @@ void Finder::CreateOutputBranches(Found::ChannelD& out_branches) {
     fOutputTree->Branch("E", &out_branches.E);
     fOutputTree->Branch("E_MinusNucleon", &out_branches.E_MinusNucleon);
 
-    fOutputTree->Branch("V0_Entry", &out_branches.V0.Entry);
-    fOutputTree->Branch("V0_X", &out_branches.V0.X);
-    fOutputTree->Branch("V0_Y", &out_branches.V0.Y);
-    fOutputTree->Branch("V0_Z", &out_branches.V0.Z);
+    fOutputTree->Branch("V0_X_AtPCA", &out_branches.V0_X_AtPCA);
+    fOutputTree->Branch("V0_Y_AtPCA", &out_branches.V0_Y_AtPCA);
+    fOutputTree->Branch("V0_Z_AtPCA", &out_branches.V0_Z_AtPCA);
+
+    fOutputTree->Branch("Kaon_X_AtPCA", &out_branches.Kaon_X_AtPCA);
+    fOutputTree->Branch("Kaon_Y_AtPCA", &out_branches.Kaon_Y_AtPCA);
+    fOutputTree->Branch("Kaon_Z_AtPCA", &out_branches.Kaon_Z_AtPCA);
+    fOutputTree->Branch("Kaon_Px_AtPCA", &out_branches.Kaon_Px_AtPCA);
+    fOutputTree->Branch("Kaon_Py_AtPCA", &out_branches.Kaon_Py_AtPCA);
+    fOutputTree->Branch("Kaon_Pz_AtPCA", &out_branches.Kaon_Pz_AtPCA);
+
+    fOutputTree->Branch("V0_Entry", &out_branches.V0_Entry);
+    fOutputTree->Branch("V0_X_AtDecay", &out_branches.V0.X);
+    fOutputTree->Branch("V0_Y_AtDecay", &out_branches.V0.Y);
+    fOutputTree->Branch("V0_Z_AtDecay", &out_branches.V0.Z);
     fOutputTree->Branch("V0_Px", &out_branches.V0.Px);
     fOutputTree->Branch("V0_Py", &out_branches.V0.Py);
     fOutputTree->Branch("V0_Pz", &out_branches.V0.Pz);
     fOutputTree->Branch("V0_E", &out_branches.V0.E);
 
-    fOutputTree->Branch("Kaon_Entry", &out_branches.Kaon.Entry);
+    fOutputTree->Branch("V0_Neg_Entry", &out_branches.V0_Neg_Entry);
+    fOutputTree->Branch("V0_Pos_Entry", &out_branches.V0_Pos_Entry);
+
+    fOutputTree->Branch("Kaon_Entry", &out_branches.Kaon_Entry);
     fOutputTree->Branch("Kaon_X", &out_branches.Kaon.X);
     fOutputTree->Branch("Kaon_Y", &out_branches.Kaon.Y);
     fOutputTree->Branch("Kaon_Z", &out_branches.Kaon.Z);
@@ -549,24 +579,24 @@ void Finder::CreateOutputBranches(Found::MC_ChannelA& sov) {
     fOutputTree->Branch("MC_X", &sov.X);
     fOutputTree->Branch("MC_Y", &sov.Y);
     fOutputTree->Branch("MC_Z", &sov.Z);
-    fOutputTree->Branch("MC_BeforePx", &sov.BeforePx);
-    fOutputTree->Branch("MC_BeforePy", &sov.BeforePy);
-    fOutputTree->Branch("MC_BeforePz", &sov.BeforePz);
-    fOutputTree->Branch("MC_BeforeE", &sov.BeforeE);
+    fOutputTree->Branch("MC_Px_Before", &sov.BeforePx);
+    fOutputTree->Branch("MC_Py_Before", &sov.BeforePy);
+    fOutputTree->Branch("MC_Pz_Before", &sov.BeforePz);
+    fOutputTree->Branch("MC_E_Before", &sov.BeforeE);
 
-    fOutputTree->Branch("MC_NucleonPx", &sov.NucleonPx);
-    fOutputTree->Branch("MC_NucleonPy", &sov.NucleonPy);
-    fOutputTree->Branch("MC_NucleonPz", &sov.NucleonPz);
-    fOutputTree->Branch("MC_NucleonE", &sov.NucleonPz);
-
-    fOutputTree->Branch("MC_AfterPx", &sov.AfterPx);
-    fOutputTree->Branch("MC_AfterPy", &sov.AfterPy);
-    fOutputTree->Branch("MC_AfterPz", &sov.AfterPz);
-    fOutputTree->Branch("MC_AfterE", &sov.AfterE);
+    fOutputTree->Branch("MC_Px_After", &sov.AfterPx);
+    fOutputTree->Branch("MC_Py_After", &sov.AfterPy);
+    fOutputTree->Branch("MC_Pz_After", &sov.AfterPz);
+    fOutputTree->Branch("MC_E_After", &sov.AfterE);
 
     fOutputTree->Branch("MC_IsSignal", &sov.IsSignal);
     fOutputTree->Branch("MC_ReactionID", &sov.ReactionID);
     fOutputTree->Branch("MC_IsHybrid", &sov.IsHybrid);
+
+    fOutputTree->Branch("MC_Px_Nucleon", &sov.NucleonPx);
+    fOutputTree->Branch("MC_Py_Nucleon", &sov.NucleonPy);
+    fOutputTree->Branch("MC_Pz_Nucleon", &sov.NucleonPz);
+    fOutputTree->Branch("MC_E_Nucleon", &sov.NucleonPz);
 
     fOutputTree->Branch("MC_V0A_Entry", &sov.V0A_Entry);
     fOutputTree->Branch("MC_V0A_PdgCode", &sov.V0A_PdgCode);
@@ -613,24 +643,24 @@ void Finder::CreateOutputBranches(Found::MC_ChannelD& sov) {
     fOutputTree->Branch("MC_X", &sov.X);
     fOutputTree->Branch("MC_Y", &sov.Y);
     fOutputTree->Branch("MC_Z", &sov.Z);
-    fOutputTree->Branch("MC_BeforePx", &sov.BeforePx);
-    fOutputTree->Branch("MC_BeforePy", &sov.BeforePy);
-    fOutputTree->Branch("MC_BeforePz", &sov.BeforePz);
-    fOutputTree->Branch("MC_BeforeE", &sov.BeforeE);
+    fOutputTree->Branch("MC_Px_Before", &sov.BeforePx);
+    fOutputTree->Branch("MC_Py_Before", &sov.BeforePy);
+    fOutputTree->Branch("MC_Pz_Before", &sov.BeforePz);
+    fOutputTree->Branch("MC_E_Before", &sov.BeforeE);
 
-    fOutputTree->Branch("MC_NucleonPx", &sov.NucleonPx);
-    fOutputTree->Branch("MC_NucleonPy", &sov.NucleonPy);
-    fOutputTree->Branch("MC_NucleonPz", &sov.NucleonPz);
-    fOutputTree->Branch("MC_NucleonE", &sov.NucleonPz);
-
-    fOutputTree->Branch("MC_AfterPx", &sov.AfterPx);
-    fOutputTree->Branch("MC_AfterPy", &sov.AfterPy);
-    fOutputTree->Branch("MC_AfterPz", &sov.AfterPz);
-    fOutputTree->Branch("MC_AfterE", &sov.AfterE);
+    fOutputTree->Branch("MC_Px_After", &sov.AfterPx);
+    fOutputTree->Branch("MC_Py_After", &sov.AfterPy);
+    fOutputTree->Branch("MC_Pz_After", &sov.AfterPz);
+    fOutputTree->Branch("MC_E_After", &sov.AfterE);
 
     fOutputTree->Branch("MC_IsSignal", &sov.IsSignal);
     fOutputTree->Branch("MC_ReactionID", &sov.ReactionID);
     fOutputTree->Branch("MC_IsHybrid", &sov.IsHybrid);
+
+    fOutputTree->Branch("MC_Nucleon_Px", &sov.NucleonPx);
+    fOutputTree->Branch("MC_Nucleon_Py", &sov.NucleonPy);
+    fOutputTree->Branch("MC_Nucleon_Pz", &sov.NucleonPz);
+    fOutputTree->Branch("MC_Nucleon_E", &sov.NucleonPz);
 
     fOutputTree->Branch("MC_V0_Entry", &sov.V0_Entry);
     fOutputTree->Branch("MC_V0_PdgCode", &sov.V0_PdgCode);
@@ -668,95 +698,6 @@ void Finder::CreateOutputBranches(Found::MC_ChannelD& sov) {
 #endif
 }
 
-// ## Intermediate ZONE ## //
-
-void Finder::UnpackV0s(PdgCode pdg_code) {
-#ifdef T2S_DEBUG
-    std::cout << "-- starting (" << __FUNCTION__ << ") --" << '\n';
-#endif
-
-    // determine rules based on particle pdg code //
-    const PackedEvents::V0s* in;
-    std::vector<KF::V0>* vec_kf;
-    switch (pdg_code) {
-        case PdgCode::AntiLambda:
-            in = &fPacked_AntiLambdas;
-            vec_kf = &fKF_AntiLambdas;
-            break;
-        case PdgCode::Lambda:
-            in = &fPacked_Lambdas;
-            vec_kf = &fKF_Lambdas;
-            break;
-        case PdgCode::KaonZeroShort:
-            in = &fPacked_KaonsZeroShort;
-            vec_kf = &fKF_KaonsZeroShort;
-            break;
-        default:
-            return;
-    }
-
-    // loop over v0s //
-    size_t n_v0s{in->Entry->size()};
-    vec_kf->reserve(n_v0s);
-    for (size_t idx_v0{0}; idx_v0 < n_v0s; ++idx_v0) {
-        auto params = KF::UnpackParams(*in, idx_v0);
-        auto cov_matrix = KF::UnpackCovMatrix(*in, idx_v0);
-        vec_kf->emplace_back(params, cov_matrix, 0, idx_v0, in->Neg.Entry->at(idx_v0), in->Pos.Entry->at(idx_v0), static_cast<int>(pdg_code));
-    }  // end of loop over v0s
-
-#ifdef T2S_DEBUG
-    std::cout << "-- finished (" << __FUNCTION__ << ") --" << '\n';
-#endif
-}
-
-void Finder::UnpackTracks(PdgCode pdg_code) {
-#ifdef T2S_DEBUG
-    std::cout << "-- starting (" << __FUNCTION__ << ") --" << '\n';
-#endif
-
-    // determine rules based on particle pdg code //
-    const PackedEvents::Tracks* in;
-    std::vector<KF::Track>* vec_kf;
-    int charge;
-    switch (pdg_code) {
-        case PdgCode::NegKaon:
-            in = &fPacked_NegKaons;
-            vec_kf = &fKF_NegKaons;
-            charge = -1;
-            break;
-        case PdgCode::PosKaon:
-            in = &fPacked_PosKaons;
-            vec_kf = &fKF_PosKaons;
-            charge = +1;
-            break;
-        case PdgCode::PiMinus:
-            in = &fPacked_PiMinus;
-            vec_kf = &fKF_PiMinus;
-            charge = -1;
-            break;
-        case PdgCode::PiPlus:
-            in = &fPacked_PiPlus;
-            vec_kf = &fKF_PiPlus;
-            charge = +1;
-            break;
-        default:
-            return;
-    }
-
-    // loop over tracks //
-    size_t n_tracks{in->Entry->size()};
-    vec_kf->reserve(n_tracks);
-    for (size_t idx{0}; idx < n_tracks; ++idx) {
-        auto params = KF::UnpackParams(*in, idx);
-        auto cov_matrix = KF::UnpackCovMatrix(*in, idx);
-        vec_kf->emplace_back(params, cov_matrix, charge, idx);
-    }  // end of loop over tracks
-
-#ifdef T2S_DEBUG
-    std::cout << "-- finished (" << __FUNCTION__ << ") --" << '\n';
-#endif
-}
-
 // ## Channel A ZONE ## //
 
 void Finder::FindSexaquarks_ChannelA(bool anti_channel) {
@@ -764,52 +705,54 @@ void Finder::FindSexaquarks_ChannelA(bool anti_channel) {
     std::cout << "-- starting (" << __FUNCTION__ << ") --" << '\n';
 #endif
 
-    const std::vector<KF::V0>* KF_Lambdas{anti_channel ? &fKF_Lambdas : &fKF_AntiLambdas};
+    const PackedEvents::V0s* Packed_Lambdas{anti_channel ? &fPacked_Lambdas : &fPacked_AntiLambdas};
     const PackedEvents::MC_V0s* MC_Lambdas{anti_channel ? &fPacked_MC_Lambdas : &fPacked_MC_AntiLambdas};
+    PdgCode PdgCode_Lambda{anti_channel ? PdgCode::Lambda : PdgCode::AntiLambda};
 
     // loop over all possible pairs of (anti)lambda + K0S //
-    int n_sexa{0};
-    for (const auto& v0a : *KF_Lambdas) {
-        for (const auto& v0b : fKF_KaonsZeroShort) {
+    auto n_lambdas = static_cast<int>(Packed_Lambdas->Entry->size());
+    auto n_k0s = static_cast<int>(fPacked_KaonsZeroShort.Entry->size());
+    for (int idx_v0a{0}; idx_v0a < n_lambdas; ++idx_v0a) {
+
+        // unpack (anti)lambda //
+        auto v0a = KF::UnpackV0(*Packed_Lambdas, idx_v0a, PdgCode_Lambda);
+
+        for (int idx_v0b{0}; idx_v0b < n_k0s; ++idx_v0b) {
+
+            // unpack K0S //
+            auto v0b = KF::UnpackV0(fPacked_KaonsZeroShort, idx_v0b, PdgCode::KaonZeroShort);
 
             // sanity check //
-            std::set<int> unique_track_entries{v0a.idx_neg, v0a.idx_pos, v0b.idx_neg, v0b.idx_pos};
+            std::set<int> unique_track_entries{v0a.Neg.idx, v0a.Pos.idx, v0b.Neg.idx, v0b.Pos.idx};
             if (unique_track_entries.size() < 4) continue;
 
             // fit //
-            KF::ChannelA sexa;
-            sexa.AddDaughter(v0a, fInput_Event.MagneticField);
-            sexa.AddDaughter(v0b, fInput_Event.MagneticField);
-
-            // add needed info //
-            sexa.SetIndices({n_sexa, v0a.idx, v0a.idx_neg, v0a.idx_pos, v0b.idx, v0b.idx_neg, v0b.idx_pos});
-            sexa.SetAdditionalInfo_V0A({v0a.X(), v0a.Y(), v0a.Z()}, v0a.E());
-            sexa.SetAdditionalInfo_V0B({v0b.X(), v0b.Y(), v0b.Z()}, v0b.E());
-            sexa.Nucleon_Mass = PdgMass::Neutron;
+            KF::ChannelA sexa{PdgMass::Neutron, v0a, v0b, fInput_Event.MagneticField};
 
 #ifdef T2S_DEBUG
-            std::cout << "   " << __FUNCTION__ << " :: v0a(idx,neg,pos)=" << v0a.idx << "," << v0a.idx_neg << "," << v0a.idx_pos;
+            std::cout << "   " << __FUNCTION__ << " :: idx(v0a,neg,pos)=" << v0a.idx << "," << v0a.Neg.idx << "," << v0a.Pos.idx;
             std::cout << ";x,y,z=" << v0a.X() << "," << v0a.Y() << "," << v0a.Z();
             std::cout << ";px,py,pz=" << v0a.Px() << "," << v0a.Py() << "," << v0a.Pz();
             std::cout << ";mass=" << v0a.Mass() << '\n';
 
-            std::cout << "   " << __FUNCTION__ << " :: v0b(idx,neg,pos)=" << v0b.idx << "," << v0b.idx_neg << "," << v0b.idx_pos;
+            std::cout << "   " << __FUNCTION__ << " :: idx(v0b,neg,pos)=" << v0b.idx << "," << v0b.Neg.idx << "," << v0b.Pos.idx;
             std::cout << ";x,y,z=" << v0b.X() << "," << v0b.Y() << "," << v0b.Z();
             std::cout << ";px,py,pz=" << v0b.Px() << "," << v0b.Py() << "," << v0b.Pz();
             std::cout << ";mass=" << v0b.Mass() << '\n';
 
-            std::cout << "   " << __FUNCTION__ << " :: idx,v0a,v0a_neg,v0a_pos,v0b,v0b_neg,v0b_pos="                            //
-                      << sexa.idx << "," << sexa.idx_lambda << "," << sexa.idx_lambda_neg << "," << sexa.idx_lambda_pos << ","  //
-                      << sexa.idx_k0s << "," << sexa.idx_k0s_neg << "," << sexa.idx_k0s_pos;
-            std::cout << ";x,y,z=" << sexa.X() << "," << sexa.Y() << "," << sexa.Z();
-            std::cout << ";x,y,z(v0a)=" << sexa.PCA_V0A()[0] << "," << sexa.PCA_V0A()[1] << "," << sexa.PCA_V0A()[2];
-            std::cout << ";x,y,z(v0b)=" << sexa.PCA_V0B()[0] << "," << sexa.PCA_V0B()[1] << "," << sexa.PCA_V0B()[2];
+            std::cout << "   " << __FUNCTION__ << " :: x,y,z=" << sexa.X() << "," << sexa.Y() << "," << sexa.Z();
+            std::cout << ";x,y,z(v0a)=" << sexa.V0A_PCA_XYZ()[0] << "," << sexa.V0A_PCA_XYZ()[1] << "," << sexa.V0A_PCA_XYZ()[2];
+            std::cout << ";x,y,z(v0b)=" << sexa.V0B_PCA_XYZ()[0] << "," << sexa.V0B_PCA_XYZ()[1] << "," << sexa.V0B_PCA_XYZ()[2];
             std::cout << ";mass=" << sexa.Mass();
             std::cout << ";mass_minus_n=" << sexa.Mass_MinusNucleon();
-            std::cout << ";dca_btw_v0s=" << sexa.DCA_V0s();
+            std::cout << ";dca_btw_v0s=" << sexa.DCA_btw_V0s();
             std::cout << ";radius=" << sexa.Radius();
-            std::cout << ";dca_v0a=" << sexa.DCA_V0A();
-            std::cout << ";dca_v0b=" << sexa.DCA_V0B();
+            std::cout << ";dca_v0a=" << sexa.DCA_V0A_wrt_SV();
+            std::cout << ";dca_v0b=" << sexa.DCA_V0B_wrt_SV();
+            std::cout << ";dca_v0a_neg=" << sexa.DCA_V0ANeg_wrt_SV(fInput_Event.MagneticField);
+            std::cout << ";dca_v0a_pos=" << sexa.DCA_V0APos_wrt_SV(fInput_Event.MagneticField);
+            std::cout << ";dca_v0b_neg=" << sexa.DCA_V0BNeg_wrt_SV(fInput_Event.MagneticField);
+            std::cout << ";dca_v0b_pos=" << sexa.DCA_V0BPos_wrt_SV(fInput_Event.MagneticField);
             std::cout << ";pt=" << sexa.Pt();
             std::cout << ";eta=" << sexa.Eta();
             std::cout << ";decay_length(v0a,v0b)=" << sexa.DecayLength_V0A() << "," << sexa.DecayLength_V0B();
@@ -843,7 +786,6 @@ void Finder::FindSexaquarks_ChannelA(bool anti_channel) {
                 StoreMC(mc_sexa);
             }
             fOutputTree->Fill();
-            ++n_sexa;
         }
     }
 
@@ -863,13 +805,13 @@ bool Finder::PassesCuts(const KF::ChannelA& sexa) const {
     if (sexa.CPA_Point(fInput_Event.PV_Xv, fInput_Event.PV_Yv, fInput_Event.PV_Zv) < Cuts::ChannelA::Min_CPAwrtPV ||
         sexa.CPA_Point(fInput_Event.PV_Xv, fInput_Event.PV_Yv, fInput_Event.PV_Zv) > Cuts::ChannelA::Max_CPAwrtPV)
         return false;  // PENDING: kinematic cut, affected by Fermi motion
-    // if (sexa.DCA_V0A_Neg() > Cuts::ChannelA::Max_DCALaNegSV) return false;  // PENDING: not trivial
-    // if (sexa.DCA_V0A_Pos() > Cuts::ChannelA::Max_DCALaPosSV) return false;  // PENDING: not trivial
-    // if (sexa.DCA_V0B_Neg() > Cuts::ChannelA::Max_DCAK0NegSV) return false;  // PENDING: not trivial
-    // if (sexa.DCA_V0B_Pos() > Cuts::ChannelA::Max_DCAK0PosSV) return false;  // PENDING: not trivial
-    if (sexa.DCA_V0A() > Cuts::ChannelA::Max_DCALaSV) return false;
-    if (sexa.DCA_V0B() > Cuts::ChannelA::Max_DCAK0SV) return false;
-    if (sexa.DCA_V0s() > Cuts::ChannelA::Max_DCAbtwV0s) return false;
+    if (sexa.DCA_V0ANeg_wrt_SV(fInput_Event.MagneticField) > Cuts::ChannelA::Max_DCALaNegSV) return false;
+    if (sexa.DCA_V0APos_wrt_SV(fInput_Event.MagneticField) > Cuts::ChannelA::Max_DCALaPosSV) return false;
+    if (sexa.DCA_V0BNeg_wrt_SV(fInput_Event.MagneticField) > Cuts::ChannelA::Max_DCAK0NegSV) return false;
+    if (sexa.DCA_V0BPos_wrt_SV(fInput_Event.MagneticField) > Cuts::ChannelA::Max_DCAK0PosSV) return false;
+    if (sexa.DCA_V0A_wrt_SV() > Cuts::ChannelA::Max_DCALaSV) return false;
+    if (sexa.DCA_V0B_wrt_SV() > Cuts::ChannelA::Max_DCAK0SV) return false;
+    if (sexa.DCA_btw_V0s() > Cuts::ChannelA::Max_DCAbtwV0s) return false;
 
     return true;
 }
@@ -880,7 +822,6 @@ void Finder::Store(const KF::ChannelA& sexa) {
     fOutput_ChannelA.DirNumber = fInput_Event.DirNumber;
     if (!IsMC()) fOutput_ChannelA.DirNumberB = fInput_Event.DirNumberB;
     fOutput_ChannelA.EventNumber = fInput_Event.EventNumber;
-    fOutput_ChannelA.Entry = sexa.idx;
 
     fOutput_ChannelA.X = static_cast<float>(sexa.X());
     fOutput_ChannelA.Y = static_cast<float>(sexa.Y());
@@ -891,33 +832,37 @@ void Finder::Store(const KF::ChannelA& sexa) {
     fOutput_ChannelA.E = static_cast<float>(sexa.E());
     fOutput_ChannelA.E_MinusNucleon = static_cast<float>(sexa.E_MinusNucleon());
 
-    fOutput_ChannelA.V0A.Entry = sexa.idx_lambda;
-    fOutput_ChannelA.V0A_Neg_Entry = sexa.idx_lambda_neg;
-    fOutput_ChannelA.V0A_Pos_Entry = sexa.idx_lambda_pos;
-    fOutput_ChannelA.V0A.X = static_cast<float>(sexa.PCA_V0A()[0]);
-    fOutput_ChannelA.V0A.Y = static_cast<float>(sexa.PCA_V0A()[1]);
-    fOutput_ChannelA.V0A.Z = static_cast<float>(sexa.PCA_V0A()[2]);
-    fOutput_ChannelA.V0A.Px = static_cast<float>(sexa.Mom_V0A()[0]);
-    fOutput_ChannelA.V0A.Py = static_cast<float>(sexa.Mom_V0A()[1]);
-    fOutput_ChannelA.V0A.Pz = static_cast<float>(sexa.Mom_V0A()[2]);
-    fOutput_ChannelA.V0A.E = static_cast<float>(sexa.V0A_Energy);
-    fOutput_ChannelA.V0A_DecayX = static_cast<float>(sexa.V0A_DecayVtx[0]);
-    fOutput_ChannelA.V0A_DecayY = static_cast<float>(sexa.V0A_DecayVtx[1]);
-    fOutput_ChannelA.V0A_DecayZ = static_cast<float>(sexa.V0A_DecayVtx[2]);
+    fOutput_ChannelA.V0A_X_AtPCA = static_cast<float>(sexa.V0A_PCA_XYZ()[0]);
+    fOutput_ChannelA.V0A_Y_AtPCA = static_cast<float>(sexa.V0A_PCA_XYZ()[1]);
+    fOutput_ChannelA.V0A_Z_AtPCA = static_cast<float>(sexa.V0A_PCA_XYZ()[2]);
 
-    fOutput_ChannelA.V0B.Entry = sexa.idx_k0s;
-    fOutput_ChannelA.V0B_Neg_Entry = sexa.idx_k0s_neg;
-    fOutput_ChannelA.V0B_Pos_Entry = sexa.idx_k0s_pos;
-    fOutput_ChannelA.V0B.X = static_cast<float>(sexa.PCA_V0B()[0]);
-    fOutput_ChannelA.V0B.Y = static_cast<float>(sexa.PCA_V0B()[1]);
-    fOutput_ChannelA.V0B.Z = static_cast<float>(sexa.PCA_V0B()[2]);
-    fOutput_ChannelA.V0B.Px = static_cast<float>(sexa.Mom_V0B()[0]);
-    fOutput_ChannelA.V0B.Py = static_cast<float>(sexa.Mom_V0B()[1]);
-    fOutput_ChannelA.V0B.Pz = static_cast<float>(sexa.Mom_V0B()[2]);
-    fOutput_ChannelA.V0B.E = static_cast<float>(sexa.V0B_Energy);
-    fOutput_ChannelA.V0B_DecayX = static_cast<float>(sexa.V0B_DecayVtx[0]);
-    fOutput_ChannelA.V0B_DecayY = static_cast<float>(sexa.V0B_DecayVtx[1]);
-    fOutput_ChannelA.V0B_DecayZ = static_cast<float>(sexa.V0B_DecayVtx[2]);
+    fOutput_ChannelA.V0B_X_AtPCA = static_cast<float>(sexa.V0B_PCA_XYZ()[0]);
+    fOutput_ChannelA.V0B_Y_AtPCA = static_cast<float>(sexa.V0B_PCA_XYZ()[1]);
+    fOutput_ChannelA.V0B_Z_AtPCA = static_cast<float>(sexa.V0B_PCA_XYZ()[2]);
+
+    fOutput_ChannelA.V0A_Entry = sexa.V0A.idx;
+    fOutput_ChannelA.V0A.X = static_cast<float>(sexa.V0A.X());
+    fOutput_ChannelA.V0A.Y = static_cast<float>(sexa.V0A.Y());
+    fOutput_ChannelA.V0A.Z = static_cast<float>(sexa.V0A.Z());
+    fOutput_ChannelA.V0A.Px = static_cast<float>(sexa.V0A.Px());
+    fOutput_ChannelA.V0A.Py = static_cast<float>(sexa.V0A.Py());
+    fOutput_ChannelA.V0A.Pz = static_cast<float>(sexa.V0A.Pz());
+    fOutput_ChannelA.V0A.E = static_cast<float>(sexa.V0A.E());
+
+    fOutput_ChannelA.V0A_Neg_Entry = sexa.V0A.Neg.idx;
+    fOutput_ChannelA.V0A_Pos_Entry = sexa.V0A.Pos.idx;
+
+    fOutput_ChannelA.V0B_Entry = sexa.V0B.idx;
+    fOutput_ChannelA.V0B.X = static_cast<float>(sexa.V0B.X());
+    fOutput_ChannelA.V0B.Y = static_cast<float>(sexa.V0B.Y());
+    fOutput_ChannelA.V0B.Z = static_cast<float>(sexa.V0B.Z());
+    fOutput_ChannelA.V0B.Px = static_cast<float>(sexa.V0B.Px());
+    fOutput_ChannelA.V0B.Py = static_cast<float>(sexa.V0B.Py());
+    fOutput_ChannelA.V0B.Pz = static_cast<float>(sexa.V0B.Pz());
+    fOutput_ChannelA.V0B.E = static_cast<float>(sexa.V0B.E());
+
+    fOutput_ChannelA.V0B_Neg_Entry = sexa.V0B.Neg.idx;
+    fOutput_ChannelA.V0B_Pos_Entry = sexa.V0B.Pos.idx;
 }
 
 void Finder::StoreMC(const MC::ChannelA& sexa) {
@@ -984,44 +929,46 @@ void Finder::FindSexaquarks_ChannelD(bool anti_channel) {
     std::cout << "-- starting (" << __FUNCTION__ << ") --" << '\n';
 #endif
 
-    const std::vector<KF::V0>* KF_Lambdas{anti_channel ? &fKF_Lambdas : &fKF_AntiLambdas};
-    const std::vector<KF::Track>* KF_Kaons{anti_channel ? &fKF_NegKaons : &fKF_PosKaons};
+    const PackedEvents::V0s* Packed_Lambdas{anti_channel ? &fPacked_Lambdas : &fPacked_AntiLambdas};
+    const PackedEvents::Tracks* Packed_Kaons{anti_channel ? &fPacked_NegKaons : &fPacked_PosKaons};
     const PackedEvents::MC_V0s* MC_Lambdas{anti_channel ? &fPacked_MC_Lambdas : &fPacked_MC_AntiLambdas};
     const PackedEvents::MC_Tracks* MC_Kaons{anti_channel ? &fPacked_MC_NegKaons : &fPacked_MC_PosKaons};
+    PdgCode PdgCode_Lambda{anti_channel ? PdgCode::Lambda : PdgCode::AntiLambda};
+    int Charge_Kaon{anti_channel ? -1 : +1};
 
     // loop over all possible pairs of (anti)lambda + (pos/neg)kaon //
-    int n_sexa{0};
-    for (const auto& v0 : *KF_Lambdas) {
-        for (const auto& bach : *KF_Kaons) {
+    auto n_lambdas = static_cast<int>(Packed_Lambdas->Entry->size());
+    auto n_kaons = static_cast<int>(Packed_Kaons->Entry->size());
+    for (int idx_v0{0}; idx_v0 < n_lambdas; ++idx_v0) {
+
+        // unpack (anti)lambda //
+        auto v0 = KF::UnpackV0(*Packed_Lambdas, idx_v0, PdgCode_Lambda);
+
+        for (int idx_kaon{0}; idx_kaon < n_kaons; ++idx_kaon) {
+
+            // unpack kaon //
+            auto kaon = KF::UnpackTrack(*Packed_Kaons, idx_kaon, Charge_Kaon);
 
             // sanity check //
-            std::set<int> unique_track_entries{v0.idx_neg, v0.idx_pos, bach.idx};
+            std::set<int> unique_track_entries{v0.Neg.idx, v0.Pos.idx, kaon.idx};
             if (unique_track_entries.size() < 3) continue;
 
             // fit //
-            KF::ChannelD sexa;
-            sexa.AddDaughter(v0, fInput_Event.MagneticField);
-            sexa.AddDaughter(bach, fInput_Event.MagneticField);
-
-            // add needed info //
-            sexa.SetIndices({n_sexa, v0.idx, v0.idx_neg, v0.idx_pos, bach.idx});
-            sexa.SetAdditionalInfo_V0({v0.X(), v0.Y(), v0.Z()}, v0.E());
-            sexa.Kaon_Energy = bach.E();
-            sexa.Nucleon_Mass = PdgMass::Proton;
+            KF::ChannelD sexa{PdgMass::Proton, v0, kaon, fInput_Event.MagneticField};
 
             // apply cuts //
             if (!PassesCuts(sexa)) continue;
 #ifdef T2S_DEBUG
-            std::cout << "   " << __FUNCTION__ << " :: idx,v0,v0_neg,v0_pos,kaon="  //
-                      << sexa.idx << "," << sexa.idx_lambda << "," << sexa.idx_lambda_neg << "," << sexa.idx_lambda_pos << "," << sexa.idx_kaon;
+            std::cout << "   " << __FUNCTION__ << " :: idx(sexa,v0,neg,pos,kaon)="  //
+                      << sexa.V0.idx << "," << sexa.V0.Neg.idx << "," << sexa.V0.Pos.idx << "," << sexa.Kaon.idx;
             std::cout << ";x,y,z=" << sexa.X() << "," << sexa.Y() << "," << sexa.Z();
-            std::cout << ";x,y,z(v0)=" << sexa.PCA_V0()[0] << "," << sexa.PCA_V0()[1] << "," << sexa.PCA_V0()[2];
-            std::cout << ";x,y,z(kaon)=" << sexa.PCA_Kaon()[0] << "," << sexa.PCA_Kaon()[1] << "," << sexa.PCA_Kaon()[2];
+            std::cout << ";x,y,z(v0)=" << sexa.V0_PCA_XYZ()[0] << "," << sexa.V0_PCA_XYZ()[1] << "," << sexa.V0_PCA_XYZ()[2];
+            std::cout << ";x,y,z(kaon)=" << sexa.Kaon_PCA_XYZ()[0] << "," << sexa.Kaon_PCA_XYZ()[1] << "," << sexa.Kaon_PCA_XYZ()[2];
             std::cout << ";mass=" << sexa.Mass();
-            std::cout << ";dca_v0_kaon=" << sexa.DCA_V0_Kaon();
+            std::cout << ";dca_v0_kaon=" << sexa.DCA_btw_V0_Kaon();
             std::cout << ";radius=" << sexa.Radius();
-            std::cout << ";dca_v0=" << sexa.DCA_V0();
-            std::cout << ";dca_kaon=" << sexa.DCA_Kaon();
+            std::cout << ";dca_v0=" << sexa.DCA_V0_wrt_SV();
+            std::cout << ";dca_kaon=" << sexa.DCA_Kaon_wrt_SV();
             std::cout << ";pt=" << sexa.Pt();
             std::cout << ";eta=" << sexa.Eta();
             std::cout << ";cpa_pv=" << sexa.CPA_Point(fInput_Event.PV_Xv, fInput_Event.PV_Yv, fInput_Event.PV_Zv) << '\n';
@@ -1031,12 +978,11 @@ void Finder::FindSexaquarks_ChannelD(bool anti_channel) {
             Store(sexa);
             if (IsMC()) {
                 MC::V0 mc_v0{*MC_Lambdas, v0.idx};
-                MC::Track mc_kaon{*MC_Kaons, bach.idx};
+                MC::Track mc_kaon{*MC_Kaons, kaon.idx};
                 MC::ChannelD mc_sexa{fInput_Injected, fSettings.SexaquarkMass, mc_v0, mc_kaon};
                 StoreMC(mc_sexa);
             }
             fOutputTree->Fill();
-            ++n_sexa;
         }
     }
 
@@ -1052,13 +998,13 @@ bool Finder::PassesCuts(const KF::ChannelD& sexa) const {
     if (sexa.CPA_Point(fInput_Event.PV_Xv, fInput_Event.PV_Yv, fInput_Event.PV_Zv) < Cuts::ChannelD::Min_CPAwrtPV ||
         sexa.CPA_Point(fInput_Event.PV_Xv, fInput_Event.PV_Yv, fInput_Event.PV_Zv) > Cuts::ChannelD::Max_CPAwrtPV)
         return false;  // PENDING: kinematics, affected by Fermi motion
-    if (sexa.DCA_V0() > Cuts::ChannelD::Max_DCALaSV) return false;
-    if (sexa.DCA_Kaon() > Cuts::ChannelD::Max_DCAKaSV) return false;
-    // if (sexa.DCA_V0_Neg() > Cuts::ChannelD::Max_DCALaNegSV) return false; // PENDING: not trivial
-    // if (sexa.DCA_V0_Pos() > Cuts::ChannelD::Max_DCALaPosSV) return false; // PENDING: not trivial
-    if (sexa.DCA_V0_Kaon() > Cuts::ChannelD::Max_DCAKaLa) return false;
-    // if (sexa.DCA_V0_Neg_Kaon() > Cuts::ChannelD::Max_DCALaNegKa) return false; // PENDING: not trivial
-    // if (sexa.DCA_V0_Pos_Kaon() > Cuts::ChannelD::Max_DCALaPosKa) return false; // PENDING: not trivial
+    if (sexa.DCA_V0_wrt_SV() > Cuts::ChannelD::Max_DCALaSV) return false;
+    if (sexa.DCA_Kaon_wrt_SV() > Cuts::ChannelD::Max_DCAKaSV) return false;
+    if (sexa.DCA_V0Neg_wrt_SV(fInput_Event.MagneticField) > Cuts::ChannelD::Max_DCALaNegSV) return false;
+    if (sexa.DCA_V0Pos_wrt_SV(fInput_Event.MagneticField) > Cuts::ChannelD::Max_DCALaPosSV) return false;
+    if (sexa.DCA_btw_V0_Kaon() > Cuts::ChannelD::Max_DCAKaLa) return false;
+    if (sexa.DCA_btw_V0Neg_Kaon(fInput_Event.MagneticField) > Cuts::ChannelD::Max_DCALaNegKa) return false;
+    if (sexa.DCA_btw_V0Pos_Kaon(fInput_Event.MagneticField) > Cuts::ChannelD::Max_DCALaPosKa) return false;
 
     return true;
 }
@@ -1069,7 +1015,6 @@ void Finder::Store(const KF::ChannelD& sexa) {
     fOutput_ChannelD.DirNumber = fInput_Event.DirNumber;
     if (!IsMC()) fOutput_ChannelD.DirNumberB = fInput_Event.DirNumberB;
     fOutput_ChannelD.EventNumber = fInput_Event.EventNumber;
-    fOutput_ChannelD.Entry = sexa.idx;
 
     fOutput_ChannelD.X = static_cast<float>(sexa.X());
     fOutput_ChannelD.Y = static_cast<float>(sexa.Y());
@@ -1080,28 +1025,37 @@ void Finder::Store(const KF::ChannelD& sexa) {
     fOutput_ChannelD.E = static_cast<float>(sexa.E());
     fOutput_ChannelD.E_MinusNucleon = static_cast<float>(sexa.E_MinusNucleon());
 
-    fOutput_ChannelD.V0.Entry = sexa.idx_lambda;
-    fOutput_ChannelD.V0_Neg_Entry = sexa.idx_lambda_neg;
-    fOutput_ChannelD.V0_Pos_Entry = sexa.idx_lambda_pos;
-    fOutput_ChannelD.V0.X = static_cast<float>(sexa.PCA_V0()[0]);
-    fOutput_ChannelD.V0.Y = static_cast<float>(sexa.PCA_V0()[1]);
-    fOutput_ChannelD.V0.Z = static_cast<float>(sexa.PCA_V0()[2]);
-    fOutput_ChannelD.V0.Px = static_cast<float>(sexa.Mom_V0()[0]);
-    fOutput_ChannelD.V0.Py = static_cast<float>(sexa.Mom_V0()[1]);
-    fOutput_ChannelD.V0.Pz = static_cast<float>(sexa.Mom_V0()[2]);
-    fOutput_ChannelD.V0.E = static_cast<float>(sexa.V0_Energy);
-    fOutput_ChannelD.V0_DecayX = static_cast<float>(sexa.V0_DecayVtx[0]);
-    fOutput_ChannelD.V0_DecayY = static_cast<float>(sexa.V0_DecayVtx[1]);
-    fOutput_ChannelD.V0_DecayZ = static_cast<float>(sexa.V0_DecayVtx[2]);
+    fOutput_ChannelD.V0_X_AtPCA = static_cast<float>(sexa.V0_PCA_XYZ()[0]);
+    fOutput_ChannelD.V0_Y_AtPCA = static_cast<float>(sexa.V0_PCA_XYZ()[1]);
+    fOutput_ChannelD.V0_Z_AtPCA = static_cast<float>(sexa.V0_PCA_XYZ()[2]);
 
-    fOutput_ChannelD.Kaon.Entry = sexa.idx_kaon;
-    fOutput_ChannelD.Kaon.X = static_cast<float>(sexa.PCA_Kaon()[0]);
-    fOutput_ChannelD.Kaon.Y = static_cast<float>(sexa.PCA_Kaon()[1]);
-    fOutput_ChannelD.Kaon.Z = static_cast<float>(sexa.PCA_Kaon()[2]);
-    fOutput_ChannelD.Kaon.Px = static_cast<float>(sexa.Mom_Kaon()[0]);
-    fOutput_ChannelD.Kaon.Py = static_cast<float>(sexa.Mom_Kaon()[1]);
-    fOutput_ChannelD.Kaon.Pz = static_cast<float>(sexa.Mom_Kaon()[2]);
-    fOutput_ChannelD.Kaon.E = static_cast<float>(sexa.Kaon_Energy);
+    fOutput_ChannelD.Kaon_X_AtPCA = static_cast<float>(sexa.Kaon_PCA_XYZ()[0]);
+    fOutput_ChannelD.Kaon_Y_AtPCA = static_cast<float>(sexa.Kaon_PCA_XYZ()[1]);
+    fOutput_ChannelD.Kaon_Z_AtPCA = static_cast<float>(sexa.Kaon_PCA_XYZ()[2]);
+    fOutput_ChannelD.Kaon_Px_AtPCA = static_cast<float>(sexa.Kaon_PCA_PxPyPz()[0]);
+    fOutput_ChannelD.Kaon_Py_AtPCA = static_cast<float>(sexa.Kaon_PCA_PxPyPz()[1]);
+    fOutput_ChannelD.Kaon_Pz_AtPCA = static_cast<float>(sexa.Kaon_PCA_PxPyPz()[2]);
+
+    fOutput_ChannelD.V0_Entry = sexa.V0.idx;
+    fOutput_ChannelD.V0.X = static_cast<float>(sexa.V0.X());
+    fOutput_ChannelD.V0.Y = static_cast<float>(sexa.V0.Y());
+    fOutput_ChannelD.V0.Z = static_cast<float>(sexa.V0.Z());
+    fOutput_ChannelD.V0.Px = static_cast<float>(sexa.V0.Px());
+    fOutput_ChannelD.V0.Py = static_cast<float>(sexa.V0.Py());
+    fOutput_ChannelD.V0.Pz = static_cast<float>(sexa.V0.Pz());
+    fOutput_ChannelD.V0.E = static_cast<float>(sexa.V0.E());
+
+    fOutput_ChannelD.V0_Neg_Entry = sexa.V0.Neg.idx;
+    fOutput_ChannelD.V0_Pos_Entry = sexa.V0.Pos.idx;
+
+    fOutput_ChannelD.Kaon_Entry = sexa.Kaon.idx;
+    fOutput_ChannelD.Kaon.X = static_cast<float>(sexa.Kaon.X());
+    fOutput_ChannelD.Kaon.Y = static_cast<float>(sexa.Kaon.Y());
+    fOutput_ChannelD.Kaon.Z = static_cast<float>(sexa.Kaon.Z());
+    fOutput_ChannelD.Kaon.Px = static_cast<float>(sexa.Kaon.Px());
+    fOutput_ChannelD.Kaon.Py = static_cast<float>(sexa.Kaon.Py());
+    fOutput_ChannelD.Kaon.Pz = static_cast<float>(sexa.Kaon.Pz());
+    fOutput_ChannelD.Kaon.E = static_cast<float>(sexa.Kaon.E());
 }
 
 void Finder::StoreMC(const MC::ChannelD& sexa) {
@@ -1191,58 +1145,6 @@ void Finder::Store(const KF::ChannelH& sexa) {
 }
 
 // ## END OF CYCLES ## //
-
-void Finder::EndOfEvent() {
-#ifdef T2S_DEBUG
-    std::cout << "-- starting (" << __FUNCTION__ << ") --" << '\n';
-#endif
-
-    // clear temporary containers //
-    switch (GetReactionChannel()) {
-        // standard channels //
-        case ReactionChannel::A:
-            fKF_AntiLambdas.clear();
-            fKF_KaonsZeroShort.clear();
-            break;
-        case ReactionChannel::D:
-            fKF_AntiLambdas.clear();
-            fKF_PosKaons.clear();
-            break;
-        case ReactionChannel::E:
-            fKF_AntiLambdas.clear();
-            fKF_PosKaons.clear();
-            fKF_PiMinus.clear();
-            fKF_PiPlus.clear();
-            break;
-        case ReactionChannel::H:
-            fKF_PosKaons.clear();
-            break;
-        // anti-channels //
-        case ReactionChannel::AntiA:
-            fKF_Lambdas.clear();
-            fKF_KaonsZeroShort.clear();
-            break;
-        case ReactionChannel::AntiD:
-            fKF_Lambdas.clear();
-            fKF_NegKaons.clear();
-            break;
-        case ReactionChannel::AntiE:
-            fKF_Lambdas.clear();
-            fKF_NegKaons.clear();
-            fKF_PiMinus.clear();
-            fKF_PiPlus.clear();
-            break;
-        case ReactionChannel::AntiH:
-            fKF_NegKaons.clear();
-            break;
-        default:
-            break;
-    }
-
-#ifdef T2S_DEBUG
-    std::cout << "-- finished (" << __FUNCTION__ << ") --" << '\n';
-#endif
-}
 
 void Finder::EndOfAnalysis() {
 #ifdef T2S_DEBUG

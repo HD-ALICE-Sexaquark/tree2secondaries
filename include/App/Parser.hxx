@@ -107,7 +107,7 @@ class Parser {
         // input path //
         settings.PathInputFiles = CLI_APP.get_option("-i")->as<std::vector<std::string>>();
         // n events limit //
-        settings.LimitToNEvents = CLI_APP.get_option("-n")->as<long long>();
+        settings.LimitToNEvents = CLI_APP.get_option("-n")->as<int>();
         // output path //
         settings.PathOutputFile = CLI_APP.get_option("-o")->as<std::string>();
         if (settings.PathOutputFile.empty()) {

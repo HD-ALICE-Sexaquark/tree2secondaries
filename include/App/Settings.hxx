@@ -35,7 +35,7 @@ struct Settings {
 
     std::vector<std::string> PathInputFiles;
     std::string PathOutputFile;
-    long long LimitToNEvents{0};
+    int LimitToNEvents{0};
     double SexaquarkMass{Const::StandardSexaquarkMass};
     ReactionChannel Channel{ReactionChannel::All};
     bool IsMC{false};

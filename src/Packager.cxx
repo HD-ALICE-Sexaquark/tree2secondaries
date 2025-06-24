@@ -392,6 +392,13 @@ void Packager::CreateOutputBranches_V0s(const std::string& name_v0, PackedEvents
     fOutputTree->Branch((name_v0 + "_Neg_Pz").c_str(), &sov.Neg.Pz);
     fOutputTree->Branch((name_v0 + "_Neg_E").c_str(), &sov.Neg.E);
 
+    fOutputTree->Branch((name_v0 + "_Neg_X_AtPCA").c_str(), &sov.Neg_X_AtPCA);
+    fOutputTree->Branch((name_v0 + "_Neg_Y_AtPCA").c_str(), &sov.Neg_Y_AtPCA);
+    fOutputTree->Branch((name_v0 + "_Neg_Z_AtPCA").c_str(), &sov.Neg_Z_AtPCA);
+    fOutputTree->Branch((name_v0 + "_Neg_Px_AtPCA").c_str(), &sov.Neg_Px_AtPCA);
+    fOutputTree->Branch((name_v0 + "_Neg_Py_AtPCA").c_str(), &sov.Neg_Py_AtPCA);
+    fOutputTree->Branch((name_v0 + "_Neg_Pz_AtPCA").c_str(), &sov.Neg_Pz_AtPCA);
+
     fOutputTree->Branch((name_v0 + "_Pos_Entry").c_str(), &sov.Pos.Entry);
     fOutputTree->Branch((name_v0 + "_Pos_X").c_str(), &sov.Pos.X);
     fOutputTree->Branch((name_v0 + "_Pos_Y").c_str(), &sov.Pos.Y);
@@ -400,6 +407,13 @@ void Packager::CreateOutputBranches_V0s(const std::string& name_v0, PackedEvents
     fOutputTree->Branch((name_v0 + "_Pos_Py").c_str(), &sov.Pos.Py);
     fOutputTree->Branch((name_v0 + "_Pos_Pz").c_str(), &sov.Pos.Pz);
     fOutputTree->Branch((name_v0 + "_Pos_E").c_str(), &sov.Pos.E);
+
+    fOutputTree->Branch((name_v0 + "_Pos_X_AtPCA").c_str(), &sov.Pos_X_AtPCA);
+    fOutputTree->Branch((name_v0 + "_Pos_Y_AtPCA").c_str(), &sov.Pos_Y_AtPCA);
+    fOutputTree->Branch((name_v0 + "_Pos_Z_AtPCA").c_str(), &sov.Pos_Z_AtPCA);
+    fOutputTree->Branch((name_v0 + "_Pos_Px_AtPCA").c_str(), &sov.Pos_Px_AtPCA);
+    fOutputTree->Branch((name_v0 + "_Pos_Py_AtPCA").c_str(), &sov.Pos_Py_AtPCA);
+    fOutputTree->Branch((name_v0 + "_Pos_Pz_AtPCA").c_str(), &sov.Pos_Pz_AtPCA);
 
 #ifdef T2S_DEBUG
     std::cout << "-- finished (" << __FUNCTION__ << ") --" << '\n';
@@ -586,9 +600,9 @@ void Packager::ProcessTracks() {
     std::cout << "-- starting (" << __FUNCTION__ << ") --" << '\n';
 #endif
 
-    for (size_t esd_track{0}; esd_track < NumberTracks(); ++esd_track) {
+    for (int esd_track{0}; esd_track < NumberTracks(); ++esd_track) {
         // get charge //
-        auto charge{fInput_Tracks.Charge->at(esd_track)};
+        int charge{fInput_Tracks.Charge->at(esd_track)};
         // PID //
         if (std::abs(fInput_Tracks.NSigmaProton->at(esd_track)) < Cuts::Track::AbsMax_PID_NSigma) {
             if (charge < 0) fVec_AntiProtons.push_back(esd_track);
@@ -622,7 +636,7 @@ void Packager::PackTracks(PdgCode pdg_code) {
 #endif
 
     // determine rules based on particle pdg code //
-    const std::vector<size_t>* vec;
+    const std::vector<int>* vec;
     PackedEvents::Tracks* out;
     PackedEvents::MC_Tracks* mc_out{nullptr};
     double mass;
@@ -664,7 +678,7 @@ void Packager::PackTracks(PdgCode pdg_code) {
         std::array<float, 15> neg_alice_cov = KF::PackCovMatrix_ALICE(fInput_Tracks, esd_idx);
         KF::Track kf_track{KF::CreateParticle(neg_kf_params, neg_alice_params, neg_alice_cov, fInput_Tracks.Alpha->at(esd_idx),
                                               fInput_Tracks.Charge->at(esd_idx), mass),
-                           static_cast<int>(esd_idx)};
+                           esd_idx};
 
         // store //
         Store(kf_track, *out);
@@ -720,26 +734,26 @@ void Packager::Store(const KF::Track& track, PackedEvents::Tracks& sov) {
     sov.Sigma.E2->push_back(static_cast<float>(track.GetCovariance(27)));
 }
 
-void Packager::StoreMC(const MC::Track& mc, PackedEvents::MC_Tracks& sov) {
+void Packager::StoreMC(const MC::Track& mc_track, PackedEvents::MC_Tracks& sov) {
 
-    sov.Entry->push_back(mc.Entry);
-    sov.X->push_back(mc.X);
-    sov.Y->push_back(mc.Y);
-    sov.Z->push_back(mc.Z);
-    sov.Px->push_back(mc.Px);
-    sov.Py->push_back(mc.Py);
-    sov.Pz->push_back(mc.Pz);
-    sov.E->push_back(mc.Energy);
+    sov.Entry->push_back(mc_track.Entry);
+    sov.X->push_back(mc_track.X);
+    sov.Y->push_back(mc_track.Y);
+    sov.Z->push_back(mc_track.Z);
+    sov.Px->push_back(mc_track.Px);
+    sov.Py->push_back(mc_track.Py);
+    sov.Pz->push_back(mc_track.Pz);
+    sov.E->push_back(mc_track.Energy);
 
-    sov.PdgCode->push_back(mc.PdgCode);
-    sov.Mother_Entry->push_back(mc.Mother_Entry);
-    sov.Mother_PdgCode->push_back(mc.Mother_PdgCode);
-    sov.GrandMother_Entry->push_back(mc.GrandMother_Entry);
-    sov.GrandMother_PdgCode->push_back(mc.GrandMother_PdgCode);
-    sov.IsTrue->push_back(mc.IsTrue);
-    sov.IsSignal->push_back(mc.IsSignal);
-    sov.IsSecondary->push_back(mc.IsSecondary);
-    sov.ReactionID->push_back(mc.ReactionID);
+    sov.PdgCode->push_back(mc_track.PdgCode);
+    sov.Mother_Entry->push_back(mc_track.Mother_Entry);
+    sov.Mother_PdgCode->push_back(mc_track.Mother_PdgCode);
+    sov.GrandMother_Entry->push_back(mc_track.GrandMother_Entry);
+    sov.GrandMother_PdgCode->push_back(mc_track.GrandMother_PdgCode);
+    sov.IsTrue->push_back(mc_track.IsTrue);
+    sov.IsSignal->push_back(mc_track.IsSignal);
+    sov.IsSecondary->push_back(mc_track.IsSecondary);
+    sov.ReactionID->push_back(mc_track.ReactionID);
 }
 
 // ## V0s ZONE ## //
@@ -750,8 +764,8 @@ void Packager::FindV0s(PdgCode pdg_code) {
 #endif
 
     // determine rules based on V0 pdg code //
-    const std::vector<size_t>* vec_neg;
-    const std::vector<size_t>* vec_pos;
+    const std::vector<int>* vec_neg;
+    const std::vector<int>* vec_pos;
     PackedEvents::V0s* out;
     PackedEvents::MC_V0s* mc_out{nullptr};
     double mass_neg;
@@ -799,7 +813,7 @@ void Packager::FindV0s(PdgCode pdg_code) {
     }
 
     // loop over all possible pairs of tracks //
-    size_t v0_entry{0};
+    int v0_entry{0};
     for (auto esd_neg : *vec_neg) {
         for (auto esd_pos : *vec_pos) {
 
@@ -810,35 +824,28 @@ void Packager::FindV0s(PdgCode pdg_code) {
             std::array<double, 6> neg_kf_params = KF::PackParams(fInput_Tracks, esd_neg);
             std::array<float, 5> neg_alice_params = KF::PackParams_ALICE(fInput_Tracks, esd_neg);
             std::array<float, 15> neg_alice_cov = KF::PackCovMatrix_ALICE(fInput_Tracks, esd_neg);
-            auto neg = KF::CreateParticle(neg_kf_params, neg_alice_params, neg_alice_cov, fInput_Tracks.Alpha->at(esd_neg),
-                                          fInput_Tracks.Charge->at(esd_neg), mass_neg);
+            KF::Track neg{KF::CreateParticle(neg_kf_params, neg_alice_params, neg_alice_cov, fInput_Tracks.Alpha->at(esd_neg),
+                                             fInput_Tracks.Charge->at(esd_neg), mass_neg),
+                          esd_neg};
 
             // prepare pos //
             std::array<double, 6> pos_kf_params = KF::PackParams(fInput_Tracks, esd_pos);
             std::array<float, 5> pos_alice_params = KF::PackParams_ALICE(fInput_Tracks, esd_pos);
             std::array<float, 15> pos_alice_cov = KF::PackCovMatrix_ALICE(fInput_Tracks, esd_pos);
-            auto pos = KF::CreateParticle(pos_kf_params, pos_alice_params, pos_alice_cov, fInput_Tracks.Alpha->at(esd_pos),
-                                          fInput_Tracks.Charge->at(esd_pos), mass_pos);
+            KF::Track pos{KF::CreateParticle(pos_kf_params, pos_alice_params, pos_alice_cov, fInput_Tracks.Alpha->at(esd_pos),
+                                             fInput_Tracks.Charge->at(esd_pos), mass_pos),
+                          esd_pos};
 
-            // build v0 //
-            KF::V0 v0;
-            v0.AddDaughter(neg, fInput_Event.MagneticField);
-            v0.AddDaughter(pos, fInput_Event.MagneticField);
-            v0.AddMassConstraint(mass_v0);
+            // fit v0 //
+            KF::V0 v0{v0_entry, pdg_code, neg, pos, fInput_Event.MagneticField, mass_v0};
 
             // apply cuts //
             if (!PassesCuts(v0, pdg_code)) continue;
-
-            // add info //
-            v0.SetIndices({static_cast<int>(v0_entry), static_cast<int>(esd_neg), static_cast<int>(esd_pos)});
-            v0.Neg_Energy = neg.E();
-            v0.Pos_Energy = pos.E();
-            v0.pdg_code_hyp = static_cast<int>(pdg_code);
 #ifdef T2S_DEBUG
-            std::cout << "   " << __FUNCTION__ << " :: idx,neg,pos=" << v0.idx << "," << v0.idx_neg << "," << v0.idx_pos;
+            std::cout << "   " << __FUNCTION__ << " :: idx,neg,pos=" << v0.idx << "," << neg.idx << "," << pos.idx;
             std::cout << ";x,y,z=" << v0.X() << "," << v0.Y() << "," << v0.Z();
-            std::cout << ";x,y,z(neg)=" << v0.PCA_Neg()[0] << "," << v0.PCA_Neg()[1] << "," << v0.PCA_Neg()[2];
-            std::cout << ";x,y,z(pos)=" << v0.PCA_Pos()[0] << "," << v0.PCA_Pos()[1] << "," << v0.PCA_Pos()[2];
+            std::cout << ";x,y,z(neg)=" << v0.Neg_PCA_XYZ()[0] << "," << v0.Neg_PCA_XYZ()[1] << "," << v0.Neg_PCA_XYZ()[2];
+            std::cout << ";x,y,z(pos)=" << v0.Pos_PCA_XYZ()[0] << "," << v0.Pos_PCA_XYZ()[1] << "," << v0.Pos_PCA_XYZ()[2];
             std::cout << ";mass=" << v0.Mass();
             std::cout << ";dca_dau=" << v0.DCA_Daughters();
             std::cout << ";radius=" << v0.Radius();
@@ -946,70 +953,84 @@ void Packager::Store(const KF::V0& v0, PackedEvents::V0s& sov) {
     sov.Sigma.PzE->push_back(static_cast<float>(v0.GetCovariance(26)));
     sov.Sigma.E2->push_back(static_cast<float>(v0.GetCovariance(27)));
 
-    sov.Neg.Entry->push_back(v0.idx_neg);
-    sov.Neg.X->push_back(static_cast<float>(v0.PCA_Neg()[0]));
-    sov.Neg.Y->push_back(static_cast<float>(v0.PCA_Neg()[1]));
-    sov.Neg.Z->push_back(static_cast<float>(v0.PCA_Neg()[2]));
-    sov.Neg.Px->push_back(static_cast<float>(v0.Mom_Neg()[0]));
-    sov.Neg.Py->push_back(static_cast<float>(v0.Mom_Neg()[1]));
-    sov.Neg.Pz->push_back(static_cast<float>(v0.Mom_Neg()[2]));
-    sov.Neg.E->push_back(static_cast<float>(v0.Neg_Energy));
+    sov.Neg.Entry->push_back(v0.Neg.idx);
+    sov.Neg.X->push_back(static_cast<float>(v0.Neg.X()));
+    sov.Neg.Y->push_back(static_cast<float>(v0.Neg.Y()));
+    sov.Neg.Z->push_back(static_cast<float>(v0.Neg.Z()));
+    sov.Neg.Px->push_back(static_cast<float>(v0.Neg.Px()));
+    sov.Neg.Py->push_back(static_cast<float>(v0.Neg.Py()));
+    sov.Neg.Pz->push_back(static_cast<float>(v0.Neg.Pz()));
+    sov.Neg.E->push_back(static_cast<float>(v0.Neg.E()));
 
-    sov.Pos.Entry->push_back(v0.idx_pos);
-    sov.Pos.X->push_back(static_cast<float>(v0.PCA_Pos()[0]));
-    sov.Pos.Y->push_back(static_cast<float>(v0.PCA_Pos()[1]));
-    sov.Pos.Z->push_back(static_cast<float>(v0.PCA_Pos()[2]));
-    sov.Pos.Px->push_back(static_cast<float>(v0.Mom_Pos()[0]));
-    sov.Pos.Py->push_back(static_cast<float>(v0.Mom_Pos()[1]));
-    sov.Pos.Pz->push_back(static_cast<float>(v0.Mom_Pos()[2]));
-    sov.Pos.E->push_back(static_cast<float>(v0.Pos_Energy));
+    sov.Neg_X_AtPCA->push_back(static_cast<float>(v0.Neg_PCA_XYZ()[0]));
+    sov.Neg_Y_AtPCA->push_back(static_cast<float>(v0.Neg_PCA_XYZ()[1]));
+    sov.Neg_Z_AtPCA->push_back(static_cast<float>(v0.Neg_PCA_XYZ()[2]));
+    sov.Neg_Px_AtPCA->push_back(static_cast<float>(v0.Neg_PCA_PxPyPz()[0]));
+    sov.Neg_Py_AtPCA->push_back(static_cast<float>(v0.Neg_PCA_PxPyPz()[1]));
+    sov.Neg_Pz_AtPCA->push_back(static_cast<float>(v0.Neg_PCA_PxPyPz()[2]));
+
+    sov.Pos.Entry->push_back(v0.Pos.idx);
+    sov.Pos.X->push_back(static_cast<float>(v0.Pos.X()));
+    sov.Pos.Y->push_back(static_cast<float>(v0.Pos.Y()));
+    sov.Pos.Z->push_back(static_cast<float>(v0.Pos.Z()));
+    sov.Pos.Px->push_back(static_cast<float>(v0.Pos.Px()));
+    sov.Pos.Py->push_back(static_cast<float>(v0.Pos.Py()));
+    sov.Pos.Pz->push_back(static_cast<float>(v0.Pos.Pz()));
+    sov.Pos.E->push_back(static_cast<float>(v0.Pos.E()));
+
+    sov.Pos_X_AtPCA->push_back(static_cast<float>(v0.Pos_PCA_XYZ()[0]));
+    sov.Pos_Y_AtPCA->push_back(static_cast<float>(v0.Pos_PCA_XYZ()[1]));
+    sov.Pos_Z_AtPCA->push_back(static_cast<float>(v0.Pos_PCA_XYZ()[2]));
+    sov.Pos_Px_AtPCA->push_back(static_cast<float>(v0.Pos_PCA_PxPyPz()[0]));
+    sov.Pos_Py_AtPCA->push_back(static_cast<float>(v0.Pos_PCA_PxPyPz()[1]));
+    sov.Pos_Pz_AtPCA->push_back(static_cast<float>(v0.Pos_PCA_PxPyPz()[2]));
 }
 
-void Packager::StoreMC(const MC::V0& v0, PackedEvents::MC_V0s& sov) {
+void Packager::StoreMC(const MC::V0& mc_v0, PackedEvents::MC_V0s& sov) {
 
-    sov.Entry->push_back(v0.Entry);
-    sov.X->push_back(v0.X);
-    sov.Y->push_back(v0.Y);
-    sov.Z->push_back(v0.Z);
-    sov.Px->push_back(v0.Px);
-    sov.Py->push_back(v0.Py);
-    sov.Pz->push_back(v0.Pz);
-    sov.E->push_back(v0.Energy);
+    sov.Entry->push_back(mc_v0.Entry);
+    sov.X->push_back(mc_v0.X);
+    sov.Y->push_back(mc_v0.Y);
+    sov.Z->push_back(mc_v0.Z);
+    sov.Px->push_back(mc_v0.Px);
+    sov.Py->push_back(mc_v0.Py);
+    sov.Pz->push_back(mc_v0.Pz);
+    sov.E->push_back(mc_v0.Energy);
 
-    sov.DecayX->push_back(v0.DecayX());
-    sov.DecayY->push_back(v0.DecayY());
-    sov.DecayZ->push_back(v0.DecayZ());
+    sov.DecayX->push_back(mc_v0.DecayX());
+    sov.DecayY->push_back(mc_v0.DecayY());
+    sov.DecayZ->push_back(mc_v0.DecayZ());
 
-    sov.PdgCode->push_back(v0.PdgCode);
-    sov.Mother_Entry->push_back(v0.Mother_Entry);
-    sov.Mother_PdgCode->push_back(v0.Mother_PdgCode);
-    sov.IsTrue->push_back(v0.IsTrue);
-    sov.IsSignal->push_back(v0.IsSignal);
-    sov.IsSecondary->push_back(v0.IsSecondary);
-    sov.ReactionID->push_back(v0.ReactionID);
-    sov.IsHybrid->push_back(v0.IsHybrid);
+    sov.PdgCode->push_back(mc_v0.PdgCode);
+    sov.Mother_Entry->push_back(mc_v0.Mother_Entry);
+    sov.Mother_PdgCode->push_back(mc_v0.Mother_PdgCode);
+    sov.IsTrue->push_back(mc_v0.IsTrue);
+    sov.IsSignal->push_back(mc_v0.IsSignal);
+    sov.IsSecondary->push_back(mc_v0.IsSecondary);
+    sov.ReactionID->push_back(mc_v0.ReactionID);
+    sov.IsHybrid->push_back(mc_v0.IsHybrid);
 
     // neg //
-    sov.Neg_Entry->push_back(v0.neg.Entry);
-    sov.Neg_Px->push_back(v0.neg.Px);
-    sov.Neg_Py->push_back(v0.neg.Py);
-    sov.Neg_Pz->push_back(v0.neg.Pz);
-    sov.Neg_PdgCode->push_back(v0.neg.PdgCode);
-    sov.Neg_IsTrue->push_back(v0.neg.IsTrue);
-    sov.Neg_IsSignal->push_back(v0.neg.IsSignal);
-    sov.Neg_IsSecondary->push_back(v0.neg.IsSecondary);
-    sov.Neg_ReactionID->push_back(v0.neg.ReactionID);
+    sov.Neg_Entry->push_back(mc_v0.neg.Entry);
+    sov.Neg_Px->push_back(mc_v0.neg.Px);
+    sov.Neg_Py->push_back(mc_v0.neg.Py);
+    sov.Neg_Pz->push_back(mc_v0.neg.Pz);
+    sov.Neg_PdgCode->push_back(mc_v0.neg.PdgCode);
+    sov.Neg_IsTrue->push_back(mc_v0.neg.IsTrue);
+    sov.Neg_IsSignal->push_back(mc_v0.neg.IsSignal);
+    sov.Neg_IsSecondary->push_back(mc_v0.neg.IsSecondary);
+    sov.Neg_ReactionID->push_back(mc_v0.neg.ReactionID);
 
     // pos //
-    sov.Pos_Entry->push_back(v0.pos.Entry);
-    sov.Pos_Px->push_back(v0.pos.Px);
-    sov.Pos_Py->push_back(v0.pos.Py);
-    sov.Pos_Pz->push_back(v0.pos.Pz);
-    sov.Pos_PdgCode->push_back(v0.pos.PdgCode);
-    sov.Pos_IsTrue->push_back(v0.pos.IsTrue);
-    sov.Pos_IsSignal->push_back(v0.pos.IsSignal);
-    sov.Pos_IsSecondary->push_back(v0.pos.IsSecondary);
-    sov.Pos_ReactionID->push_back(v0.pos.ReactionID);
+    sov.Pos_Entry->push_back(mc_v0.pos.Entry);
+    sov.Pos_Px->push_back(mc_v0.pos.Px);
+    sov.Pos_Py->push_back(mc_v0.pos.Py);
+    sov.Pos_Pz->push_back(mc_v0.pos.Pz);
+    sov.Pos_PdgCode->push_back(mc_v0.pos.PdgCode);
+    sov.Pos_IsTrue->push_back(mc_v0.pos.IsTrue);
+    sov.Pos_IsSignal->push_back(mc_v0.pos.IsSignal);
+    sov.Pos_IsSecondary->push_back(mc_v0.pos.IsSecondary);
+    sov.Pos_ReactionID->push_back(mc_v0.pos.ReactionID);
 }
 
 // ## END OF CYCLES ## //

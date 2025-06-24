@@ -5,7 +5,7 @@
 #include <sstream>
 #include <string>
 
-#include "TTree.h"
+#include <TTree.h>
 
 namespace Tree2Secondaries::Utils {
 

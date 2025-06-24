@@ -4,8 +4,8 @@
 #include <memory>
 #include <utility>
 
-#include "TChain.h"
-#include "TFile.h"
+#include <TChain.h>
+#include <TFile.h>
 
 #include "App/Settings.hxx"
 #include "DataFormats/Events.hxx"
@@ -75,13 +75,12 @@ class Finder {
         }  // end of switch statement
     }
 
-    long long NumberEventsToRead() const { return fSettings.LimitToNEvents ? fSettings.LimitToNEvents : fTree_PackedEvents->GetEntries(); }
+    int NumberEventsToRead() const {
+        return fSettings.LimitToNEvents ? fSettings.LimitToNEvents : static_cast<int>(fTree_PackedEvents->GetEntries());
+    }
     bool IsMC() const { return fSettings.IsMC; }
     bool IsSignalMC() const { return fSettings.IsSignalMC; }
-    void GetEvent(long long i_event) { fTree_PackedEvents->GetEntry(i_event); }
-
-    void UnpackV0s(PdgCode pdg_code);
-    void UnpackTracks(PdgCode pdg_code);
+    void GetEvent(int i_event) { fTree_PackedEvents->GetEntry(i_event); }
 
     void FindSexaquarks_ChannelA(bool anti_channel);
     void FindSexaquarks_ChannelD(bool anti_channel);
@@ -122,7 +121,6 @@ class Finder {
     void StoreMC(const MC::ChannelA &sexa);
     void StoreMC(const MC::ChannelD &sexa);
 
-    void EndOfEvent();
     void EndOfAnalysis();
 
    private:
@@ -154,17 +152,6 @@ class Finder {
     PackedEvents::MC_Tracks fPacked_MC_PosKaons;
     PackedEvents::MC_Tracks fPacked_MC_PiMinus;
     PackedEvents::MC_Tracks fPacked_MC_PiPlus;
-
-    // temporary vectors //
-
-    std::vector<KF::V0> fKF_AntiLambdas;
-    std::vector<KF::V0> fKF_Lambdas;
-    std::vector<KF::V0> fKF_KaonsZeroShort;
-
-    std::vector<KF::Track> fKF_NegKaons;
-    std::vector<KF::Track> fKF_PosKaons;
-    std::vector<KF::Track> fKF_PiMinus;
-    std::vector<KF::Track> fKF_PiPlus;
 
     // output structs //
 

@@ -4,8 +4,8 @@
 #include <memory>
 #include <utility>
 
-#include "TChain.h"
-#include "TFile.h"
+#include <TChain.h>
+#include <TFile.h>
 
 #include "App/Settings.hxx"
 #include "DataFormats/Events.hxx"
@@ -48,13 +48,13 @@ class Packager {
     void CreateOutputBranches_MC_V0s(const std::string &name_v0, PackedEvents::MC_V0s &sov);
     void CreateOutputBranches_MC_Tracks(const std::string &name_part, PackedEvents::MC_Tracks &sov);
 
-    long long NumberEventsToRead() const { return fSettings.LimitToNEvents ? fSettings.LimitToNEvents : fEventsTree->GetEntries(); }
+    int NumberEventsToRead() const { return fSettings.LimitToNEvents ? fSettings.LimitToNEvents : static_cast<int>(fEventsTree->GetEntries()); }
     bool IsMC() const { return fSettings.IsMC; }
     bool IsSignalMC() const { return fSettings.IsSignalMC; }
-    void GetEvent(long long i_event) { fEventsTree->GetEntry(i_event); }
+    void GetEvent(int i_event) { fEventsTree->GetEntry(i_event); }
 
-    size_t NumberInjected() const { return fInput_Injected.ReactionID->size(); }
-    size_t NumberTracks() const { return fInput_Tracks.Px->size(); }
+    int NumberInjected() const { return static_cast<int>(fInput_Injected.ReactionID->size()); }
+    int NumberTracks() const { return static_cast<int>(fInput_Tracks.Px->size()); }
 
     void ProcessEvent();
     void ProcessInjected();
@@ -81,12 +81,12 @@ class Packager {
 
    private:
     void Store(const KF::Track &track, PackedEvents::Tracks &sov);
-    void StoreMC(const MC::Track &track, PackedEvents::MC_Tracks &sov);
+    void StoreMC(const MC::Track &mc_track, PackedEvents::MC_Tracks &sov);
 
     bool PassesCuts_Lambda(const KF::V0 &v0) const;
     bool PassesCuts_KaonZeroShort(const KF::V0 &v0) const;
     void Store(const KF::V0 &v0, PackedEvents::V0s &sov);
-    void StoreMC(const MC::V0 &v0, PackedEvents::MC_V0s &sov);
+    void StoreMC(const MC::V0 &mc_v0, PackedEvents::MC_V0s &sov);
 
     Settings fSettings;
     std::unique_ptr<TChain> fEventsTree;
@@ -102,14 +102,14 @@ class Packager {
     Events::MC fInput_MC;
     Events::Tracks fInput_Tracks;
 
-    // indices -- temporary containers //
+    // indices -- temporary containers, cleaned after event loop //
 
-    std::vector<size_t> fVec_AntiProtons;
-    std::vector<size_t> fVec_Protons;
-    std::vector<size_t> fVec_NegKaons;
-    std::vector<size_t> fVec_PosKaons;
-    std::vector<size_t> fVec_PiMinus;
-    std::vector<size_t> fVec_PiPlus;
+    std::vector<int> fVec_AntiProtons;
+    std::vector<int> fVec_Protons;
+    std::vector<int> fVec_NegKaons;
+    std::vector<int> fVec_PosKaons;
+    std::vector<int> fVec_PiMinus;
+    std::vector<int> fVec_PiPlus;
 
     // output branches //
 

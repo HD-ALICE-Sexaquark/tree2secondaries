@@ -15,7 +15,7 @@ namespace Tree2Secondaries::MC {
 struct alignas(32) Particle {
     // constructors //
     Particle() = default;
-    Particle(long entry, int pdg_code, long mother_entry, int mother_pdg_code, float x, float y, float z, float px, float py, float pz, float energy)
+    Particle(int entry, int pdg_code, int mother_entry, int mother_pdg_code, float x, float y, float z, float px, float py, float pz, float energy)
         : Entry{entry},
           Mother_Entry{mother_entry},
           X{x},
@@ -29,7 +29,7 @@ struct alignas(32) Particle {
           Mother_PdgCode{mother_pdg_code} {}
 
     // utilities //
-    void FillBasic(const Events::MC& soa, long mc_idx) {
+    void FillBasic(const Events::MC& soa, int mc_idx) {
         if (mc_idx >= 0) {
             Entry = mc_idx;
             X = soa.X->at(mc_idx);
@@ -47,8 +47,8 @@ struct alignas(32) Particle {
     }
 
     // member vars //
-    long Entry{Const::DummyInt};
-    long Mother_Entry{Const::DummyInt};
+    int Entry{Const::DummyInt};
+    int Mother_Entry{Const::DummyInt};
     float X{Const::DummyFloat};  // origin
     float Y{Const::DummyFloat};  // origin
     float Z{Const::DummyFloat};  // origin
@@ -64,9 +64,9 @@ struct alignas(32) Particle {
 struct alignas(32) Track : MC::Particle {
     // constructors //
     Track() = default;
-    Track(const Events::MC& soa, long mc_idx, Tree2Secondaries::PdgCode hypothesis) { Init(soa, mc_idx, hypothesis); }
+    Track(const Events::MC& soa, int mc_idx, Tree2Secondaries::PdgCode hypothesis) { Init(soa, mc_idx, hypothesis); }
     Track(const PackedEvents::MC_Tracks& sov, int idx)
-        : MC::Particle{static_cast<long>(sov.Entry->at(idx)),
+        : MC::Particle{sov.Entry->at(idx),
                        sov.PdgCode->at(idx),
                        sov.Mother_Entry->at(idx),
                        sov.Mother_PdgCode->at(idx),
@@ -83,7 +83,7 @@ struct alignas(32) Track : MC::Particle {
           IsTrue(sov.IsTrue->at(idx)),
           IsSignal(sov.IsSignal->at(idx)),
           IsSecondary(sov.IsSecondary->at(idx)) {}
-    Track(long entry, int pdg_code, float px, float py, float pz, bool is_true, bool is_signal, bool is_secondary, int reaction_id)
+    Track(int entry, int pdg_code, float px, float py, float pz, bool is_true, bool is_signal, bool is_secondary, int reaction_id)
         : MC::Particle{entry, pdg_code, Const::DummyInt,  Const::DummyInt, Const::DummyFloat, Const::DummyFloat, Const::DummyFloat, px,
                        py,    pz,       Const::DummyFloat},
           ReactionID(reaction_id),
@@ -92,17 +92,17 @@ struct alignas(32) Track : MC::Particle {
           IsSecondary(is_secondary) {}
 
     // utilities //
-    void Init(const Events::MC& soa, long mc_idx, Tree2Secondaries::PdgCode hypothesis) {
+    void Init(const Events::MC& soa, int mc_idx, Tree2Secondaries::PdgCode hypothesis) {
         FillBasic(soa, mc_idx);
         FillDerived(soa, mc_idx, hypothesis);
     }
-    void FillDerived(const Events::MC& soa, long mc_idx, Tree2Secondaries::PdgCode hypothesis) {
+    void FillDerived(const Events::MC& soa, int mc_idx, Tree2Secondaries::PdgCode hypothesis) {
         if (mc_idx >= 0) {
             IsTrue = PdgCode == static_cast<int>(hypothesis);
             IsSignal = IsTrue && soa.Generator->at(mc_idx) == 2;
             IsSecondary = soa.IsSecFromMat->at(mc_idx) || soa.IsSecFromWeak->at(mc_idx) || IsSignal;
             if (Mother_Entry >= 0) {
-                if (IsSignal) ReactionID = static_cast<int>(soa.Status->at(Mother_Entry));
+                if (IsSignal) ReactionID = soa.Status->at(Mother_Entry);
                 GrandMother_Entry = soa.MotherEntry->at(Mother_Entry);
                 if (GrandMother_Entry >= 0) GrandMother_PdgCode = soa.PdgCode->at(GrandMother_Entry);
             }
@@ -110,7 +110,7 @@ struct alignas(32) Track : MC::Particle {
     }
 
     // member vars //
-    long GrandMother_Entry{Const::DummyInt};
+    int GrandMother_Entry{Const::DummyInt};
     int GrandMother_PdgCode{Const::DummyInt};
     int ReactionID{Const::DummyInt};
     bool IsTrue{false};
@@ -122,16 +122,16 @@ struct alignas(32) Track : MC::Particle {
 struct alignas(32) V0 : MC::Particle {
     // constructors //
     V0() = default;
-    V0(const Events::MC& soa, long mc_neg, long mc_pos, Tree2Secondaries::PdgCode hyp_v0, Tree2Secondaries::PdgCode hyp_neg,
+    V0(const Events::MC& soa, int mc_neg, int mc_pos, Tree2Secondaries::PdgCode hyp_v0, Tree2Secondaries::PdgCode hyp_neg,
        Tree2Secondaries::PdgCode hyp_pos) {
         if (mc_neg < 0 || mc_pos < 0) return;  // protection
         neg.Init(soa, mc_neg, hyp_neg);
         pos.Init(soa, mc_pos, hyp_pos);
 
-        long mc_mother_neg{soa.MotherEntry->at(mc_neg)};
-        long mc_mother_pos{soa.MotherEntry->at(mc_pos)};
+        int mc_mother_neg{soa.MotherEntry->at(mc_neg)};
+        int mc_mother_pos{soa.MotherEntry->at(mc_pos)};
         if (mc_mother_neg >= 0 && mc_mother_neg == mc_mother_pos) {
-            long mc_v0{mc_mother_neg};
+            int mc_v0{mc_mother_neg};
             FillBasic(soa, mc_v0);
 
             // fill derived props //
@@ -139,13 +139,14 @@ struct alignas(32) V0 : MC::Particle {
             IsSignal = IsTrue && soa.Generator->at(mc_v0) == 2 && neg.ReactionID == pos.ReactionID;
             IsSecondary = soa.IsSecFromMat->at(mc_v0) || soa.IsSecFromWeak->at(mc_v0) || IsSignal;
             if (IsSignal)
-                ReactionID = static_cast<int>(soa.Status->at(mc_v0));
+                ReactionID = soa.Status->at(mc_v0);
             else
-                IsHybrid = (neg.IsSignal && !pos.IsSignal) || (!neg.IsSignal && pos.IsSignal);
+                IsHybrid = (neg.IsSignal && !pos.IsSignal) || (!neg.IsSignal && pos.IsSignal) ||
+                           (neg.IsSignal && pos.IsSignal && neg.Mother_Entry != pos.Mother_Entry);
         }
     }
     V0(const PackedEvents::MC_V0s& sov, int idx)
-        : MC::Particle{static_cast<long>(sov.Entry->at(idx)),
+        : MC::Particle{sov.Entry->at(idx),
                        sov.PdgCode->at(idx),
                        sov.Mother_Entry->at(idx),
                        sov.Mother_PdgCode->at(idx),
@@ -235,7 +236,8 @@ struct alignas(32) ChannelA : MC::Sexaquark {
         if (IsSignal) {
             FillInfo_BeforeReaction(sov_inj, mass_sexaquark, PdgMass::Neutron, v0a.ReactionID);
         } else {
-            IsHybrid = (v0a.IsSignal && !v0b.IsSignal) || (!v0a.IsSignal && v0b.IsSignal) || v0a.IsHybrid || v0b.IsHybrid;
+            IsHybrid = (v0a.IsSignal && !v0b.IsSignal) || (!v0a.IsSignal && v0b.IsSignal) ||
+                       (v0a.IsSignal && v0b.IsSignal && v0a.ReactionID != v0b.ReactionID) || v0a.IsHybrid || v0b.IsHybrid;
         }
     }
 
@@ -271,7 +273,8 @@ struct alignas(32) ChannelD : MC::Sexaquark {
         if (IsSignal) {
             FillInfo_BeforeReaction(sov_inj, mass_sexaquark, PdgMass::Neutron, v0.ReactionID);
         } else {
-            IsHybrid = (v0.IsSignal && !kaon.IsSignal) || (!v0.IsSignal && kaon.IsSignal) || v0.IsHybrid;
+            IsHybrid = (v0.IsSignal && !kaon.IsSignal) || (!v0.IsSignal && kaon.IsSignal) ||
+                       (v0.IsSignal && kaon.IsSignal && v0.ReactionID != kaon.ReactionID) || v0.IsHybrid;
         }
     }
 

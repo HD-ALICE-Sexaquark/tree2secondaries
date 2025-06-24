@@ -1,7 +1,6 @@
 #ifndef T2S_STRUCTS_PACKED_HXX
 #define T2S_STRUCTS_PACKED_HXX
 
-#include <cstddef>
 #include <vector>
 
 namespace Tree2Secondaries::PackedEvents {
@@ -68,7 +67,7 @@ struct alignas(32) Cov {
 };
 
 struct alignas(32) State {
-    std::vector<size_t>* Entry{nullptr};
+    std::vector<int>* Entry{nullptr};
     std::vector<float>* X{nullptr};
     std::vector<float>* Y{nullptr};
     std::vector<float>* Z{nullptr};
@@ -103,16 +102,40 @@ struct alignas(32) Tracks : Particle {
 struct alignas(32) V0s : Particle {
     State Neg;
     State Pos;
+    std::vector<float>* Neg_X_AtPCA{nullptr};
+    std::vector<float>* Neg_Y_AtPCA{nullptr};
+    std::vector<float>* Neg_Z_AtPCA{nullptr};
+    std::vector<float>* Neg_Px_AtPCA{nullptr};
+    std::vector<float>* Neg_Py_AtPCA{nullptr};
+    std::vector<float>* Neg_Pz_AtPCA{nullptr};
+    std::vector<float>* Pos_X_AtPCA{nullptr};
+    std::vector<float>* Pos_Y_AtPCA{nullptr};
+    std::vector<float>* Pos_Z_AtPCA{nullptr};
+    std::vector<float>* Pos_Px_AtPCA{nullptr};
+    std::vector<float>* Pos_Py_AtPCA{nullptr};
+    std::vector<float>* Pos_Pz_AtPCA{nullptr};
     void Clear() {
         ClearParticle();
         Neg.ClearState();
         Pos.ClearState();
+        Neg_X_AtPCA->clear();
+        Neg_Y_AtPCA->clear();
+        Neg_Z_AtPCA->clear();
+        Neg_Px_AtPCA->clear();
+        Neg_Py_AtPCA->clear();
+        Neg_Pz_AtPCA->clear();
+        Pos_X_AtPCA->clear();
+        Pos_Y_AtPCA->clear();
+        Pos_Z_AtPCA->clear();
+        Pos_Px_AtPCA->clear();
+        Pos_Py_AtPCA->clear();
+        Pos_Pz_AtPCA->clear();
     }
 };
 
 struct alignas(32) MC_Tracks : State {
-    std::vector<long>* Mother_Entry{nullptr};
-    std::vector<long>* GrandMother_Entry{nullptr};
+    std::vector<int>* Mother_Entry{nullptr};
+    std::vector<int>* GrandMother_Entry{nullptr};
     std::vector<int>* PdgCode{nullptr};
     std::vector<int>* Mother_PdgCode{nullptr};
     std::vector<int>* GrandMother_PdgCode{nullptr};
@@ -140,7 +163,7 @@ struct alignas(32) MC_V0s : State {
     std::vector<float>* DecayZ{nullptr};
 
     std::vector<int>* PdgCode{nullptr};
-    std::vector<long>* Mother_Entry{nullptr};
+    std::vector<int>* Mother_Entry{nullptr};
     std::vector<int>* Mother_PdgCode{nullptr};
     std::vector<bool>* IsTrue{nullptr};
     std::vector<bool>* IsSignal{nullptr};
@@ -149,7 +172,7 @@ struct alignas(32) MC_V0s : State {
     std::vector<bool>* IsHybrid{nullptr};
 
     // neg //
-    std::vector<long>* Neg_Entry{nullptr};
+    std::vector<int>* Neg_Entry{nullptr};
     std::vector<float>* Neg_Px{nullptr};
     std::vector<float>* Neg_Py{nullptr};
     std::vector<float>* Neg_Pz{nullptr};
@@ -160,7 +183,7 @@ struct alignas(32) MC_V0s : State {
     std::vector<int>* Neg_ReactionID{nullptr};
 
     // pos //
-    std::vector<long>* Pos_Entry{nullptr};
+    std::vector<int>* Pos_Entry{nullptr};
     std::vector<float>* Pos_Px{nullptr};
     std::vector<float>* Pos_Py{nullptr};
     std::vector<float>* Pos_Pz{nullptr};

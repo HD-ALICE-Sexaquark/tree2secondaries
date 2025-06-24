@@ -50,8 +50,8 @@ struct alignas(32) MC {
     std::vector<float> *E{nullptr};
 
     std::vector<int> *PdgCode{nullptr};
-    std::vector<long> *MotherEntry{nullptr};
-    std::vector<unsigned int> *Status{nullptr};
+    std::vector<int> *MotherEntry{nullptr};
+    std::vector<int> *Status{nullptr};
     std::vector<int> *Generator{nullptr};
     std::vector<bool> *IsPrimary{nullptr};
     std::vector<bool> *IsSecFromMat{nullptr};
@@ -90,7 +90,7 @@ struct alignas(32) Tracks {
     std::vector<float> *Sigma1PtTgl{nullptr};
     std::vector<float> *Sigma1Pt2{nullptr};
 
-    std::vector<long> *McEntry{nullptr};
+    std::vector<int> *McEntry{nullptr};
 };
 
 }  // namespace Tree2Secondaries::Events
