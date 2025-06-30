@@ -4,6 +4,7 @@
 #include <cctype>
 #include <set>
 #include <string>
+#include <vector>
 
 #include <CLI/CLI.hpp>
 
@@ -34,10 +35,15 @@ class Parser {
             ch_opt_group->require_option(1);
         };
 
+        auto add_signal_mc_opt = [](CLI::App* subcmd) {
+            subcmd->add_option("-m,--mass", "Assign Injected Sexaquark Mass")->expected(1)->check(CLI::PositiveNumber);
+            subcmd->add_flag("-s,--signal", "Process Signal MC")->needs("-m");
+            subcmd->get_option("-m")->needs("-s");
+        };
+
         CLI_APP
-            .add_option("-i,--input", "Path(s) of input file(s)")  //
-            ->required()
-            ->expected(1, -1);
+            .add_option("-i,--input", InputFiles, "Path(s) of input file(s)")  //
+            ->required();
         CLI_APP
             .add_option("-o,--output", "Path of output file")  //
             ->expected(1);
@@ -49,22 +55,18 @@ class Parser {
         // # package mode //
 
         auto* package_cmd = CLI_APP.add_subcommand("pack", "Package V0s and necessary tracks");
-        auto* package_mc = package_cmd->add_subcommand("mc", "Process MC");
-        package_mc->add_option("-m,--mass", "Assign Injected Sexaquark Mass")->expected(1)->check(CLI::PositiveNumber);
-        package_mc->add_flag("-s,--signal", "Process Signal MC")->needs("-m");
-        package_mc->get_option("-m")->needs("-s");
-        add_channels_opt(package_mc);
+        auto* package_mc_cmd = package_cmd->add_subcommand("mc", "Process MC");
+        add_signal_mc_opt(package_mc_cmd);
+        add_channels_opt(package_mc_cmd);
         package_cmd->add_subcommand("data", "Process data");
         package_cmd->require_subcommand(1);
 
         // # search mode //
 
         auto* search_cmd = CLI_APP.add_subcommand("search", "Search for anti-sexaquark reactions");
-        auto* search_mc = search_cmd->add_subcommand("mc", "Process MC");
-        search_mc->add_option("-m,--mass", "Assign Injected Sexaquark Mass")->expected(1)->check(CLI::PositiveNumber);
-        search_mc->add_flag("-s,--signal", "Process Signal MC")->needs("-m");
-        search_mc->get_option("-m")->needs("-s");
-        add_channels_opt(search_mc);
+        auto* search_mc_cmd = search_cmd->add_subcommand("mc", "Process MC");
+        add_signal_mc_opt(search_mc_cmd);
+        add_channels_opt(search_mc_cmd);
         auto* search_data = search_cmd->add_subcommand("data", "Process data");
         add_channels_opt(search_data);
         search_cmd->require_subcommand(1);
@@ -105,7 +107,7 @@ class Parser {
             }
         }
         // input path //
-        settings.PathInputFiles = CLI_APP.get_option("-i")->as<std::vector<std::string>>();
+        settings.PathInputFiles = InputFiles;
         // n events limit //
         settings.LimitToNEvents = CLI_APP.get_option("-n")->as<int>();
         // output path //
@@ -132,6 +134,7 @@ class Parser {
 
    protected:
     CLI::App CLI_APP;
+    std::vector<std::string> InputFiles;
 };
 
 }  // namespace Tree2Secondaries

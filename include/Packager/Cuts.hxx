@@ -19,8 +19,8 @@ constexpr double Min_DCAwrtPV{4.};
 constexpr double AbsMax_ArmQtOverAlpha{0.2};
 // geometric //
 constexpr double AbsMax_Zv{50.};
-constexpr double Min_Radius{45.};
-constexpr double Max_Radius{140.};
+constexpr double Min_Radius2D{45.};
+constexpr double Max_Radius2D{140.};
 constexpr double Max_DCAnegV0{2.};
 constexpr double Max_DCAposV0{2.};
 constexpr double Max_DCAbtwDau{2.};
@@ -37,8 +37,8 @@ constexpr double Max_CPAwrtPV{0.9};
 constexpr double Min_DCAwrtPV{4.};
 // geometric //
 constexpr double AbsMax_Zv{50.};
-constexpr double Min_Radius{20.};
-constexpr double Max_Radius{180.};
+constexpr double Min_Radius2D{20.};
+constexpr double Max_Radius2D{180.};
 constexpr double Max_DCAnegV0{2.};
 constexpr double Max_DCAposV0{2.};
 constexpr double Max_DCAbtwDau{2.};

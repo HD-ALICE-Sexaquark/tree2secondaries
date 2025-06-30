@@ -1,3 +1,4 @@
+#include <filesystem>
 #include <iostream>
 #include <memory>
 
@@ -166,6 +167,9 @@ bool Packager::PrepareOutputFile() {
 #ifdef T2S_DEBUG
     std::cout << "-- starting (" << __FUNCTION__ << ") --" << '\n';
 #endif
+
+    const std::filesystem::path output_path(fSettings.PathOutputFile);
+    if (output_path.has_parent_path()) std::filesystem::create_directories(output_path.parent_path());
 
     fOutputFile = std::unique_ptr<TFile>(TFile::Open(fSettings.PathOutputFile.c_str(), "RECREATE"));
     if (!fOutputFile) {
@@ -879,7 +883,7 @@ bool Packager::PassesCuts_Lambda(const KF::V0& v0) const {
     if (v0.Mass() < Cuts::Lambda::Min_Mass || v0.Mass() > Cuts::Lambda::Max_Mass) return false;
     if (v0.DCA_Daughters() > Cuts::Lambda::Max_DCAbtwDau) return false;
     if (v0.AbsZ() > Cuts::Lambda::AbsMax_Zv) return false;
-    if (v0.Radius() < Cuts::Lambda::Min_Radius || v0.Radius() > Cuts::Lambda::Max_Radius) return false;
+    if (v0.Radius2D() < Cuts::Lambda::Min_Radius2D || v0.Radius2D() > Cuts::Lambda::Max_Radius2D) return false;
     if (v0.DCA_Neg_V0() > Cuts::Lambda::Max_DCAnegV0) return false;
     if (v0.DCA_Pos_V0() > Cuts::Lambda::Max_DCAposV0) return false;
     if (v0.Pt() < Cuts::Lambda::Min_Pt) return false;
@@ -901,7 +905,7 @@ bool Packager::PassesCuts_KaonZeroShort(const KF::V0& v0) const {
     if (v0.Mass() < Cuts::KaonZeroShort::Min_Mass || v0.Mass() > Cuts::KaonZeroShort::Max_Mass) return false;
     if (v0.AbsEta() > Cuts::KaonZeroShort::AbsMax_Eta) return false;
     if (v0.AbsZ() > Cuts::KaonZeroShort::AbsMax_Zv) return false;
-    if (v0.Radius() < Cuts::KaonZeroShort::Min_Radius || v0.Radius() > Cuts::KaonZeroShort::Max_Radius) return false;
+    if (v0.Radius2D() < Cuts::KaonZeroShort::Min_Radius2D || v0.Radius2D() > Cuts::KaonZeroShort::Max_Radius2D) return false;
     if (v0.DCA_Neg_V0() > Cuts::KaonZeroShort::Max_DCAnegV0) return false;
     if (v0.DCA_Pos_V0() > Cuts::KaonZeroShort::Max_DCAposV0) return false;
     if (v0.CPA_Point(fInput_Event.PV_Xv, fInput_Event.PV_Yv, fInput_Event.PV_Zv) < Cuts::KaonZeroShort::Min_CPAwrtPV ||

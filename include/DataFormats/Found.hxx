@@ -18,6 +18,12 @@ struct alignas(32) Sexaquark : State {
     unsigned int DirNumber{};
     unsigned int DirNumberB{};
     unsigned int EventNumber{};
+    float PV_Xv{};
+    float PV_Yv{};
+    float PV_Zv{};
+    float MC_PV_Xv{};
+    float MC_PV_Yv{};
+    float MC_PV_Zv{};
     float E_MinusNucleon{};
 };
 

@@ -1,3 +1,4 @@
+#include <filesystem>
 #include <iostream>
 #include <memory>
 #include <set>
@@ -392,6 +393,9 @@ bool Finder::PrepareOutputFile() {
     std::cout << "-- starting (" << __FUNCTION__ << ") --" << '\n';
 #endif
 
+    const std::filesystem::path output_path(fSettings.PathOutputFile);
+    if (output_path.has_parent_path()) std::filesystem::create_directories(output_path.parent_path());
+
     fOutputFile = std::unique_ptr<TFile>(TFile::Open(fSettings.PathOutputFile.c_str(), "RECREATE"));
     if (!fOutputFile) {
         std::cerr << "   " << __FUNCTION__ << " :: TFile \"" << fSettings.PathOutputFile << "\" couldn't be created" << '\n';
@@ -460,6 +464,14 @@ void Finder::CreateOutputBranches(Found::ChannelA& out_branches) {
     fOutputTree->Branch("DirNumber", &out_branches.DirNumber);
     if (!IsMC()) fOutputTree->Branch("DirNumberB", &out_branches.DirNumberB);
     fOutputTree->Branch("EventNumber", &out_branches.EventNumber);
+    fOutputTree->Branch("PV_Xv", &out_branches.PV_Xv);
+    fOutputTree->Branch("PV_Yv", &out_branches.PV_Yv);
+    fOutputTree->Branch("PV_Zv", &out_branches.PV_Zv);
+    if (IsMC()) {
+        fOutputTree->Branch("MC_PV_Xv", &out_branches.MC_PV_Xv);
+        fOutputTree->Branch("MC_PV_Yv", &out_branches.MC_PV_Yv);
+        fOutputTree->Branch("MC_PV_Zv", &out_branches.MC_PV_Zv);
+    }
 
     fOutputTree->Branch("X", &out_branches.X);
     fOutputTree->Branch("Y", &out_branches.Y);
@@ -516,6 +528,14 @@ void Finder::CreateOutputBranches(Found::ChannelD& out_branches) {
     fOutputTree->Branch("DirNumber", &out_branches.DirNumber);
     if (!IsMC()) fOutputTree->Branch("DirNumberB", &out_branches.DirNumberB);
     fOutputTree->Branch("EventNumber", &out_branches.EventNumber);
+    fOutputTree->Branch("PV_Xv", &out_branches.PV_Xv);
+    fOutputTree->Branch("PV_Yv", &out_branches.PV_Yv);
+    fOutputTree->Branch("PV_Zv", &out_branches.PV_Zv);
+    if (IsMC()) {
+        fOutputTree->Branch("MC_PV_Xv", &out_branches.MC_PV_Xv);
+        fOutputTree->Branch("MC_PV_Yv", &out_branches.MC_PV_Yv);
+        fOutputTree->Branch("MC_PV_Zv", &out_branches.MC_PV_Zv);
+    }
 
     fOutputTree->Branch("X", &out_branches.X);
     fOutputTree->Branch("Y", &out_branches.Y);
@@ -796,7 +816,7 @@ void Finder::FindSexaquarks_ChannelA(bool anti_channel) {
 
 bool Finder::PassesCuts(const KF::ChannelA& sexa) const {
 
-    if (sexa.Radius() < Cuts::ChannelA::Min_Radius || sexa.Radius() > Cuts::ChannelA::Max_Radius) return false;
+    if (sexa.Radius2D() < Cuts::ChannelA::Min_Radius2D || sexa.Radius2D() > Cuts::ChannelA::Max_Radius2D) return false;
     if (sexa.DecayLength_V0A() > Cuts::ChannelA::Max_DecayLengthLa) return false;
     if (sexa.DecayLength_V0B() > Cuts::ChannelA::Max_DecayLengthK0) return false;
     if (sexa.AbsRapidity_MinusNucleon() > Cuts::ChannelA::AbsMax_Rapidity) return false;  // PENDING: kinematic cut, affected by Fermi motion
@@ -822,6 +842,14 @@ void Finder::Store(const KF::ChannelA& sexa) {
     fOutput_ChannelA.DirNumber = fInput_Event.DirNumber;
     if (!IsMC()) fOutput_ChannelA.DirNumberB = fInput_Event.DirNumberB;
     fOutput_ChannelA.EventNumber = fInput_Event.EventNumber;
+    fOutput_ChannelA.PV_Xv = fInput_Event.PV_Xv;
+    fOutput_ChannelA.PV_Yv = fInput_Event.PV_Yv;
+    fOutput_ChannelA.PV_Zv = fInput_Event.PV_Zv;
+    if (IsMC()) {
+        fOutput_ChannelA.MC_PV_Xv = fInput_Event.MC_PV_Xv;
+        fOutput_ChannelA.MC_PV_Yv = fInput_Event.MC_PV_Yv;
+        fOutput_ChannelA.MC_PV_Zv = fInput_Event.MC_PV_Zv;
+    }
 
     fOutput_ChannelA.X = static_cast<float>(sexa.X());
     fOutput_ChannelA.Y = static_cast<float>(sexa.Y());
@@ -993,7 +1021,7 @@ void Finder::FindSexaquarks_ChannelD(bool anti_channel) {
 
 bool Finder::PassesCuts(const KF::ChannelD& sexa) const {
 
-    if (sexa.Radius() < Cuts::ChannelD::Min_Radius || sexa.Radius() > Cuts::ChannelD::Max_Radius) return false;
+    if (sexa.Radius2D() < Cuts::ChannelD::Min_Radius2D || sexa.Radius2D() > Cuts::ChannelD::Max_Radius2D) return false;
     if (sexa.AbsRapidity_MinusNucleon() > Cuts::ChannelD::AbsMax_Rapidity) return false;  // PENDING: kinematics, affected by Fermi motion
     if (sexa.CPA_Point(fInput_Event.PV_Xv, fInput_Event.PV_Yv, fInput_Event.PV_Zv) < Cuts::ChannelD::Min_CPAwrtPV ||
         sexa.CPA_Point(fInput_Event.PV_Xv, fInput_Event.PV_Yv, fInput_Event.PV_Zv) > Cuts::ChannelD::Max_CPAwrtPV)
@@ -1015,6 +1043,14 @@ void Finder::Store(const KF::ChannelD& sexa) {
     fOutput_ChannelD.DirNumber = fInput_Event.DirNumber;
     if (!IsMC()) fOutput_ChannelD.DirNumberB = fInput_Event.DirNumberB;
     fOutput_ChannelD.EventNumber = fInput_Event.EventNumber;
+    fOutput_ChannelD.PV_Xv = fInput_Event.PV_Xv;
+    fOutput_ChannelD.PV_Yv = fInput_Event.PV_Yv;
+    fOutput_ChannelD.PV_Zv = fInput_Event.PV_Zv;
+    if (IsMC()) {
+        fOutput_ChannelD.MC_PV_Xv = fInput_Event.MC_PV_Xv;
+        fOutput_ChannelD.MC_PV_Yv = fInput_Event.MC_PV_Yv;
+        fOutput_ChannelD.MC_PV_Zv = fInput_Event.MC_PV_Zv;
+    }
 
     fOutput_ChannelD.X = static_cast<float>(sexa.X());
     fOutput_ChannelD.Y = static_cast<float>(sexa.Y());
