@@ -332,6 +332,9 @@ void Packager::CreateOutputBranches_Injected() {
 #endif
 
     fOutputTree->Branch("ReactionID", &fOutput_Injected.ReactionID);
+    fOutputTree->Branch("SV_X", &fOutput_Injected.X);
+    fOutputTree->Branch("SV_Y", &fOutput_Injected.Y);
+    fOutputTree->Branch("SV_Z", &fOutput_Injected.Z);
     fOutputTree->Branch("Sexaquark_Px", &fOutput_Injected.Px);
     fOutputTree->Branch("Sexaquark_Py", &fOutput_Injected.Py);
     fOutputTree->Branch("Sexaquark_Pz", &fOutput_Injected.Pz);
@@ -578,12 +581,44 @@ void Packager::ProcessEvent() {
 #endif
 }
 
-void Packager::ProcessInjected() {
+// ## MC/Injected ZONE ## //
+
+void Packager::Injected_GetSecondaryVertex() {
+#ifdef T2S_DEBUG
+    std::cout << "-- starting (" << __FUNCTION__ << ") --" << '\n';
+#endif
+
+    fVec_SV_X.resize(NumberInjected(), 0.);
+    fVec_SV_Y.resize(NumberInjected(), 0.);
+    fVec_SV_Z.resize(NumberInjected(), 0.);
+
+    for (int idx_mc{0}; idx_mc < NumberMC(); ++idx_mc) {
+        if (fInput_MC.MotherEntry->at(idx_mc) != -1) continue;
+        if (fInput_MC.Generator->at(idx_mc) != 2) continue;
+
+        int status{fInput_MC.Status->at(idx_mc)};
+        if (status < 600 || status > 619) continue;
+
+        if (fVec_SV_X[status - 600] != 0.) continue;
+        fVec_SV_X[status - 600] = fInput_MC.X->at(idx_mc);
+        fVec_SV_Y[status - 600] = fInput_MC.Y->at(idx_mc);
+        fVec_SV_Z[status - 600] = fInput_MC.Z->at(idx_mc);
+    }
+
+#ifdef T2S_DEBUG
+    std::cout << "-- starting (" << __FUNCTION__ << ") --" << '\n';
+#endif
+}
+
+void Packager::Injected_Store() {
 #ifdef T2S_DEBUG
     std::cout << "-- starting (" << __FUNCTION__ << ") --" << '\n';
 #endif
 
     fOutput_Injected.ReactionID = fInput_Injected.ReactionID;
+    fOutput_Injected.X = &fVec_SV_X;
+    fOutput_Injected.Y = &fVec_SV_Y;
+    fOutput_Injected.Z = &fVec_SV_Z;
     fOutput_Injected.Px = fInput_Injected.Px;
     fOutput_Injected.Py = fInput_Injected.Py;
     fOutput_Injected.Pz = fInput_Injected.Pz;
@@ -1048,6 +1083,10 @@ void Packager::EndOfEvent() {
     fOutputTree->Fill();
 
     // clear temporary containers //
+    fVec_SV_X.clear();
+    fVec_SV_Y.clear();
+    fVec_SV_Z.clear();
+
     fVec_AntiProtons.clear();
     fVec_Protons.clear();
     fVec_NegKaons.clear();

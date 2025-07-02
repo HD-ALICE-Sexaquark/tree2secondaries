@@ -53,12 +53,19 @@ class Packager {
     bool IsSignalMC() const { return fSettings.IsSignalMC; }
     void GetEvent(int i_event) { fEventsTree->GetEntry(i_event); }
 
+    int NumberMC() const { return static_cast<int>(fInput_MC.Px->size()); }
     int NumberInjected() const { return static_cast<int>(fInput_Injected.ReactionID->size()); }
     int NumberTracks() const { return static_cast<int>(fInput_Tracks.Px->size()); }
 
     void ProcessEvent();
-    void ProcessInjected();
-    void ProcessMC();
+
+    void Injected_GetSecondaryVertex();
+    void Injected_Store();
+    void ProcessInjected() {
+        Injected_GetSecondaryVertex();
+        Injected_Store();
+    }
+
     void ProcessTracks();
 
     void PackTracks(PdgCode pdg_code);
@@ -102,7 +109,11 @@ class Packager {
     Events::MC fInput_MC;
     Events::Tracks fInput_Tracks;
 
-    // indices -- temporary containers, cleaned after event loop //
+    // temporary containers, cleaned after event loop //
+
+    std::vector<float> fVec_SV_X;
+    std::vector<float> fVec_SV_Y;
+    std::vector<float> fVec_SV_Z;
 
     std::vector<int> fVec_AntiProtons;
     std::vector<int> fVec_Protons;

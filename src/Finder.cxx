@@ -34,8 +34,14 @@ bool Finder::Initialize() {
     ConnectInputBranches();
 
     if (!PrepareOutputFile()) return false;
+
     if (!PrepareOutputTree()) return false;
     CreateOutputBranches();
+
+    if (IsSignalMC()) {
+        if (!Injected_PrepareOutputTree()) return false;
+        Injected_CreateOutputBranches();
+    }
 
     std::cout << "   " << __FUNCTION__ << " :: Finder initialized successfully" << '\n';
 
@@ -165,6 +171,9 @@ void Finder::ConnectBranches_Injected() {
 #endif
 
     Utils::ConnectBranch(fTree_PackedEvents.get(), "ReactionID", &fInput_Injected.ReactionID);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), "SV_X", &fInput_Injected.X);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), "SV_Y", &fInput_Injected.Y);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), "SV_Z", &fInput_Injected.Z);
     Utils::ConnectBranch(fTree_PackedEvents.get(), "Sexaquark_Px", &fInput_Injected.Px);
     Utils::ConnectBranch(fTree_PackedEvents.get(), "Sexaquark_Py", &fInput_Injected.Py);
     Utils::ConnectBranch(fTree_PackedEvents.get(), "Sexaquark_Pz", &fInput_Injected.Pz);
@@ -413,7 +422,7 @@ bool Finder::PrepareOutputTree() {
     std::cout << "-- starting (" << __FUNCTION__ << ") --" << '\n';
 #endif
 
-    std::string tree_name = "Candidates";
+    std::string tree_name{"Candidates"};
     switch (GetReactionChannel()) {
         case ReactionChannel::A:
             tree_name += static_cast<std::string>(Name::ChannelA);
@@ -464,6 +473,7 @@ void Finder::CreateOutputBranches(Found::ChannelA& out_branches) {
     fOutputTree->Branch("DirNumber", &out_branches.DirNumber);
     if (!IsMC()) fOutputTree->Branch("DirNumberB", &out_branches.DirNumberB);
     fOutputTree->Branch("EventNumber", &out_branches.EventNumber);
+    fOutputTree->Branch("MagneticField", &out_branches.MagneticField);
     fOutputTree->Branch("PV_Xv", &out_branches.PV_Xv);
     fOutputTree->Branch("PV_Yv", &out_branches.PV_Yv);
     fOutputTree->Branch("PV_Zv", &out_branches.PV_Zv);
@@ -528,6 +538,7 @@ void Finder::CreateOutputBranches(Found::ChannelD& out_branches) {
     fOutputTree->Branch("DirNumber", &out_branches.DirNumber);
     if (!IsMC()) fOutputTree->Branch("DirNumberB", &out_branches.DirNumberB);
     fOutputTree->Branch("EventNumber", &out_branches.EventNumber);
+    fOutputTree->Branch("MagneticField", &out_branches.MagneticField);
     fOutputTree->Branch("PV_Xv", &out_branches.PV_Xv);
     fOutputTree->Branch("PV_Yv", &out_branches.PV_Yv);
     fOutputTree->Branch("PV_Zv", &out_branches.PV_Zv);
@@ -718,6 +729,78 @@ void Finder::CreateOutputBranches(Found::MC_ChannelD& sov) {
 #endif
 }
 
+// ## Injected ZONE ## //
+
+bool Finder::Injected_PrepareOutputTree() {
+#ifdef T2S_DEBUG
+    std::cout << "-- starting (" << __FUNCTION__ << ") --" << '\n';
+#endif
+
+    std::string tree_name{"Injected"};
+
+    fOutputTree_Injected = std::make_unique<TTree>(tree_name.c_str(), "");
+    if (!fOutputTree_Injected) {
+        std::cerr << "   " << __FUNCTION__ << " :: TTree \"" << tree_name << "\" couldn't be created" << '\n';
+        return false;
+    }
+
+#ifdef T2S_DEBUG
+    std::cout << "-- finished (" << __FUNCTION__ << ") --" << '\n';
+#endif
+    return true;
+}
+
+void Finder::Injected_CreateOutputBranches() {
+#ifdef T2S_DEBUG
+    std::cout << "-- starting (" << __FUNCTION__ << ") --" << '\n';
+#endif
+
+    fOutputTree_Injected->Branch("RunNumber", &fOutput_Injected.RunNumber);
+    fOutputTree_Injected->Branch("DirNumber", &fOutput_Injected.DirNumber);
+    fOutputTree_Injected->Branch("EventNumber", &fOutput_Injected.EventNumber);
+    fOutputTree_Injected->Branch("ReactionID", &fOutput_Injected.ReactionID);
+    fOutputTree_Injected->Branch("X", &fOutput_Injected.X);
+    fOutputTree_Injected->Branch("Y", &fOutput_Injected.Y);
+    fOutputTree_Injected->Branch("Z", &fOutput_Injected.Z);
+    fOutputTree_Injected->Branch("Px", &fOutput_Injected.Px);
+    fOutputTree_Injected->Branch("Py", &fOutput_Injected.Py);
+    fOutputTree_Injected->Branch("Pz", &fOutput_Injected.Pz);
+    fOutputTree_Injected->Branch("E", &fOutput_Injected.E);
+
+#ifdef T2S_DEBUG
+    std::cout << "-- finished (" << __FUNCTION__ << ") --" << '\n';
+#endif
+};
+
+void Finder::Injected_FlattenAndStore() {
+#ifdef T2S_DEBUG
+    std::cout << "-- starting (" << __FUNCTION__ << ") --" << '\n';
+#endif
+
+    auto n_injected = static_cast<int>(fInput_Injected.ReactionID->size());
+    for (int idx_inj{0}; idx_inj < n_injected; ++idx_inj) {
+        fOutput_Injected.RunNumber = fInput_Event.RunNumber;
+        fOutput_Injected.DirNumber = fInput_Event.DirNumber;
+        fOutput_Injected.EventNumber = fInput_Event.EventNumber;
+        fOutput_Injected.ReactionID = fInput_Injected.ReactionID->at(idx_inj);
+        fOutput_Injected.X = fInput_Injected.X->at(idx_inj);
+        fOutput_Injected.Y = fInput_Injected.Y->at(idx_inj);
+        fOutput_Injected.Z = fInput_Injected.Z->at(idx_inj);
+        fOutput_Injected.Px = fInput_Injected.Px->at(idx_inj);
+        fOutput_Injected.Py = fInput_Injected.Py->at(idx_inj);
+        fOutput_Injected.Pz = fInput_Injected.Pz->at(idx_inj);
+        fOutput_Injected.E = static_cast<float>(std::sqrt(fSettings.SexaquarkMass * fSettings.SexaquarkMass +
+                                                          static_cast<double>(fOutput_Injected.Px) * static_cast<double>(fOutput_Injected.Px) +
+                                                          static_cast<double>(fOutput_Injected.Py) * static_cast<double>(fOutput_Injected.Py) +
+                                                          static_cast<double>(fOutput_Injected.Pz) * static_cast<double>(fOutput_Injected.Pz)));
+        fOutputTree_Injected->Fill();
+    }
+
+#ifdef T2S_DEBUG
+    std::cout << "-- finished (" << __FUNCTION__ << ") --" << '\n';
+#endif
+}
+
 // ## Channel A ZONE ## //
 
 void Finder::FindSexaquarks_ChannelA(bool anti_channel) {
@@ -842,6 +925,7 @@ void Finder::Store(const KF::ChannelA& sexa) {
     fOutput_ChannelA.DirNumber = fInput_Event.DirNumber;
     if (!IsMC()) fOutput_ChannelA.DirNumberB = fInput_Event.DirNumberB;
     fOutput_ChannelA.EventNumber = fInput_Event.EventNumber;
+    fOutput_ChannelA.MagneticField = fInput_Event.MagneticField;
     fOutput_ChannelA.PV_Xv = fInput_Event.PV_Xv;
     fOutput_ChannelA.PV_Yv = fInput_Event.PV_Yv;
     fOutput_ChannelA.PV_Zv = fInput_Event.PV_Zv;
@@ -1043,6 +1127,7 @@ void Finder::Store(const KF::ChannelD& sexa) {
     fOutput_ChannelD.DirNumber = fInput_Event.DirNumber;
     if (!IsMC()) fOutput_ChannelD.DirNumberB = fInput_Event.DirNumberB;
     fOutput_ChannelD.EventNumber = fInput_Event.EventNumber;
+    fOutput_ChannelD.MagneticField = fInput_Event.MagneticField;
     fOutput_ChannelD.PV_Xv = fInput_Event.PV_Xv;
     fOutput_ChannelD.PV_Yv = fInput_Event.PV_Yv;
     fOutput_ChannelD.PV_Zv = fInput_Event.PV_Zv;
@@ -1186,6 +1271,11 @@ void Finder::EndOfAnalysis() {
 #ifdef T2S_DEBUG
     std::cout << "-- starting (" << __FUNCTION__ << ") --" << '\n';
 #endif
+
+    if (IsSignalMC()) {
+        fOutputTree_Injected->Write();
+        std::cout << "TTree \"" << fOutputTree_Injected->GetName() << "\" has been written onto TFile \"" << fSettings.PathOutputFile << "\"" << '\n';
+    }
 
     fOutputTree->Write();
     std::cout << "TTree \"" << fOutputTree->GetName() << "\" has been written onto TFile \"" << fSettings.PathOutputFile << "\"" << '\n';

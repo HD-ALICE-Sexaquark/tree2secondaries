@@ -6,6 +6,7 @@
 
 #include <TChain.h>
 #include <TFile.h>
+#include <TTree.h>
 
 #include "App/Settings.hxx"
 #include "DataFormats/Events.hxx"
@@ -75,6 +76,10 @@ class Finder {
         }  // end of switch statement
     }
 
+    bool Injected_PrepareOutputTree();
+    void Injected_CreateOutputBranches();
+    void Injected_FlattenAndStore();
+
     int NumberEventsToRead() const {
         return fSettings.LimitToNEvents ? fSettings.LimitToNEvents : static_cast<int>(fTree_PackedEvents->GetEntries());
     }
@@ -129,6 +134,7 @@ class Finder {
 
     std::unique_ptr<TFile> fOutputFile;
     std::unique_ptr<TTree> fOutputTree;
+    std::unique_ptr<TTree> fOutputTree_Injected;
 
     // input structs //
 
@@ -162,6 +168,8 @@ class Finder {
 
     Found::MC_ChannelA fOutput_MC_ChannelA;
     Found::MC_ChannelD fOutput_MC_ChannelD;
+
+    Found::Injected fOutput_Injected;
 };
 
 }  // namespace Tree2Secondaries

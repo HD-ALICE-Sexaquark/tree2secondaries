@@ -18,6 +18,7 @@ struct alignas(32) Sexaquark : State {
     unsigned int DirNumber{};
     unsigned int DirNumberB{};
     unsigned int EventNumber{};
+    float MagneticField{};
     float PV_Xv{};
     float PV_Yv{};
     float PV_Zv{};
@@ -78,6 +79,13 @@ struct alignas(32) ChannelE : ChannelD {
 struct alignas(32) ChannelH : Sexaquark {
     State Kaon1;
     State Kaon2;
+};
+
+struct alignas(32) Injected : State {
+    unsigned int RunNumber{};
+    unsigned int DirNumber{};
+    unsigned int EventNumber{};
+    int ReactionID{};
 };
 
 struct alignas(32) MC_Sexaquark {

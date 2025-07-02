@@ -23,6 +23,9 @@ struct alignas(32) Event {
 
 struct alignas(32) Injected {
     std::vector<int> *ReactionID{nullptr};
+    std::vector<float> *X{nullptr};
+    std::vector<float> *Y{nullptr};
+    std::vector<float> *Z{nullptr};
     std::vector<float> *Px{nullptr};
     std::vector<float> *Py{nullptr};
     std::vector<float> *Pz{nullptr};
