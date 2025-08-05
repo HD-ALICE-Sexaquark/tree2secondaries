@@ -2,6 +2,9 @@
 #include <iostream>
 #include <memory>
 
+#include "ALICE/ESD.hxx"
+#include "ALICE/Utilities.hxx"
+#include "ALICE/Vertexer.hxx"
 #include "App/Utilities.hxx"
 #include "KF/Utilities.hxx"
 #include "Math/Constants.hxx"
@@ -31,6 +34,9 @@ bool Packager::Initialize() {
     ConnectInputBranches();
 
     if (!PrepareOutputFile()) return false;
+
+    CreateCutFlowHistograms();
+
     if (!PrepareOutputTree()) return false;
     CreateOutputBranches();
 
@@ -557,6 +563,42 @@ void Packager::CreateOutputBranches_MC_Tracks(const std::string& name_part, Pack
 #endif
 }
 
+void Packager::CreateCutFlowHistograms() {
+    const int x_nbins{20};
+    const float x_min{0.};
+    const float x_max{20.};
+    std::string hist_title{";Cut N;N Passed Cut"};
+
+    switch (GetReactionChannel()) {
+        case ReactionChannel::A:
+            fCutFlowHist_AntiLambdas = std::make_unique<TH1D>("CutFlow_AL", hist_title.c_str(), x_nbins, x_min, x_max);
+            fCutFlowHist_KaonsZeroShort = std::make_unique<TH1D>("CutFlow_K0S", hist_title.c_str(), x_nbins, x_min, x_max);
+            break;
+        case ReactionChannel::D:
+        case ReactionChannel::E:
+            fCutFlowHist_AntiLambdas = std::make_unique<TH1D>("CutFlow_AL", hist_title.c_str(), x_nbins, x_min, x_max);
+            break;
+        case ReactionChannel::AntiA:
+            fCutFlowHist_Lambdas = std::make_unique<TH1D>("CutFlow_L", hist_title.c_str(), x_nbins, x_min, x_max);
+            fCutFlowHist_KaonsZeroShort = std::make_unique<TH1D>("CutFlow_K0S", hist_title.c_str(), x_nbins, x_min, x_max);
+            break;
+        case ReactionChannel::AntiD:
+        case ReactionChannel::AntiE:
+            fCutFlowHist_Lambdas = std::make_unique<TH1D>("CutFlow_L", hist_title.c_str(), x_nbins, x_min, x_max);
+            break;
+        case ReactionChannel::H:
+        case ReactionChannel::AntiH:
+            break;
+        case ReactionChannel::All:
+            fCutFlowHist_AntiLambdas = std::make_unique<TH1D>("CutFlow_AL", hist_title.c_str(), x_nbins, x_min, x_max);
+            fCutFlowHist_Lambdas = std::make_unique<TH1D>("CutFlow_L", hist_title.c_str(), x_nbins, x_min, x_max);
+            fCutFlowHist_KaonsZeroShort = std::make_unique<TH1D>("CutFlow_K0S", hist_title.c_str(), x_nbins, x_min, x_max);
+            break;
+    }
+}
+
+// ## Event ZONE ## //
+
 void Packager::ProcessEvent() {
 #ifdef T2S_DEBUG
     std::cout << "-- starting (" << __FUNCTION__ << ") --" << '\n';
@@ -713,8 +755,8 @@ void Packager::PackTracks(PdgCode pdg_code) {
 
         // prepare kf object //
         KF::Vector<6> neg_kf_params = KF::PackParams(fInput_Tracks, esd_idx);
-        std::array<float, 5> neg_alice_params = KF::PackParams_ALICE(fInput_Tracks, esd_idx);
-        std::array<float, 15> neg_alice_cov = KF::PackCovMatrix_ALICE(fInput_Tracks, esd_idx);
+        std::array<float, 5> neg_alice_params = ALICE::PackParams<float>(fInput_Tracks, esd_idx);
+        std::array<float, 15> neg_alice_cov = ALICE::PackCovMatrix<float>(fInput_Tracks, esd_idx);
         KF::Track kf_track{KF::CreateParticle(neg_kf_params, neg_alice_params, neg_alice_cov, fInput_Tracks.Alpha->at(esd_idx),
                                               fInput_Tracks.Charge->at(esd_idx), mass),
                            esd_idx};
@@ -809,7 +851,6 @@ void Packager::FindV0s(PdgCode pdg_code) {
     PackedEvents::MC_V0s* mc_out{nullptr};
     double mass_neg;
     double mass_pos;
-    double mass_v0;
     PdgCode pdg_code_neg;
     PdgCode pdg_code_pos;
     switch (pdg_code) {
@@ -820,7 +861,6 @@ void Packager::FindV0s(PdgCode pdg_code) {
             if (IsMC()) mc_out = &fOutput_MC_AntiLambdas;
             mass_neg = PdgMass::Proton;
             mass_pos = PdgMass::Pion;
-            mass_v0 = PdgMass::Lambda;
             pdg_code_neg = PdgCode::AntiProton;
             pdg_code_pos = PdgCode::PiPlus;
             break;
@@ -831,7 +871,6 @@ void Packager::FindV0s(PdgCode pdg_code) {
             if (IsMC()) mc_out = &fOutput_MC_Lambdas;
             mass_neg = PdgMass::Pion;
             mass_pos = PdgMass::Proton;
-            mass_v0 = PdgMass::Lambda;
             pdg_code_neg = PdgCode::PiMinus;
             pdg_code_pos = PdgCode::Proton;
             break;
@@ -842,7 +881,6 @@ void Packager::FindV0s(PdgCode pdg_code) {
             if (IsMC()) mc_out = &fOutput_MC_KaonsZeroShort;
             mass_neg = PdgMass::Pion;
             mass_pos = PdgMass::Pion;
-            mass_v0 = PdgMass::KaonZeroShort;
             pdg_code_neg = PdgCode::PiMinus;
             pdg_code_pos = PdgCode::PiPlus;
             break;
@@ -859,25 +897,88 @@ void Packager::FindV0s(PdgCode pdg_code) {
             // sanity check //
             if (esd_neg == esd_pos) continue;
 
+#ifdef T2S_USE_ALICE
+            // ----------------------------- //
+            // start of **Custom V0 Finder** //
+
+            std::array<double, 5> neg_esd_params = ALICE::PackParams<double>(fInput_Tracks, esd_neg);
+            std::array<double, 15> neg_esd_cov = ALICE::PackCovMatrix<double>(fInput_Tracks, esd_neg);
+            ALICE::Track neg{fInput_Tracks.X->at(esd_neg), neg_esd_params, neg_esd_cov, fInput_Tracks.Alpha->at(esd_neg), -1};
+
+            std::array<double, 5> pos_esd_params = ALICE::PackParams<double>(fInput_Tracks, esd_pos);
+            std::array<double, 15> pos_esd_cov = ALICE::PackCovMatrix<double>(fInput_Tracks, esd_pos);
+            ALICE::Track pos{fInput_Tracks.X->at(esd_pos), pos_esd_params, pos_esd_cov, fInput_Tracks.Alpha->at(esd_pos), +1};
+
+            // double neg_d_wrt_pv{neg.GetDCAxy(fInput_Event.PV_Xv, fInput_Event.PV_Yv, fInput_Event.MagneticField)};
+            // if (TMath::Abs(neg_d_wrt_pv) > ALICE::Const::CustomV0Finder_Rmax) continue;
+            // double pos_d_wrt_pv{pos.GetDCAxy(fInput_Event.PV_Xv, fInput_Event.PV_Yv, fInput_Event.MagneticField)};
+            // if (TMath::Abs(pos_d_wrt_pv) > ALICE::Const::CustomV0Finder_Rmax) continue;
+
+            double xn;
+            double xp;
+            if (ALICE::Vertexer::Preoptimize(neg, pos, xn, xp, fInput_Event.MagneticField)) {
+                if (!neg.PropagateTo(xn, fInput_Event.MagneticField)) continue;
+                if (!pos.PropagateTo(xp, fInput_Event.MagneticField)) continue;
+            } else {
+                double dca{ALICE::Vertexer::Preoptimize_Numerically(neg, pos, xn, xp, fInput_Event.MagneticField)};
+                if (!neg.PropagateTo(xn, fInput_Event.MagneticField)) continue;
+                if (!pos.PropagateTo(xp, fInput_Event.MagneticField)) continue;
+            }
+#ifdef T2S_DEBUG
+            std::cout << "DEBUG NEG: Snp=" << neg.GetSnp() << " SigmaY2=" << neg.GetSigmaY2() << '\n';
+            std::cout << "DEBUG POS: Snp=" << pos.GetSnp() << " SigmaY2=" << pos.GetSigmaY2() << '\n';
+#endif
+
+            // if (dca_after_preopt > ALICE::Const::CustomV0Finder_DCAmax) continue;
+            // if ((xn + xp) > 2. * ALICE::Const::CustomV0Finder_Rmax) continue;
+            // if ((xn + xp) < 2. * ALICE::Const::CustomV0Finder_Rmin) continue;
+
+            ALICE::V0 v0{neg, pos};
+            v0.Refit();
+            // if (v0.fStatus == 1) continue;
+
+            // end of **Custom V0 Finder** //
+            // --------------------------- //
+#ifdef T2S_DEBUG
+            std::cout << "   " << __FUNCTION__ << " :: idx,neg,pos=" << v0_entry << "," << esd_neg << "," << esd_pos;
+            std::cout << ";x,y,z=" << v0.X() << "," << v0.Y() << "," << v0.Z();
+            // std::cout << ";x,y,z(neg)=" << v0.Neg_PCA_XYZ()[0] << "," << v0.Neg_PCA_XYZ()[1] << "," << v0.Neg_PCA_XYZ()[2];
+            // std::cout << ";x,y,z(pos)=" << v0.Pos_PCA_XYZ()[0] << "," << v0.Pos_PCA_XYZ()[1] << "," << v0.Pos_PCA_XYZ()[2];
+            // std::cout << ";mass=" << v0.Mass();
+            // std::cout << ";dca_dau=" << v0.DCA_Daughters();
+            std::cout << ";radius=" << v0.Radius2D();
+            // std::cout << ";dca_neg=" << v0.DCA_Neg_V0();
+            // std::cout << ";dca_pos=" << v0.DCA_Pos_V0();
+            // std::cout << ";pt=" << v0.Pt();
+            // std::cout << ";eta=" << v0.Eta();
+            // std::cout << ";qt=" << v0.ArmenterosQt();
+            // std::cout << ";alpha=" << v0.ArmenterosAlpha();
+            // std::cout << ";cpa_pv=" << v0.CPA_Point(fInput_Event.PV_Xv, fInput_Event.PV_Yv, fInput_Event.PV_Zv);
+            // std::cout << ";dca_pv=" << v0.DCA_Point(fInput_Event.PV_Xv, fInput_Event.PV_Yv, fInput_Event.PV_Zv);
+            std::cout << '\n';
+#endif
+            // store //
+            Store(v0, *out);
+#else
             // prepare neg //
             std::array<double, 6> neg_kf_params = KF::PackParams(fInput_Tracks, esd_neg);
-            std::array<float, 5> neg_alice_params = KF::PackParams_ALICE(fInput_Tracks, esd_neg);
-            std::array<float, 15> neg_alice_cov = KF::PackCovMatrix_ALICE(fInput_Tracks, esd_neg);
+            std::array<float, 5> neg_alice_params = ALICE::PackParams<float>(fInput_Tracks, esd_neg);
+            std::array<float, 15> neg_alice_cov = ALICE::PackCovMatrix<float>(fInput_Tracks, esd_neg);
             KF::Track neg{KF::CreateParticle(neg_kf_params, neg_alice_params, neg_alice_cov, fInput_Tracks.Alpha->at(esd_neg),
                                              fInput_Tracks.Charge->at(esd_neg), mass_neg),
                           esd_neg};
 
             // prepare pos //
             std::array<double, 6> pos_kf_params = KF::PackParams(fInput_Tracks, esd_pos);
-            std::array<float, 5> pos_alice_params = KF::PackParams_ALICE(fInput_Tracks, esd_pos);
-            std::array<float, 15> pos_alice_cov = KF::PackCovMatrix_ALICE(fInput_Tracks, esd_pos);
+            std::array<float, 5> pos_alice_params = ALICE::PackParams<float>(fInput_Tracks, esd_pos);
+            std::array<float, 15> pos_alice_cov = ALICE::PackCovMatrix<float>(fInput_Tracks, esd_pos);
             KF::Track pos{KF::CreateParticle(pos_kf_params, pos_alice_params, pos_alice_cov, fInput_Tracks.Alpha->at(esd_pos),
                                              fInput_Tracks.Charge->at(esd_pos), mass_pos),
                           esd_pos};
 
             // fit v0 //
-            KF::V0 v0{v0_entry, pdg_code, neg, pos, fInput_Event.MagneticField, mass_v0};
-
+            KF::V0 v0{v0_entry, pdg_code, neg, pos};
+            v0.DoFit(fInput_Event.MagneticField);
             // apply cuts //
             if (!PassesCuts(v0, pdg_code)) continue;
 #ifdef T2S_DEBUG
@@ -887,7 +988,7 @@ void Packager::FindV0s(PdgCode pdg_code) {
             std::cout << ";x,y,z(pos)=" << v0.Pos_PCA_XYZ()[0] << "," << v0.Pos_PCA_XYZ()[1] << "," << v0.Pos_PCA_XYZ()[2];
             std::cout << ";mass=" << v0.Mass();
             std::cout << ";dca_dau=" << v0.DCA_Daughters();
-            std::cout << ";radius=" << v0.Radius();
+            std::cout << ";radius=" << v0.Radius2D();
             std::cout << ";dca_neg=" << v0.DCA_Neg_V0();
             std::cout << ";dca_pos=" << v0.DCA_Pos_V0();
             std::cout << ";pt=" << v0.Pt();
@@ -895,11 +996,13 @@ void Packager::FindV0s(PdgCode pdg_code) {
             std::cout << ";qt=" << v0.ArmenterosQt();
             std::cout << ";alpha=" << v0.ArmenterosAlpha();
             std::cout << ";cpa_pv=" << v0.CPA_Point(fInput_Event.PV_Xv, fInput_Event.PV_Yv, fInput_Event.PV_Zv);
-            std::cout << ";dca_pv=" << v0.DCA_Point(fInput_Event.PV_Xv, fInput_Event.PV_Yv, fInput_Event.PV_Zv) << '\n';
+            std::cout << ";dca_pv=" << v0.DCA_Point(fInput_Event.PV_Xv, fInput_Event.PV_Yv, fInput_Event.PV_Zv);
+            std::cout << '\n';
 #endif
-
             // store //
             Store(v0, *out);
+#endif
+
             if (IsMC()) {
                 MC::V0 mc_v0{fInput_MC, fInput_Tracks.McEntry->at(esd_neg), fInput_Tracks.McEntry->at(esd_pos), pdg_code, pdg_code_neg, pdg_code_pos};
                 StoreMC(mc_v0, *mc_out);
@@ -915,41 +1018,139 @@ void Packager::FindV0s(PdgCode pdg_code) {
 
 bool Packager::PassesCuts_Lambda(const KF::V0& v0) const {
 
+    const auto& CutFlowHist{v0.pdg_code_hyp == PdgCode::AntiLambda ? fCutFlowHist_AntiLambdas : fCutFlowHist_Lambdas};
+
+    CutFlowHist->Fill(0.);
     if (v0.Mass() < Cuts::Lambda::Min_Mass || v0.Mass() > Cuts::Lambda::Max_Mass) return false;
+    CutFlowHist->Fill(1.);
     if (v0.DCA_Daughters() > Cuts::Lambda::Max_DCAbtwDau) return false;
+    CutFlowHist->Fill(2.);
     if (v0.AbsZ() > Cuts::Lambda::AbsMax_Zv) return false;
+    CutFlowHist->Fill(3.);
     if (v0.Radius2D() < Cuts::Lambda::Min_Radius2D || v0.Radius2D() > Cuts::Lambda::Max_Radius2D) return false;
+    CutFlowHist->Fill(4.);
     if (v0.DCA_Neg_V0() > Cuts::Lambda::Max_DCAnegV0) return false;
+    CutFlowHist->Fill(5.);
     if (v0.DCA_Pos_V0() > Cuts::Lambda::Max_DCAposV0) return false;
+    CutFlowHist->Fill(6.);
     if (v0.Pt() < Cuts::Lambda::Min_Pt) return false;
+    CutFlowHist->Fill(7.);
     if (v0.AbsEta() > Cuts::Lambda::AbsMax_Eta) return false;
-    if (v0.AbsArmQtOverAlpha() > Cuts::Lambda::AbsMax_ArmQtOverAlpha) return false;
+    CutFlowHist->Fill(8.);
+    // if (v0.AbsArmQtOverAlpha() > Cuts::Lambda::AbsMax_ArmQtOverAlpha) return false;
+    CutFlowHist->Fill(9.);
     if (v0.CPA_Point(fInput_Event.PV_Xv, fInput_Event.PV_Yv, fInput_Event.PV_Zv) < Cuts::Lambda::Min_CPAwrtPV ||
         v0.CPA_Point(fInput_Event.PV_Xv, fInput_Event.PV_Yv, fInput_Event.PV_Zv) > Cuts::Lambda::Max_CPAwrtPV) {
         return false;
     }
+    CutFlowHist->Fill(10.);
     if (v0.DCA_Point(fInput_Event.PV_Xv, fInput_Event.PV_Yv, fInput_Event.PV_Zv) < Cuts::Lambda::Min_DCAwrtPV) return false;
+    CutFlowHist->Fill(11.);
 
     return true;
 }
 
 bool Packager::PassesCuts_KaonZeroShort(const KF::V0& v0) const {
 
+    fCutFlowHist_KaonsZeroShort->Fill(0.);
     if (v0.DCA_Daughters() > Cuts::KaonZeroShort::Max_DCAbtwDau) return false;
+    fCutFlowHist_KaonsZeroShort->Fill(1.);
     if (v0.Pt() < Cuts::KaonZeroShort::Min_Pt) return false;
+    fCutFlowHist_KaonsZeroShort->Fill(2.);
     if (v0.Mass() < Cuts::KaonZeroShort::Min_Mass || v0.Mass() > Cuts::KaonZeroShort::Max_Mass) return false;
+    fCutFlowHist_KaonsZeroShort->Fill(3.);
     if (v0.AbsEta() > Cuts::KaonZeroShort::AbsMax_Eta) return false;
+    fCutFlowHist_KaonsZeroShort->Fill(4.);
     if (v0.AbsZ() > Cuts::KaonZeroShort::AbsMax_Zv) return false;
+    fCutFlowHist_KaonsZeroShort->Fill(5.);
     if (v0.Radius2D() < Cuts::KaonZeroShort::Min_Radius2D || v0.Radius2D() > Cuts::KaonZeroShort::Max_Radius2D) return false;
+    fCutFlowHist_KaonsZeroShort->Fill(6.);
     if (v0.DCA_Neg_V0() > Cuts::KaonZeroShort::Max_DCAnegV0) return false;
+    fCutFlowHist_KaonsZeroShort->Fill(7.);
     if (v0.DCA_Pos_V0() > Cuts::KaonZeroShort::Max_DCAposV0) return false;
+    fCutFlowHist_KaonsZeroShort->Fill(8.);
     if (v0.CPA_Point(fInput_Event.PV_Xv, fInput_Event.PV_Yv, fInput_Event.PV_Zv) < Cuts::KaonZeroShort::Min_CPAwrtPV ||
         v0.CPA_Point(fInput_Event.PV_Xv, fInput_Event.PV_Yv, fInput_Event.PV_Zv) > Cuts::KaonZeroShort::Max_CPAwrtPV) {
         return false;
     }
+    fCutFlowHist_KaonsZeroShort->Fill(9.);
     if (v0.DCA_Point(fInput_Event.PV_Xv, fInput_Event.PV_Yv, fInput_Event.PV_Zv) < Cuts::KaonZeroShort::Min_DCAwrtPV) return false;
+    fCutFlowHist_KaonsZeroShort->Fill(10.);
 
     return true;
+}
+
+void Packager::Store(const ALICE::V0& v0, PackedEvents::V0s& sov) {
+
+    // sov.Entry->push_back(v0.idx);
+    sov.X->push_back(static_cast<float>(v0.X()));
+    sov.Y->push_back(static_cast<float>(v0.Y()));
+    sov.Z->push_back(static_cast<float>(v0.Z()));
+    // sov.Px->push_back(static_cast<float>(v0.Px()));
+    // sov.Py->push_back(static_cast<float>(v0.Py()));
+    // sov.Pz->push_back(static_cast<float>(v0.Pz()));
+    // sov.E->push_back(static_cast<float>(v0.E()));
+
+    // sov.Sigma.X2->push_back(static_cast<float>(v0.GetCovariance(0)));
+    // sov.Sigma.XY->push_back(static_cast<float>(v0.GetCovariance(1)));
+    // sov.Sigma.Y2->push_back(static_cast<float>(v0.GetCovariance(2)));
+    // sov.Sigma.XZ->push_back(static_cast<float>(v0.GetCovariance(3)));
+    // sov.Sigma.YZ->push_back(static_cast<float>(v0.GetCovariance(4)));
+    // sov.Sigma.Z2->push_back(static_cast<float>(v0.GetCovariance(5)));
+    // sov.Sigma.XPx->push_back(static_cast<float>(v0.GetCovariance(6)));
+    // sov.Sigma.YPx->push_back(static_cast<float>(v0.GetCovariance(7)));
+    // sov.Sigma.ZPx->push_back(static_cast<float>(v0.GetCovariance(8)));
+    // sov.Sigma.Px2->push_back(static_cast<float>(v0.GetCovariance(9)));
+    // sov.Sigma.XPy->push_back(static_cast<float>(v0.GetCovariance(10)));
+    // sov.Sigma.YPy->push_back(static_cast<float>(v0.GetCovariance(11)));
+    // sov.Sigma.ZPy->push_back(static_cast<float>(v0.GetCovariance(12)));
+    // sov.Sigma.PxPy->push_back(static_cast<float>(v0.GetCovariance(13)));
+    // sov.Sigma.Py2->push_back(static_cast<float>(v0.GetCovariance(14)));
+    // sov.Sigma.XPz->push_back(static_cast<float>(v0.GetCovariance(15)));
+    // sov.Sigma.YPz->push_back(static_cast<float>(v0.GetCovariance(16)));
+    // sov.Sigma.ZPz->push_back(static_cast<float>(v0.GetCovariance(17)));
+    // sov.Sigma.PxPz->push_back(static_cast<float>(v0.GetCovariance(18)));
+    // sov.Sigma.PyPz->push_back(static_cast<float>(v0.GetCovariance(19)));
+    // sov.Sigma.Pz2->push_back(static_cast<float>(v0.GetCovariance(20)));
+    // sov.Sigma.XE->push_back(static_cast<float>(v0.GetCovariance(21)));
+    // sov.Sigma.YE->push_back(static_cast<float>(v0.GetCovariance(22)));
+    // sov.Sigma.ZE->push_back(static_cast<float>(v0.GetCovariance(23)));
+    // sov.Sigma.PxE->push_back(static_cast<float>(v0.GetCovariance(24)));
+    // sov.Sigma.PyE->push_back(static_cast<float>(v0.GetCovariance(25)));
+    // sov.Sigma.PzE->push_back(static_cast<float>(v0.GetCovariance(26)));
+    // sov.Sigma.E2->push_back(static_cast<float>(v0.GetCovariance(27)));
+
+    // sov.Neg.Entry->push_back(v0.Neg.idx);
+    // sov.Neg.X->push_back(static_cast<float>(v0.Neg.X()));
+    // sov.Neg.Y->push_back(static_cast<float>(v0.Neg.Y()));
+    // sov.Neg.Z->push_back(static_cast<float>(v0.Neg.Z()));
+    // sov.Neg.Px->push_back(static_cast<float>(v0.Neg.Px()));
+    // sov.Neg.Py->push_back(static_cast<float>(v0.Neg.Py()));
+    // sov.Neg.Pz->push_back(static_cast<float>(v0.Neg.Pz()));
+    // sov.Neg.E->push_back(static_cast<float>(v0.Neg.E()));
+
+    sov.Neg_X_AtPCA->push_back(static_cast<float>(v0.fParamN.GetX()));
+    sov.Neg_Y_AtPCA->push_back(static_cast<float>(v0.fParamN.GetY()));
+    sov.Neg_Z_AtPCA->push_back(static_cast<float>(v0.fParamN.GetZ()));
+    // sov.Neg_Px_AtPCA->push_back(static_cast<float>(v0.Neg_PCA_PxPyPz()[0]));
+    // sov.Neg_Py_AtPCA->push_back(static_cast<float>(v0.Neg_PCA_PxPyPz()[1]));
+    // sov.Neg_Pz_AtPCA->push_back(static_cast<float>(v0.Neg_PCA_PxPyPz()[2]));
+
+    // sov.Pos.Entry->push_back(v0.Pos.idx);
+    // sov.Pos.X->push_back(static_cast<float>(v0.Pos.X()));
+    // sov.Pos.Y->push_back(static_cast<float>(v0.Pos.Y()));
+    // sov.Pos.Z->push_back(static_cast<float>(v0.Pos.Z()));
+    // sov.Pos.Px->push_back(static_cast<float>(v0.Pos.Px()));
+    // sov.Pos.Py->push_back(static_cast<float>(v0.Pos.Py()));
+    // sov.Pos.Pz->push_back(static_cast<float>(v0.Pos.Pz()));
+    // sov.Pos.E->push_back(static_cast<float>(v0.Pos.E()));
+
+    sov.Pos_X_AtPCA->push_back(static_cast<float>(v0.fParamP.GetX()));
+    sov.Pos_Y_AtPCA->push_back(static_cast<float>(v0.fParamP.GetY()));
+    sov.Pos_Z_AtPCA->push_back(static_cast<float>(v0.fParamP.GetZ()));
+    // sov.Pos_Px_AtPCA->push_back(static_cast<float>(v0.Pos_PCA_PxPyPz()[0]));
+    // sov.Pos_Py_AtPCA->push_back(static_cast<float>(v0.Pos_PCA_PxPyPz()[1]));
+    // sov.Pos_Pz_AtPCA->push_back(static_cast<float>(v0.Pos_PCA_PxPyPz()[2]));
 }
 
 void Packager::Store(const KF::V0& v0, PackedEvents::V0s& sov) {
@@ -1196,6 +1397,33 @@ void Packager::EndOfAnalysis() {
 
     fOutputTree->Write();
     std::cout << "TTree \"" << fOutputTree->GetName() << "\" has been written onto TFile \"" << fSettings.PathOutputFile << "\"" << '\n';
+
+    switch (GetReactionChannel()) {
+        case ReactionChannel::A:
+            fCutFlowHist_AntiLambdas->Write();
+            fCutFlowHist_KaonsZeroShort->Write();
+            break;
+        case ReactionChannel::D:
+        case ReactionChannel::E:
+            fCutFlowHist_AntiLambdas->Write();
+            break;
+        case ReactionChannel::AntiA:
+            fCutFlowHist_Lambdas->Write();
+            fCutFlowHist_KaonsZeroShort->Write();
+            break;
+        case ReactionChannel::AntiD:
+        case ReactionChannel::AntiE:
+            fCutFlowHist_Lambdas->Write();
+            break;
+        case ReactionChannel::H:
+        case ReactionChannel::AntiH:
+            break;
+        case ReactionChannel::All:
+            fCutFlowHist_AntiLambdas->Write();
+            fCutFlowHist_Lambdas->Write();
+            fCutFlowHist_KaonsZeroShort->Write();
+            break;
+    }
 
     fEventsTree->ResetBranchAddresses();
     fOutputTree->ResetBranchAddresses();

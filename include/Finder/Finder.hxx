@@ -6,6 +6,7 @@
 
 #include <TChain.h>
 #include <TFile.h>
+#include <TH1.h>
 #include <TTree.h>
 
 #include "App/Settings.hxx"
@@ -43,6 +44,7 @@ class Finder {
 
     bool PrepareOutputFile();
     bool PrepareOutputTree();
+    void CreateCutFlowHistogram();
 
     void CreateOutputBranches(Found::ChannelA &out_branches);
     void CreateOutputBranches(Found::ChannelD &out_branches);
@@ -135,6 +137,8 @@ class Finder {
     std::unique_ptr<TFile> fOutputFile;
     std::unique_ptr<TTree> fOutputTree;
     std::unique_ptr<TTree> fOutputTree_Injected;
+
+    std::unique_ptr<TH1D> fCutFlowHist;
 
     // input structs //
 

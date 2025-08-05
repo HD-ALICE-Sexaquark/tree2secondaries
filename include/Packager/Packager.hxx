@@ -6,7 +6,10 @@
 
 #include <TChain.h>
 #include <TFile.h>
+#include <TH1.h>
+#include <TTree.h>
 
+#include "ALICE/ESD.hxx"
 #include "App/Settings.hxx"
 #include "DataFormats/Events.hxx"
 #include "DataFormats/PackedEvents.hxx"
@@ -40,6 +43,7 @@ class Packager {
     bool PrepareOutputFile();
     bool PrepareOutputTree();
     void CreateOutputBranches();
+    void CreateCutFlowHistograms();
 
     void CreateOutputBranches_Events();
     void CreateOutputBranches_Injected();
@@ -95,11 +99,17 @@ class Packager {
     void Store(const KF::V0 &v0, PackedEvents::V0s &sov);
     void StoreMC(const MC::V0 &mc_v0, PackedEvents::MC_V0s &sov);
 
+    void Store(const ALICE::V0 &v0, PackedEvents::V0s &sov);
+
     Settings fSettings;
     std::unique_ptr<TChain> fEventsTree;
 
     std::unique_ptr<TFile> fOutputFile;
     std::unique_ptr<TTree> fOutputTree;
+
+    std::unique_ptr<TH1D> fCutFlowHist_AntiLambdas;
+    std::unique_ptr<TH1D> fCutFlowHist_Lambdas;
+    std::unique_ptr<TH1D> fCutFlowHist_KaonsZeroShort;
 
     // input branches //
 

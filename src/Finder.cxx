@@ -35,6 +35,8 @@ bool Finder::Initialize() {
 
     if (!PrepareOutputFile()) return false;
 
+    CreateCutFlowHistogram();
+
     if (!PrepareOutputTree()) return false;
     CreateOutputBranches();
 
@@ -729,6 +731,14 @@ void Finder::CreateOutputBranches(Found::MC_ChannelD& sov) {
 #endif
 }
 
+void Finder::CreateCutFlowHistogram() {
+    const int x_nbins{20};
+    const float x_min{0.};
+    const float x_max{20.};
+    std::string hist_title{";Cut N;N Passed Cut"};
+    fCutFlowHist = std::make_unique<TH1D>("CutFlow", hist_title.c_str(), x_nbins, x_min, x_max);
+}
+
 // ## Injected ZONE ## //
 
 bool Finder::Injected_PrepareOutputTree() {
@@ -830,7 +840,8 @@ void Finder::FindSexaquarks_ChannelA(bool anti_channel) {
             if (unique_track_entries.size() < 4) continue;
 
             // fit //
-            KF::ChannelA sexa{PdgMass::Neutron, v0a, v0b, fInput_Event.MagneticField};
+            KF::ChannelA sexa{v0a, v0b};
+            sexa.DoFit(fInput_Event.MagneticField);
 
 #ifdef T2S_DEBUG
             std::cout << "   " << __FUNCTION__ << " :: idx(v0a,neg,pos)=" << v0a.idx << "," << v0a.Neg.idx << "," << v0a.Pos.idx;
@@ -849,7 +860,7 @@ void Finder::FindSexaquarks_ChannelA(bool anti_channel) {
             std::cout << ";mass=" << sexa.Mass();
             std::cout << ";mass_minus_n=" << sexa.Mass_MinusNucleon();
             std::cout << ";dca_btw_v0s=" << sexa.DCA_btw_V0s();
-            std::cout << ";radius=" << sexa.Radius();
+            std::cout << ";radius=" << sexa.Radius2D();
             std::cout << ";dca_v0a=" << sexa.DCA_V0A_wrt_SV();
             std::cout << ";dca_v0b=" << sexa.DCA_V0B_wrt_SV();
             std::cout << ";dca_v0a_neg=" << sexa.DCA_V0ANeg_wrt_SV(fInput_Event.MagneticField);
@@ -899,22 +910,38 @@ void Finder::FindSexaquarks_ChannelA(bool anti_channel) {
 
 bool Finder::PassesCuts(const KF::ChannelA& sexa) const {
 
+    fCutFlowHist->Fill(0.);
     if (sexa.Radius2D() < Cuts::ChannelA::Min_Radius2D || sexa.Radius2D() > Cuts::ChannelA::Max_Radius2D) return false;
+    fCutFlowHist->Fill(1.);
     if (sexa.DecayLength_V0A() > Cuts::ChannelA::Max_DecayLengthLa) return false;
+    fCutFlowHist->Fill(2.);
     if (sexa.DecayLength_V0B() > Cuts::ChannelA::Max_DecayLengthK0) return false;
+    fCutFlowHist->Fill(3.);
     if (sexa.AbsRapidity_MinusNucleon() > Cuts::ChannelA::AbsMax_Rapidity) return false;  // PENDING: kinematic cut, affected by Fermi motion
-    if (sexa.Mass_MinusNucleon() < Cuts::ChannelA::Min_MassMinusNucleon || sexa.Mass_MinusNucleon() > Cuts::ChannelA::Max_MassMinusNucleon)
+    fCutFlowHist->Fill(4.);
+    if (sexa.Mass_MinusNucleon() < Cuts::ChannelA::Min_MassMinusNucleon || sexa.Mass_MinusNucleon() > Cuts::ChannelA::Max_MassMinusNucleon) {
         return false;  // PENDING: kinematic cut, affected by Fermi motion
+    }
+    fCutFlowHist->Fill(5.);
     if (sexa.CPA_Point(fInput_Event.PV_Xv, fInput_Event.PV_Yv, fInput_Event.PV_Zv) < Cuts::ChannelA::Min_CPAwrtPV ||
-        sexa.CPA_Point(fInput_Event.PV_Xv, fInput_Event.PV_Yv, fInput_Event.PV_Zv) > Cuts::ChannelA::Max_CPAwrtPV)
+        sexa.CPA_Point(fInput_Event.PV_Xv, fInput_Event.PV_Yv, fInput_Event.PV_Zv) > Cuts::ChannelA::Max_CPAwrtPV) {
         return false;  // PENDING: kinematic cut, affected by Fermi motion
+    }
+    fCutFlowHist->Fill(6.);
     if (sexa.DCA_V0ANeg_wrt_SV(fInput_Event.MagneticField) > Cuts::ChannelA::Max_DCALaNegSV) return false;
+    fCutFlowHist->Fill(7.);
     if (sexa.DCA_V0APos_wrt_SV(fInput_Event.MagneticField) > Cuts::ChannelA::Max_DCALaPosSV) return false;
+    fCutFlowHist->Fill(8.);
     if (sexa.DCA_V0BNeg_wrt_SV(fInput_Event.MagneticField) > Cuts::ChannelA::Max_DCAK0NegSV) return false;
+    fCutFlowHist->Fill(9.);
     if (sexa.DCA_V0BPos_wrt_SV(fInput_Event.MagneticField) > Cuts::ChannelA::Max_DCAK0PosSV) return false;
+    fCutFlowHist->Fill(10.);
     if (sexa.DCA_V0A_wrt_SV() > Cuts::ChannelA::Max_DCALaSV) return false;
+    fCutFlowHist->Fill(11.);
     if (sexa.DCA_V0B_wrt_SV() > Cuts::ChannelA::Max_DCAK0SV) return false;
+    fCutFlowHist->Fill(12.);
     if (sexa.DCA_btw_V0s() > Cuts::ChannelA::Max_DCAbtwV0s) return false;
+    fCutFlowHist->Fill(13.);
 
     return true;
 }
@@ -1066,7 +1093,8 @@ void Finder::FindSexaquarks_ChannelD(bool anti_channel) {
             if (unique_track_entries.size() < 3) continue;
 
             // fit //
-            KF::ChannelD sexa{PdgMass::Proton, v0, kaon, fInput_Event.MagneticField};
+            KF::ChannelD sexa{v0, kaon};
+            sexa.DoFit(fInput_Event.MagneticField);
 
             // apply cuts //
             if (!PassesCuts(sexa)) continue;
@@ -1078,7 +1106,7 @@ void Finder::FindSexaquarks_ChannelD(bool anti_channel) {
             std::cout << ";x,y,z(kaon)=" << sexa.Kaon_PCA_XYZ()[0] << "," << sexa.Kaon_PCA_XYZ()[1] << "," << sexa.Kaon_PCA_XYZ()[2];
             std::cout << ";mass=" << sexa.Mass();
             std::cout << ";dca_v0_kaon=" << sexa.DCA_btw_V0_Kaon();
-            std::cout << ";radius=" << sexa.Radius();
+            std::cout << ";radius=" << sexa.Radius2D();
             std::cout << ";dca_v0=" << sexa.DCA_V0_wrt_SV();
             std::cout << ";dca_kaon=" << sexa.DCA_Kaon_wrt_SV();
             std::cout << ";pt=" << sexa.Pt();
@@ -1105,18 +1133,30 @@ void Finder::FindSexaquarks_ChannelD(bool anti_channel) {
 
 bool Finder::PassesCuts(const KF::ChannelD& sexa) const {
 
+    fCutFlowHist->Fill(0.);
     if (sexa.Radius2D() < Cuts::ChannelD::Min_Radius2D || sexa.Radius2D() > Cuts::ChannelD::Max_Radius2D) return false;
+    fCutFlowHist->Fill(1.);
     if (sexa.AbsRapidity_MinusNucleon() > Cuts::ChannelD::AbsMax_Rapidity) return false;  // PENDING: kinematics, affected by Fermi motion
+    fCutFlowHist->Fill(2.);
     if (sexa.CPA_Point(fInput_Event.PV_Xv, fInput_Event.PV_Yv, fInput_Event.PV_Zv) < Cuts::ChannelD::Min_CPAwrtPV ||
-        sexa.CPA_Point(fInput_Event.PV_Xv, fInput_Event.PV_Yv, fInput_Event.PV_Zv) > Cuts::ChannelD::Max_CPAwrtPV)
+        sexa.CPA_Point(fInput_Event.PV_Xv, fInput_Event.PV_Yv, fInput_Event.PV_Zv) > Cuts::ChannelD::Max_CPAwrtPV) {
         return false;  // PENDING: kinematics, affected by Fermi motion
+    }
+    fCutFlowHist->Fill(3.);
     if (sexa.DCA_V0_wrt_SV() > Cuts::ChannelD::Max_DCALaSV) return false;
+    fCutFlowHist->Fill(4.);
     if (sexa.DCA_Kaon_wrt_SV() > Cuts::ChannelD::Max_DCAKaSV) return false;
+    fCutFlowHist->Fill(5.);
     if (sexa.DCA_V0Neg_wrt_SV(fInput_Event.MagneticField) > Cuts::ChannelD::Max_DCALaNegSV) return false;
+    fCutFlowHist->Fill(6.);
     if (sexa.DCA_V0Pos_wrt_SV(fInput_Event.MagneticField) > Cuts::ChannelD::Max_DCALaPosSV) return false;
+    fCutFlowHist->Fill(7.);
     if (sexa.DCA_btw_V0_Kaon() > Cuts::ChannelD::Max_DCAKaLa) return false;
+    fCutFlowHist->Fill(8.);
     if (sexa.DCA_btw_V0Neg_Kaon(fInput_Event.MagneticField) > Cuts::ChannelD::Max_DCALaNegKa) return false;
+    fCutFlowHist->Fill(9.);
     if (sexa.DCA_btw_V0Pos_Kaon(fInput_Event.MagneticField) > Cuts::ChannelD::Max_DCALaPosKa) return false;
+    fCutFlowHist->Fill(10.);
 
     return true;
 }
@@ -1279,6 +1319,8 @@ void Finder::EndOfAnalysis() {
 
     fOutputTree->Write();
     std::cout << "TTree \"" << fOutputTree->GetName() << "\" has been written onto TFile \"" << fSettings.PathOutputFile << "\"" << '\n';
+
+    fCutFlowHist->Write();
 
     fTree_PackedEvents->ResetBranchAddresses();
     fOutputTree->ResetBranchAddresses();

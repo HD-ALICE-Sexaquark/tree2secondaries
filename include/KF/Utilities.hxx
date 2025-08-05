@@ -67,20 +67,6 @@ inline KF::Vector<6> PackParams(const Tree2Secondaries::Events::Tracks& soa, int
             soa.Px->at(esd_idx), soa.Py->at(esd_idx), soa.Pz->at(esd_idx)};
 }
 
-inline std::array<float, 5> PackParams_ALICE(const Tree2Secondaries::Events::Tracks& soa, int esd_idx) {
-    return {soa.Y->at(esd_idx), soa.Z->at(esd_idx), soa.Snp->at(esd_idx),  //
-            soa.Tgl->at(esd_idx), soa.Signed1Pt->at(esd_idx)};
-};
-
-inline std::array<float, 15> PackCovMatrix_ALICE(const Tree2Secondaries::Events::Tracks& soa, int esd_idx) {
-    return {soa.SigmaY2->at(esd_idx),                                                                                          //
-            soa.SigmaZY->at(esd_idx),   soa.SigmaZ2->at(esd_idx),                                                              //
-            soa.SigmaSnpY->at(esd_idx), soa.SigmaSnpZ->at(esd_idx), soa.SigmaSnp2->at(esd_idx),                                //
-            soa.SigmaTglY->at(esd_idx), soa.SigmaTglZ->at(esd_idx), soa.SigmaTglSnp->at(esd_idx), soa.SigmaTgl2->at(esd_idx),  //
-            soa.Sigma1PtY->at(esd_idx), soa.Sigma1PtZ->at(esd_idx), soa.Sigma1PtSnp->at(esd_idx), soa.Sigma1PtTgl->at(esd_idx),
-            soa.Sigma1Pt2->at(esd_idx)};
-};
-
 inline KF::Vector<7> UnpackParams(const Tree2Secondaries::PackedEvents::State& sov, int idx) {
     return {sov.X->at(idx),  sov.Y->at(idx),  sov.Z->at(idx),  //
             sov.Px->at(idx), sov.Py->at(idx), sov.Pz->at(idx), sov.E->at(idx)};

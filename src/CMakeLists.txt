@@ -2,7 +2,7 @@ add_executable(App Packager.cxx Finder.cxx App.cxx)
 
 target_link_libraries(
   App
-  PUBLIC ROOT::Core ROOT::RIO ROOT::Tree KFParticle::KFParticle
+  PUBLIC ROOT::Core ROOT::RIO ROOT::Tree ROOT::Hist KFParticle::KFParticle
   PRIVATE CLI11::CLI11)
 
 target_include_directories(

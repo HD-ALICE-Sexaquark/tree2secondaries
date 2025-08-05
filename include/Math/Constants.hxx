@@ -32,7 +32,7 @@ static constexpr std::string_view PiMinus{"PM"};
 static constexpr std::string_view PiPlus{"PP"};
 }  // namespace Acronym
 
-enum class PdgCode : short {
+enum class PdgCode : int {
     AntiLambda = -3122,
     Lambda = 3122,
     KaonZeroShort = 310,
