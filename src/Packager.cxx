@@ -1,35 +1,38 @@
 #include <filesystem>
-#include <iostream>
 #include <memory>
 
 #include "ALICE/ESD.hxx"
 #include "ALICE/Utilities.hxx"
-#include "ALICE/Vertexer.hxx"
+#include "App/Logger.hxx"
 #include "App/Utilities.hxx"
 #include "KF/Utilities.hxx"
 #include "Math/Constants.hxx"
 #include "Packager/Cuts.hxx"
 #include "Packager/Packager.hxx"
 
+#ifdef T2S_USE_ALICE
+#include "ALICE/Vertexer.hxx"
+#endif
+
 namespace Tree2Secondaries {
 
 bool Packager::Initialize() {
 #ifdef T2S_DEBUG
-    std::cout << "-- starting (" << __FUNCTION__ << ") --" << '\n';
+    Logger::Debug(__FUNCTION__, "Starting.");
 #endif
 
     fEventsTree = std::make_unique<TChain>("Events");
     for (const auto& path : fSettings.PathInputFiles) {
         if (fEventsTree->Add(path.c_str()) == 0) {
-            std::cerr << "   " << __FUNCTION__ << " :: Couldn't add TFile \"" << path << "\"" << '\n';
+            Logger::Error(__FUNCTION__, "Couldn't add TFile {}", path);
         }
     }
     if (!fEventsTree->GetEntries()) {
-        std::cerr << "   " << __FUNCTION__ << " :: Couldn't manage to read any entry." << '\n';
+        Logger::Error(__FUNCTION__, "Couldn't read any entry.");
         return false;
     }
-    std::cout << "   " << __FUNCTION__ << " :: TChain \"" << fEventsTree->GetName() << "\" loaded successfully with " << fEventsTree->GetNtrees()
-              << " trees and " << fEventsTree->GetEntries() << " total entries." << '\n';
+    Logger::Info(__FUNCTION__, "TChain \"{}\" loaded successfully with {} trees and {} total entries.", fEventsTree->GetName(),
+                 fEventsTree->GetNtrees(), fEventsTree->GetEntries());
 
     ConnectInputBranches();
 
@@ -40,11 +43,8 @@ bool Packager::Initialize() {
     if (!PrepareOutputTree()) return false;
     CreateOutputBranches();
 
-    std::cout << "   " << __FUNCTION__ << " :: Packager initialized successfully" << '\n';
+    Logger::Info(__FUNCTION__, "Packager initialized successfully.");
 
-#ifdef T2S_DEBUG
-    std::cout << "-- finished (" << __FUNCTION__ << ") --" << '\n';
-#endif
     return true;
 }
 
@@ -82,7 +82,7 @@ void Packager::ConnectBranches_Events() {
 
 void Packager::ConnectBranches_Injected() {
 #ifdef T2S_DEBUG
-    std::cout << "-- starting (" << __FUNCTION__ << ") --" << '\n';
+    Logger::Debug(__FUNCTION__, "Starting.");
 #endif
 
     Utils::ConnectBranch(fEventsTree.get(), "ReactionID", &fInput_Injected.ReactionID);
@@ -94,13 +94,13 @@ void Packager::ConnectBranches_Injected() {
     Utils::ConnectBranch(fEventsTree.get(), "Nucleon_Pz", &fInput_Injected.Nucleon_Pz);
 
 #ifdef T2S_DEBUG
-    std::cout << "-- finished (" << __FUNCTION__ << ") --" << '\n';
+    Logger::Debug(__FUNCTION__, "Finished.");
 #endif
 }
 
 void Packager::ConnectBranches_MC() {
 #ifdef T2S_DEBUG
-    std::cout << "-- starting (" << __FUNCTION__ << ") --" << '\n';
+    Logger::Debug(__FUNCTION__, "Starting.");
 #endif
 
     Utils::ConnectBranch(fEventsTree.get(), "MC_X", &fInput_MC.X);
@@ -120,13 +120,13 @@ void Packager::ConnectBranches_MC() {
     Utils::ConnectBranch(fEventsTree.get(), "MC_IsSecFromWeak", &fInput_MC.IsSecFromWeak);
 
 #ifdef T2S_DEBUG
-    std::cout << "-- finished (" << __FUNCTION__ << ") --" << '\n';
+    Logger::Debug(__FUNCTION__, "Finished.");
 #endif
 }
 
 void Packager::ConnectBranches_Tracks() {
 #ifdef T2S_DEBUG
-    std::cout << "-- starting (" << __FUNCTION__ << ") --" << '\n';
+    Logger::Debug(__FUNCTION__, "Starting.");
 #endif
 
     Utils::ConnectBranch(fEventsTree.get(), "Track_X", &fInput_Tracks.X);
@@ -163,7 +163,7 @@ void Packager::ConnectBranches_Tracks() {
     if (IsMC()) Utils::ConnectBranch(fEventsTree.get(), "Track_McEntry", &fInput_Tracks.McEntry);
 
 #ifdef T2S_DEBUG
-    std::cout << "-- finished (" << __FUNCTION__ << ") --" << '\n';
+    Logger::Debug(__FUNCTION__, "Finished.");
 #endif
 }
 
@@ -171,7 +171,7 @@ void Packager::ConnectBranches_Tracks() {
 
 bool Packager::PrepareOutputFile() {
 #ifdef T2S_DEBUG
-    std::cout << "-- starting (" << __FUNCTION__ << ") --" << '\n';
+    Logger::Debug(__FUNCTION__, "Starting.");
 #endif
 
     const std::filesystem::path output_path(fSettings.PathOutputFile);
@@ -179,36 +179,36 @@ bool Packager::PrepareOutputFile() {
 
     fOutputFile = std::unique_ptr<TFile>(TFile::Open(fSettings.PathOutputFile.c_str(), "RECREATE"));
     if (!fOutputFile) {
-        std::cerr << "   " << __FUNCTION__ << " :: TFile \"" << fSettings.PathOutputFile << "\" couldn't be created" << '\n';
+        Logger::Error(__FUNCTION__, "Couldn't create TFile {}", fSettings.PathOutputFile);
         return false;
     }
 
 #ifdef T2S_DEBUG
-    std::cout << "-- finished (" << __FUNCTION__ << ") --" << '\n';
+    Logger::Debug(__FUNCTION__, "Finished.");
 #endif
     return true;
 }
 
 bool Packager::PrepareOutputTree() {
 #ifdef T2S_DEBUG
-    std::cout << "-- starting (" << __FUNCTION__ << ") --" << '\n';
+    Logger::Debug(__FUNCTION__, "Starting.");
 #endif
 
     fOutputTree = std::make_unique<TTree>("PackedEvents", "Packed Events");
     if (!fOutputTree) {
-        std::cerr << "TTree \"PackedEvents\" couldn't be created" << '\n';
+        Logger::Error(__FUNCTION__, "Couldn't create TTree \"PackedEvents\"");
         return false;
     }
 
 #ifdef T2S_DEBUG
-    std::cout << "-- finished (" << __FUNCTION__ << ") --" << '\n';
+    Logger::Debug(__FUNCTION__, "Finished.");
 #endif
     return true;
 }
 
 void Packager::CreateOutputBranches() {
 #ifdef T2S_DEBUG
-    std::cout << "-- starting (" << __FUNCTION__ << ") --" << '\n';
+    Logger::Debug(__FUNCTION__, "Starting.");
 #endif
 
     CreateOutputBranches_Events();
@@ -301,14 +301,15 @@ void Packager::CreateOutputBranches() {
             }
             break;
     }  // end of switch statement
+
 #ifdef T2S_DEBUG
-    std::cout << "-- finished (" << __FUNCTION__ << ") --" << '\n';
+    Logger::Debug(__FUNCTION__, "Finished.");
 #endif
 }
 
 void Packager::CreateOutputBranches_Events() {
 #ifdef T2S_DEBUG
-    std::cout << "-- starting (" << __FUNCTION__ << ") --" << '\n';
+    Logger::Debug(__FUNCTION__, "Starting.");
 #endif
 
     fOutputTree->Branch("RunNumber", &fOutput_Event.RunNumber);
@@ -328,13 +329,13 @@ void Packager::CreateOutputBranches_Events() {
     }
 
 #ifdef T2S_DEBUG
-    std::cout << "-- finished (" << __FUNCTION__ << ") --" << '\n';
+    Logger::Debug(__FUNCTION__, "Finished.");
 #endif
 }
 
 void Packager::CreateOutputBranches_Injected() {
 #ifdef T2S_DEBUG
-    std::cout << "-- starting (" << __FUNCTION__ << ") --" << '\n';
+    Logger::Debug(__FUNCTION__, "Starting.");
 #endif
 
     fOutputTree->Branch("ReactionID", &fOutput_Injected.ReactionID);
@@ -349,13 +350,13 @@ void Packager::CreateOutputBranches_Injected() {
     fOutputTree->Branch("Nucleon_Pz", &fOutput_Injected.Nucleon_Pz);
 
 #ifdef T2S_DEBUG
-    std::cout << "-- finished (" << __FUNCTION__ << ") --" << '\n';
+    Logger::Debug(__FUNCTION__, "Finished.");
 #endif
 }
 
 void Packager::CreateOutputBranches_V0s(const std::string& name_v0, PackedEvents::V0s& sov) {
 #ifdef T2S_DEBUG
-    std::cout << "-- starting (" << __FUNCTION__ << ") --" << '\n';
+    Logger::Debug(__FUNCTION__, "Starting.");
 #endif
 
     fOutputTree->Branch((name_v0 + "_Entry").c_str(), &sov.Entry);
@@ -429,13 +430,13 @@ void Packager::CreateOutputBranches_V0s(const std::string& name_v0, PackedEvents
     fOutputTree->Branch((name_v0 + "_Pos_Pz_AtPCA").c_str(), &sov.Pos_Pz_AtPCA);
 
 #ifdef T2S_DEBUG
-    std::cout << "-- finished (" << __FUNCTION__ << ") --" << '\n';
+    Logger::Debug(__FUNCTION__, "Finished.");
 #endif
 }
 
 void Packager::CreateOutputBranches_Tracks(const std::string& name_part, PackedEvents::Tracks& sov) {
 #ifdef T2S_DEBUG
-    std::cout << "-- starting (" << __FUNCTION__ << ") --" << '\n';
+    Logger::Debug(__FUNCTION__, "Starting.");
 #endif
 
     fOutputTree->Branch((name_part + "_Entry").c_str(), &sov.Entry);
@@ -478,13 +479,13 @@ void Packager::CreateOutputBranches_Tracks(const std::string& name_part, PackedE
     fOutputTree->Branch((name_part + "_SigmaE2").c_str(), &sov.Sigma.E2);
 
 #ifdef T2S_DEBUG
-    std::cout << "-- finished (" << __FUNCTION__ << ") --" << '\n';
+    Logger::Debug(__FUNCTION__, "Finished.");
 #endif
 }
 
 void Packager::CreateOutputBranches_MC_V0s(const std::string& name_v0, PackedEvents::MC_V0s& sov) {
 #ifdef T2S_DEBUG
-    std::cout << "-- starting (" << __FUNCTION__ << ") --" << '\n';
+    Logger::Debug(__FUNCTION__, "Starting.");
 #endif
 
     fOutputTree->Branch((name_v0 + "_MC_Entry").c_str(), &sov.Entry);
@@ -530,13 +531,13 @@ void Packager::CreateOutputBranches_MC_V0s(const std::string& name_v0, PackedEve
     fOutputTree->Branch((name_v0 + "_MC_Pos_ReactionID").c_str(), &sov.Pos_ReactionID);
 
 #ifdef T2S_DEBUG
-    std::cout << "-- finished (" << __FUNCTION__ << ") --" << '\n';
+    Logger::Debug(__FUNCTION__, "Finished.");
 #endif
 }
 
 void Packager::CreateOutputBranches_MC_Tracks(const std::string& name_part, PackedEvents::MC_Tracks& sov) {
 #ifdef T2S_DEBUG
-    std::cout << "-- starting (" << __FUNCTION__ << ") --" << '\n';
+    Logger::Debug(__FUNCTION__, "Starting.");
 #endif
 
     fOutputTree->Branch((name_part + "_MC_Entry").c_str(), &sov.Entry);
@@ -559,7 +560,7 @@ void Packager::CreateOutputBranches_MC_Tracks(const std::string& name_part, Pack
     fOutputTree->Branch((name_part + "_MC_ReactionID").c_str(), &sov.ReactionID);
 
 #ifdef T2S_DEBUG
-    std::cout << "-- finished (" << __FUNCTION__ << ") --" << '\n';
+    Logger::Debug(__FUNCTION__, "Finished.");
 #endif
 }
 
@@ -601,7 +602,7 @@ void Packager::CreateCutFlowHistograms() {
 
 void Packager::ProcessEvent() {
 #ifdef T2S_DEBUG
-    std::cout << "-- starting (" << __FUNCTION__ << ") --" << '\n';
+    Logger::Debug(__FUNCTION__, "Starting.");
 #endif
     fOutput_Event.RunNumber = fInput_Event.RunNumber;
     fOutput_Event.DirNumber = fInput_Event.DirNumber;
@@ -619,7 +620,7 @@ void Packager::ProcessEvent() {
         fOutput_Event.MC_PV_Zv = fInput_Event.MC_PV_Zv;
     }
 #ifdef T2S_DEBUG
-    std::cout << "-- finished (" << __FUNCTION__ << ") --" << '\n';
+    Logger::Debug(__FUNCTION__, "Finished.");
 #endif
 }
 
@@ -627,7 +628,7 @@ void Packager::ProcessEvent() {
 
 void Packager::Injected_GetSecondaryVertex() {
 #ifdef T2S_DEBUG
-    std::cout << "-- starting (" << __FUNCTION__ << ") --" << '\n';
+    Logger::Debug(__FUNCTION__, "Starting.");
 #endif
 
     fVec_SV_X.resize(NumberInjected(), 0.);
@@ -648,13 +649,13 @@ void Packager::Injected_GetSecondaryVertex() {
     }
 
 #ifdef T2S_DEBUG
-    std::cout << "-- starting (" << __FUNCTION__ << ") --" << '\n';
+    Logger::Debug(__FUNCTION__, "Starting.");
 #endif
 }
 
 void Packager::Injected_Store() {
 #ifdef T2S_DEBUG
-    std::cout << "-- starting (" << __FUNCTION__ << ") --" << '\n';
+    Logger::Debug(__FUNCTION__, "Starting.");
 #endif
 
     fOutput_Injected.ReactionID = fInput_Injected.ReactionID;
@@ -669,7 +670,7 @@ void Packager::Injected_Store() {
     fOutput_Injected.Nucleon_Pz = fInput_Injected.Nucleon_Pz;
 
 #ifdef T2S_DEBUG
-    std::cout << "-- finished (" << __FUNCTION__ << ") --" << '\n';
+    Logger::Debug(__FUNCTION__, "Finished.");
 #endif
 }
 
@@ -678,7 +679,7 @@ void Packager::Injected_Store() {
 // Store tracks' ESD indices into vectors, according to their respective track PID and charge.
 void Packager::ProcessTracks() {
 #ifdef T2S_DEBUG
-    std::cout << "-- starting (" << __FUNCTION__ << ") --" << '\n';
+    Logger::Debug(__FUNCTION__, "Starting.");
 #endif
 
     for (int esd_track{0}; esd_track < NumberTracks(); ++esd_track) {
@@ -700,20 +701,20 @@ void Packager::ProcessTracks() {
     }
 
 #ifdef T2S_DEBUG
-    std::cout << "   " << __FUNCTION__ << " :: n_antiprotons = " << fVec_AntiProtons.size() << '\n';
-    std::cout << "   " << __FUNCTION__ << " :: n_protons     = " << fVec_Protons.size() << '\n';
-    std::cout << "   " << __FUNCTION__ << " :: n_negkaons    = " << fVec_NegKaons.size() << '\n';
-    std::cout << "   " << __FUNCTION__ << " :: n_poskaons    = " << fVec_PosKaons.size() << '\n';
-    std::cout << "   " << __FUNCTION__ << " :: n_piminus     = " << fVec_PiMinus.size() << '\n';
-    std::cout << "   " << __FUNCTION__ << " :: n_piplus      = " << fVec_PiPlus.size() << '\n';
-    std::cout << "-- finished (" << __FUNCTION__ << ") --" << '\n';
+    Logger::Debug(__FUNCTION__, "n_antiprotons = {}", fVec_AntiProtons.size());
+    Logger::Debug(__FUNCTION__, "n_protons     = {}", fVec_Protons.size());
+    Logger::Debug(__FUNCTION__, "n_negkaons    = {}", fVec_NegKaons.size());
+    Logger::Debug(__FUNCTION__, "n_poskaons    = {}", fVec_PosKaons.size());
+    Logger::Debug(__FUNCTION__, "n_piminus     = {}", fVec_PiMinus.size());
+    Logger::Debug(__FUNCTION__, "n_piplus      = {}", fVec_PiPlus.size());
+    Logger::Debug(__FUNCTION__, "Finished.");
 #endif
 }
 
 // Note: intended for light particles only, i.e., kaons and pions.
 void Packager::PackTracks(PdgCode pdg_code) {
 #ifdef T2S_DEBUG
-    std::cout << "-- starting (" << __FUNCTION__ << ") --" << '\n';
+    Logger::Debug(__FUNCTION__, "Starting.");
 #endif
 
     // determine rules based on particle pdg code //
@@ -770,7 +771,7 @@ void Packager::PackTracks(PdgCode pdg_code) {
     }  // end of loop over selected tracks
 
 #ifdef T2S_DEBUG
-    std::cout << "-- finished (" << __FUNCTION__ << ") --" << '\n';
+    Logger::Debug(__FUNCTION__, "Finished.");
 #endif
 }
 
@@ -841,7 +842,7 @@ void Packager::StoreMC(const MC::Track& mc_track, PackedEvents::MC_Tracks& sov) 
 
 void Packager::FindV0s(PdgCode pdg_code) {
 #ifdef T2S_DEBUG
-    std::cout << "-- starting (" << __FUNCTION__ << ") --" << '\n';
+    Logger::Debug(__FUNCTION__, "Starting.");
 #endif
 
     // determine rules based on V0 pdg code //
@@ -885,7 +886,7 @@ void Packager::FindV0s(PdgCode pdg_code) {
             pdg_code_pos = PdgCode::PiPlus;
             break;
         default:
-            std::cerr << "   " << __FUNCTION__ << " :: Invalid PDG Code " << int(pdg_code) << " for a V0." << '\n';
+            Logger::Error(__FUNCTION__, "Invalid PDG Code {} for a V0.", static_cast<int>(pdg_code));
             return;
     }
 
@@ -925,8 +926,8 @@ void Packager::FindV0s(PdgCode pdg_code) {
                 if (!pos.PropagateTo(xp, fInput_Event.MagneticField)) continue;
             }
 #ifdef T2S_DEBUG
-            std::cout << "DEBUG NEG: Snp=" << neg.GetSnp() << " SigmaY2=" << neg.GetSigmaY2() << '\n';
-            std::cout << "DEBUG POS: Snp=" << pos.GetSnp() << " SigmaY2=" << pos.GetSigmaY2() << '\n';
+            Logger::Info(__FUNCTION__, "DEBUG NEG: Snp=" << neg.GetSnp() << " SigmaY2=" << neg.GetSigmaY2());
+            Logger::Info(__FUNCTION__, "DEBUG POS: Snp=" << pos.GetSnp() << " SigmaY2=" << pos.GetSigmaY2());
 #endif
 
             // if (dca_after_preopt > ALICE::Const::CustomV0Finder_DCAmax) continue;
@@ -940,22 +941,25 @@ void Packager::FindV0s(PdgCode pdg_code) {
             // end of **Custom V0 Finder** //
             // --------------------------- //
 #ifdef T2S_DEBUG
-            std::cout << "   " << __FUNCTION__ << " :: idx,neg,pos=" << v0_entry << "," << esd_neg << "," << esd_pos;
-            std::cout << ";x,y,z=" << v0.X() << "," << v0.Y() << "," << v0.Z();
-            // std::cout << ";x,y,z(neg)=" << v0.Neg_PCA_XYZ()[0] << "," << v0.Neg_PCA_XYZ()[1] << "," << v0.Neg_PCA_XYZ()[2];
-            // std::cout << ";x,y,z(pos)=" << v0.Pos_PCA_XYZ()[0] << "," << v0.Pos_PCA_XYZ()[1] << "," << v0.Pos_PCA_XYZ()[2];
-            // std::cout << ";mass=" << v0.Mass();
-            // std::cout << ";dca_dau=" << v0.DCA_Daughters();
-            std::cout << ";radius=" << v0.Radius2D();
-            // std::cout << ";dca_neg=" << v0.DCA_Neg_V0();
-            // std::cout << ";dca_pos=" << v0.DCA_Pos_V0();
-            // std::cout << ";pt=" << v0.Pt();
-            // std::cout << ";eta=" << v0.Eta();
-            // std::cout << ";qt=" << v0.ArmenterosQt();
-            // std::cout << ";alpha=" << v0.ArmenterosAlpha();
-            // std::cout << ";cpa_pv=" << v0.CPA_Point(fInput_Event.PV_Xv, fInput_Event.PV_Yv, fInput_Event.PV_Zv);
-            // std::cout << ";dca_pv=" << v0.DCA_Point(fInput_Event.PV_Xv, fInput_Event.PV_Yv, fInput_Event.PV_Zv);
-            std::cout << '\n';
+            Logger::Info(__FUNCTION__,
+                         "   "
+                         " :: idx,neg,pos="
+                             << v0_entry << "," << esd_neg << "," << esd_pos);
+            Logger::Info(__FUNCTION__, ";x,y,z=" << v0.X() << "," << v0.Y() << "," << v0.Z());
+            // Logger::Info(__FUNCTION__,  ";x,y,z(neg)=" << v0.Neg_PCA_XYZ()[0] << "," << v0.Neg_PCA_XYZ()[1] << "," << v0.Neg_PCA_XYZ()[2]);
+            // Logger::Info(__FUNCTION__,  ";x,y,z(pos)=" << v0.Pos_PCA_XYZ()[0] << "," << v0.Pos_PCA_XYZ()[1] << "," << v0.Pos_PCA_XYZ()[2]);
+            // Logger::Info(__FUNCTION__,  ";mass=" << v0.Mass());
+            // Logger::Info(__FUNCTION__,  ";dca_dau=" << v0.DCA_Daughters());
+            Logger::Info(__FUNCTION__, ";radius=" << v0.Radius2D());
+            // Logger::Info(__FUNCTION__,  ";dca_neg=" << v0.DCA_Neg_V0());
+            // Logger::Info(__FUNCTION__,  ";dca_pos=" << v0.DCA_Pos_V0());
+            // Logger::Info(__FUNCTION__,  ";pt=" << v0.Pt());
+            // Logger::Info(__FUNCTION__,  ";eta=" << v0.Eta());
+            // Logger::Info(__FUNCTION__,  ";qt=" << v0.ArmenterosQt());
+            // Logger::Info(__FUNCTION__,  ";alpha=" << v0.ArmenterosAlpha());
+            // Logger::Info(__FUNCTION__,  ";cpa_pv=" << v0.CPA_Point(fInput_Event.PV_Xv, fInput_Event.PV_Yv, fInput_Event.PV_Zv));
+            // Logger::Info(__FUNCTION__,  ";dca_pv=" << v0.DCA_Point(fInput_Event.PV_Xv, fInput_Event.PV_Yv, fInput_Event.PV_Zv));
+            Logger::Info(__FUNCTION__, '\n');
 #endif
             // store //
             Store(v0, *out);
@@ -982,22 +986,22 @@ void Packager::FindV0s(PdgCode pdg_code) {
             // apply cuts //
             if (!PassesCuts(v0, pdg_code)) continue;
 #ifdef T2S_DEBUG
-            std::cout << "   " << __FUNCTION__ << " :: idx,neg,pos=" << v0.idx << "," << neg.idx << "," << pos.idx;
-            std::cout << ";x,y,z=" << v0.X() << "," << v0.Y() << "," << v0.Z();
-            std::cout << ";x,y,z(neg)=" << v0.Neg_PCA_XYZ()[0] << "," << v0.Neg_PCA_XYZ()[1] << "," << v0.Neg_PCA_XYZ()[2];
-            std::cout << ";x,y,z(pos)=" << v0.Pos_PCA_XYZ()[0] << "," << v0.Pos_PCA_XYZ()[1] << "," << v0.Pos_PCA_XYZ()[2];
-            std::cout << ";mass=" << v0.Mass();
-            std::cout << ";dca_dau=" << v0.DCA_Daughters();
-            std::cout << ";radius=" << v0.Radius2D();
-            std::cout << ";dca_neg=" << v0.DCA_Neg_V0();
-            std::cout << ";dca_pos=" << v0.DCA_Pos_V0();
-            std::cout << ";pt=" << v0.Pt();
-            std::cout << ";eta=" << v0.Eta();
-            std::cout << ";qt=" << v0.ArmenterosQt();
-            std::cout << ";alpha=" << v0.ArmenterosAlpha();
-            std::cout << ";cpa_pv=" << v0.CPA_Point(fInput_Event.PV_Xv, fInput_Event.PV_Yv, fInput_Event.PV_Zv);
-            std::cout << ";dca_pv=" << v0.DCA_Point(fInput_Event.PV_Xv, fInput_Event.PV_Yv, fInput_Event.PV_Zv);
-            std::cout << '\n';
+            Logger::Debug(__FUNCTION__, "idx,neg,pos={},{},{}", v0.idx, neg.idx, pos.idx);
+            Logger::Debug(__FUNCTION__, ";x,y,z={},{},{}", v0.X(), v0.Y(), v0.Z());
+            Logger::Debug(__FUNCTION__, ";x,y,z(neg)={},{},{}", v0.Neg_PCA_XYZ()[0], v0.Neg_PCA_XYZ()[1], v0.Neg_PCA_XYZ()[2]);
+            Logger::Debug(__FUNCTION__, ";x,y,z(pos)={},{},{}", v0.Pos_PCA_XYZ()[0], v0.Pos_PCA_XYZ()[1], v0.Pos_PCA_XYZ()[2]);
+            Logger::Debug(__FUNCTION__, ";mass={}", v0.Mass());
+            Logger::Debug(__FUNCTION__, ";dca_dau={}", v0.DCA_Daughters());
+            Logger::Debug(__FUNCTION__, ";radius={}", v0.Radius2D());
+            Logger::Debug(__FUNCTION__, ";dca_neg={}", v0.DCA_Neg_V0());
+            Logger::Debug(__FUNCTION__, ";dca_pos={}", v0.DCA_Pos_V0());
+            Logger::Debug(__FUNCTION__, ";pt={}", v0.Pt());
+            Logger::Debug(__FUNCTION__, ";eta={}", v0.Eta());
+            Logger::Debug(__FUNCTION__, ";qt={}", v0.ArmenterosQt());
+            Logger::Debug(__FUNCTION__, ";alpha={}", v0.ArmenterosAlpha());
+            Logger::Debug(__FUNCTION__, ";cpa_pv={}", v0.CPA_Point(fInput_Event.PV_Xv, fInput_Event.PV_Yv, fInput_Event.PV_Zv));
+            Logger::Debug(__FUNCTION__, ";dca_pv={}", v0.DCA_Point(fInput_Event.PV_Xv, fInput_Event.PV_Yv, fInput_Event.PV_Zv));
+            Logger::Debug(__FUNCTION__, "");
 #endif
             // store //
             Store(v0, *out);
@@ -1012,7 +1016,7 @@ void Packager::FindV0s(PdgCode pdg_code) {
     }  // end of loop over neg
 
 #ifdef T2S_DEBUG
-    std::cout << "-- finished (" << __FUNCTION__ << ") --" << '\n';
+    Logger::Debug(__FUNCTION__, "Finished.");
 #endif
 }
 
@@ -1277,7 +1281,7 @@ void Packager::StoreMC(const MC::V0& mc_v0, PackedEvents::MC_V0s& sov) {
 
 void Packager::EndOfEvent() {
 #ifdef T2S_DEBUG
-    std::cout << "-- starting (" << __FUNCTION__ << ") --" << '\n';
+    Logger::Debug(__FUNCTION__, "Starting.");
 #endif
 
     // fill tree //
@@ -1386,17 +1390,17 @@ void Packager::EndOfEvent() {
     }
 
 #ifdef T2S_DEBUG
-    std::cout << "-- finished (" << __FUNCTION__ << ") --" << '\n';
+    Logger::Debug(__FUNCTION__, "Finished.");
 #endif
 }
 
 void Packager::EndOfAnalysis() {
 #ifdef T2S_DEBUG
-    std::cout << "-- starting (" << __FUNCTION__ << ") --" << '\n';
+    Logger::Debug(__FUNCTION__, "Starting.");
 #endif
 
     fOutputTree->Write();
-    std::cout << "TTree \"" << fOutputTree->GetName() << "\" has been written onto TFile \"" << fSettings.PathOutputFile << "\"" << '\n';
+    Logger::Info(__FUNCTION__, "TTree \"{}\" has been written into TFile {}", fOutputTree->GetName(), fSettings.PathOutputFile);
 
     switch (GetReactionChannel()) {
         case ReactionChannel::A:
@@ -1428,10 +1432,7 @@ void Packager::EndOfAnalysis() {
     fEventsTree->ResetBranchAddresses();
     fOutputTree->ResetBranchAddresses();
 
-    std::cout << "Done." << '\n';
-#ifdef T2S_DEBUG
-    std::cout << "-- finished (" << __FUNCTION__ << ") --" << '\n';
-#endif
+    Logger::Info(__FUNCTION__, "All done.");
 }
 
 }  // namespace Tree2Secondaries

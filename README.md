@@ -6,8 +6,7 @@
 
 ## Requirements
 
-- Internet connection to fetch **[CLIUtils/CLI11](https://github.com/CLIUtils/CLI11)**
-- **[fmt](https://github.com/fmtlib/fmt)**
+- Internet connection to fetch **[CLIUtils/CLI11](https://github.com/CLIUtils/CLI11)** and **[fmt](https://github.com/fmtlib/fmt)**
 - **[ROOT](https://root.cern.ch)**
 - **[KFParticle](https://github.com/HD-ALICE-Sexaquark/KFParticle)**
 

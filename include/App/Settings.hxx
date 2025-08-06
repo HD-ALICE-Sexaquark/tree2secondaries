@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 
+#include "App/Logger.hxx"
 #include "Math/Constants.hxx"
 
 namespace Tree2Secondaries {
@@ -18,19 +19,17 @@ struct Settings {
         return prefix + suffix;
     }
     void Print() const {
-        std::cout << "SETTINGS" << '\n';
-        std::cout << "========" << '\n';
-        std::cout << "Mode             = " << (DoTheSearch ? "FINDER" : "PACKAGER") << '\n';
-        std::cout << "ReactionChannel  = " << StrReactionChannel() << '\n';
-        std::cout << "InputFiles       =" << '\n';
+        Logger::Info("Settings", "Mode             = {}", (DoTheSearch ? "FINDER" : "PACKAGER"));
+        Logger::Info("Settings", "ReactionChannel  = {}", StrReactionChannel());
+        Logger::Info("Settings", "InputFiles       =");
         for (const auto& path : PathInputFiles) {
-            std::cout << "- " << path << '\n';
+            Logger::Info("Settings", "- {}", path);
         }
-        std::cout << "OutputFile       = " << PathOutputFile << '\n';
-        std::cout << "IsMC             = " << IsMC << '\n';
-        std::cout << "IsSignalMC       = " << IsSignalMC << '\n';
-        if (IsSignalMC) std::cout << "   SexaquarkMass = " << SexaquarkMass << '\n';
-        std::cout << "LimitToNEvents   = " << LimitToNEvents << '\n';
+        Logger::Info("Settings", "OutputFile       = {}", PathOutputFile);
+        Logger::Info("Settings", "IsMC             = {}", IsMC);
+        Logger::Info("Settings", "IsSignalMC       = {}", IsSignalMC);
+        if (IsSignalMC) Logger::Info("Settings", "SexaquarkMass = {}", SexaquarkMass);
+        Logger::Info("Settings", "LimitToNEvents   = {}", LimitToNEvents);
     }
 
     std::vector<std::string> PathInputFiles;

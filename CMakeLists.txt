@@ -73,6 +73,7 @@ if(KFParticle_FOUND)
 endif()
 
 include(FetchContent)
+
 message(STATUS "Fetching https://github.com/CLIUtils/CLI11")
 FetchContent_Declare(
   cli11_proj
@@ -81,6 +82,15 @@ FetchContent_Declare(
   GIT_TAG v2.5.0)
 FetchContent_MakeAvailable(cli11_proj)
 message(STATUS "Fetching https://github.com/CLIUtils/CLI11 -- fetched")
+
+message(STATUS "Fetching https://github.com/fmtlib/fmt")
+FetchContent_Declare(
+  fmt
+  QUIET
+  GIT_REPOSITORY https://github.com/fmtlib/fmt.git
+  GIT_TAG 11.2.0)
+FetchContent_MakeAvailable(fmt)
+message(STATUS "Fetching https://github.com/fmtlib/fmt -- fetched")
 
 # get ready to build target #
 

@@ -34,7 +34,7 @@ struct alignas(32) V0 : Particle {
         : Particle{p, cov, 0}, Neg(neg), Pos(pos), idx{idx_v0}, pdg_code_hyp{pdg_code_v0_hyp} {}
 
     // main //
-    void DoFit(float bz, const double* mass) {
+    void DoFit(float bz, const double* mass = nullptr) {
         AddDaughter(Neg, bz);
         AddDaughter(Pos, bz);
         if (mass != nullptr) AddMassConstraint(*mass);

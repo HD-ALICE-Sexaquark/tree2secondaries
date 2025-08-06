@@ -1,8 +1,8 @@
 #include <filesystem>
-#include <iostream>
 #include <memory>
 #include <set>
 
+#include "App/Logger.hxx"
 #include "App/Utilities.hxx"
 #include "DataFormats/PackedEvents.hxx"
 #include "Finder/Cuts.hxx"
@@ -15,21 +15,21 @@ namespace Tree2Secondaries {
 
 bool Finder::Initialize() {
 #ifdef T2S_DEBUG
-    std::cout << "-- starting (" << __FUNCTION__ << ") --" << '\n';
+    Logger::Debug(__FUNCTION__, "Starting.");
 #endif
 
     fTree_PackedEvents = std::make_unique<TChain>("PackedEvents");
     for (const auto& path : fSettings.PathInputFiles) {
         if (fTree_PackedEvents->Add(path.c_str()) == 0) {
-            std::cerr << "   " << __FUNCTION__ << " :: Couldn't add TFile \"" << path << "\"" << '\n';
+            Logger::Error(__FUNCTION__, "Couldn't add TFile {}");
         }
     }
     if (!fTree_PackedEvents->GetEntries()) {
-        std::cerr << "   " << __FUNCTION__ << " :: Couldn't manage to read any entry." << '\n';
+        Logger::Error(__FUNCTION__, "Couldn't manage to read any entry.");
         return false;
     }
-    std::cout << "   " << __FUNCTION__ << " :: TChain \"" << fTree_PackedEvents->GetName() << "\" loaded successfully with "
-              << fTree_PackedEvents->GetNtrees() << " trees and " << fTree_PackedEvents->GetEntries() << " total entries." << '\n';
+    Logger::Info(__FUNCTION__, "TChain \"{}\" loaded successfully with {} trees and {} total entries.", fTree_PackedEvents->GetName(),
+                 fTree_PackedEvents->GetNtrees(), fTree_PackedEvents->GetEntries());
 
     ConnectInputBranches();
 
@@ -45,11 +45,8 @@ bool Finder::Initialize() {
         Injected_CreateOutputBranches();
     }
 
-    std::cout << "   " << __FUNCTION__ << " :: Finder initialized successfully" << '\n';
+    Logger::Info(__FUNCTION__, "Finder initialized successfully.");
 
-#ifdef T2S_DEBUG
-    std::cout << "-- finished (" << __FUNCTION__ << ") --" << '\n';
-#endif
     return true;
 }
 
@@ -57,7 +54,7 @@ bool Finder::Initialize() {
 
 void Finder::ConnectInputBranches() {
 #ifdef T2S_DEBUG
-    std::cout << "-- starting (" << __FUNCTION__ << ") --" << '\n';
+    Logger::Debug(__FUNCTION__, "Starting.");
 #endif
 
     fTree_PackedEvents->SetBranchStatus("*", false);
@@ -137,13 +134,13 @@ void Finder::ConnectInputBranches() {
     }  // end of switch statement
 
 #ifdef T2S_DEBUG
-    std::cout << "-- finished (" << __FUNCTION__ << ") --" << '\n';
+    Logger::Debug(__FUNCTION__, "Finished.");
 #endif
 }
 
 void Finder::ConnectBranches_Events() {
 #ifdef T2S_DEBUG
-    std::cout << "-- starting (" << __FUNCTION__ << ") --" << '\n';
+    Logger::Debug(__FUNCTION__, "Starting.");
 #endif
 
     Utils::ConnectBranch(fTree_PackedEvents.get(), "RunNumber", &fInput_Event.RunNumber);
@@ -163,13 +160,13 @@ void Finder::ConnectBranches_Events() {
     }
 
 #ifdef T2S_DEBUG
-    std::cout << "-- finished (" << __FUNCTION__ << ") --" << '\n';
+    Logger::Debug(__FUNCTION__, "Finished.");
 #endif
 }
 
 void Finder::ConnectBranches_Injected() {
 #ifdef T2S_DEBUG
-    std::cout << "-- starting (" << __FUNCTION__ << ") --" << '\n';
+    Logger::Debug(__FUNCTION__, "Starting.");
 #endif
 
     Utils::ConnectBranch(fTree_PackedEvents.get(), "ReactionID", &fInput_Injected.ReactionID);
@@ -184,13 +181,13 @@ void Finder::ConnectBranches_Injected() {
     Utils::ConnectBranch(fTree_PackedEvents.get(), "Nucleon_Pz", &fInput_Injected.Nucleon_Pz);
 
 #ifdef T2S_DEBUG
-    std::cout << "-- finished (" << __FUNCTION__ << ") --" << '\n';
+    Logger::Debug(__FUNCTION__, "Finished.");
 #endif
 }
 
 void Finder::ConnectBranches_V0s(const std::string& name_v0, PackedEvents::V0s& vec_v0s) {
 #ifdef T2S_DEBUG
-    std::cout << "-- starting (" << __FUNCTION__ << ") --" << '\n';
+    Logger::Debug(__FUNCTION__, "Starting.");
 #endif
 
     Utils::ConnectBranch(fTree_PackedEvents.get(), "_Entry", &vec_v0s.Entry, name_v0);
@@ -264,13 +261,13 @@ void Finder::ConnectBranches_V0s(const std::string& name_v0, PackedEvents::V0s& 
     Utils::ConnectBranch(fTree_PackedEvents.get(), "_Pos_Pz_AtPCA", &vec_v0s.Pos_Pz_AtPCA, name_v0);
 
 #ifdef T2S_DEBUG
-    std::cout << "-- finished (" << __FUNCTION__ << ") --" << '\n';
+    Logger::Debug(__FUNCTION__, "Finished.");
 #endif
 }
 
 void Finder::ConnectBranches_Tracks(const std::string& name_part, PackedEvents::Tracks& vec_tracks) {
 #ifdef T2S_DEBUG
-    std::cout << "-- starting (" << __FUNCTION__ << ") --" << '\n';
+    Logger::Debug(__FUNCTION__, "Starting.");
 #endif
 
     Utils::ConnectBranch(fTree_PackedEvents.get(), "_Entry", &vec_tracks.Entry, name_part);
@@ -312,13 +309,13 @@ void Finder::ConnectBranches_Tracks(const std::string& name_part, PackedEvents::
     Utils::ConnectBranch(fTree_PackedEvents.get(), "_SigmaE2", &vec_tracks.Sigma.E2, name_part);
 
 #ifdef T2S_DEBUG
-    std::cout << "-- finished (" << __FUNCTION__ << ") --" << '\n';
+    Logger::Debug(__FUNCTION__, "Finished.");
 #endif
 }
 
 void Finder::ConnectBranches_MC_V0s(const std::string& name_v0, PackedEvents::MC_V0s& sov) {
 #ifdef T2S_DEBUG
-    std::cout << "-- starting (" << __FUNCTION__ << ") --" << '\n';
+    Logger::Debug(__FUNCTION__, "Starting.");
 #endif
 
     Utils::ConnectBranch(fTree_PackedEvents.get(), "_MC_Entry", &sov.Entry, name_v0);
@@ -364,13 +361,13 @@ void Finder::ConnectBranches_MC_V0s(const std::string& name_v0, PackedEvents::MC
     Utils::ConnectBranch(fTree_PackedEvents.get(), "_MC_Pos_ReactionID", &sov.Pos_ReactionID, name_v0);
 
 #ifdef T2S_DEBUG
-    std::cout << "-- finished (" << __FUNCTION__ << ") --" << '\n';
+    Logger::Debug(__FUNCTION__, "Finished.");
 #endif
 }
 
 void Finder::ConnectBranches_MC_Tracks(const std::string& name_part, PackedEvents::MC_Tracks& sov) {
 #ifdef T2S_DEBUG
-    std::cout << "-- starting (" << __FUNCTION__ << ") --" << '\n';
+    Logger::Debug(__FUNCTION__, "Starting.");
 #endif
 
     Utils::ConnectBranch(fTree_PackedEvents.get(), "_MC_Entry", &sov.Entry, name_part);
@@ -393,7 +390,7 @@ void Finder::ConnectBranches_MC_Tracks(const std::string& name_part, PackedEvent
     Utils::ConnectBranch(fTree_PackedEvents.get(), "_MC_ReactionID", &sov.ReactionID, name_part);
 
 #ifdef T2S_DEBUG
-    std::cout << "-- finished (" << __FUNCTION__ << ") --" << '\n';
+    Logger::Debug(__FUNCTION__, "Finished.");
 #endif
 }
 
@@ -401,7 +398,7 @@ void Finder::ConnectBranches_MC_Tracks(const std::string& name_part, PackedEvent
 
 bool Finder::PrepareOutputFile() {
 #ifdef T2S_DEBUG
-    std::cout << "-- starting (" << __FUNCTION__ << ") --" << '\n';
+    Logger::Debug(__FUNCTION__, "Starting.");
 #endif
 
     const std::filesystem::path output_path(fSettings.PathOutputFile);
@@ -409,19 +406,19 @@ bool Finder::PrepareOutputFile() {
 
     fOutputFile = std::unique_ptr<TFile>(TFile::Open(fSettings.PathOutputFile.c_str(), "RECREATE"));
     if (!fOutputFile) {
-        std::cerr << "   " << __FUNCTION__ << " :: TFile \"" << fSettings.PathOutputFile << "\" couldn't be created" << '\n';
+        Logger::Error(__FUNCTION__, "Couldn't create TFile {}", fSettings.PathOutputFile);
         return false;
     }
 
 #ifdef T2S_DEBUG
-    std::cout << "-- finished (" << __FUNCTION__ << ") --" << '\n';
+    Logger::Debug(__FUNCTION__, "Finished.");
 #endif
     return true;
 }
 
 bool Finder::PrepareOutputTree() {
 #ifdef T2S_DEBUG
-    std::cout << "-- starting (" << __FUNCTION__ << ") --" << '\n';
+    Logger::Debug(__FUNCTION__, "Starting.");
 #endif
 
     std::string tree_name{"Candidates"};
@@ -456,19 +453,19 @@ bool Finder::PrepareOutputTree() {
 
     fOutputTree = std::make_unique<TTree>(tree_name.c_str(), "Final results");
     if (!fOutputTree) {
-        std::cerr << "   " << __FUNCTION__ << " :: TTree \"" << tree_name << "\" couldn't be created" << '\n';
+        Logger::Error(__FUNCTION__, "Couldn't create TTree \"{}\"");
         return false;
     }
 
 #ifdef T2S_DEBUG
-    std::cout << "-- finished (" << __FUNCTION__ << ") --" << '\n';
+    Logger::Debug(__FUNCTION__, "Finished.");
 #endif
     return true;
 }
 
 void Finder::CreateOutputBranches(Found::ChannelA& out_branches) {
 #ifdef T2S_DEBUG
-    std::cout << "-- starting (" << __FUNCTION__ << ") --" << '\n';
+    Logger::Debug(__FUNCTION__, "Starting.");
 #endif
 
     fOutputTree->Branch("RunNumber", &out_branches.RunNumber);
@@ -527,13 +524,13 @@ void Finder::CreateOutputBranches(Found::ChannelA& out_branches) {
     fOutputTree->Branch("V0B_Pos_Entry", &out_branches.V0B_Pos_Entry);
 
 #ifdef T2S_DEBUG
-    std::cout << "-- finished (" << __FUNCTION__ << ") --" << '\n';
+    Logger::Debug(__FUNCTION__, "Finished.");
 #endif
 }
 
 void Finder::CreateOutputBranches(Found::ChannelD& out_branches) {
 #ifdef T2S_DEBUG
-    std::cout << "-- starting (" << __FUNCTION__ << ") --" << '\n';
+    Logger::Debug(__FUNCTION__, "Starting.");
 #endif
 
     fOutputTree->Branch("RunNumber", &out_branches.RunNumber);
@@ -592,7 +589,7 @@ void Finder::CreateOutputBranches(Found::ChannelD& out_branches) {
     fOutputTree->Branch("Kaon_E", &out_branches.Kaon.E);
 
 #ifdef T2S_DEBUG
-    std::cout << "-- finished (" << __FUNCTION__ << ") --" << '\n';
+    Logger::Debug(__FUNCTION__, "Finished.");
 #endif
 }
 
@@ -606,7 +603,7 @@ void Finder::CreateOutputBranches(Found::ChannelH& out_branches) {
 
 void Finder::CreateOutputBranches(Found::MC_ChannelA& sov) {
 #ifdef T2S_DEBUG
-    std::cout << "-- starting (" << __FUNCTION__ << ") --" << '\n';
+    Logger::Debug(__FUNCTION__, "Starting.");
 #endif
 
     fOutputTree->Branch("MC_X", &sov.X);
@@ -664,13 +661,13 @@ void Finder::CreateOutputBranches(Found::MC_ChannelA& sov) {
     fOutputTree->Branch("MC_V0B_IsHybrid", &sov.V0B_IsHybrid);
 
 #ifdef T2S_DEBUG
-    std::cout << "-- finished (" << __FUNCTION__ << ") --" << '\n';
+    Logger::Debug(__FUNCTION__, "Finished.");
 #endif
 }
 
 void Finder::CreateOutputBranches(Found::MC_ChannelD& sov) {
 #ifdef T2S_DEBUG
-    std::cout << "-- starting (" << __FUNCTION__ << ") --" << '\n';
+    Logger::Debug(__FUNCTION__, "Starting.");
 #endif
 
     fOutputTree->Branch("MC_X", &sov.X);
@@ -727,7 +724,7 @@ void Finder::CreateOutputBranches(Found::MC_ChannelD& sov) {
     fOutputTree->Branch("MC_Kaon_ReactionID", &sov.Kaon_ReactionID);
 
 #ifdef T2S_DEBUG
-    std::cout << "-- finished (" << __FUNCTION__ << ") --" << '\n';
+    Logger::Debug(__FUNCTION__, "Finished.");
 #endif
 }
 
@@ -743,26 +740,26 @@ void Finder::CreateCutFlowHistogram() {
 
 bool Finder::Injected_PrepareOutputTree() {
 #ifdef T2S_DEBUG
-    std::cout << "-- starting (" << __FUNCTION__ << ") --" << '\n';
+    Logger::Debug(__FUNCTION__, "Starting.");
 #endif
 
     std::string tree_name{"Injected"};
 
     fOutputTree_Injected = std::make_unique<TTree>(tree_name.c_str(), "");
     if (!fOutputTree_Injected) {
-        std::cerr << "   " << __FUNCTION__ << " :: TTree \"" << tree_name << "\" couldn't be created" << '\n';
+        Logger::Error(__FUNCTION__, "Couldn't create TTree \"{}\"");
         return false;
     }
 
 #ifdef T2S_DEBUG
-    std::cout << "-- finished (" << __FUNCTION__ << ") --" << '\n';
+    Logger::Debug(__FUNCTION__, "Finished.");
 #endif
     return true;
 }
 
 void Finder::Injected_CreateOutputBranches() {
 #ifdef T2S_DEBUG
-    std::cout << "-- starting (" << __FUNCTION__ << ") --" << '\n';
+    Logger::Debug(__FUNCTION__, "Starting.");
 #endif
 
     fOutputTree_Injected->Branch("RunNumber", &fOutput_Injected.RunNumber);
@@ -778,13 +775,13 @@ void Finder::Injected_CreateOutputBranches() {
     fOutputTree_Injected->Branch("E", &fOutput_Injected.E);
 
 #ifdef T2S_DEBUG
-    std::cout << "-- finished (" << __FUNCTION__ << ") --" << '\n';
+    Logger::Debug(__FUNCTION__, "Finished.");
 #endif
 };
 
 void Finder::Injected_FlattenAndStore() {
 #ifdef T2S_DEBUG
-    std::cout << "-- starting (" << __FUNCTION__ << ") --" << '\n';
+    Logger::Debug(__FUNCTION__, "Starting.");
 #endif
 
     auto n_injected = static_cast<int>(fInput_Injected.ReactionID->size());
@@ -807,7 +804,7 @@ void Finder::Injected_FlattenAndStore() {
     }
 
 #ifdef T2S_DEBUG
-    std::cout << "-- finished (" << __FUNCTION__ << ") --" << '\n';
+    Logger::Debug(__FUNCTION__, "Finished.");
 #endif
 }
 
@@ -815,7 +812,7 @@ void Finder::Injected_FlattenAndStore() {
 
 void Finder::FindSexaquarks_ChannelA(bool anti_channel) {
 #ifdef T2S_DEBUG
-    std::cout << "-- starting (" << __FUNCTION__ << ") --" << '\n';
+    Logger::Debug(__FUNCTION__, "Starting.");
 #endif
 
     const PackedEvents::V0s* Packed_Lambdas{anti_channel ? &fPacked_Lambdas : &fPacked_AntiLambdas};
@@ -844,47 +841,46 @@ void Finder::FindSexaquarks_ChannelA(bool anti_channel) {
             sexa.DoFit(fInput_Event.MagneticField);
 
 #ifdef T2S_DEBUG
-            std::cout << "   " << __FUNCTION__ << " :: idx(v0a,neg,pos)=" << v0a.idx << "," << v0a.Neg.idx << "," << v0a.Pos.idx;
-            std::cout << ";x,y,z=" << v0a.X() << "," << v0a.Y() << "," << v0a.Z();
-            std::cout << ";px,py,pz=" << v0a.Px() << "," << v0a.Py() << "," << v0a.Pz();
-            std::cout << ";mass=" << v0a.Mass() << '\n';
+            Logger::Debug(__FUNCTION__, "idx(v0a,neg,pos)={},{},{}", v0a.idx, v0a.Neg.idx, v0a.Pos.idx);
+            Logger::Debug(__FUNCTION__, ";x,y,z={},{},{}", v0a.X(), v0a.Y(), v0a.Z());
+            Logger::Debug(__FUNCTION__, ";px,py,pz={},{},{}", v0a.Px(), v0a.Py(), v0a.Pz());
+            Logger::Debug(__FUNCTION__, ";mass={}", v0a.Mass());
 
-            std::cout << "   " << __FUNCTION__ << " :: idx(v0b,neg,pos)=" << v0b.idx << "," << v0b.Neg.idx << "," << v0b.Pos.idx;
-            std::cout << ";x,y,z=" << v0b.X() << "," << v0b.Y() << "," << v0b.Z();
-            std::cout << ";px,py,pz=" << v0b.Px() << "," << v0b.Py() << "," << v0b.Pz();
-            std::cout << ";mass=" << v0b.Mass() << '\n';
+            Logger::Debug(__FUNCTION__, "idx(v0b,neg,pos)={},{},{}", v0b.idx, v0b.Neg.idx, v0b.Pos.idx);
+            Logger::Debug(__FUNCTION__, ";x,y,z={},{},{}", v0b.X(), v0b.Y(), v0b.Z());
+            Logger::Debug(__FUNCTION__, ";px,py,pz={},{},{}", v0b.Px(), v0b.Py(), v0b.Pz());
+            Logger::Debug(__FUNCTION__, ";mass={}", v0b.Mass());
 
-            std::cout << "   " << __FUNCTION__ << " :: x,y,z=" << sexa.X() << "," << sexa.Y() << "," << sexa.Z();
-            std::cout << ";x,y,z(v0a)=" << sexa.V0A_PCA_XYZ()[0] << "," << sexa.V0A_PCA_XYZ()[1] << "," << sexa.V0A_PCA_XYZ()[2];
-            std::cout << ";x,y,z(v0b)=" << sexa.V0B_PCA_XYZ()[0] << "," << sexa.V0B_PCA_XYZ()[1] << "," << sexa.V0B_PCA_XYZ()[2];
-            std::cout << ";mass=" << sexa.Mass();
-            std::cout << ";mass_minus_n=" << sexa.Mass_MinusNucleon();
-            std::cout << ";dca_btw_v0s=" << sexa.DCA_btw_V0s();
-            std::cout << ";radius=" << sexa.Radius2D();
-            std::cout << ";dca_v0a=" << sexa.DCA_V0A_wrt_SV();
-            std::cout << ";dca_v0b=" << sexa.DCA_V0B_wrt_SV();
-            std::cout << ";dca_v0a_neg=" << sexa.DCA_V0ANeg_wrt_SV(fInput_Event.MagneticField);
-            std::cout << ";dca_v0a_pos=" << sexa.DCA_V0APos_wrt_SV(fInput_Event.MagneticField);
-            std::cout << ";dca_v0b_neg=" << sexa.DCA_V0BNeg_wrt_SV(fInput_Event.MagneticField);
-            std::cout << ";dca_v0b_pos=" << sexa.DCA_V0BPos_wrt_SV(fInput_Event.MagneticField);
-            std::cout << ";pt=" << sexa.Pt();
-            std::cout << ";eta=" << sexa.Eta();
-            std::cout << ";decay_length(v0a,v0b)=" << sexa.DecayLength_V0A() << "," << sexa.DecayLength_V0B();
-            std::cout << ";cpa_pv=" << sexa.CPA_Point(fInput_Event.PV_Xv, fInput_Event.PV_Yv, fInput_Event.PV_Zv) << '\n';
+            Logger::Debug(__FUNCTION__, "x,y,z={},{},{}", sexa.X(), sexa.Y(), sexa.Z());
+            Logger::Debug(__FUNCTION__, ";x,y,z(v0a)={},{},{}", sexa.V0A_PCA_XYZ()[0], sexa.V0A_PCA_XYZ()[1], sexa.V0A_PCA_XYZ()[2]);
+            Logger::Debug(__FUNCTION__, ";x,y,z(v0b)={},{},{}", sexa.V0B_PCA_XYZ()[0], sexa.V0B_PCA_XYZ()[1], sexa.V0B_PCA_XYZ()[2]);
+            Logger::Debug(__FUNCTION__, ";mass={}", sexa.Mass());
+            Logger::Debug(__FUNCTION__, ";mass_minus_n={}", sexa.Mass_MinusNucleon());
+            Logger::Debug(__FUNCTION__, ";dca_btw_v0s={}", sexa.DCA_btw_V0s());
+            Logger::Debug(__FUNCTION__, ";radius={}", sexa.Radius2D());
+            Logger::Debug(__FUNCTION__, ";dca_v0a={}", sexa.DCA_V0A_wrt_SV());
+            Logger::Debug(__FUNCTION__, ";dca_v0b={}", sexa.DCA_V0B_wrt_SV());
+            Logger::Debug(__FUNCTION__, ";dca_v0a_neg={}", sexa.DCA_V0ANeg_wrt_SV(fInput_Event.MagneticField));
+            Logger::Debug(__FUNCTION__, ";dca_v0a_pos={}", sexa.DCA_V0APos_wrt_SV(fInput_Event.MagneticField));
+            Logger::Debug(__FUNCTION__, ";dca_v0b_neg={}", sexa.DCA_V0BNeg_wrt_SV(fInput_Event.MagneticField));
+            Logger::Debug(__FUNCTION__, ";dca_v0b_pos={}", sexa.DCA_V0BPos_wrt_SV(fInput_Event.MagneticField));
+            Logger::Debug(__FUNCTION__, ";pt={}", sexa.Pt());
+            Logger::Debug(__FUNCTION__, ";eta={}", sexa.Eta());
+            Logger::Debug(__FUNCTION__, ";decay_length(v0a,v0b)={},{}", sexa.DecayLength_V0A(), sexa.DecayLength_V0B());
+            Logger::Debug(__FUNCTION__, ";cpa_pv={}", sexa.CPA_Point(fInput_Event.PV_Xv, fInput_Event.PV_Yv, fInput_Event.PV_Zv));
 
             MC::V0 mc_v0a_debug{*MC_Lambdas, v0a.idx};
             MC::V0 mc_v0b_debug{fPacked_MC_KaonsZeroShort, v0b.idx};
             MC::ChannelA mc_sexa_debug{fInput_Injected, fSettings.SexaquarkMass, mc_v0a_debug, mc_v0b_debug};
             if (IsMC()) {
-                std::cout << "   " << __FUNCTION__ << " :: ";
-                std::cout << "sexa(is_signal,reaction_id,is_hybrid)=" << mc_sexa_debug.IsSignal << "," << mc_sexa_debug.ReactionID << ","
-                          << mc_sexa_debug.IsHybrid;
-                std::cout << ";v0a(entry,pdg_code)=" << mc_sexa_debug.V0A.Entry << ", " << mc_sexa_debug.V0A.PdgCode;
-                std::cout << ";v0a(is_signal,reaction_id,is_hybrid)=" << mc_sexa_debug.V0A.IsSignal << "," << mc_sexa_debug.V0A.ReactionID << ","
-                          << mc_sexa_debug.V0A.IsHybrid;
-                std::cout << ";v0b(entry,pdg_code)=" << mc_sexa_debug.V0B.Entry << ", " << mc_sexa_debug.V0B.PdgCode;
-                std::cout << ";v0b(is_signal,reaction_id,is_hybrid)=" << mc_sexa_debug.V0B.IsSignal << "," << mc_sexa_debug.V0B.ReactionID << ","
-                          << mc_sexa_debug.V0B.IsHybrid << '\n';
+                Logger::Debug(__FUNCTION__, "sexa(is_signal,reaction_id,is_hybrid)={},{},{}", mc_sexa_debug.IsSignal, mc_sexa_debug.ReactionID,
+                              mc_sexa_debug.IsHybrid);
+                Logger::Debug(__FUNCTION__, ";v0a(entry,pdg_code)={},{}", mc_sexa_debug.V0A.Entry, mc_sexa_debug.V0A.PdgCode);
+                Logger::Debug(__FUNCTION__, ";v0a(is_signal,reaction_id,is_hybrid)={},{},{}", mc_sexa_debug.V0A.IsSignal,
+                              mc_sexa_debug.V0A.ReactionID, mc_sexa_debug.V0A.IsHybrid);
+                Logger::Debug(__FUNCTION__, ";v0b(entry,pdg_code)={},{}", mc_sexa_debug.V0B.Entry, mc_sexa_debug.V0B.PdgCode);
+                Logger::Debug(__FUNCTION__, ";v0b(is_signal,reaction_id,is_hybrid)={},{},{}", mc_sexa_debug.V0B.IsSignal,
+                              mc_sexa_debug.V0B.ReactionID, mc_sexa_debug.V0B.IsHybrid);
             }
 #endif
 
@@ -904,7 +900,7 @@ void Finder::FindSexaquarks_ChannelA(bool anti_channel) {
     }
 
 #ifdef T2S_DEBUG
-    std::cout << "-- finished (" << __FUNCTION__ << ") --" << '\n';
+    Logger::Debug(__FUNCTION__, "Finished.");
 #endif
 }
 
@@ -1065,7 +1061,7 @@ void Finder::StoreMC(const MC::ChannelA& sexa) {
 
 void Finder::FindSexaquarks_ChannelD(bool anti_channel) {
 #ifdef T2S_DEBUG
-    std::cout << "-- starting (" << __FUNCTION__ << ") --" << '\n';
+    Logger::Debug(__FUNCTION__, "Starting.");
 #endif
 
     const PackedEvents::V0s* Packed_Lambdas{anti_channel ? &fPacked_Lambdas : &fPacked_AntiLambdas};
@@ -1099,19 +1095,18 @@ void Finder::FindSexaquarks_ChannelD(bool anti_channel) {
             // apply cuts //
             if (!PassesCuts(sexa)) continue;
 #ifdef T2S_DEBUG
-            std::cout << "   " << __FUNCTION__ << " :: idx(sexa,v0,neg,pos,kaon)="  //
-                      << sexa.V0.idx << "," << sexa.V0.Neg.idx << "," << sexa.V0.Pos.idx << "," << sexa.Kaon.idx;
-            std::cout << ";x,y,z=" << sexa.X() << "," << sexa.Y() << "," << sexa.Z();
-            std::cout << ";x,y,z(v0)=" << sexa.V0_PCA_XYZ()[0] << "," << sexa.V0_PCA_XYZ()[1] << "," << sexa.V0_PCA_XYZ()[2];
-            std::cout << ";x,y,z(kaon)=" << sexa.Kaon_PCA_XYZ()[0] << "," << sexa.Kaon_PCA_XYZ()[1] << "," << sexa.Kaon_PCA_XYZ()[2];
-            std::cout << ";mass=" << sexa.Mass();
-            std::cout << ";dca_v0_kaon=" << sexa.DCA_btw_V0_Kaon();
-            std::cout << ";radius=" << sexa.Radius2D();
-            std::cout << ";dca_v0=" << sexa.DCA_V0_wrt_SV();
-            std::cout << ";dca_kaon=" << sexa.DCA_Kaon_wrt_SV();
-            std::cout << ";pt=" << sexa.Pt();
-            std::cout << ";eta=" << sexa.Eta();
-            std::cout << ";cpa_pv=" << sexa.CPA_Point(fInput_Event.PV_Xv, fInput_Event.PV_Yv, fInput_Event.PV_Zv) << '\n';
+            Logger::Debug(__FUNCTION__, "idx(sexa,v0,neg,pos,kaon)={},{},{},{}", sexa.V0.idx, sexa.V0.Neg.idx, sexa.V0.Pos.idx, sexa.Kaon.idx);
+            Logger::Debug(__FUNCTION__, ";x,y,z={},{},{}", sexa.X(), sexa.Y(), sexa.Z());
+            Logger::Debug(__FUNCTION__, ";x,y,z(v0)={},{},{}", sexa.V0_PCA_XYZ()[0], sexa.V0_PCA_XYZ()[1], sexa.V0_PCA_XYZ()[2]);
+            Logger::Debug(__FUNCTION__, ";x,y,z(kaon)={},{},{}", sexa.Kaon_PCA_XYZ()[0], sexa.Kaon_PCA_XYZ()[1], sexa.Kaon_PCA_XYZ()[2]);
+            Logger::Debug(__FUNCTION__, ";mass={}", sexa.Mass());
+            Logger::Debug(__FUNCTION__, ";dca_v0_kaon={}", sexa.DCA_btw_V0_Kaon());
+            Logger::Debug(__FUNCTION__, ";radius={}", sexa.Radius2D());
+            Logger::Debug(__FUNCTION__, ";dca_v0={}", sexa.DCA_V0_wrt_SV());
+            Logger::Debug(__FUNCTION__, ";dca_kaon={}", sexa.DCA_Kaon_wrt_SV());
+            Logger::Debug(__FUNCTION__, ";pt={}", sexa.Pt());
+            Logger::Debug(__FUNCTION__, ";eta={}", sexa.Eta());
+            Logger::Debug(__FUNCTION__, ";cpa_pv={}", sexa.CPA_Point(fInput_Event.PV_Xv, fInput_Event.PV_Yv, fInput_Event.PV_Zv));
 #endif
 
             // store //
@@ -1127,7 +1122,7 @@ void Finder::FindSexaquarks_ChannelD(bool anti_channel) {
     }
 
 #ifdef T2S_DEBUG
-    std::cout << "-- finished (" << __FUNCTION__ << ") --" << '\n';
+    Logger::Debug(__FUNCTION__, "Finished.");
 #endif
 }
 
@@ -1309,26 +1304,23 @@ void Finder::Store(const KF::ChannelH& sexa) {
 
 void Finder::EndOfAnalysis() {
 #ifdef T2S_DEBUG
-    std::cout << "-- starting (" << __FUNCTION__ << ") --" << '\n';
+    Logger::Debug(__FUNCTION__, "Starting.");
 #endif
 
     if (IsSignalMC()) {
         fOutputTree_Injected->Write();
-        std::cout << "TTree \"" << fOutputTree_Injected->GetName() << "\" has been written onto TFile \"" << fSettings.PathOutputFile << "\"" << '\n';
+        Logger::Info(__FUNCTION__, "TTree \"{}\" has been written onto TFile {}", fOutputTree_Injected->GetName(), fSettings.PathOutputFile);
     }
 
     fOutputTree->Write();
-    std::cout << "TTree \"" << fOutputTree->GetName() << "\" has been written onto TFile \"" << fSettings.PathOutputFile << "\"" << '\n';
+    Logger::Info(__FUNCTION__, "TTree \"{}\" has been written onto TFile {}", fOutputTree->GetName(), fSettings.PathOutputFile);
 
     fCutFlowHist->Write();
 
     fTree_PackedEvents->ResetBranchAddresses();
     fOutputTree->ResetBranchAddresses();
-    std::cout << "Done." << '\n';
 
-#ifdef T2S_DEBUG
-    std::cout << "-- finished (" << __FUNCTION__ << ") --" << '\n';
-#endif
+    Logger::Info(__FUNCTION__, "All done.");
 }
 
 }  // namespace Tree2Secondaries
