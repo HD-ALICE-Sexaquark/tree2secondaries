@@ -30,17 +30,17 @@ class Finder {
 
     explicit Finder(Settings settings) : fSettings{std::move(settings)} {}
 
-    ReactionChannel GetReactionChannel() const { return fSettings.Channel; }
+    EReactionChannel GetReactionChannel() const { return fSettings.Channel; }
 
     bool Initialize();
     void ConnectInputBranches();
 
     void ConnectBranches_Events();
     void ConnectBranches_Injected();
-    void ConnectBranches_V0s(const std::string &name_v0, PackedEvents::V0s &vec_v0s);
-    void ConnectBranches_Tracks(const std::string &name_part, PackedEvents::Tracks &vec_tracks);
-    void ConnectBranches_MC_V0s(const std::string &name_v0, PackedEvents::MC_V0s &sov);
-    void ConnectBranches_MC_Tracks(const std::string &name_part, PackedEvents::MC_Tracks &sov);
+    void ConnectBranches_V0s(EParticle pid, PackedEvents::V0s &vec_v0s);
+    void ConnectBranches_Tracks(EParticle pid, PackedEvents::Tracks &vec_tracks);
+    void ConnectBranches_MC_V0s(EParticle pid, PackedEvents::MC_V0s &sov);
+    void ConnectBranches_MC_Tracks(EParticle pid, PackedEvents::MC_Tracks &sov);
 
     bool PrepareOutputFile();
     bool PrepareOutputTree();
@@ -55,22 +55,22 @@ class Finder {
     void CreateOutputBranches() {
         switch (GetReactionChannel()) {
             // standard channels //
-            case ReactionChannel::A:
-            case ReactionChannel::AntiA:
+            case EReactionChannel::A:
+            case EReactionChannel::AntiA:
                 CreateOutputBranches(fOutput_ChannelA);
                 if (IsMC()) CreateOutputBranches(fOutput_MC_ChannelA);
                 break;
-            case ReactionChannel::D:
-            case ReactionChannel::AntiD:
+            case EReactionChannel::D:
+            case EReactionChannel::AntiD:
                 CreateOutputBranches(fOutput_ChannelD);
                 if (IsMC()) CreateOutputBranches(fOutput_MC_ChannelD);
                 break;
-            case ReactionChannel::E:
-            case ReactionChannel::AntiE:
+            case EReactionChannel::E:
+            case EReactionChannel::AntiE:
                 CreateOutputBranches(fOutput_ChannelE);
                 break;
-            case ReactionChannel::H:
-            case ReactionChannel::AntiH:
+            case EReactionChannel::H:
+            case EReactionChannel::AntiH:
                 CreateOutputBranches(fOutput_ChannelH);
                 break;
             default:
@@ -86,30 +86,29 @@ class Finder {
         return fSettings.LimitToNEvents ? fSettings.LimitToNEvents : static_cast<int>(fTree_PackedEvents->GetEntries());
     }
     bool IsMC() const { return fSettings.IsMC; }
-    bool IsSignalMC() const { return fSettings.IsSignalMC; }
     void GetEvent(int i_event) { fTree_PackedEvents->GetEntry(i_event); }
 
     void FindSexaquarks_ChannelA(bool anti_channel);
     void FindSexaquarks_ChannelD(bool anti_channel);
     void FindSexaquarks_ChannelE(bool anti_channel);
     void FindSexaquarks_ChannelH(bool anti_channel);
-    void Find(ReactionChannel reaction_channel) {
+    void Find(EReactionChannel reaction_channel) {
         switch (reaction_channel) {
-            case ReactionChannel::A:
-            case ReactionChannel::AntiA:
-                FindSexaquarks_ChannelA(reaction_channel == ReactionChannel::AntiA);
+            case EReactionChannel::A:
+            case EReactionChannel::AntiA:
+                FindSexaquarks_ChannelA(reaction_channel == EReactionChannel::AntiA);
                 break;
-            case ReactionChannel::D:
-            case ReactionChannel::AntiD:
-                FindSexaquarks_ChannelD(reaction_channel == ReactionChannel::AntiD);
+            case EReactionChannel::D:
+            case EReactionChannel::AntiD:
+                FindSexaquarks_ChannelD(reaction_channel == EReactionChannel::AntiD);
                 break;
-            case ReactionChannel::E:
-            case ReactionChannel::AntiE:
-                FindSexaquarks_ChannelE(reaction_channel == ReactionChannel::AntiE);
+            case EReactionChannel::E:
+            case EReactionChannel::AntiE:
+                FindSexaquarks_ChannelE(reaction_channel == EReactionChannel::AntiE);
                 break;
-            case ReactionChannel::H:
-            case ReactionChannel::AntiH:
-                FindSexaquarks_ChannelH(reaction_channel == ReactionChannel::AntiH);
+            case EReactionChannel::H:
+            case EReactionChannel::AntiH:
+                FindSexaquarks_ChannelH(reaction_channel == EReactionChannel::AntiH);
                 break;
             default:
                 return;

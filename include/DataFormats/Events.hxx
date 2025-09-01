@@ -32,6 +32,7 @@ struct alignas(32) Injected {
     std::vector<float> *Nucleon_Px{nullptr};
     std::vector<float> *Nucleon_Py{nullptr};
     std::vector<float> *Nucleon_Pz{nullptr};
+
     void Clear() {
         ReactionID->clear();
         Px->clear();
@@ -56,9 +57,9 @@ struct alignas(32) MC {
     std::vector<int> *MotherEntry{nullptr};
     std::vector<int> *Status{nullptr};
     std::vector<int> *Generator{nullptr};
-    std::vector<bool> *IsPrimary{nullptr};
-    std::vector<bool> *IsSecFromMat{nullptr};
-    std::vector<bool> *IsSecFromWeak{nullptr};
+    std::vector<char> *IsPrimary{nullptr};
+    std::vector<char> *IsSecFromMat{nullptr};
+    std::vector<char> *IsSecFromWeak{nullptr};
 };
 
 struct alignas(32) Tracks {

@@ -34,6 +34,7 @@ struct alignas(32) Cov {
     std::vector<float>* PyE{nullptr};
     std::vector<float>* PzE{nullptr};
     std::vector<float>* E2{nullptr};
+
     void ClearCov() {
         X2->clear();
         XY->clear();
@@ -75,6 +76,7 @@ struct alignas(32) State {
     std::vector<float>* Py{nullptr};
     std::vector<float>* Pz{nullptr};
     std::vector<float>* E{nullptr};
+
     void ClearState() {
         Entry->clear();
         X->clear();
@@ -89,6 +91,7 @@ struct alignas(32) State {
 
 struct alignas(32) Particle : State {
     Cov Sigma;
+
     void ClearParticle() {
         ClearState();
         Sigma.ClearCov();
@@ -114,6 +117,7 @@ struct alignas(32) V0s : Particle {
     std::vector<float>* Pos_Px_AtPCA{nullptr};
     std::vector<float>* Pos_Py_AtPCA{nullptr};
     std::vector<float>* Pos_Pz_AtPCA{nullptr};
+
     void Clear() {
         ClearParticle();
         Neg.ClearState();
@@ -140,9 +144,10 @@ struct alignas(32) MC_Tracks : State {
     std::vector<int>* Mother_PdgCode{nullptr};
     std::vector<int>* GrandMother_PdgCode{nullptr};
     std::vector<int>* ReactionID{nullptr};
-    std::vector<bool>* IsTrue{nullptr};
-    std::vector<bool>* IsSignal{nullptr};
-    std::vector<bool>* IsSecondary{nullptr};
+    std::vector<char>* IsTrue{nullptr};
+    std::vector<char>* IsSignal{nullptr};
+    std::vector<char>* IsSecondary{nullptr};
+
     void Clear() {
         ClearState();
         Mother_Entry->clear();
@@ -165,11 +170,11 @@ struct alignas(32) MC_V0s : State {
     std::vector<int>* PdgCode{nullptr};
     std::vector<int>* Mother_Entry{nullptr};
     std::vector<int>* Mother_PdgCode{nullptr};
-    std::vector<bool>* IsTrue{nullptr};
-    std::vector<bool>* IsSignal{nullptr};
-    std::vector<bool>* IsSecondary{nullptr};
+    std::vector<char>* IsTrue{nullptr};
+    std::vector<char>* IsSignal{nullptr};
+    std::vector<char>* IsSecondary{nullptr};
     std::vector<int>* ReactionID{nullptr};
-    std::vector<bool>* IsHybrid{nullptr};
+    std::vector<char>* IsHybrid{nullptr};
 
     // neg //
     std::vector<int>* Neg_Entry{nullptr};
@@ -177,9 +182,9 @@ struct alignas(32) MC_V0s : State {
     std::vector<float>* Neg_Py{nullptr};
     std::vector<float>* Neg_Pz{nullptr};
     std::vector<int>* Neg_PdgCode{nullptr};
-    std::vector<bool>* Neg_IsTrue{nullptr};
-    std::vector<bool>* Neg_IsSignal{nullptr};
-    std::vector<bool>* Neg_IsSecondary{nullptr};
+    std::vector<char>* Neg_IsTrue{nullptr};
+    std::vector<char>* Neg_IsSignal{nullptr};
+    std::vector<char>* Neg_IsSecondary{nullptr};
     std::vector<int>* Neg_ReactionID{nullptr};
 
     // pos //
@@ -188,9 +193,9 @@ struct alignas(32) MC_V0s : State {
     std::vector<float>* Pos_Py{nullptr};
     std::vector<float>* Pos_Pz{nullptr};
     std::vector<int>* Pos_PdgCode{nullptr};
-    std::vector<bool>* Pos_IsTrue{nullptr};
-    std::vector<bool>* Pos_IsSignal{nullptr};
-    std::vector<bool>* Pos_IsSecondary{nullptr};
+    std::vector<char>* Pos_IsTrue{nullptr};
+    std::vector<char>* Pos_IsSignal{nullptr};
+    std::vector<char>* Pos_IsSecondary{nullptr};
     std::vector<int>* Pos_ReactionID{nullptr};
 
     void Clear() {

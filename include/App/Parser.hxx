@@ -9,7 +9,6 @@
 #include <CLI/CLI.hpp>
 
 #include "App/Settings.hxx"
-#include "App/Utilities.hxx"
 #include "Math/Constants.hxx"
 
 namespace Tree2Secondaries {
@@ -37,8 +36,6 @@ class Parser {
 
         auto add_signal_mc_opt = [](CLI::App* subcmd) {
             subcmd->add_option("-m,--mass", "Assign Injected Sexaquark Mass")->expected(1)->check(CLI::PositiveNumber);
-            subcmd->add_flag("-s,--signal", "Process Signal MC")->needs("-m");
-            subcmd->get_option("-m")->needs("-s");
         };
 
         CLI_APP
@@ -93,17 +90,16 @@ class Parser {
         // mc vs data //
         settings.IsMC = mode_cmd->got_subcommand("mc");
         auto* type_cmd = settings.IsMC ? mode_cmd->get_subcommand("mc") : mode_cmd->get_subcommand("data");
-        if (settings.IsMC) settings.IsSignalMC = type_cmd->get_option("-s")->as<bool>();
-        if (settings.IsSignalMC && settings.DoTheSearch) settings.SexaquarkMass = type_cmd->get_option("-m")->as<double>();
+        if (settings.DoTheSearch) settings.SexaquarkMass = type_cmd->get_option("-m")->as<double>();
         // reaction channels //
         if (settings.DoTheSearch || settings.IsMC) {
             auto* opt_grp = type_cmd->get_option_group("channels");
             auto* std_channel = opt_grp->get_option("-c");
             auto* anti_channel = opt_grp->get_option("-a");
             if (std_channel->count()) {
-                settings.Channel = static_cast<ReactionChannel>(std_channel->as<char>());
+                settings.Channel = static_cast<EReactionChannel>(std_channel->as<char>());
             } else {
-                settings.Channel = static_cast<ReactionChannel>(std::tolower(anti_channel->as<char>()));
+                settings.Channel = static_cast<EReactionChannel>(std::tolower(anti_channel->as<char>()));
             }
         }
         // input path //
@@ -113,18 +109,17 @@ class Parser {
         // output path //
         settings.PathOutputFile = CLI_APP.get_option("-o")->as<std::string>();
         if (settings.PathOutputFile.empty()) {
-            std::string filename_prefix{settings.DoTheSearch ? "Searched" : "Packed"};
-            std::string filename_mid{};
-            std::string filename_suffix{settings.StrReactionChannel()};
-            std::string filename_extension{".root"};
-            if (settings.IsMC && settings.IsSignalMC) {
-                filename_mid = "SignalMC";
-                filename_suffix += "_" + Utils::DoubleToStr(settings.SexaquarkMass);
-            } else if (settings.IsMC && !settings.IsSignalMC)
-                filename_mid = "BkgMC";
+            // -- suffix
+            std::string filename_suffix{};
+            if (settings.IsMC)
+                filename_suffix = fmt::format("MC_{}_{:.2f}", Name::ReactionChannel[settings.Channel], settings.SexaquarkMass);
             else
-                filename_mid = "Data";
-            settings.PathOutputFile = filename_prefix + "_" + filename_mid + "_" + filename_suffix + filename_extension;
+                filename_suffix = fmt::format("Data_{}", Name::ReactionChannel[settings.Channel]);
+            // -- prefix
+            if (settings.DoTheSearch)
+                settings.PathOutputFile = fmt::format("Searched_{}.root", filename_suffix);
+            else
+                settings.PathOutputFile = fmt::format("Packed_{}.root", filename_suffix);
         }
     }
 

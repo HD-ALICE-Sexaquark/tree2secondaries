@@ -24,55 +24,55 @@ int main(int argc, char *argv[]) {
             pkgr.GetEvent(i_event);
 
             pkgr.ProcessEvent();
-            if (pkgr.IsSignalMC()) pkgr.ProcessInjected();
+            if (pkgr.IsMC()) pkgr.ProcessInjected();
             pkgr.ProcessTracks();
 
             switch (pkgr.GetReactionChannel()) {
                 // standard channels //
-                case T2S::ReactionChannel::A:
-                    pkgr.FindV0s(T2S::PdgCode::AntiLambda);
-                    pkgr.FindV0s(T2S::PdgCode::KaonZeroShort);
+                case T2S::EReactionChannel::A:
+                    pkgr.FindV0s(T2S::EParticle::AntiLambda);
+                    pkgr.FindV0s(T2S::EParticle::KaonZeroShort);
                     break;
-                case T2S::ReactionChannel::D:
-                    pkgr.FindV0s(T2S::PdgCode::AntiLambda);
-                    pkgr.PackTracks(T2S::PdgCode::PosKaon);
+                case T2S::EReactionChannel::D:
+                    pkgr.FindV0s(T2S::EParticle::AntiLambda);
+                    pkgr.PackTracks(T2S::EParticle::PosKaon);
                     break;
-                case T2S::ReactionChannel::E:
-                    pkgr.FindV0s(T2S::PdgCode::AntiLambda);
-                    pkgr.PackTracks(T2S::PdgCode::PosKaon);
-                    pkgr.PackTracks(T2S::PdgCode::PiMinus);
-                    pkgr.PackTracks(T2S::PdgCode::PiPlus);
+                case T2S::EReactionChannel::E:
+                    pkgr.FindV0s(T2S::EParticle::AntiLambda);
+                    pkgr.PackTracks(T2S::EParticle::PosKaon);
+                    pkgr.PackTracks(T2S::EParticle::PiMinus);
+                    pkgr.PackTracks(T2S::EParticle::PiPlus);
                     break;
-                case T2S::ReactionChannel::H:
-                    pkgr.PackTracks(T2S::PdgCode::PosKaon);
+                case T2S::EReactionChannel::H:
+                    pkgr.PackTracks(T2S::EParticle::PosKaon);
                     break;
                 // anti-channels //
-                case T2S::ReactionChannel::AntiA:
-                    pkgr.FindV0s(T2S::PdgCode::Lambda);
-                    pkgr.FindV0s(T2S::PdgCode::KaonZeroShort);
+                case T2S::EReactionChannel::AntiA:
+                    pkgr.FindV0s(T2S::EParticle::Lambda);
+                    pkgr.FindV0s(T2S::EParticle::KaonZeroShort);
                     break;
-                case T2S::ReactionChannel::AntiD:
-                    pkgr.FindV0s(T2S::PdgCode::Lambda);
-                    pkgr.PackTracks(T2S::PdgCode::NegKaon);
+                case T2S::EReactionChannel::AntiD:
+                    pkgr.FindV0s(T2S::EParticle::Lambda);
+                    pkgr.PackTracks(T2S::EParticle::NegKaon);
                     break;
-                case T2S::ReactionChannel::AntiE:
-                    pkgr.FindV0s(T2S::PdgCode::Lambda);
-                    pkgr.PackTracks(T2S::PdgCode::NegKaon);
-                    pkgr.PackTracks(T2S::PdgCode::PiMinus);
-                    pkgr.PackTracks(T2S::PdgCode::PiPlus);
+                case T2S::EReactionChannel::AntiE:
+                    pkgr.FindV0s(T2S::EParticle::Lambda);
+                    pkgr.PackTracks(T2S::EParticle::NegKaon);
+                    pkgr.PackTracks(T2S::EParticle::PiMinus);
+                    pkgr.PackTracks(T2S::EParticle::PiPlus);
                     break;
-                case T2S::ReactionChannel::AntiH:
-                    pkgr.PackTracks(T2S::PdgCode::NegKaon);
+                case T2S::EReactionChannel::AntiH:
+                    pkgr.PackTracks(T2S::EParticle::NegKaon);
                     break;
                 // for data //
-                case T2S::ReactionChannel::All:
-                    pkgr.FindV0s(T2S::PdgCode::AntiLambda);
-                    pkgr.FindV0s(T2S::PdgCode::Lambda);
-                    pkgr.FindV0s(T2S::PdgCode::KaonZeroShort);
-                    pkgr.PackTracks(T2S::PdgCode::NegKaon);
-                    pkgr.PackTracks(T2S::PdgCode::PosKaon);
-                    pkgr.PackTracks(T2S::PdgCode::PiMinus);
-                    pkgr.PackTracks(T2S::PdgCode::PiPlus);
+                case T2S::EReactionChannel::All:
+                    pkgr.FindV0s(T2S::EParticle::AntiLambda);
+                    pkgr.FindV0s(T2S::EParticle::Lambda);
+                    pkgr.FindV0s(T2S::EParticle::KaonZeroShort);
+                    pkgr.PackTracks(T2S::EParticle::NegKaon);
+                    pkgr.PackTracks(T2S::EParticle::PosKaon);
+                    pkgr.PackTracks(T2S::EParticle::PiMinus);
+                    pkgr.PackTracks(T2S::EParticle::PiPlus);
                     break;
             }
             pkgr.EndOfEvent();
@@ -86,7 +86,7 @@ int main(int argc, char *argv[]) {
 
         for (int i_event{0}; i_event < finder.NumberEventsToRead(); ++i_event) {
             finder.GetEvent(i_event);
-            if (finder.IsSignalMC()) finder.Injected_FlattenAndStore();
+            if (finder.IsMC()) finder.Injected_FlattenAndStore();
             finder.Find(finder.GetReactionChannel());
         }
         finder.EndOfAnalysis();

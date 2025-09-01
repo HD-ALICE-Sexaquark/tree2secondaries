@@ -40,7 +40,7 @@ bool Finder::Initialize() {
     if (!PrepareOutputTree()) return false;
     CreateOutputBranches();
 
-    if (IsSignalMC()) {
+    if (IsMC()) {
         if (!Injected_PrepareOutputTree()) return false;
         Injected_CreateOutputBranches();
     }
@@ -60,74 +60,74 @@ void Finder::ConnectInputBranches() {
     fTree_PackedEvents->SetBranchStatus("*", false);
 
     ConnectBranches_Events();
-    if (IsMC() && IsSignalMC()) ConnectBranches_Injected();
+    if (IsMC()) ConnectBranches_Injected();
 
     switch (GetReactionChannel()) {
         // standard channels //
-        case ReactionChannel::A:
-            ConnectBranches_V0s(static_cast<std::string>(Acronym::AntiLambda), fPacked_AntiLambdas);
-            ConnectBranches_V0s(static_cast<std::string>(Acronym::KaonZeroShort), fPacked_KaonsZeroShort);
+        case EReactionChannel::A:
+            ConnectBranches_V0s(EParticle::AntiLambda, fPacked_AntiLambdas);
+            ConnectBranches_V0s(EParticle::KaonZeroShort, fPacked_KaonsZeroShort);
             if (IsMC()) {
-                ConnectBranches_MC_V0s(static_cast<std::string>(Acronym::AntiLambda), fPacked_MC_AntiLambdas);
-                ConnectBranches_MC_V0s(static_cast<std::string>(Acronym::KaonZeroShort), fPacked_MC_KaonsZeroShort);
+                ConnectBranches_MC_V0s(EParticle::AntiLambda, fPacked_MC_AntiLambdas);
+                ConnectBranches_MC_V0s(EParticle::KaonZeroShort, fPacked_MC_KaonsZeroShort);
             }
             break;
-        case ReactionChannel::D:
-            ConnectBranches_V0s(static_cast<std::string>(Acronym::AntiLambda), fPacked_AntiLambdas);
-            ConnectBranches_Tracks(static_cast<std::string>(Acronym::PosKaon), fPacked_PosKaons);
+        case EReactionChannel::D:
+            ConnectBranches_V0s(EParticle::AntiLambda, fPacked_AntiLambdas);
+            ConnectBranches_Tracks(EParticle::PosKaon, fPacked_PosKaons);
             if (IsMC()) {
-                ConnectBranches_MC_V0s(static_cast<std::string>(Acronym::AntiLambda), fPacked_MC_AntiLambdas);
-                ConnectBranches_MC_Tracks(static_cast<std::string>(Acronym::PosKaon), fPacked_MC_PosKaons);
+                ConnectBranches_MC_V0s(EParticle::AntiLambda, fPacked_MC_AntiLambdas);
+                ConnectBranches_MC_Tracks(EParticle::PosKaon, fPacked_MC_PosKaons);
             }
             break;
-        case ReactionChannel::E:
-            ConnectBranches_V0s(static_cast<std::string>(Acronym::AntiLambda), fPacked_AntiLambdas);
-            ConnectBranches_Tracks(static_cast<std::string>(Acronym::PosKaon), fPacked_PosKaons);
-            ConnectBranches_Tracks(static_cast<std::string>(Acronym::PiMinus), fPacked_PiMinus);
-            ConnectBranches_Tracks(static_cast<std::string>(Acronym::PiPlus), fPacked_PiPlus);
+        case EReactionChannel::E:
+            ConnectBranches_V0s(EParticle::AntiLambda, fPacked_AntiLambdas);
+            ConnectBranches_Tracks(EParticle::PosKaon, fPacked_PosKaons);
+            ConnectBranches_Tracks(EParticle::PiMinus, fPacked_PiMinus);
+            ConnectBranches_Tracks(EParticle::PiPlus, fPacked_PiPlus);
             if (IsMC()) {
-                ConnectBranches_MC_V0s(static_cast<std::string>(Acronym::AntiLambda), fPacked_MC_AntiLambdas);
-                ConnectBranches_MC_Tracks(static_cast<std::string>(Acronym::PosKaon), fPacked_MC_PosKaons);
-                ConnectBranches_MC_Tracks(static_cast<std::string>(Acronym::PiMinus), fPacked_MC_PiMinus);
-                ConnectBranches_MC_Tracks(static_cast<std::string>(Acronym::PiPlus), fPacked_MC_PiPlus);
+                ConnectBranches_MC_V0s(EParticle::AntiLambda, fPacked_MC_AntiLambdas);
+                ConnectBranches_MC_Tracks(EParticle::PosKaon, fPacked_MC_PosKaons);
+                ConnectBranches_MC_Tracks(EParticle::PiMinus, fPacked_MC_PiMinus);
+                ConnectBranches_MC_Tracks(EParticle::PiPlus, fPacked_MC_PiPlus);
             }
             break;
-        case ReactionChannel::H:
-            ConnectBranches_Tracks(static_cast<std::string>(Acronym::PosKaon), fPacked_PosKaons);
-            if (IsMC()) ConnectBranches_MC_Tracks(static_cast<std::string>(Acronym::PosKaon), fPacked_MC_PosKaons);
+        case EReactionChannel::H:
+            ConnectBranches_Tracks(EParticle::PosKaon, fPacked_PosKaons);
+            if (IsMC()) ConnectBranches_MC_Tracks(EParticle::PosKaon, fPacked_MC_PosKaons);
             break;
         // anti-channels //
-        case ReactionChannel::AntiA:
-            ConnectBranches_V0s(static_cast<std::string>(Acronym::Lambda), fPacked_Lambdas);
-            ConnectBranches_V0s(static_cast<std::string>(Acronym::KaonZeroShort), fPacked_KaonsZeroShort);
+        case EReactionChannel::AntiA:
+            ConnectBranches_V0s(EParticle::Lambda, fPacked_Lambdas);
+            ConnectBranches_V0s(EParticle::KaonZeroShort, fPacked_KaonsZeroShort);
             if (IsMC()) {
-                ConnectBranches_MC_V0s(static_cast<std::string>(Acronym::Lambda), fPacked_MC_Lambdas);
-                ConnectBranches_MC_V0s(static_cast<std::string>(Acronym::KaonZeroShort), fPacked_MC_KaonsZeroShort);
+                ConnectBranches_MC_V0s(EParticle::Lambda, fPacked_MC_Lambdas);
+                ConnectBranches_MC_V0s(EParticle::KaonZeroShort, fPacked_MC_KaonsZeroShort);
             }
             break;
-        case ReactionChannel::AntiD:
-            ConnectBranches_V0s(static_cast<std::string>(Acronym::Lambda), fPacked_Lambdas);
-            ConnectBranches_Tracks(static_cast<std::string>(Acronym::NegKaon), fPacked_NegKaons);
+        case EReactionChannel::AntiD:
+            ConnectBranches_V0s(EParticle::Lambda, fPacked_Lambdas);
+            ConnectBranches_Tracks(EParticle::NegKaon, fPacked_NegKaons);
             if (IsMC()) {
-                ConnectBranches_MC_V0s(static_cast<std::string>(Acronym::Lambda), fPacked_MC_Lambdas);
-                ConnectBranches_MC_Tracks(static_cast<std::string>(Acronym::NegKaon), fPacked_MC_NegKaons);
+                ConnectBranches_MC_V0s(EParticle::Lambda, fPacked_MC_Lambdas);
+                ConnectBranches_MC_Tracks(EParticle::NegKaon, fPacked_MC_NegKaons);
             }
             break;
-        case ReactionChannel::AntiE:
-            ConnectBranches_V0s(static_cast<std::string>(Acronym::Lambda), fPacked_Lambdas);
-            ConnectBranches_Tracks(static_cast<std::string>(Acronym::NegKaon), fPacked_NegKaons);
-            ConnectBranches_Tracks(static_cast<std::string>(Acronym::PiMinus), fPacked_PiMinus);
-            ConnectBranches_Tracks(static_cast<std::string>(Acronym::PiPlus), fPacked_PiPlus);
+        case EReactionChannel::AntiE:
+            ConnectBranches_V0s(EParticle::Lambda, fPacked_Lambdas);
+            ConnectBranches_Tracks(EParticle::NegKaon, fPacked_NegKaons);
+            ConnectBranches_Tracks(EParticle::PiMinus, fPacked_PiMinus);
+            ConnectBranches_Tracks(EParticle::PiPlus, fPacked_PiPlus);
             if (IsMC()) {
-                ConnectBranches_MC_V0s(static_cast<std::string>(Acronym::Lambda), fPacked_MC_Lambdas);
-                ConnectBranches_MC_Tracks(static_cast<std::string>(Acronym::NegKaon), fPacked_MC_NegKaons);
-                ConnectBranches_MC_Tracks(static_cast<std::string>(Acronym::PiMinus), fPacked_MC_PiMinus);
-                ConnectBranches_MC_Tracks(static_cast<std::string>(Acronym::PiPlus), fPacked_MC_PiPlus);
+                ConnectBranches_MC_V0s(EParticle::Lambda, fPacked_MC_Lambdas);
+                ConnectBranches_MC_Tracks(EParticle::NegKaon, fPacked_MC_NegKaons);
+                ConnectBranches_MC_Tracks(EParticle::PiMinus, fPacked_MC_PiMinus);
+                ConnectBranches_MC_Tracks(EParticle::PiPlus, fPacked_MC_PiPlus);
             }
             break;
-        case ReactionChannel::AntiH:
-            ConnectBranches_Tracks(static_cast<std::string>(Acronym::NegKaon), fPacked_NegKaons);
-            if (IsMC()) ConnectBranches_MC_Tracks(static_cast<std::string>(Acronym::NegKaon), fPacked_MC_NegKaons);
+        case EReactionChannel::AntiH:
+            ConnectBranches_Tracks(EParticle::NegKaon, fPacked_NegKaons);
+            if (IsMC()) ConnectBranches_MC_Tracks(EParticle::NegKaon, fPacked_MC_NegKaons);
             break;
         default:
             break;
@@ -185,209 +185,209 @@ void Finder::ConnectBranches_Injected() {
 #endif
 }
 
-void Finder::ConnectBranches_V0s(const std::string& name_v0, PackedEvents::V0s& vec_v0s) {
+void Finder::ConnectBranches_V0s(EParticle pid, PackedEvents::V0s& vec_v0s) {
 #ifdef T2S_DEBUG
     Logger::Debug(__FUNCTION__, "Starting.");
 #endif
 
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_Entry", &vec_v0s.Entry, name_v0);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_X", &vec_v0s.X, name_v0);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_Y", &vec_v0s.Y, name_v0);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_Z", &vec_v0s.Z, name_v0);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_Px", &vec_v0s.Px, name_v0);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_Py", &vec_v0s.Py, name_v0);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_Pz", &vec_v0s.Pz, name_v0);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_E", &vec_v0s.E, name_v0);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_Entry", Particle::Acronym[pid]), &vec_v0s.Entry);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_X", Particle::Acronym[pid]), &vec_v0s.X);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_Y", Particle::Acronym[pid]), &vec_v0s.Y);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_Z", Particle::Acronym[pid]), &vec_v0s.Z);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_Px", Particle::Acronym[pid]), &vec_v0s.Px);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_Py", Particle::Acronym[pid]), &vec_v0s.Py);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_Pz", Particle::Acronym[pid]), &vec_v0s.Pz);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_E", Particle::Acronym[pid]), &vec_v0s.E);
 
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_SigmaX2", &vec_v0s.Sigma.X2, name_v0);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_SigmaXY", &vec_v0s.Sigma.XY, name_v0);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_SigmaY2", &vec_v0s.Sigma.Y2, name_v0);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_SigmaXZ", &vec_v0s.Sigma.XZ, name_v0);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_SigmaYZ", &vec_v0s.Sigma.YZ, name_v0);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_SigmaZ2", &vec_v0s.Sigma.Z2, name_v0);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_SigmaXPx", &vec_v0s.Sigma.XPx, name_v0);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_SigmaYPx", &vec_v0s.Sigma.YPx, name_v0);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_SigmaZPx", &vec_v0s.Sigma.ZPx, name_v0);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_SigmaPx2", &vec_v0s.Sigma.Px2, name_v0);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_SigmaXPy", &vec_v0s.Sigma.XPy, name_v0);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_SigmaYPy", &vec_v0s.Sigma.YPy, name_v0);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_SigmaZPy", &vec_v0s.Sigma.ZPy, name_v0);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_SigmaPxPy", &vec_v0s.Sigma.PxPy, name_v0);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_SigmaPy2", &vec_v0s.Sigma.Py2, name_v0);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_SigmaXPz", &vec_v0s.Sigma.XPz, name_v0);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_SigmaYPz", &vec_v0s.Sigma.YPz, name_v0);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_SigmaZPz", &vec_v0s.Sigma.ZPz, name_v0);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_SigmaPxPz", &vec_v0s.Sigma.PxPz, name_v0);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_SigmaPyPz", &vec_v0s.Sigma.PyPz, name_v0);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_SigmaPz2", &vec_v0s.Sigma.Pz2, name_v0);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_SigmaXE", &vec_v0s.Sigma.XE, name_v0);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_SigmaYE", &vec_v0s.Sigma.YE, name_v0);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_SigmaZE", &vec_v0s.Sigma.ZE, name_v0);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_SigmaPxE", &vec_v0s.Sigma.PxE, name_v0);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_SigmaPyE", &vec_v0s.Sigma.PyE, name_v0);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_SigmaPzE", &vec_v0s.Sigma.PzE, name_v0);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_SigmaE2", &vec_v0s.Sigma.E2, name_v0);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_SigmaX2", Particle::Acronym[pid]), &vec_v0s.Sigma.X2);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_SigmaXY", Particle::Acronym[pid]), &vec_v0s.Sigma.XY);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_SigmaY2", Particle::Acronym[pid]), &vec_v0s.Sigma.Y2);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_SigmaXZ", Particle::Acronym[pid]), &vec_v0s.Sigma.XZ);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_SigmaYZ", Particle::Acronym[pid]), &vec_v0s.Sigma.YZ);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_SigmaZ2", Particle::Acronym[pid]), &vec_v0s.Sigma.Z2);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_SigmaXPx", Particle::Acronym[pid]), &vec_v0s.Sigma.XPx);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_SigmaYPx", Particle::Acronym[pid]), &vec_v0s.Sigma.YPx);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_SigmaZPx", Particle::Acronym[pid]), &vec_v0s.Sigma.ZPx);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_SigmaPx2", Particle::Acronym[pid]), &vec_v0s.Sigma.Px2);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_SigmaXPy", Particle::Acronym[pid]), &vec_v0s.Sigma.XPy);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_SigmaYPy", Particle::Acronym[pid]), &vec_v0s.Sigma.YPy);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_SigmaZPy", Particle::Acronym[pid]), &vec_v0s.Sigma.ZPy);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_SigmaPxPy", Particle::Acronym[pid]), &vec_v0s.Sigma.PxPy);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_SigmaPy2", Particle::Acronym[pid]), &vec_v0s.Sigma.Py2);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_SigmaXPz", Particle::Acronym[pid]), &vec_v0s.Sigma.XPz);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_SigmaYPz", Particle::Acronym[pid]), &vec_v0s.Sigma.YPz);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_SigmaZPz", Particle::Acronym[pid]), &vec_v0s.Sigma.ZPz);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_SigmaPxPz", Particle::Acronym[pid]), &vec_v0s.Sigma.PxPz);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_SigmaPyPz", Particle::Acronym[pid]), &vec_v0s.Sigma.PyPz);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_SigmaPz2", Particle::Acronym[pid]), &vec_v0s.Sigma.Pz2);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_SigmaXE", Particle::Acronym[pid]), &vec_v0s.Sigma.XE);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_SigmaYE", Particle::Acronym[pid]), &vec_v0s.Sigma.YE);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_SigmaZE", Particle::Acronym[pid]), &vec_v0s.Sigma.ZE);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_SigmaPxE", Particle::Acronym[pid]), &vec_v0s.Sigma.PxE);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_SigmaPyE", Particle::Acronym[pid]), &vec_v0s.Sigma.PyE);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_SigmaPzE", Particle::Acronym[pid]), &vec_v0s.Sigma.PzE);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_SigmaE2", Particle::Acronym[pid]), &vec_v0s.Sigma.E2);
 
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_Neg_Entry", &vec_v0s.Neg.Entry, name_v0);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_Neg_X", &vec_v0s.Neg.X, name_v0);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_Neg_Y", &vec_v0s.Neg.Y, name_v0);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_Neg_Z", &vec_v0s.Neg.Z, name_v0);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_Neg_Px", &vec_v0s.Neg.Px, name_v0);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_Neg_Py", &vec_v0s.Neg.Py, name_v0);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_Neg_Pz", &vec_v0s.Neg.Pz, name_v0);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_Neg_E", &vec_v0s.Neg.E, name_v0);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_Neg_Entry", Particle::Acronym[pid]), &vec_v0s.Neg.Entry);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_Neg_X", Particle::Acronym[pid]), &vec_v0s.Neg.X);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_Neg_Y", Particle::Acronym[pid]), &vec_v0s.Neg.Y);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_Neg_Z", Particle::Acronym[pid]), &vec_v0s.Neg.Z);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_Neg_Px", Particle::Acronym[pid]), &vec_v0s.Neg.Px);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_Neg_Py", Particle::Acronym[pid]), &vec_v0s.Neg.Py);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_Neg_Pz", Particle::Acronym[pid]), &vec_v0s.Neg.Pz);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_Neg_E", Particle::Acronym[pid]), &vec_v0s.Neg.E);
 
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_Neg_X_AtPCA", &vec_v0s.Neg_X_AtPCA, name_v0);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_Neg_Y_AtPCA", &vec_v0s.Neg_Y_AtPCA, name_v0);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_Neg_Z_AtPCA", &vec_v0s.Neg_Z_AtPCA, name_v0);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_Neg_Px_AtPCA", &vec_v0s.Neg_Px_AtPCA, name_v0);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_Neg_Py_AtPCA", &vec_v0s.Neg_Py_AtPCA, name_v0);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_Neg_Pz_AtPCA", &vec_v0s.Neg_Pz_AtPCA, name_v0);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_Neg_X_AtPCA", Particle::Acronym[pid]), &vec_v0s.Neg_X_AtPCA);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_Neg_Y_AtPCA", Particle::Acronym[pid]), &vec_v0s.Neg_Y_AtPCA);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_Neg_Z_AtPCA", Particle::Acronym[pid]), &vec_v0s.Neg_Z_AtPCA);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_Neg_Px_AtPCA", Particle::Acronym[pid]), &vec_v0s.Neg_Px_AtPCA);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_Neg_Py_AtPCA", Particle::Acronym[pid]), &vec_v0s.Neg_Py_AtPCA);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_Neg_Pz_AtPCA", Particle::Acronym[pid]), &vec_v0s.Neg_Pz_AtPCA);
 
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_Pos_Entry", &vec_v0s.Pos.Entry, name_v0);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_Pos_X", &vec_v0s.Pos.X, name_v0);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_Pos_Y", &vec_v0s.Pos.Y, name_v0);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_Pos_Z", &vec_v0s.Pos.Z, name_v0);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_Pos_Px", &vec_v0s.Pos.Px, name_v0);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_Pos_Py", &vec_v0s.Pos.Py, name_v0);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_Pos_Pz", &vec_v0s.Pos.Pz, name_v0);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_Pos_E", &vec_v0s.Pos.E, name_v0);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_Pos_Entry", Particle::Acronym[pid]), &vec_v0s.Pos.Entry);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_Pos_X", Particle::Acronym[pid]), &vec_v0s.Pos.X);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_Pos_Y", Particle::Acronym[pid]), &vec_v0s.Pos.Y);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_Pos_Z", Particle::Acronym[pid]), &vec_v0s.Pos.Z);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_Pos_Px", Particle::Acronym[pid]), &vec_v0s.Pos.Px);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_Pos_Py", Particle::Acronym[pid]), &vec_v0s.Pos.Py);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_Pos_Pz", Particle::Acronym[pid]), &vec_v0s.Pos.Pz);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_Pos_E", Particle::Acronym[pid]), &vec_v0s.Pos.E);
 
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_Pos_X_AtPCA", &vec_v0s.Pos_X_AtPCA, name_v0);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_Pos_Y_AtPCA", &vec_v0s.Pos_Y_AtPCA, name_v0);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_Pos_Z_AtPCA", &vec_v0s.Pos_Z_AtPCA, name_v0);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_Pos_Px_AtPCA", &vec_v0s.Pos_Px_AtPCA, name_v0);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_Pos_Py_AtPCA", &vec_v0s.Pos_Py_AtPCA, name_v0);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_Pos_Pz_AtPCA", &vec_v0s.Pos_Pz_AtPCA, name_v0);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_Pos_X_AtPCA", Particle::Acronym[pid]), &vec_v0s.Pos_X_AtPCA);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_Pos_Y_AtPCA", Particle::Acronym[pid]), &vec_v0s.Pos_Y_AtPCA);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_Pos_Z_AtPCA", Particle::Acronym[pid]), &vec_v0s.Pos_Z_AtPCA);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_Pos_Px_AtPCA", Particle::Acronym[pid]), &vec_v0s.Pos_Px_AtPCA);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_Pos_Py_AtPCA", Particle::Acronym[pid]), &vec_v0s.Pos_Py_AtPCA);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_Pos_Pz_AtPCA", Particle::Acronym[pid]), &vec_v0s.Pos_Pz_AtPCA);
 
 #ifdef T2S_DEBUG
     Logger::Debug(__FUNCTION__, "Finished.");
 #endif
 }
 
-void Finder::ConnectBranches_Tracks(const std::string& name_part, PackedEvents::Tracks& vec_tracks) {
+void Finder::ConnectBranches_Tracks(EParticle pid, PackedEvents::Tracks& vec_tracks) {
 #ifdef T2S_DEBUG
     Logger::Debug(__FUNCTION__, "Starting.");
 #endif
 
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_Entry", &vec_tracks.Entry, name_part);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_X", &vec_tracks.X, name_part);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_Y", &vec_tracks.Y, name_part);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_Z", &vec_tracks.Z, name_part);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_Px", &vec_tracks.Px, name_part);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_Py", &vec_tracks.Py, name_part);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_Pz", &vec_tracks.Pz, name_part);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_E", &vec_tracks.E, name_part);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_Entry", Particle::Acronym[pid]), &vec_tracks.Entry);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_X", Particle::Acronym[pid]), &vec_tracks.X);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_Y", Particle::Acronym[pid]), &vec_tracks.Y);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_Z", Particle::Acronym[pid]), &vec_tracks.Z);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_Px", Particle::Acronym[pid]), &vec_tracks.Px);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_Py", Particle::Acronym[pid]), &vec_tracks.Py);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_Pz", Particle::Acronym[pid]), &vec_tracks.Pz);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_E", Particle::Acronym[pid]), &vec_tracks.E);
 
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_SigmaX2", &vec_tracks.Sigma.X2, name_part);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_SigmaXY", &vec_tracks.Sigma.XY, name_part);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_SigmaY2", &vec_tracks.Sigma.Y2, name_part);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_SigmaXZ", &vec_tracks.Sigma.XZ, name_part);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_SigmaYZ", &vec_tracks.Sigma.YZ, name_part);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_SigmaZ2", &vec_tracks.Sigma.Z2, name_part);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_SigmaXPx", &vec_tracks.Sigma.XPx, name_part);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_SigmaYPx", &vec_tracks.Sigma.YPx, name_part);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_SigmaZPx", &vec_tracks.Sigma.ZPx, name_part);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_SigmaPx2", &vec_tracks.Sigma.Px2, name_part);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_SigmaXPy", &vec_tracks.Sigma.XPy, name_part);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_SigmaYPy", &vec_tracks.Sigma.YPy, name_part);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_SigmaZPy", &vec_tracks.Sigma.ZPy, name_part);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_SigmaPxPy", &vec_tracks.Sigma.PxPy, name_part);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_SigmaPy2", &vec_tracks.Sigma.Py2, name_part);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_SigmaXPz", &vec_tracks.Sigma.XPz, name_part);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_SigmaYPz", &vec_tracks.Sigma.YPz, name_part);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_SigmaZPz", &vec_tracks.Sigma.ZPz, name_part);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_SigmaPxPz", &vec_tracks.Sigma.PxPz, name_part);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_SigmaPyPz", &vec_tracks.Sigma.PyPz, name_part);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_SigmaPz2", &vec_tracks.Sigma.Pz2, name_part);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_SigmaXE", &vec_tracks.Sigma.XE, name_part);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_SigmaYE", &vec_tracks.Sigma.YE, name_part);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_SigmaZE", &vec_tracks.Sigma.ZE, name_part);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_SigmaPxE", &vec_tracks.Sigma.PxE, name_part);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_SigmaPyE", &vec_tracks.Sigma.PyE, name_part);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_SigmaPzE", &vec_tracks.Sigma.PzE, name_part);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_SigmaE2", &vec_tracks.Sigma.E2, name_part);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_SigmaX2", Particle::Acronym[pid]), &vec_tracks.Sigma.X2);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_SigmaXY", Particle::Acronym[pid]), &vec_tracks.Sigma.XY);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_SigmaY2", Particle::Acronym[pid]), &vec_tracks.Sigma.Y2);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_SigmaXZ", Particle::Acronym[pid]), &vec_tracks.Sigma.XZ);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_SigmaYZ", Particle::Acronym[pid]), &vec_tracks.Sigma.YZ);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_SigmaZ2", Particle::Acronym[pid]), &vec_tracks.Sigma.Z2);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_SigmaXPx", Particle::Acronym[pid]), &vec_tracks.Sigma.XPx);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_SigmaYPx", Particle::Acronym[pid]), &vec_tracks.Sigma.YPx);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_SigmaZPx", Particle::Acronym[pid]), &vec_tracks.Sigma.ZPx);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_SigmaPx2", Particle::Acronym[pid]), &vec_tracks.Sigma.Px2);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_SigmaXPy", Particle::Acronym[pid]), &vec_tracks.Sigma.XPy);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_SigmaYPy", Particle::Acronym[pid]), &vec_tracks.Sigma.YPy);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_SigmaZPy", Particle::Acronym[pid]), &vec_tracks.Sigma.ZPy);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_SigmaPxPy", Particle::Acronym[pid]), &vec_tracks.Sigma.PxPy);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_SigmaPy2", Particle::Acronym[pid]), &vec_tracks.Sigma.Py2);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_SigmaXPz", Particle::Acronym[pid]), &vec_tracks.Sigma.XPz);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_SigmaYPz", Particle::Acronym[pid]), &vec_tracks.Sigma.YPz);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_SigmaZPz", Particle::Acronym[pid]), &vec_tracks.Sigma.ZPz);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_SigmaPxPz", Particle::Acronym[pid]), &vec_tracks.Sigma.PxPz);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_SigmaPyPz", Particle::Acronym[pid]), &vec_tracks.Sigma.PyPz);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_SigmaPz2", Particle::Acronym[pid]), &vec_tracks.Sigma.Pz2);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_SigmaXE", Particle::Acronym[pid]), &vec_tracks.Sigma.XE);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_SigmaYE", Particle::Acronym[pid]), &vec_tracks.Sigma.YE);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_SigmaZE", Particle::Acronym[pid]), &vec_tracks.Sigma.ZE);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_SigmaPxE", Particle::Acronym[pid]), &vec_tracks.Sigma.PxE);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_SigmaPyE", Particle::Acronym[pid]), &vec_tracks.Sigma.PyE);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_SigmaPzE", Particle::Acronym[pid]), &vec_tracks.Sigma.PzE);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_SigmaE2", Particle::Acronym[pid]), &vec_tracks.Sigma.E2);
 
 #ifdef T2S_DEBUG
     Logger::Debug(__FUNCTION__, "Finished.");
 #endif
 }
 
-void Finder::ConnectBranches_MC_V0s(const std::string& name_v0, PackedEvents::MC_V0s& sov) {
+void Finder::ConnectBranches_MC_V0s(EParticle pid, PackedEvents::MC_V0s& sov) {
 #ifdef T2S_DEBUG
     Logger::Debug(__FUNCTION__, "Starting.");
 #endif
 
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_MC_Entry", &sov.Entry, name_v0);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_MC_X", &sov.X, name_v0);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_MC_Y", &sov.Y, name_v0);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_MC_Z", &sov.Z, name_v0);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_MC_Px", &sov.Px, name_v0);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_MC_Py", &sov.Py, name_v0);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_MC_Pz", &sov.Pz, name_v0);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_MC_E", &sov.E, name_v0);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_MC_Entry", Particle::Acronym[pid]), &sov.Entry);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_MC_X", Particle::Acronym[pid]), &sov.X);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_MC_Y", Particle::Acronym[pid]), &sov.Y);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_MC_Z", Particle::Acronym[pid]), &sov.Z);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_MC_Px", Particle::Acronym[pid]), &sov.Px);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_MC_Py", Particle::Acronym[pid]), &sov.Py);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_MC_Pz", Particle::Acronym[pid]), &sov.Pz);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_MC_E", Particle::Acronym[pid]), &sov.E);
 
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_MC_DecayX", &sov.DecayX, name_v0);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_MC_DecayY", &sov.DecayY, name_v0);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_MC_DecayZ", &sov.DecayZ, name_v0);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_MC_DecayX", Particle::Acronym[pid]), &sov.DecayX);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_MC_DecayY", Particle::Acronym[pid]), &sov.DecayY);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_MC_DecayZ", Particle::Acronym[pid]), &sov.DecayZ);
 
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_MC_PdgCode", &sov.PdgCode, name_v0);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_MC_Mother_Entry", &sov.Mother_Entry, name_v0);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_MC_Mother_PdgCode", &sov.Mother_PdgCode, name_v0);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_MC_IsTrue", &sov.IsTrue, name_v0);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_MC_IsSignal", &sov.IsSignal, name_v0);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_MC_IsSecondary", &sov.IsSecondary, name_v0);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_MC_ReactionID", &sov.ReactionID, name_v0);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_MC_IsHybrid", &sov.IsHybrid, name_v0);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_MC_PdgCode", Particle::Acronym[pid]), &sov.PdgCode);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_MC_Mother_Entry", Particle::Acronym[pid]), &sov.Mother_Entry);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_MC_Mother_PdgCode", Particle::Acronym[pid]), &sov.Mother_PdgCode);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_MC_IsTrue", Particle::Acronym[pid]), &sov.IsTrue);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_MC_IsSignal", Particle::Acronym[pid]), &sov.IsSignal);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_MC_IsSecondary", Particle::Acronym[pid]), &sov.IsSecondary);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_MC_ReactionID", Particle::Acronym[pid]), &sov.ReactionID);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_MC_IsHybrid", Particle::Acronym[pid]), &sov.IsHybrid);
 
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_MC_Neg_Entry", &sov.Neg_Entry, name_v0);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_MC_Neg_Px", &sov.Neg_Px, name_v0);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_MC_Neg_Py", &sov.Neg_Py, name_v0);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_MC_Neg_Pz", &sov.Neg_Pz, name_v0);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_MC_Neg_PdgCode", &sov.Neg_PdgCode, name_v0);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_MC_Neg_IsTrue", &sov.Neg_IsTrue, name_v0);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_MC_Neg_IsSignal", &sov.Neg_IsSignal, name_v0);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_MC_Neg_IsSecondary", &sov.Neg_IsSecondary, name_v0);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_MC_Neg_ReactionID", &sov.Neg_ReactionID, name_v0);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_MC_Neg_Entry", Particle::Acronym[pid]), &sov.Neg_Entry);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_MC_Neg_Px", Particle::Acronym[pid]), &sov.Neg_Px);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_MC_Neg_Py", Particle::Acronym[pid]), &sov.Neg_Py);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_MC_Neg_Pz", Particle::Acronym[pid]), &sov.Neg_Pz);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_MC_Neg_PdgCode", Particle::Acronym[pid]), &sov.Neg_PdgCode);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_MC_Neg_IsTrue", Particle::Acronym[pid]), &sov.Neg_IsTrue);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_MC_Neg_IsSignal", Particle::Acronym[pid]), &sov.Neg_IsSignal);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_MC_Neg_IsSecondary", Particle::Acronym[pid]), &sov.Neg_IsSecondary);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_MC_Neg_ReactionID", Particle::Acronym[pid]), &sov.Neg_ReactionID);
 
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_MC_Pos_Entry", &sov.Pos_Entry, name_v0);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_MC_Pos_Px", &sov.Pos_Px, name_v0);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_MC_Pos_Py", &sov.Pos_Py, name_v0);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_MC_Pos_Pz", &sov.Pos_Pz, name_v0);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_MC_Pos_PdgCode", &sov.Pos_PdgCode, name_v0);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_MC_Pos_IsTrue", &sov.Pos_IsTrue, name_v0);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_MC_Pos_IsSignal", &sov.Pos_IsSignal, name_v0);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_MC_Pos_IsSecondary", &sov.Pos_IsSecondary, name_v0);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_MC_Pos_ReactionID", &sov.Pos_ReactionID, name_v0);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_MC_Pos_Entry", Particle::Acronym[pid]), &sov.Pos_Entry);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_MC_Pos_Px", Particle::Acronym[pid]), &sov.Pos_Px);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_MC_Pos_Py", Particle::Acronym[pid]), &sov.Pos_Py);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_MC_Pos_Pz", Particle::Acronym[pid]), &sov.Pos_Pz);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_MC_Pos_PdgCode", Particle::Acronym[pid]), &sov.Pos_PdgCode);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_MC_Pos_IsTrue", Particle::Acronym[pid]), &sov.Pos_IsTrue);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_MC_Pos_IsSignal", Particle::Acronym[pid]), &sov.Pos_IsSignal);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_MC_Pos_IsSecondary", Particle::Acronym[pid]), &sov.Pos_IsSecondary);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_MC_Pos_ReactionID", Particle::Acronym[pid]), &sov.Pos_ReactionID);
 
 #ifdef T2S_DEBUG
     Logger::Debug(__FUNCTION__, "Finished.");
 #endif
 }
 
-void Finder::ConnectBranches_MC_Tracks(const std::string& name_part, PackedEvents::MC_Tracks& sov) {
+void Finder::ConnectBranches_MC_Tracks(EParticle pid, PackedEvents::MC_Tracks& sov) {
 #ifdef T2S_DEBUG
     Logger::Debug(__FUNCTION__, "Starting.");
 #endif
 
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_MC_Entry", &sov.Entry, name_part);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_MC_X", &sov.X, name_part);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_MC_Y", &sov.Y, name_part);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_MC_Z", &sov.Z, name_part);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_MC_Px", &sov.Px, name_part);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_MC_Py", &sov.Py, name_part);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_MC_Pz", &sov.Pz, name_part);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_MC_E", &sov.E, name_part);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_MC_Entry", Particle::Acronym[pid]), &sov.Entry);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_MC_X", Particle::Acronym[pid]), &sov.X);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_MC_Y", Particle::Acronym[pid]), &sov.Y);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_MC_Z", Particle::Acronym[pid]), &sov.Z);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_MC_Px", Particle::Acronym[pid]), &sov.Px);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_MC_Py", Particle::Acronym[pid]), &sov.Py);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_MC_Pz", Particle::Acronym[pid]), &sov.Pz);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_MC_E", Particle::Acronym[pid]), &sov.E);
 
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_MC_PdgCode", &sov.PdgCode, name_part);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_MC_Mother_Entry", &sov.Mother_Entry, name_part);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_MC_Mother_PdgCode", &sov.Mother_PdgCode, name_part);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_MC_GrandMother_Entry", &sov.GrandMother_Entry, name_part);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_MC_GrandMother_PdgCode", &sov.GrandMother_PdgCode, name_part);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_MC_IsTrue", &sov.IsTrue, name_part);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_MC_IsSignal", &sov.IsSignal, name_part);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_MC_IsSecondary", &sov.IsSecondary, name_part);
-    Utils::ConnectBranch(fTree_PackedEvents.get(), "_MC_ReactionID", &sov.ReactionID, name_part);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_MC_PdgCode", Particle::Acronym[pid]), &sov.PdgCode);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_MC_Mother_Entry", Particle::Acronym[pid]), &sov.Mother_Entry);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_MC_Mother_PdgCode", Particle::Acronym[pid]), &sov.Mother_PdgCode);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_MC_GrandMother_Entry", Particle::Acronym[pid]), &sov.GrandMother_Entry);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_MC_GrandMother_PdgCode", Particle::Acronym[pid]), &sov.GrandMother_PdgCode);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_MC_IsTrue", Particle::Acronym[pid]), &sov.IsTrue);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_MC_IsSignal", Particle::Acronym[pid]), &sov.IsSignal);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_MC_IsSecondary", Particle::Acronym[pid]), &sov.IsSecondary);
+    Utils::ConnectBranch(fTree_PackedEvents.get(), fmt::format("{}_MC_ReactionID", Particle::Acronym[pid]), &sov.ReactionID);
 
 #ifdef T2S_DEBUG
     Logger::Debug(__FUNCTION__, "Finished.");
@@ -421,37 +421,9 @@ bool Finder::PrepareOutputTree() {
     Logger::Debug(__FUNCTION__, "Starting.");
 #endif
 
-    std::string tree_name{"Candidates"};
-    switch (GetReactionChannel()) {
-        case ReactionChannel::A:
-            tree_name += static_cast<std::string>(Name::ChannelA);
-            break;
-        case ReactionChannel::D:
-            tree_name += static_cast<std::string>(Name::ChannelD);
-            break;
-        case ReactionChannel::E:
-            tree_name += static_cast<std::string>(Name::ChannelE);
-            break;
-        case ReactionChannel::H:
-            tree_name += static_cast<std::string>(Name::ChannelH);
-            break;
-        case ReactionChannel::AntiA:
-            tree_name += static_cast<std::string>(Name::AntiA);
-            break;
-        case ReactionChannel::AntiD:
-            tree_name += static_cast<std::string>(Name::AntiD);
-            break;
-        case ReactionChannel::AntiE:
-            tree_name += static_cast<std::string>(Name::AntiE);
-            break;
-        case ReactionChannel::AntiH:
-            tree_name += static_cast<std::string>(Name::AntiH);
-            break;
-        default:
-            return false;
-    }
+    std::string tree_name{fmt::format("Candidates_{}", Name::ReactionChannel[GetReactionChannel()])};
 
-    fOutputTree = std::make_unique<TTree>(tree_name.c_str(), "Final results");
+    fOutputTree = std::make_unique<TTree>(tree_name.c_str(), "");
     if (!fOutputTree) {
         Logger::Error(__FUNCTION__, "Couldn't create TTree \"{}\"");
         return false;
@@ -468,60 +440,60 @@ void Finder::CreateOutputBranches(Found::ChannelA& out_branches) {
     Logger::Debug(__FUNCTION__, "Starting.");
 #endif
 
-    fOutputTree->Branch("RunNumber", &out_branches.RunNumber);
-    fOutputTree->Branch("DirNumber", &out_branches.DirNumber);
-    if (!IsMC()) fOutputTree->Branch("DirNumberB", &out_branches.DirNumberB);
-    fOutputTree->Branch("EventNumber", &out_branches.EventNumber);
-    fOutputTree->Branch("MagneticField", &out_branches.MagneticField);
-    fOutputTree->Branch("PV_Xv", &out_branches.PV_Xv);
-    fOutputTree->Branch("PV_Yv", &out_branches.PV_Yv);
-    fOutputTree->Branch("PV_Zv", &out_branches.PV_Zv);
+    Utils::CreateBranch(fOutputTree.get(), "RunNumber", &out_branches.RunNumber);
+    Utils::CreateBranch(fOutputTree.get(), "DirNumber", &out_branches.DirNumber);
+    if (!IsMC()) Utils::CreateBranch(fOutputTree.get(), "DirNumberB", &out_branches.DirNumberB);
+    Utils::CreateBranch(fOutputTree.get(), "EventNumber", &out_branches.EventNumber);
+    Utils::CreateBranch(fOutputTree.get(), "MagneticField", &out_branches.MagneticField);
+    Utils::CreateBranch(fOutputTree.get(), "PV_Xv", &out_branches.PV_Xv);
+    Utils::CreateBranch(fOutputTree.get(), "PV_Yv", &out_branches.PV_Yv);
+    Utils::CreateBranch(fOutputTree.get(), "PV_Zv", &out_branches.PV_Zv);
     if (IsMC()) {
-        fOutputTree->Branch("MC_PV_Xv", &out_branches.MC_PV_Xv);
-        fOutputTree->Branch("MC_PV_Yv", &out_branches.MC_PV_Yv);
-        fOutputTree->Branch("MC_PV_Zv", &out_branches.MC_PV_Zv);
+        Utils::CreateBranch(fOutputTree.get(), "MC_PV_Xv", &out_branches.MC_PV_Xv);
+        Utils::CreateBranch(fOutputTree.get(), "MC_PV_Yv", &out_branches.MC_PV_Yv);
+        Utils::CreateBranch(fOutputTree.get(), "MC_PV_Zv", &out_branches.MC_PV_Zv);
     }
 
-    fOutputTree->Branch("X", &out_branches.X);
-    fOutputTree->Branch("Y", &out_branches.Y);
-    fOutputTree->Branch("Z", &out_branches.Z);
-    fOutputTree->Branch("Px", &out_branches.Px);
-    fOutputTree->Branch("Py", &out_branches.Py);
-    fOutputTree->Branch("Pz", &out_branches.Pz);
-    fOutputTree->Branch("E", &out_branches.E);
-    fOutputTree->Branch("E_MinusNucleon", &out_branches.E_MinusNucleon);
+    Utils::CreateBranch(fOutputTree.get(), "X", &out_branches.X);
+    Utils::CreateBranch(fOutputTree.get(), "Y", &out_branches.Y);
+    Utils::CreateBranch(fOutputTree.get(), "Z", &out_branches.Z);
+    Utils::CreateBranch(fOutputTree.get(), "Px", &out_branches.Px);
+    Utils::CreateBranch(fOutputTree.get(), "Py", &out_branches.Py);
+    Utils::CreateBranch(fOutputTree.get(), "Pz", &out_branches.Pz);
+    Utils::CreateBranch(fOutputTree.get(), "E", &out_branches.E);
+    Utils::CreateBranch(fOutputTree.get(), "E_MinusNucleon", &out_branches.E_MinusNucleon);
 
-    fOutputTree->Branch("V0A_X_AtPCA", &out_branches.V0A_X_AtPCA);
-    fOutputTree->Branch("V0A_Y_AtPCA", &out_branches.V0A_Y_AtPCA);
-    fOutputTree->Branch("V0A_Z_AtPCA", &out_branches.V0A_Z_AtPCA);
+    Utils::CreateBranch(fOutputTree.get(), "V0A_X_AtPCA", &out_branches.V0A_X_AtPCA);
+    Utils::CreateBranch(fOutputTree.get(), "V0A_Y_AtPCA", &out_branches.V0A_Y_AtPCA);
+    Utils::CreateBranch(fOutputTree.get(), "V0A_Z_AtPCA", &out_branches.V0A_Z_AtPCA);
 
-    fOutputTree->Branch("V0B_X_AtPCA", &out_branches.V0B_X_AtPCA);
-    fOutputTree->Branch("V0B_Y_AtPCA", &out_branches.V0B_Y_AtPCA);
-    fOutputTree->Branch("V0B_Z_AtPCA", &out_branches.V0B_Z_AtPCA);
+    Utils::CreateBranch(fOutputTree.get(), "V0B_X_AtPCA", &out_branches.V0B_X_AtPCA);
+    Utils::CreateBranch(fOutputTree.get(), "V0B_Y_AtPCA", &out_branches.V0B_Y_AtPCA);
+    Utils::CreateBranch(fOutputTree.get(), "V0B_Z_AtPCA", &out_branches.V0B_Z_AtPCA);
 
-    fOutputTree->Branch("V0A_Entry", &out_branches.V0A_Entry);
-    fOutputTree->Branch("V0A_X_AtDecay", &out_branches.V0A.X);
-    fOutputTree->Branch("V0A_Y_AtDecay", &out_branches.V0A.Y);
-    fOutputTree->Branch("V0A_Z_AtDecay", &out_branches.V0A.Z);
-    fOutputTree->Branch("V0A_Px", &out_branches.V0A.Px);
-    fOutputTree->Branch("V0A_Py", &out_branches.V0A.Py);
-    fOutputTree->Branch("V0A_Pz", &out_branches.V0A.Pz);
-    fOutputTree->Branch("V0A_E", &out_branches.V0A.E);
+    Utils::CreateBranch(fOutputTree.get(), "V0A_Entry", &out_branches.V0A_Entry);
+    Utils::CreateBranch(fOutputTree.get(), "V0A_X_AtDecay", &out_branches.V0A.X);
+    Utils::CreateBranch(fOutputTree.get(), "V0A_Y_AtDecay", &out_branches.V0A.Y);
+    Utils::CreateBranch(fOutputTree.get(), "V0A_Z_AtDecay", &out_branches.V0A.Z);
+    Utils::CreateBranch(fOutputTree.get(), "V0A_Px", &out_branches.V0A.Px);
+    Utils::CreateBranch(fOutputTree.get(), "V0A_Py", &out_branches.V0A.Py);
+    Utils::CreateBranch(fOutputTree.get(), "V0A_Pz", &out_branches.V0A.Pz);
+    Utils::CreateBranch(fOutputTree.get(), "V0A_E", &out_branches.V0A.E);
 
-    fOutputTree->Branch("V0A_Neg_Entry", &out_branches.V0A_Neg_Entry);
-    fOutputTree->Branch("V0A_Pos_Entry", &out_branches.V0A_Pos_Entry);
+    Utils::CreateBranch(fOutputTree.get(), "V0A_Neg_Entry", &out_branches.V0A_Neg_Entry);
+    Utils::CreateBranch(fOutputTree.get(), "V0A_Pos_Entry", &out_branches.V0A_Pos_Entry);
 
-    fOutputTree->Branch("V0B_Entry", &out_branches.V0B_Entry);
-    fOutputTree->Branch("V0B_X_AtDecay", &out_branches.V0B.X);
-    fOutputTree->Branch("V0B_Y_AtDecay", &out_branches.V0B.Y);
-    fOutputTree->Branch("V0B_Z_AtDecay", &out_branches.V0B.Z);
-    fOutputTree->Branch("V0B_Px", &out_branches.V0B.Px);
-    fOutputTree->Branch("V0B_Py", &out_branches.V0B.Py);
-    fOutputTree->Branch("V0B_Pz", &out_branches.V0B.Pz);
-    fOutputTree->Branch("V0B_E", &out_branches.V0B.E);
+    Utils::CreateBranch(fOutputTree.get(), "V0B_Entry", &out_branches.V0B_Entry);
+    Utils::CreateBranch(fOutputTree.get(), "V0B_X_AtDecay", &out_branches.V0B.X);
+    Utils::CreateBranch(fOutputTree.get(), "V0B_Y_AtDecay", &out_branches.V0B.Y);
+    Utils::CreateBranch(fOutputTree.get(), "V0B_Z_AtDecay", &out_branches.V0B.Z);
+    Utils::CreateBranch(fOutputTree.get(), "V0B_Px", &out_branches.V0B.Px);
+    Utils::CreateBranch(fOutputTree.get(), "V0B_Py", &out_branches.V0B.Py);
+    Utils::CreateBranch(fOutputTree.get(), "V0B_Pz", &out_branches.V0B.Pz);
+    Utils::CreateBranch(fOutputTree.get(), "V0B_E", &out_branches.V0B.E);
 
-    fOutputTree->Branch("V0B_Neg_Entry", &out_branches.V0B_Neg_Entry);
-    fOutputTree->Branch("V0B_Pos_Entry", &out_branches.V0B_Pos_Entry);
+    Utils::CreateBranch(fOutputTree.get(), "V0B_Neg_Entry", &out_branches.V0B_Neg_Entry);
+    Utils::CreateBranch(fOutputTree.get(), "V0B_Pos_Entry", &out_branches.V0B_Pos_Entry);
 
 #ifdef T2S_DEBUG
     Logger::Debug(__FUNCTION__, "Finished.");
@@ -533,60 +505,60 @@ void Finder::CreateOutputBranches(Found::ChannelD& out_branches) {
     Logger::Debug(__FUNCTION__, "Starting.");
 #endif
 
-    fOutputTree->Branch("RunNumber", &out_branches.RunNumber);
-    fOutputTree->Branch("DirNumber", &out_branches.DirNumber);
-    if (!IsMC()) fOutputTree->Branch("DirNumberB", &out_branches.DirNumberB);
-    fOutputTree->Branch("EventNumber", &out_branches.EventNumber);
-    fOutputTree->Branch("MagneticField", &out_branches.MagneticField);
-    fOutputTree->Branch("PV_Xv", &out_branches.PV_Xv);
-    fOutputTree->Branch("PV_Yv", &out_branches.PV_Yv);
-    fOutputTree->Branch("PV_Zv", &out_branches.PV_Zv);
+    Utils::CreateBranch(fOutputTree.get(), "RunNumber", &out_branches.RunNumber);
+    Utils::CreateBranch(fOutputTree.get(), "DirNumber", &out_branches.DirNumber);
+    if (!IsMC()) Utils::CreateBranch(fOutputTree.get(), "DirNumberB", &out_branches.DirNumberB);
+    Utils::CreateBranch(fOutputTree.get(), "EventNumber", &out_branches.EventNumber);
+    Utils::CreateBranch(fOutputTree.get(), "MagneticField", &out_branches.MagneticField);
+    Utils::CreateBranch(fOutputTree.get(), "PV_Xv", &out_branches.PV_Xv);
+    Utils::CreateBranch(fOutputTree.get(), "PV_Yv", &out_branches.PV_Yv);
+    Utils::CreateBranch(fOutputTree.get(), "PV_Zv", &out_branches.PV_Zv);
     if (IsMC()) {
-        fOutputTree->Branch("MC_PV_Xv", &out_branches.MC_PV_Xv);
-        fOutputTree->Branch("MC_PV_Yv", &out_branches.MC_PV_Yv);
-        fOutputTree->Branch("MC_PV_Zv", &out_branches.MC_PV_Zv);
+        Utils::CreateBranch(fOutputTree.get(), "MC_PV_Xv", &out_branches.MC_PV_Xv);
+        Utils::CreateBranch(fOutputTree.get(), "MC_PV_Yv", &out_branches.MC_PV_Yv);
+        Utils::CreateBranch(fOutputTree.get(), "MC_PV_Zv", &out_branches.MC_PV_Zv);
     }
 
-    fOutputTree->Branch("X", &out_branches.X);
-    fOutputTree->Branch("Y", &out_branches.Y);
-    fOutputTree->Branch("Z", &out_branches.Z);
-    fOutputTree->Branch("Px", &out_branches.Px);
-    fOutputTree->Branch("Py", &out_branches.Py);
-    fOutputTree->Branch("Pz", &out_branches.Pz);
-    fOutputTree->Branch("E", &out_branches.E);
-    fOutputTree->Branch("E_MinusNucleon", &out_branches.E_MinusNucleon);
+    Utils::CreateBranch(fOutputTree.get(), "X", &out_branches.X);
+    Utils::CreateBranch(fOutputTree.get(), "Y", &out_branches.Y);
+    Utils::CreateBranch(fOutputTree.get(), "Z", &out_branches.Z);
+    Utils::CreateBranch(fOutputTree.get(), "Px", &out_branches.Px);
+    Utils::CreateBranch(fOutputTree.get(), "Py", &out_branches.Py);
+    Utils::CreateBranch(fOutputTree.get(), "Pz", &out_branches.Pz);
+    Utils::CreateBranch(fOutputTree.get(), "E", &out_branches.E);
+    Utils::CreateBranch(fOutputTree.get(), "E_MinusNucleon", &out_branches.E_MinusNucleon);
 
-    fOutputTree->Branch("V0_X_AtPCA", &out_branches.V0_X_AtPCA);
-    fOutputTree->Branch("V0_Y_AtPCA", &out_branches.V0_Y_AtPCA);
-    fOutputTree->Branch("V0_Z_AtPCA", &out_branches.V0_Z_AtPCA);
+    Utils::CreateBranch(fOutputTree.get(), "V0_X_AtPCA", &out_branches.V0_X_AtPCA);
+    Utils::CreateBranch(fOutputTree.get(), "V0_Y_AtPCA", &out_branches.V0_Y_AtPCA);
+    Utils::CreateBranch(fOutputTree.get(), "V0_Z_AtPCA", &out_branches.V0_Z_AtPCA);
 
-    fOutputTree->Branch("Kaon_X_AtPCA", &out_branches.Kaon_X_AtPCA);
-    fOutputTree->Branch("Kaon_Y_AtPCA", &out_branches.Kaon_Y_AtPCA);
-    fOutputTree->Branch("Kaon_Z_AtPCA", &out_branches.Kaon_Z_AtPCA);
-    fOutputTree->Branch("Kaon_Px_AtPCA", &out_branches.Kaon_Px_AtPCA);
-    fOutputTree->Branch("Kaon_Py_AtPCA", &out_branches.Kaon_Py_AtPCA);
-    fOutputTree->Branch("Kaon_Pz_AtPCA", &out_branches.Kaon_Pz_AtPCA);
+    Utils::CreateBranch(fOutputTree.get(), "Kaon_X_AtPCA", &out_branches.Kaon_X_AtPCA);
+    Utils::CreateBranch(fOutputTree.get(), "Kaon_Y_AtPCA", &out_branches.Kaon_Y_AtPCA);
+    Utils::CreateBranch(fOutputTree.get(), "Kaon_Z_AtPCA", &out_branches.Kaon_Z_AtPCA);
+    Utils::CreateBranch(fOutputTree.get(), "Kaon_Px_AtPCA", &out_branches.Kaon_Px_AtPCA);
+    Utils::CreateBranch(fOutputTree.get(), "Kaon_Py_AtPCA", &out_branches.Kaon_Py_AtPCA);
+    Utils::CreateBranch(fOutputTree.get(), "Kaon_Pz_AtPCA", &out_branches.Kaon_Pz_AtPCA);
 
-    fOutputTree->Branch("V0_Entry", &out_branches.V0_Entry);
-    fOutputTree->Branch("V0_X_AtDecay", &out_branches.V0.X);
-    fOutputTree->Branch("V0_Y_AtDecay", &out_branches.V0.Y);
-    fOutputTree->Branch("V0_Z_AtDecay", &out_branches.V0.Z);
-    fOutputTree->Branch("V0_Px", &out_branches.V0.Px);
-    fOutputTree->Branch("V0_Py", &out_branches.V0.Py);
-    fOutputTree->Branch("V0_Pz", &out_branches.V0.Pz);
-    fOutputTree->Branch("V0_E", &out_branches.V0.E);
+    Utils::CreateBranch(fOutputTree.get(), "V0_Entry", &out_branches.V0_Entry);
+    Utils::CreateBranch(fOutputTree.get(), "V0_X_AtDecay", &out_branches.V0.X);
+    Utils::CreateBranch(fOutputTree.get(), "V0_Y_AtDecay", &out_branches.V0.Y);
+    Utils::CreateBranch(fOutputTree.get(), "V0_Z_AtDecay", &out_branches.V0.Z);
+    Utils::CreateBranch(fOutputTree.get(), "V0_Px", &out_branches.V0.Px);
+    Utils::CreateBranch(fOutputTree.get(), "V0_Py", &out_branches.V0.Py);
+    Utils::CreateBranch(fOutputTree.get(), "V0_Pz", &out_branches.V0.Pz);
+    Utils::CreateBranch(fOutputTree.get(), "V0_E", &out_branches.V0.E);
 
-    fOutputTree->Branch("V0_Neg_Entry", &out_branches.V0_Neg_Entry);
-    fOutputTree->Branch("V0_Pos_Entry", &out_branches.V0_Pos_Entry);
+    Utils::CreateBranch(fOutputTree.get(), "V0_Neg_Entry", &out_branches.V0_Neg_Entry);
+    Utils::CreateBranch(fOutputTree.get(), "V0_Pos_Entry", &out_branches.V0_Pos_Entry);
 
-    fOutputTree->Branch("Kaon_Entry", &out_branches.Kaon_Entry);
-    fOutputTree->Branch("Kaon_X", &out_branches.Kaon.X);
-    fOutputTree->Branch("Kaon_Y", &out_branches.Kaon.Y);
-    fOutputTree->Branch("Kaon_Z", &out_branches.Kaon.Z);
-    fOutputTree->Branch("Kaon_Px", &out_branches.Kaon.Px);
-    fOutputTree->Branch("Kaon_Py", &out_branches.Kaon.Py);
-    fOutputTree->Branch("Kaon_Pz", &out_branches.Kaon.Pz);
-    fOutputTree->Branch("Kaon_E", &out_branches.Kaon.E);
+    Utils::CreateBranch(fOutputTree.get(), "Kaon_Entry", &out_branches.Kaon_Entry);
+    Utils::CreateBranch(fOutputTree.get(), "Kaon_X", &out_branches.Kaon.X);
+    Utils::CreateBranch(fOutputTree.get(), "Kaon_Y", &out_branches.Kaon.Y);
+    Utils::CreateBranch(fOutputTree.get(), "Kaon_Z", &out_branches.Kaon.Z);
+    Utils::CreateBranch(fOutputTree.get(), "Kaon_Px", &out_branches.Kaon.Px);
+    Utils::CreateBranch(fOutputTree.get(), "Kaon_Py", &out_branches.Kaon.Py);
+    Utils::CreateBranch(fOutputTree.get(), "Kaon_Pz", &out_branches.Kaon.Pz);
+    Utils::CreateBranch(fOutputTree.get(), "Kaon_E", &out_branches.Kaon.E);
 
 #ifdef T2S_DEBUG
     Logger::Debug(__FUNCTION__, "Finished.");
@@ -606,59 +578,59 @@ void Finder::CreateOutputBranches(Found::MC_ChannelA& sov) {
     Logger::Debug(__FUNCTION__, "Starting.");
 #endif
 
-    fOutputTree->Branch("MC_X", &sov.X);
-    fOutputTree->Branch("MC_Y", &sov.Y);
-    fOutputTree->Branch("MC_Z", &sov.Z);
-    fOutputTree->Branch("MC_Px_Before", &sov.BeforePx);
-    fOutputTree->Branch("MC_Py_Before", &sov.BeforePy);
-    fOutputTree->Branch("MC_Pz_Before", &sov.BeforePz);
-    fOutputTree->Branch("MC_E_Before", &sov.BeforeE);
+    Utils::CreateBranch(fOutputTree.get(), "MC_X", &sov.X);
+    Utils::CreateBranch(fOutputTree.get(), "MC_Y", &sov.Y);
+    Utils::CreateBranch(fOutputTree.get(), "MC_Z", &sov.Z);
+    Utils::CreateBranch(fOutputTree.get(), "MC_Px_Before", &sov.BeforePx);
+    Utils::CreateBranch(fOutputTree.get(), "MC_Py_Before", &sov.BeforePy);
+    Utils::CreateBranch(fOutputTree.get(), "MC_Pz_Before", &sov.BeforePz);
+    Utils::CreateBranch(fOutputTree.get(), "MC_E_Before", &sov.BeforeE);
 
-    fOutputTree->Branch("MC_Px_After", &sov.AfterPx);
-    fOutputTree->Branch("MC_Py_After", &sov.AfterPy);
-    fOutputTree->Branch("MC_Pz_After", &sov.AfterPz);
-    fOutputTree->Branch("MC_E_After", &sov.AfterE);
+    Utils::CreateBranch(fOutputTree.get(), "MC_Px_After", &sov.AfterPx);
+    Utils::CreateBranch(fOutputTree.get(), "MC_Py_After", &sov.AfterPy);
+    Utils::CreateBranch(fOutputTree.get(), "MC_Pz_After", &sov.AfterPz);
+    Utils::CreateBranch(fOutputTree.get(), "MC_E_After", &sov.AfterE);
 
-    fOutputTree->Branch("MC_IsSignal", &sov.IsSignal);
-    fOutputTree->Branch("MC_ReactionID", &sov.ReactionID);
-    fOutputTree->Branch("MC_IsHybrid", &sov.IsHybrid);
+    Utils::CreateBranch(fOutputTree.get(), "MC_IsSignal", &sov.IsSignal);
+    Utils::CreateBranch(fOutputTree.get(), "MC_ReactionID", &sov.ReactionID);
+    Utils::CreateBranch(fOutputTree.get(), "MC_IsHybrid", &sov.IsHybrid);
 
-    fOutputTree->Branch("MC_Px_Nucleon", &sov.NucleonPx);
-    fOutputTree->Branch("MC_Py_Nucleon", &sov.NucleonPy);
-    fOutputTree->Branch("MC_Pz_Nucleon", &sov.NucleonPz);
-    fOutputTree->Branch("MC_E_Nucleon", &sov.NucleonPz);
+    Utils::CreateBranch(fOutputTree.get(), "MC_Px_Nucleon", &sov.NucleonPx);
+    Utils::CreateBranch(fOutputTree.get(), "MC_Py_Nucleon", &sov.NucleonPy);
+    Utils::CreateBranch(fOutputTree.get(), "MC_Pz_Nucleon", &sov.NucleonPz);
+    Utils::CreateBranch(fOutputTree.get(), "MC_E_Nucleon", &sov.NucleonPz);
 
-    fOutputTree->Branch("MC_V0A_Entry", &sov.V0A_Entry);
-    fOutputTree->Branch("MC_V0A_PdgCode", &sov.V0A_PdgCode);
-    fOutputTree->Branch("MC_V0A_Mother_Entry", &sov.V0A_Mother_Entry);
-    fOutputTree->Branch("MC_V0A_Mother_PdgCode", &sov.V0A_Mother_PdgCode);
-    fOutputTree->Branch("MC_V0A_Neg_Entry", &sov.V0A_Neg_Entry);
-    fOutputTree->Branch("MC_V0A_Pos_Entry", &sov.V0A_Pos_Entry);
-    fOutputTree->Branch("MC_V0A_Px", &sov.V0A_Px);
-    fOutputTree->Branch("MC_V0A_Py", &sov.V0A_Py);
-    fOutputTree->Branch("MC_V0A_Pz", &sov.V0A_Pz);
-    fOutputTree->Branch("MC_V0A_E", &sov.V0A_E);
-    fOutputTree->Branch("MC_V0A_IsTrue", &sov.V0A_IsTrue);
-    fOutputTree->Branch("MC_V0A_IsSignal", &sov.V0A_IsSignal);
-    fOutputTree->Branch("MC_V0A_IsSecondary", &sov.V0A_IsSecondary);
-    fOutputTree->Branch("MC_V0A_ReactionID", &sov.V0A_ReactionID);
-    fOutputTree->Branch("MC_V0A_IsHybrid", &sov.V0A_IsHybrid);
+    Utils::CreateBranch(fOutputTree.get(), "MC_V0A_Entry", &sov.V0A_Entry);
+    Utils::CreateBranch(fOutputTree.get(), "MC_V0A_PdgCode", &sov.V0A_PdgCode);
+    Utils::CreateBranch(fOutputTree.get(), "MC_V0A_Mother_Entry", &sov.V0A_Mother_Entry);
+    Utils::CreateBranch(fOutputTree.get(), "MC_V0A_Mother_PdgCode", &sov.V0A_Mother_PdgCode);
+    Utils::CreateBranch(fOutputTree.get(), "MC_V0A_Neg_Entry", &sov.V0A_Neg_Entry);
+    Utils::CreateBranch(fOutputTree.get(), "MC_V0A_Pos_Entry", &sov.V0A_Pos_Entry);
+    Utils::CreateBranch(fOutputTree.get(), "MC_V0A_Px", &sov.V0A_Px);
+    Utils::CreateBranch(fOutputTree.get(), "MC_V0A_Py", &sov.V0A_Py);
+    Utils::CreateBranch(fOutputTree.get(), "MC_V0A_Pz", &sov.V0A_Pz);
+    Utils::CreateBranch(fOutputTree.get(), "MC_V0A_E", &sov.V0A_E);
+    Utils::CreateBranch(fOutputTree.get(), "MC_V0A_IsTrue", &sov.V0A_IsTrue);
+    Utils::CreateBranch(fOutputTree.get(), "MC_V0A_IsSignal", &sov.V0A_IsSignal);
+    Utils::CreateBranch(fOutputTree.get(), "MC_V0A_IsSecondary", &sov.V0A_IsSecondary);
+    Utils::CreateBranch(fOutputTree.get(), "MC_V0A_ReactionID", &sov.V0A_ReactionID);
+    Utils::CreateBranch(fOutputTree.get(), "MC_V0A_IsHybrid", &sov.V0A_IsHybrid);
 
-    fOutputTree->Branch("MC_V0B_Entry", &sov.V0B_Entry);
-    fOutputTree->Branch("MC_V0B_PdgCode", &sov.V0B_PdgCode);
-    fOutputTree->Branch("MC_V0B_Mother_Entry", &sov.V0B_Mother_Entry);
-    fOutputTree->Branch("MC_V0B_Mother_PdgCode", &sov.V0B_Mother_PdgCode);
-    fOutputTree->Branch("MC_V0B_Neg_Entry", &sov.V0B_Neg_Entry);
-    fOutputTree->Branch("MC_V0B_Pos_Entry", &sov.V0B_Pos_Entry);
-    fOutputTree->Branch("MC_V0B_Px", &sov.V0B_Px);
-    fOutputTree->Branch("MC_V0B_Py", &sov.V0B_Py);
-    fOutputTree->Branch("MC_V0B_Pz", &sov.V0B_Pz);
-    fOutputTree->Branch("MC_V0B_E", &sov.V0B_E);
-    fOutputTree->Branch("MC_V0B_IsTrue", &sov.V0B_IsTrue);
-    fOutputTree->Branch("MC_V0B_IsSignal", &sov.V0B_IsSignal);
-    fOutputTree->Branch("MC_V0B_IsSecondary", &sov.V0B_IsSecondary);
-    fOutputTree->Branch("MC_V0B_ReactionID", &sov.V0B_ReactionID);
-    fOutputTree->Branch("MC_V0B_IsHybrid", &sov.V0B_IsHybrid);
+    Utils::CreateBranch(fOutputTree.get(), "MC_V0B_Entry", &sov.V0B_Entry);
+    Utils::CreateBranch(fOutputTree.get(), "MC_V0B_PdgCode", &sov.V0B_PdgCode);
+    Utils::CreateBranch(fOutputTree.get(), "MC_V0B_Mother_Entry", &sov.V0B_Mother_Entry);
+    Utils::CreateBranch(fOutputTree.get(), "MC_V0B_Mother_PdgCode", &sov.V0B_Mother_PdgCode);
+    Utils::CreateBranch(fOutputTree.get(), "MC_V0B_Neg_Entry", &sov.V0B_Neg_Entry);
+    Utils::CreateBranch(fOutputTree.get(), "MC_V0B_Pos_Entry", &sov.V0B_Pos_Entry);
+    Utils::CreateBranch(fOutputTree.get(), "MC_V0B_Px", &sov.V0B_Px);
+    Utils::CreateBranch(fOutputTree.get(), "MC_V0B_Py", &sov.V0B_Py);
+    Utils::CreateBranch(fOutputTree.get(), "MC_V0B_Pz", &sov.V0B_Pz);
+    Utils::CreateBranch(fOutputTree.get(), "MC_V0B_E", &sov.V0B_E);
+    Utils::CreateBranch(fOutputTree.get(), "MC_V0B_IsTrue", &sov.V0B_IsTrue);
+    Utils::CreateBranch(fOutputTree.get(), "MC_V0B_IsSignal", &sov.V0B_IsSignal);
+    Utils::CreateBranch(fOutputTree.get(), "MC_V0B_IsSecondary", &sov.V0B_IsSecondary);
+    Utils::CreateBranch(fOutputTree.get(), "MC_V0B_ReactionID", &sov.V0B_ReactionID);
+    Utils::CreateBranch(fOutputTree.get(), "MC_V0B_IsHybrid", &sov.V0B_IsHybrid);
 
 #ifdef T2S_DEBUG
     Logger::Debug(__FUNCTION__, "Finished.");
@@ -670,58 +642,58 @@ void Finder::CreateOutputBranches(Found::MC_ChannelD& sov) {
     Logger::Debug(__FUNCTION__, "Starting.");
 #endif
 
-    fOutputTree->Branch("MC_X", &sov.X);
-    fOutputTree->Branch("MC_Y", &sov.Y);
-    fOutputTree->Branch("MC_Z", &sov.Z);
-    fOutputTree->Branch("MC_Px_Before", &sov.BeforePx);
-    fOutputTree->Branch("MC_Py_Before", &sov.BeforePy);
-    fOutputTree->Branch("MC_Pz_Before", &sov.BeforePz);
-    fOutputTree->Branch("MC_E_Before", &sov.BeforeE);
+    Utils::CreateBranch(fOutputTree.get(), "MC_X", &sov.X);
+    Utils::CreateBranch(fOutputTree.get(), "MC_Y", &sov.Y);
+    Utils::CreateBranch(fOutputTree.get(), "MC_Z", &sov.Z);
+    Utils::CreateBranch(fOutputTree.get(), "MC_Px_Before", &sov.BeforePx);
+    Utils::CreateBranch(fOutputTree.get(), "MC_Py_Before", &sov.BeforePy);
+    Utils::CreateBranch(fOutputTree.get(), "MC_Pz_Before", &sov.BeforePz);
+    Utils::CreateBranch(fOutputTree.get(), "MC_E_Before", &sov.BeforeE);
 
-    fOutputTree->Branch("MC_Px_After", &sov.AfterPx);
-    fOutputTree->Branch("MC_Py_After", &sov.AfterPy);
-    fOutputTree->Branch("MC_Pz_After", &sov.AfterPz);
-    fOutputTree->Branch("MC_E_After", &sov.AfterE);
+    Utils::CreateBranch(fOutputTree.get(), "MC_Px_After", &sov.AfterPx);
+    Utils::CreateBranch(fOutputTree.get(), "MC_Py_After", &sov.AfterPy);
+    Utils::CreateBranch(fOutputTree.get(), "MC_Pz_After", &sov.AfterPz);
+    Utils::CreateBranch(fOutputTree.get(), "MC_E_After", &sov.AfterE);
 
-    fOutputTree->Branch("MC_IsSignal", &sov.IsSignal);
-    fOutputTree->Branch("MC_ReactionID", &sov.ReactionID);
-    fOutputTree->Branch("MC_IsHybrid", &sov.IsHybrid);
+    Utils::CreateBranch(fOutputTree.get(), "MC_IsSignal", &sov.IsSignal);
+    Utils::CreateBranch(fOutputTree.get(), "MC_ReactionID", &sov.ReactionID);
+    Utils::CreateBranch(fOutputTree.get(), "MC_IsHybrid", &sov.IsHybrid);
 
-    fOutputTree->Branch("MC_Nucleon_Px", &sov.NucleonPx);
-    fOutputTree->Branch("MC_Nucleon_Py", &sov.NucleonPy);
-    fOutputTree->Branch("MC_Nucleon_Pz", &sov.NucleonPz);
-    fOutputTree->Branch("MC_Nucleon_E", &sov.NucleonPz);
+    Utils::CreateBranch(fOutputTree.get(), "MC_Nucleon_Px", &sov.NucleonPx);
+    Utils::CreateBranch(fOutputTree.get(), "MC_Nucleon_Py", &sov.NucleonPy);
+    Utils::CreateBranch(fOutputTree.get(), "MC_Nucleon_Pz", &sov.NucleonPz);
+    Utils::CreateBranch(fOutputTree.get(), "MC_Nucleon_E", &sov.NucleonPz);
 
-    fOutputTree->Branch("MC_V0_Entry", &sov.V0_Entry);
-    fOutputTree->Branch("MC_V0_PdgCode", &sov.V0_PdgCode);
-    fOutputTree->Branch("MC_V0_Mother_Entry", &sov.V0_Mother_Entry);
-    fOutputTree->Branch("MC_V0_Mother_PdgCode", &sov.V0_Mother_PdgCode);
-    fOutputTree->Branch("MC_V0_Neg_Entry", &sov.V0_Neg_Entry);
-    fOutputTree->Branch("MC_V0_Pos_Entry", &sov.V0_Pos_Entry);
-    fOutputTree->Branch("MC_V0_Px", &sov.V0_Px);
-    fOutputTree->Branch("MC_V0_Py", &sov.V0_Py);
-    fOutputTree->Branch("MC_V0_Pz", &sov.V0_Pz);
-    fOutputTree->Branch("MC_V0_E", &sov.V0_E);
-    fOutputTree->Branch("MC_V0_IsTrue", &sov.V0_IsTrue);
-    fOutputTree->Branch("MC_V0_IsSignal", &sov.V0_IsSignal);
-    fOutputTree->Branch("MC_V0_IsSecondary", &sov.V0_IsSecondary);
-    fOutputTree->Branch("MC_V0_ReactionID", &sov.V0_ReactionID);
-    fOutputTree->Branch("MC_V0_IsHybrid", &sov.V0_IsHybrid);
+    Utils::CreateBranch(fOutputTree.get(), "MC_V0_Entry", &sov.V0_Entry);
+    Utils::CreateBranch(fOutputTree.get(), "MC_V0_PdgCode", &sov.V0_PdgCode);
+    Utils::CreateBranch(fOutputTree.get(), "MC_V0_Mother_Entry", &sov.V0_Mother_Entry);
+    Utils::CreateBranch(fOutputTree.get(), "MC_V0_Mother_PdgCode", &sov.V0_Mother_PdgCode);
+    Utils::CreateBranch(fOutputTree.get(), "MC_V0_Neg_Entry", &sov.V0_Neg_Entry);
+    Utils::CreateBranch(fOutputTree.get(), "MC_V0_Pos_Entry", &sov.V0_Pos_Entry);
+    Utils::CreateBranch(fOutputTree.get(), "MC_V0_Px", &sov.V0_Px);
+    Utils::CreateBranch(fOutputTree.get(), "MC_V0_Py", &sov.V0_Py);
+    Utils::CreateBranch(fOutputTree.get(), "MC_V0_Pz", &sov.V0_Pz);
+    Utils::CreateBranch(fOutputTree.get(), "MC_V0_E", &sov.V0_E);
+    Utils::CreateBranch(fOutputTree.get(), "MC_V0_IsTrue", &sov.V0_IsTrue);
+    Utils::CreateBranch(fOutputTree.get(), "MC_V0_IsSignal", &sov.V0_IsSignal);
+    Utils::CreateBranch(fOutputTree.get(), "MC_V0_IsSecondary", &sov.V0_IsSecondary);
+    Utils::CreateBranch(fOutputTree.get(), "MC_V0_ReactionID", &sov.V0_ReactionID);
+    Utils::CreateBranch(fOutputTree.get(), "MC_V0_IsHybrid", &sov.V0_IsHybrid);
 
-    fOutputTree->Branch("MC_Kaon_Entry", &sov.Kaon_Entry);
-    fOutputTree->Branch("MC_Kaon_PdgCode", &sov.Kaon_PdgCode);
-    fOutputTree->Branch("MC_Kaon_Mother_Entry", &sov.Kaon_Mother_Entry);
-    fOutputTree->Branch("MC_Kaon_Mother_PdgCode", &sov.Kaon_Mother_PdgCode);
-    fOutputTree->Branch("MC_Kaon_GrandMother_Entry", &sov.Kaon_GrandMother_Entry);
-    fOutputTree->Branch("MC_Kaon_GrandMother_PdgCode", &sov.Kaon_GrandMother_PdgCode);
-    fOutputTree->Branch("MC_Kaon_Px", &sov.Kaon_Px);
-    fOutputTree->Branch("MC_Kaon_Py", &sov.Kaon_Py);
-    fOutputTree->Branch("MC_Kaon_Pz", &sov.Kaon_Pz);
-    fOutputTree->Branch("MC_Kaon_E", &sov.Kaon_E);
-    fOutputTree->Branch("MC_Kaon_IsTrue", &sov.Kaon_IsTrue);
-    fOutputTree->Branch("MC_Kaon_IsSignal", &sov.Kaon_IsSignal);
-    fOutputTree->Branch("MC_Kaon_IsSecondary", &sov.Kaon_IsSecondary);
-    fOutputTree->Branch("MC_Kaon_ReactionID", &sov.Kaon_ReactionID);
+    Utils::CreateBranch(fOutputTree.get(), "MC_Kaon_Entry", &sov.Kaon_Entry);
+    Utils::CreateBranch(fOutputTree.get(), "MC_Kaon_PdgCode", &sov.Kaon_PdgCode);
+    Utils::CreateBranch(fOutputTree.get(), "MC_Kaon_Mother_Entry", &sov.Kaon_Mother_Entry);
+    Utils::CreateBranch(fOutputTree.get(), "MC_Kaon_Mother_PdgCode", &sov.Kaon_Mother_PdgCode);
+    Utils::CreateBranch(fOutputTree.get(), "MC_Kaon_GrandMother_Entry", &sov.Kaon_GrandMother_Entry);
+    Utils::CreateBranch(fOutputTree.get(), "MC_Kaon_GrandMother_PdgCode", &sov.Kaon_GrandMother_PdgCode);
+    Utils::CreateBranch(fOutputTree.get(), "MC_Kaon_Px", &sov.Kaon_Px);
+    Utils::CreateBranch(fOutputTree.get(), "MC_Kaon_Py", &sov.Kaon_Py);
+    Utils::CreateBranch(fOutputTree.get(), "MC_Kaon_Pz", &sov.Kaon_Pz);
+    Utils::CreateBranch(fOutputTree.get(), "MC_Kaon_E", &sov.Kaon_E);
+    Utils::CreateBranch(fOutputTree.get(), "MC_Kaon_IsTrue", &sov.Kaon_IsTrue);
+    Utils::CreateBranch(fOutputTree.get(), "MC_Kaon_IsSignal", &sov.Kaon_IsSignal);
+    Utils::CreateBranch(fOutputTree.get(), "MC_Kaon_IsSecondary", &sov.Kaon_IsSecondary);
+    Utils::CreateBranch(fOutputTree.get(), "MC_Kaon_ReactionID", &sov.Kaon_ReactionID);
 
 #ifdef T2S_DEBUG
     Logger::Debug(__FUNCTION__, "Finished.");
@@ -817,7 +789,7 @@ void Finder::FindSexaquarks_ChannelA(bool anti_channel) {
 
     const PackedEvents::V0s* Packed_Lambdas{anti_channel ? &fPacked_Lambdas : &fPacked_AntiLambdas};
     const PackedEvents::MC_V0s* MC_Lambdas{anti_channel ? &fPacked_MC_Lambdas : &fPacked_MC_AntiLambdas};
-    PdgCode PdgCode_Lambda{anti_channel ? PdgCode::Lambda : PdgCode::AntiLambda};
+    EParticle PID_Lambda{anti_channel ? EParticle::Lambda : EParticle::AntiLambda};
 
     // loop over all possible pairs of (anti)lambda + K0S //
     auto n_lambdas = static_cast<int>(Packed_Lambdas->Entry->size());
@@ -825,12 +797,12 @@ void Finder::FindSexaquarks_ChannelA(bool anti_channel) {
     for (int idx_v0a{0}; idx_v0a < n_lambdas; ++idx_v0a) {
 
         // unpack (anti)lambda //
-        auto v0a = KF::UnpackV0(*Packed_Lambdas, idx_v0a, PdgCode_Lambda);
+        auto v0a = KF::UnpackV0(*Packed_Lambdas, idx_v0a, PID_Lambda);
 
         for (int idx_v0b{0}; idx_v0b < n_k0s; ++idx_v0b) {
 
             // unpack K0S //
-            auto v0b = KF::UnpackV0(fPacked_KaonsZeroShort, idx_v0b, PdgCode::KaonZeroShort);
+            auto v0b = KF::UnpackV0(fPacked_KaonsZeroShort, idx_v0b, EParticle::KaonZeroShort);
 
             // sanity check //
             std::set<int> unique_track_entries{v0a.Neg.idx, v0a.Pos.idx, v0b.Neg.idx, v0b.Pos.idx};
@@ -1068,7 +1040,7 @@ void Finder::FindSexaquarks_ChannelD(bool anti_channel) {
     const PackedEvents::Tracks* Packed_Kaons{anti_channel ? &fPacked_NegKaons : &fPacked_PosKaons};
     const PackedEvents::MC_V0s* MC_Lambdas{anti_channel ? &fPacked_MC_Lambdas : &fPacked_MC_AntiLambdas};
     const PackedEvents::MC_Tracks* MC_Kaons{anti_channel ? &fPacked_MC_NegKaons : &fPacked_MC_PosKaons};
-    PdgCode PdgCode_Lambda{anti_channel ? PdgCode::Lambda : PdgCode::AntiLambda};
+    EParticle PID_Lambda{anti_channel ? EParticle::Lambda : EParticle::AntiLambda};
     int Charge_Kaon{anti_channel ? -1 : +1};
 
     // loop over all possible pairs of (anti)lambda + (pos/neg)kaon //
@@ -1077,7 +1049,7 @@ void Finder::FindSexaquarks_ChannelD(bool anti_channel) {
     for (int idx_v0{0}; idx_v0 < n_lambdas; ++idx_v0) {
 
         // unpack (anti)lambda //
-        auto v0 = KF::UnpackV0(*Packed_Lambdas, idx_v0, PdgCode_Lambda);
+        auto v0 = KF::UnpackV0(*Packed_Lambdas, idx_v0, PID_Lambda);
 
         for (int idx_kaon{0}; idx_kaon < n_kaons; ++idx_kaon) {
 
@@ -1307,7 +1279,7 @@ void Finder::EndOfAnalysis() {
     Logger::Debug(__FUNCTION__, "Starting.");
 #endif
 
-    if (IsSignalMC()) {
+    if (IsMC()) {
         fOutputTree_Injected->Write();
         Logger::Info(__FUNCTION__, "TTree \"{}\" has been written onto TFile {}", fOutputTree_Injected->GetName(), fSettings.PathOutputFile);
     }

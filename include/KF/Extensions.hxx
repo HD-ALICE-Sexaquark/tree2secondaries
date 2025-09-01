@@ -27,11 +27,11 @@ struct alignas(32) V0 : Particle {
     // constructors //
     V0() = delete;
     // -- to use when fitting V0 //
-    V0(int idx_v0, Tree2Secondaries::PdgCode pdg_code_v0_hyp, const KF::Track& neg, const KF::Track& pos)
-        : Neg(neg), Pos(pos), idx{idx_v0}, pdg_code_hyp{pdg_code_v0_hyp} {}
+    V0(int idx_v0, Tree2Secondaries::EParticle v0_hypothesis, const KF::Track& neg, const KF::Track& pos)
+        : Neg(neg), Pos(pos), idx{idx_v0}, hypothesis{v0_hypothesis} {}
     // -- to use when unpacking V0 //
-    V0(int idx_v0, Tree2Secondaries::PdgCode pdg_code_v0_hyp, const Vector<7>& p, const SymMatrix<7>& cov, const KF::Track& neg, const KF::Track& pos)
-        : Particle{p, cov, 0}, Neg(neg), Pos(pos), idx{idx_v0}, pdg_code_hyp{pdg_code_v0_hyp} {}
+    V0(int idx_v0, Tree2Secondaries::EParticle v0_hypothesis, const Vector<7>& p, const SymMatrix<7>& cov, const KF::Track& neg, const KF::Track& pos)
+        : Particle{p, cov, 0}, Neg(neg), Pos(pos), idx{idx_v0}, hypothesis{v0_hypothesis} {}
 
     // main //
     void DoFit(float bz, const double* mass = nullptr) {
@@ -73,7 +73,7 @@ struct alignas(32) V0 : Particle {
     KF::Track Neg;
     KF::Track Pos;
     int idx{};
-    Tree2Secondaries::PdgCode pdg_code_hyp{};  // hypothesis
+    Tree2Secondaries::EParticle hypothesis{};
 };
 
 struct alignas(32) Sexaquark : Particle {
@@ -103,7 +103,7 @@ struct alignas(32) ChannelA : Sexaquark {
     // constructors //
     ChannelA() = delete;
     ChannelA(const KF::V0& v0a, const KF::V0& v0b)  //
-        : Sexaquark{Tree2Secondaries::PdgMass::Neutron}, V0A{v0a}, V0B{v0b} {};
+        : Sexaquark{Tree2Secondaries::Particle::Mass[Tree2Secondaries::EParticle::Neutron]}, V0A{v0a}, V0B{v0b} {};
 
     // main //
     void DoFit(float bz) {
@@ -138,7 +138,8 @@ struct alignas(32) ChannelA : Sexaquark {
 struct alignas(32) ChannelD : Sexaquark {
     // constructors //
     ChannelD() = delete;
-    ChannelD(const KF::V0& v0, const KF::Track& kaon) : Sexaquark{Tree2Secondaries::PdgMass::Proton}, V0{v0}, Kaon{kaon} {};
+    ChannelD(const KF::V0& v0, const KF::Track& kaon)
+        : Sexaquark{Tree2Secondaries::Particle::Mass[Tree2Secondaries::EParticle::Proton]}, V0{v0}, Kaon{kaon} {};
 
     // main //
     void DoFit(float bz) {

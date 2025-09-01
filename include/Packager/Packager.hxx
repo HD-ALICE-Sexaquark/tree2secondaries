@@ -30,7 +30,7 @@ class Packager {
 
     explicit Packager(Settings settings) : fSettings{std::move(settings)} {}
 
-    ReactionChannel GetReactionChannel() const { return fSettings.Channel; }
+    EReactionChannel GetReactionChannel() const { return fSettings.Channel; }
 
     bool Initialize();
     void ConnectInputBranches();
@@ -47,14 +47,13 @@ class Packager {
 
     void CreateOutputBranches_Events();
     void CreateOutputBranches_Injected();
-    void CreateOutputBranches_V0s(const std::string &name_v0, PackedEvents::V0s &sov);
-    void CreateOutputBranches_Tracks(const std::string &name_part, PackedEvents::Tracks &sov);
-    void CreateOutputBranches_MC_V0s(const std::string &name_v0, PackedEvents::MC_V0s &sov);
-    void CreateOutputBranches_MC_Tracks(const std::string &name_part, PackedEvents::MC_Tracks &sov);
+    void CreateOutputBranches_V0s(EParticle pid, PackedEvents::V0s &sov);
+    void CreateOutputBranches_Tracks(EParticle pid, PackedEvents::Tracks &sov);
+    void CreateOutputBranches_MC_V0s(EParticle pid, PackedEvents::MC_V0s &sov);
+    void CreateOutputBranches_MC_Tracks(EParticle pid, PackedEvents::MC_Tracks &sov);
 
     int NumberEventsToRead() const { return fSettings.LimitToNEvents ? fSettings.LimitToNEvents : static_cast<int>(fEventsTree->GetEntries()); }
     bool IsMC() const { return fSettings.IsMC; }
-    bool IsSignalMC() const { return fSettings.IsSignalMC; }
     void GetEvent(int i_event) { fEventsTree->GetEntry(i_event); }
 
     int NumberMC() const { return static_cast<int>(fInput_MC.Px->size()); }
@@ -72,15 +71,15 @@ class Packager {
 
     void ProcessTracks();
 
-    void PackTracks(PdgCode pdg_code);
+    void PackTracks(EParticle pid);
 
-    void FindV0s(PdgCode pdg_code);
-    bool PassesCuts(const KF::V0 &v0, PdgCode pdg_code) const {
-        switch (pdg_code) {
-            case PdgCode::AntiLambda:
-            case PdgCode::Lambda:
+    void FindV0s(EParticle pid);
+    bool PassesCuts(const KF::V0 &v0, EParticle pid) const {
+        switch (pid) {
+            case EParticle::AntiLambda:
+            case EParticle::Lambda:
                 return PassesCuts_Lambda(v0);
-            case PdgCode::KaonZeroShort:
+            case EParticle::KaonZeroShort:
                 return PassesCuts_KaonZeroShort(v0);
             default:
                 return false;

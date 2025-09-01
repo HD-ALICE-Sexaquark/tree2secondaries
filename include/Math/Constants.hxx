@@ -2,58 +2,28 @@
 #define T2S_CONSTANTS_HXX
 
 #include <string_view>
+#include <vector>
 
 namespace Tree2Secondaries {
 
-enum class ReactionChannel : char { A = 'A', D = 'D', E = 'E', H = 'H', AntiA = 'a', AntiD = 'd', AntiE = 'e', AntiH = 'h', All = ' ' };
+enum EReactionChannel { All, A, D, E, H, AntiA, AntiD, AntiE, AntiH };
 
 namespace Name {
+static const std::vector<std::string_view> ReactionChannel{"AllChannels", "A", "D", "E", "H", "AntiA", "AntiD", "AntiE", "AntiH"};
 static constexpr std::string_view Events{"Events"};
 static constexpr std::string_view PackedEvents{"PackedEvents"};
-static constexpr std::string_view ChannelA{"ChannelA"};
-static constexpr std::string_view AntiA{"AntiA"};
-static constexpr std::string_view ChannelD{"ChannelD"};
-static constexpr std::string_view AntiD{"AntiD"};
-static constexpr std::string_view ChannelE{"ChannelE"};
-static constexpr std::string_view AntiE{"AntiE"};
-static constexpr std::string_view ChannelH{"ChannelH"};
-static constexpr std::string_view AntiH{"AntiH"};
 }  // namespace Name
 
-namespace Acronym {
-static constexpr std::string_view AntiLambda{"AL"};
-static constexpr std::string_view Lambda{"L"};
-static constexpr std::string_view KaonZeroShort{"K0S"};
-static constexpr std::string_view AntiProton{"AP"};
-static constexpr std::string_view Proton{"P"};
-static constexpr std::string_view NegKaon{"NK"};
-static constexpr std::string_view PosKaon{"PK"};
-static constexpr std::string_view PiMinus{"PM"};
-static constexpr std::string_view PiPlus{"PP"};
-}  // namespace Acronym
+enum EParticle { PiMinus, PiPlus, NegKaon, PosKaon, KaonZeroShort, AntiProton, Proton, AntiNeutron, Neutron, AntiLambda, Lambda };
 
-enum class PdgCode : int {
-    AntiLambda = -3122,
-    Lambda = 3122,
-    KaonZeroShort = 310,
-    AntiNeutron = -2112,
-    Neutron = 2112,
-    AntiProton = -2212,
-    Proton = 2212,
-    NegKaon = -321,
-    PosKaon = 321,
-    PiMinus = -211,
-    PiPlus = 211
-};
+namespace Particle {
+static const std::vector<std::string_view> Acronym{"PM", "PP", "NK", "PK", "K0S", "AP", "P", "AN", "N", "AL", "L"};
+static const std::vector<int> PdgCode{-211, 211, -321, 321, 310, -2212, 2212, -2112, 2112, -3122, 3122};
 
-namespace PdgMass {
-static constexpr double Lambda{1.1156830};          // (GeV/c^2)
-static constexpr double KaonZeroShort{0.49761100};  // (GeV/c^2)
-static constexpr double Neutron{0.93956540};        // (GeV/c^2)
-static constexpr double Proton{0.93827210};         // (GeV/c^2)
-static constexpr double Kaon{0.49367700};           // (GeV/c^2)
-static constexpr double Pion{0.13957040};           // (GeV/c^2)
-}  // namespace PdgMass
+// in (GeV/c^2)
+static const std::vector<double> Mass{0.13957040, 0.13957040, 0.49367700, 0.49367700, 0.49761100, 0.93827210,
+                                      0.93827210, 0.93956540, 0.93956540, 1.1156830,  1.1156830};
+}  // namespace Particle
 
 namespace Const {
 static constexpr double Kappa{0.000299792458};  // (GeV/c) / (kG/cm)

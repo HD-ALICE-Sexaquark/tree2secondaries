@@ -85,7 +85,7 @@ inline KF::SymMatrix<7> UnpackCovMatrix(const Tree2Secondaries::PackedEvents::Pa
             sov.Sigma.PzE->at(idx), sov.Sigma.E2->at(idx)};
 }
 
-inline KF::V0 UnpackV0(const Tree2Secondaries::PackedEvents::V0s& sov, int idx, Tree2Secondaries::PdgCode pdg_code_hyp) {
+inline KF::V0 UnpackV0(const Tree2Secondaries::PackedEvents::V0s& sov, int idx, Tree2Secondaries::EParticle v0_hypothesis) {
 
     auto param_v0 = UnpackParams(sov, idx);
     auto cov_v0 = UnpackCovMatrix(sov, idx);
@@ -96,7 +96,7 @@ inline KF::V0 UnpackV0(const Tree2Secondaries::PackedEvents::V0s& sov, int idx, 
     auto param_pos = UnpackParams(sov.Pos, idx);
     KF::Track pos{param_pos, {}, +1, sov.Pos.Entry->at(idx)};
 
-    return {idx, pdg_code_hyp, param_v0, cov_v0, neg, pos};
+    return {idx, v0_hypothesis, param_v0, cov_v0, neg, pos};
 }
 
 inline KF::Track UnpackTrack(const Tree2Secondaries::PackedEvents::Tracks& sov, int idx, int charge) {
