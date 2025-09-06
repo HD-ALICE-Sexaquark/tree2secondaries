@@ -17,6 +17,7 @@ struct alignas(32) Track : Particle {
     // constructors //
     Track() = delete;
     Track(const Particle& p, int idx_track) : Particle{p}, idx{idx_track} {}
+    Track(const Vector<6>& p, const SymMatrix<6>& cov, int charge, double mass, int idx_track) : Particle{p, cov, charge, mass}, idx{idx_track} {}
     Track(const Vector<7>& p, const SymMatrix<7>& cov, int charge, int idx_track) : Particle{p, cov, charge}, idx{idx_track} {}
 
     // member vars //

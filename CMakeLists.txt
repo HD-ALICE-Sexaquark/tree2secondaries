@@ -31,11 +31,6 @@ if(T2S_DEBUG)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DT2S_DEBUG")
 endif(T2S_DEBUG)
 
-option(T2S_USE_ALICE "Use ALICE Offline V0 Finder instead of KFParticle." OFF)
-if(T2S_USE_ALICE)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DT2S_USE_ALICE")
-endif(T2S_USE_ALICE)
-
 # enable LTO #
 
 include(CheckIPOSupported)

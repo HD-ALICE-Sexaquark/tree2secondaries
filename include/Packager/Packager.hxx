@@ -2,14 +2,12 @@
 #define T2S_PACKAGER_HXX
 
 #include <memory>
-#include <utility>
 
 #include <TChain.h>
 #include <TFile.h>
 #include <TH1.h>
 #include <TTree.h>
 
-#include "ALICE/ESD.hxx"
 #include "App/Settings.hxx"
 #include "DataFormats/Events.hxx"
 #include "DataFormats/PackedEvents.hxx"
@@ -97,8 +95,6 @@ class Packager {
     bool PassesCuts_KaonZeroShort(const KF::V0 &v0) const;
     void Store(const KF::V0 &v0, PackedEvents::V0s &sov);
     void StoreMC(const MC::V0 &mc_v0, PackedEvents::MC_V0s &sov);
-
-    void Store(const ALICE::V0 &v0, PackedEvents::V0s &sov);
 
     Settings fSettings;
     std::unique_ptr<TChain> fEventsTree;

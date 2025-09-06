@@ -1,6 +1,5 @@
 #include <filesystem>
 #include <memory>
-#include <set>
 
 #include "App/Logger.hxx"
 #include "App/Utilities.hxx"
@@ -805,8 +804,7 @@ void Finder::FindSexaquarks_ChannelA(bool anti_channel) {
             auto v0b = KF::UnpackV0(fPacked_KaonsZeroShort, idx_v0b, EParticle::KaonZeroShort);
 
             // sanity check //
-            std::set<int> unique_track_entries{v0a.Neg.idx, v0a.Pos.idx, v0b.Neg.idx, v0b.Pos.idx};
-            if (unique_track_entries.size() < 4) continue;
+            if (v0a.Neg.idx == v0b.Neg.idx || v0a.Neg.idx == v0b.Pos.idx || v0a.Pos.idx == v0b.Neg.idx || v0a.Pos.idx == v0b.Pos.idx) continue;
 
             // fit //
             KF::ChannelA sexa{v0a, v0b};
@@ -1057,8 +1055,7 @@ void Finder::FindSexaquarks_ChannelD(bool anti_channel) {
             auto kaon = KF::UnpackTrack(*Packed_Kaons, idx_kaon, Charge_Kaon);
 
             // sanity check //
-            std::set<int> unique_track_entries{v0.Neg.idx, v0.Pos.idx, kaon.idx};
-            if (unique_track_entries.size() < 3) continue;
+            if (v0.Neg.idx == kaon.idx || v0.Pos.idx == kaon.idx) continue;
 
             // fit //
             KF::ChannelD sexa{v0, kaon};

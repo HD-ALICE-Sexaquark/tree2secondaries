@@ -1,18 +1,14 @@
 #include <filesystem>
 #include <memory>
 
-#include "ALICE/ESD.hxx"
-#include "ALICE/Utilities.hxx"
+#include <KFParticle_Math.hxx>
+
 #include "App/Logger.hxx"
 #include "App/Utilities.hxx"
 #include "KF/Utilities.hxx"
 #include "Math/Constants.hxx"
 #include "Packager/Cuts.hxx"
 #include "Packager/Packager.hxx"
-
-#ifdef T2S_USE_ALICE
-#include "ALICE/Vertexer.hxx"
-#endif
 
 namespace Tree2Secondaries {
 
@@ -140,25 +136,27 @@ void Packager::ConnectBranches_Tracks() {
     Utils::ConnectBranch(fEventsTree.get(), "Track_NSigmaKaon", &fInput_Tracks.NSigmaKaon);
     Utils::ConnectBranch(fEventsTree.get(), "Track_NSigmaProton", &fInput_Tracks.NSigmaProton);
 
-    Utils::ConnectBranch(fEventsTree.get(), "Track_Alpha", &fInput_Tracks.Alpha);
-    Utils::ConnectBranch(fEventsTree.get(), "Track_Snp", &fInput_Tracks.Snp);
-    Utils::ConnectBranch(fEventsTree.get(), "Track_Tgl", &fInput_Tracks.Tgl);
-    Utils::ConnectBranch(fEventsTree.get(), "Track_Signed1Pt", &fInput_Tracks.Signed1Pt);
+    Utils::ConnectBranch(fEventsTree.get(), "Track_SigmaX2", &fInput_Tracks.SigmaX2);
+    Utils::ConnectBranch(fEventsTree.get(), "Track_SigmaXY", &fInput_Tracks.SigmaXY);
     Utils::ConnectBranch(fEventsTree.get(), "Track_SigmaY2", &fInput_Tracks.SigmaY2);
-    Utils::ConnectBranch(fEventsTree.get(), "Track_SigmaZY", &fInput_Tracks.SigmaZY);
+    Utils::ConnectBranch(fEventsTree.get(), "Track_SigmaXZ", &fInput_Tracks.SigmaXZ);
+    Utils::ConnectBranch(fEventsTree.get(), "Track_SigmaYZ", &fInput_Tracks.SigmaYZ);
     Utils::ConnectBranch(fEventsTree.get(), "Track_SigmaZ2", &fInput_Tracks.SigmaZ2);
-    Utils::ConnectBranch(fEventsTree.get(), "Track_SigmaSnpY", &fInput_Tracks.SigmaSnpY);
-    Utils::ConnectBranch(fEventsTree.get(), "Track_SigmaSnpZ", &fInput_Tracks.SigmaSnpZ);
-    Utils::ConnectBranch(fEventsTree.get(), "Track_SigmaSnp2", &fInput_Tracks.SigmaSnp2);
-    Utils::ConnectBranch(fEventsTree.get(), "Track_SigmaTglY", &fInput_Tracks.SigmaTglY);
-    Utils::ConnectBranch(fEventsTree.get(), "Track_SigmaTglZ", &fInput_Tracks.SigmaTglZ);
-    Utils::ConnectBranch(fEventsTree.get(), "Track_SigmaTglSnp", &fInput_Tracks.SigmaTglSnp);
-    Utils::ConnectBranch(fEventsTree.get(), "Track_SigmaTgl2", &fInput_Tracks.SigmaTgl2);
-    Utils::ConnectBranch(fEventsTree.get(), "Track_Sigma1PtY", &fInput_Tracks.Sigma1PtY);
-    Utils::ConnectBranch(fEventsTree.get(), "Track_Sigma1PtZ", &fInput_Tracks.Sigma1PtZ);
-    Utils::ConnectBranch(fEventsTree.get(), "Track_Sigma1PtSnp", &fInput_Tracks.Sigma1PtSnp);
-    Utils::ConnectBranch(fEventsTree.get(), "Track_Sigma1PtTgl", &fInput_Tracks.Sigma1PtTgl);
-    Utils::ConnectBranch(fEventsTree.get(), "Track_Sigma1Pt2", &fInput_Tracks.Sigma1Pt2);
+    Utils::ConnectBranch(fEventsTree.get(), "Track_SigmaXPx", &fInput_Tracks.SigmaXPx);
+    Utils::ConnectBranch(fEventsTree.get(), "Track_SigmaYPx", &fInput_Tracks.SigmaYPx);
+    Utils::ConnectBranch(fEventsTree.get(), "Track_SigmaZPx", &fInput_Tracks.SigmaZPx);
+    Utils::ConnectBranch(fEventsTree.get(), "Track_SigmaPx2", &fInput_Tracks.SigmaPx2);
+    Utils::ConnectBranch(fEventsTree.get(), "Track_SigmaXPy", &fInput_Tracks.SigmaXPy);
+    Utils::ConnectBranch(fEventsTree.get(), "Track_SigmaYPy", &fInput_Tracks.SigmaYPy);
+    Utils::ConnectBranch(fEventsTree.get(), "Track_SigmaZPy", &fInput_Tracks.SigmaZPy);
+    Utils::ConnectBranch(fEventsTree.get(), "Track_SigmaPxPy", &fInput_Tracks.SigmaPxPy);
+    Utils::ConnectBranch(fEventsTree.get(), "Track_SigmaPy2", &fInput_Tracks.SigmaPy2);
+    Utils::ConnectBranch(fEventsTree.get(), "Track_SigmaXPz", &fInput_Tracks.SigmaXPz);
+    Utils::ConnectBranch(fEventsTree.get(), "Track_SigmaYPz", &fInput_Tracks.SigmaYPz);
+    Utils::ConnectBranch(fEventsTree.get(), "Track_SigmaZPz", &fInput_Tracks.SigmaZPz);
+    Utils::ConnectBranch(fEventsTree.get(), "Track_SigmaPxPz", &fInput_Tracks.SigmaPxPz);
+    Utils::ConnectBranch(fEventsTree.get(), "Track_SigmaPyPz", &fInput_Tracks.SigmaPyPz);
+    Utils::ConnectBranch(fEventsTree.get(), "Track_SigmaPz2", &fInput_Tracks.SigmaPz2);
 
     if (IsMC()) Utils::ConnectBranch(fEventsTree.get(), "Track_McEntry", &fInput_Tracks.McEntry);
 
@@ -682,21 +680,21 @@ void Packager::ProcessTracks() {
     Logger::Debug(__FUNCTION__, "Starting.");
 #endif
 
-    for (int esd_track{0}; esd_track < NumberTracks(); ++esd_track) {
+    for (int iESD{0}; iESD < NumberTracks(); ++iESD) {
         // get charge //
-        int charge{fInput_Tracks.Charge->at(esd_track)};
+        int charge{fInput_Tracks.Charge->at(iESD)};
         // PID //
-        if (std::abs(fInput_Tracks.NSigmaProton->at(esd_track)) < Cuts::Track::AbsMax_PID_NSigma) {
-            if (charge < 0) fVec_AntiProtons.push_back(esd_track);
-            if (charge > 0) fVec_Protons.push_back(esd_track);
+        if (std::abs(fInput_Tracks.NSigmaProton->at(iESD)) < Cuts::Track::AbsMax_PID_NSigma) {
+            if (charge < 0) fVec_AntiProtons.push_back(iESD);
+            if (charge > 0) fVec_Protons.push_back(iESD);
         }
-        if (std::abs(fInput_Tracks.NSigmaKaon->at(esd_track)) < Cuts::Track::AbsMax_PID_NSigma) {
-            if (charge < 0) fVec_NegKaons.push_back(esd_track);
-            if (charge > 0) fVec_PosKaons.push_back(esd_track);
+        if (std::abs(fInput_Tracks.NSigmaKaon->at(iESD)) < Cuts::Track::AbsMax_PID_NSigma) {
+            if (charge < 0) fVec_NegKaons.push_back(iESD);
+            if (charge > 0) fVec_PosKaons.push_back(iESD);
         }
-        if (std::abs(fInput_Tracks.NSigmaPion->at(esd_track)) < Cuts::Track::AbsMax_PID_NSigma) {
-            if (charge < 0) fVec_PiMinus.push_back(esd_track);
-            if (charge > 0) fVec_PiPlus.push_back(esd_track);
+        if (std::abs(fInput_Tracks.NSigmaPion->at(iESD)) < Cuts::Track::AbsMax_PID_NSigma) {
+            if (charge < 0) fVec_PiMinus.push_back(iESD);
+            if (charge > 0) fVec_PiPlus.push_back(iESD);
         }
     }
 
@@ -751,12 +749,9 @@ void Packager::PackTracks(EParticle pid) {
     for (auto esd_idx : *vec) {
 
         // prepare kf object //
-        KF::Vector<6> neg_kf_params = KF::PackParams(fInput_Tracks, esd_idx);
-        std::array<float, 5> neg_alice_params = ALICE::PackParams<float>(fInput_Tracks, esd_idx);
-        std::array<float, 15> neg_alice_cov = ALICE::PackCovMatrix<float>(fInput_Tracks, esd_idx);
-        KF::Track kf_track{KF::CreateParticle(neg_kf_params, neg_alice_params, neg_alice_cov, fInput_Tracks.Alpha->at(esd_idx),
-                                              fInput_Tracks.Charge->at(esd_idx), mass),
-                           esd_idx};
+        KF::Vector<6> neg_params = KF::Pack_XYZPxPyPz(fInput_Tracks, esd_idx);
+        KF::SymMatrix<6> neg_cov = KF::Pack_CovXYZPxPyPz(fInput_Tracks, esd_idx);
+        KF::Track kf_track(neg_params, neg_cov, fInput_Tracks.Charge->at(esd_idx), mass, esd_idx);
 
         // store //
         Store(kf_track, *out);
@@ -888,87 +883,15 @@ void Packager::FindV0s(EParticle pid) {
             // sanity check //
             if (esd_neg == esd_pos) continue;
 
-#ifdef T2S_USE_ALICE
-            // ----------------------------- //
-            // start of **Custom V0 Finder** //
-
-            std::array<double, 5> neg_esd_params = ALICE::PackParams<double>(fInput_Tracks, esd_neg);
-            std::array<double, 15> neg_esd_cov = ALICE::PackCovMatrix<double>(fInput_Tracks, esd_neg);
-            ALICE::Track neg{fInput_Tracks.X->at(esd_neg), neg_esd_params, neg_esd_cov, fInput_Tracks.Alpha->at(esd_neg), -1};
-
-            std::array<double, 5> pos_esd_params = ALICE::PackParams<double>(fInput_Tracks, esd_pos);
-            std::array<double, 15> pos_esd_cov = ALICE::PackCovMatrix<double>(fInput_Tracks, esd_pos);
-            ALICE::Track pos{fInput_Tracks.X->at(esd_pos), pos_esd_params, pos_esd_cov, fInput_Tracks.Alpha->at(esd_pos), +1};
-
-            // double neg_d_wrt_pv{neg.GetDCAxy(fInput_Event.PV_Xv, fInput_Event.PV_Yv, fInput_Event.MagneticField)};
-            // if (TMath::Abs(neg_d_wrt_pv) > ALICE::Const::CustomV0Finder_Rmax) continue;
-            // double pos_d_wrt_pv{pos.GetDCAxy(fInput_Event.PV_Xv, fInput_Event.PV_Yv, fInput_Event.MagneticField)};
-            // if (TMath::Abs(pos_d_wrt_pv) > ALICE::Const::CustomV0Finder_Rmax) continue;
-
-            double xn;
-            double xp;
-            if (ALICE::Vertexer::Preoptimize(neg, pos, xn, xp, fInput_Event.MagneticField)) {
-                if (!neg.PropagateTo(xn, fInput_Event.MagneticField)) continue;
-                if (!pos.PropagateTo(xp, fInput_Event.MagneticField)) continue;
-            } else {
-                double dca{ALICE::Vertexer::Preoptimize_Numerically(neg, pos, xn, xp, fInput_Event.MagneticField)};
-                if (!neg.PropagateTo(xn, fInput_Event.MagneticField)) continue;
-                if (!pos.PropagateTo(xp, fInput_Event.MagneticField)) continue;
-            }
-#ifdef T2S_DEBUG
-            Logger::Info(__FUNCTION__, "DEBUG NEG: Snp=" << neg.GetSnp() << " SigmaY2=" << neg.GetSigmaY2());
-            Logger::Info(__FUNCTION__, "DEBUG POS: Snp=" << pos.GetSnp() << " SigmaY2=" << pos.GetSigmaY2());
-#endif
-
-            // if (dca_after_preopt > ALICE::Const::CustomV0Finder_DCAmax) continue;
-            // if ((xn + xp) > 2. * ALICE::Const::CustomV0Finder_Rmax) continue;
-            // if ((xn + xp) < 2. * ALICE::Const::CustomV0Finder_Rmin) continue;
-
-            ALICE::V0 v0{neg, pos};
-            v0.Refit();
-            // if (v0.fStatus == 1) continue;
-
-            // end of **Custom V0 Finder** //
-            // --------------------------- //
-#ifdef T2S_DEBUG
-            Logger::Info(__FUNCTION__,
-                         "   "
-                         " :: idx,neg,pos="
-                             << v0_entry << "," << esd_neg << "," << esd_pos);
-            Logger::Info(__FUNCTION__, ";x,y,z=" << v0.X() << "," << v0.Y() << "," << v0.Z());
-            // Logger::Info(__FUNCTION__,  ";x,y,z(neg)=" << v0.Neg_PCA_XYZ()[0] << "," << v0.Neg_PCA_XYZ()[1] << "," << v0.Neg_PCA_XYZ()[2]);
-            // Logger::Info(__FUNCTION__,  ";x,y,z(pos)=" << v0.Pos_PCA_XYZ()[0] << "," << v0.Pos_PCA_XYZ()[1] << "," << v0.Pos_PCA_XYZ()[2]);
-            // Logger::Info(__FUNCTION__,  ";mass=" << v0.Mass());
-            // Logger::Info(__FUNCTION__,  ";dca_dau=" << v0.DCA_Daughters());
-            Logger::Info(__FUNCTION__, ";radius=" << v0.Radius2D());
-            // Logger::Info(__FUNCTION__,  ";dca_neg=" << v0.DCA_Neg_V0());
-            // Logger::Info(__FUNCTION__,  ";dca_pos=" << v0.DCA_Pos_V0());
-            // Logger::Info(__FUNCTION__,  ";pt=" << v0.Pt());
-            // Logger::Info(__FUNCTION__,  ";eta=" << v0.Eta());
-            // Logger::Info(__FUNCTION__,  ";qt=" << v0.ArmenterosQt());
-            // Logger::Info(__FUNCTION__,  ";alpha=" << v0.ArmenterosAlpha());
-            // Logger::Info(__FUNCTION__,  ";cpa_pv=" << v0.CPA_Point(fInput_Event.PV_Xv, fInput_Event.PV_Yv, fInput_Event.PV_Zv));
-            // Logger::Info(__FUNCTION__,  ";dca_pv=" << v0.DCA_Point(fInput_Event.PV_Xv, fInput_Event.PV_Yv, fInput_Event.PV_Zv));
-            Logger::Info(__FUNCTION__, '\n');
-#endif
-            // store //
-            Store(v0, *out);
-#else
             // prepare neg //
-            std::array<double, 6> neg_kf_params = KF::PackParams(fInput_Tracks, esd_neg);
-            std::array<float, 5> neg_alice_params = ALICE::PackParams<float>(fInput_Tracks, esd_neg);
-            std::array<float, 15> neg_alice_cov = ALICE::PackCovMatrix<float>(fInput_Tracks, esd_neg);
-            KF::Track neg{KF::CreateParticle(neg_kf_params, neg_alice_params, neg_alice_cov, fInput_Tracks.Alpha->at(esd_neg),
-                                             fInput_Tracks.Charge->at(esd_neg), mass_neg),
-                          esd_neg};
+            KF::Vector<6> neg_params = KF::Pack_XYZPxPyPz(fInput_Tracks, esd_neg);
+            KF::SymMatrix<6> neg_cov = KF::Pack_CovXYZPxPyPz(fInput_Tracks, esd_neg);
+            KF::Track neg(neg_params, neg_cov, fInput_Tracks.Charge->at(esd_neg), mass_neg, esd_neg);
 
             // prepare pos //
-            std::array<double, 6> pos_kf_params = KF::PackParams(fInput_Tracks, esd_pos);
-            std::array<float, 5> pos_alice_params = ALICE::PackParams<float>(fInput_Tracks, esd_pos);
-            std::array<float, 15> pos_alice_cov = ALICE::PackCovMatrix<float>(fInput_Tracks, esd_pos);
-            KF::Track pos{KF::CreateParticle(pos_kf_params, pos_alice_params, pos_alice_cov, fInput_Tracks.Alpha->at(esd_pos),
-                                             fInput_Tracks.Charge->at(esd_pos), mass_pos),
-                          esd_pos};
+            KF::Vector<6> pos_params = KF::Pack_XYZPxPyPz(fInput_Tracks, esd_pos);
+            KF::SymMatrix<6> pos_cov = KF::Pack_CovXYZPxPyPz(fInput_Tracks, esd_pos);
+            KF::Track pos(pos_params, pos_cov, fInput_Tracks.Charge->at(esd_pos), mass_pos, esd_pos);
 
             // fit v0 //
             KF::V0 v0{v0_entry, pid, neg, pos};
@@ -995,7 +918,6 @@ void Packager::FindV0s(EParticle pid) {
 #endif
             // store //
             Store(v0, *out);
-#endif
 
             if (IsMC()) {
                 MC::V0 mc_v0{fInput_MC, fInput_Tracks.McEntry->at(esd_neg), fInput_Tracks.McEntry->at(esd_pos), pid, pid_neg, pid_pos};
@@ -1072,79 +994,6 @@ bool Packager::PassesCuts_KaonZeroShort(const KF::V0& v0) const {
     fCutFlowHist_KaonsZeroShort->Fill(10.);
 
     return true;
-}
-
-void Packager::Store(const ALICE::V0& v0, PackedEvents::V0s& sov) {
-
-    // sov.Entry->push_back(v0.idx);
-    sov.X->push_back(static_cast<float>(v0.X()));
-    sov.Y->push_back(static_cast<float>(v0.Y()));
-    sov.Z->push_back(static_cast<float>(v0.Z()));
-    // sov.Px->push_back(static_cast<float>(v0.Px()));
-    // sov.Py->push_back(static_cast<float>(v0.Py()));
-    // sov.Pz->push_back(static_cast<float>(v0.Pz()));
-    // sov.E->push_back(static_cast<float>(v0.E()));
-
-    // sov.Sigma.X2->push_back(static_cast<float>(v0.GetCovariance(0)));
-    // sov.Sigma.XY->push_back(static_cast<float>(v0.GetCovariance(1)));
-    // sov.Sigma.Y2->push_back(static_cast<float>(v0.GetCovariance(2)));
-    // sov.Sigma.XZ->push_back(static_cast<float>(v0.GetCovariance(3)));
-    // sov.Sigma.YZ->push_back(static_cast<float>(v0.GetCovariance(4)));
-    // sov.Sigma.Z2->push_back(static_cast<float>(v0.GetCovariance(5)));
-    // sov.Sigma.XPx->push_back(static_cast<float>(v0.GetCovariance(6)));
-    // sov.Sigma.YPx->push_back(static_cast<float>(v0.GetCovariance(7)));
-    // sov.Sigma.ZPx->push_back(static_cast<float>(v0.GetCovariance(8)));
-    // sov.Sigma.Px2->push_back(static_cast<float>(v0.GetCovariance(9)));
-    // sov.Sigma.XPy->push_back(static_cast<float>(v0.GetCovariance(10)));
-    // sov.Sigma.YPy->push_back(static_cast<float>(v0.GetCovariance(11)));
-    // sov.Sigma.ZPy->push_back(static_cast<float>(v0.GetCovariance(12)));
-    // sov.Sigma.PxPy->push_back(static_cast<float>(v0.GetCovariance(13)));
-    // sov.Sigma.Py2->push_back(static_cast<float>(v0.GetCovariance(14)));
-    // sov.Sigma.XPz->push_back(static_cast<float>(v0.GetCovariance(15)));
-    // sov.Sigma.YPz->push_back(static_cast<float>(v0.GetCovariance(16)));
-    // sov.Sigma.ZPz->push_back(static_cast<float>(v0.GetCovariance(17)));
-    // sov.Sigma.PxPz->push_back(static_cast<float>(v0.GetCovariance(18)));
-    // sov.Sigma.PyPz->push_back(static_cast<float>(v0.GetCovariance(19)));
-    // sov.Sigma.Pz2->push_back(static_cast<float>(v0.GetCovariance(20)));
-    // sov.Sigma.XE->push_back(static_cast<float>(v0.GetCovariance(21)));
-    // sov.Sigma.YE->push_back(static_cast<float>(v0.GetCovariance(22)));
-    // sov.Sigma.ZE->push_back(static_cast<float>(v0.GetCovariance(23)));
-    // sov.Sigma.PxE->push_back(static_cast<float>(v0.GetCovariance(24)));
-    // sov.Sigma.PyE->push_back(static_cast<float>(v0.GetCovariance(25)));
-    // sov.Sigma.PzE->push_back(static_cast<float>(v0.GetCovariance(26)));
-    // sov.Sigma.E2->push_back(static_cast<float>(v0.GetCovariance(27)));
-
-    // sov.Neg.Entry->push_back(v0.Neg.idx);
-    // sov.Neg.X->push_back(static_cast<float>(v0.Neg.X()));
-    // sov.Neg.Y->push_back(static_cast<float>(v0.Neg.Y()));
-    // sov.Neg.Z->push_back(static_cast<float>(v0.Neg.Z()));
-    // sov.Neg.Px->push_back(static_cast<float>(v0.Neg.Px()));
-    // sov.Neg.Py->push_back(static_cast<float>(v0.Neg.Py()));
-    // sov.Neg.Pz->push_back(static_cast<float>(v0.Neg.Pz()));
-    // sov.Neg.E->push_back(static_cast<float>(v0.Neg.E()));
-
-    sov.Neg_X_AtPCA->push_back(static_cast<float>(v0.fParamN.GetX()));
-    sov.Neg_Y_AtPCA->push_back(static_cast<float>(v0.fParamN.GetY()));
-    sov.Neg_Z_AtPCA->push_back(static_cast<float>(v0.fParamN.GetZ()));
-    // sov.Neg_Px_AtPCA->push_back(static_cast<float>(v0.Neg_PCA_PxPyPz()[0]));
-    // sov.Neg_Py_AtPCA->push_back(static_cast<float>(v0.Neg_PCA_PxPyPz()[1]));
-    // sov.Neg_Pz_AtPCA->push_back(static_cast<float>(v0.Neg_PCA_PxPyPz()[2]));
-
-    // sov.Pos.Entry->push_back(v0.Pos.idx);
-    // sov.Pos.X->push_back(static_cast<float>(v0.Pos.X()));
-    // sov.Pos.Y->push_back(static_cast<float>(v0.Pos.Y()));
-    // sov.Pos.Z->push_back(static_cast<float>(v0.Pos.Z()));
-    // sov.Pos.Px->push_back(static_cast<float>(v0.Pos.Px()));
-    // sov.Pos.Py->push_back(static_cast<float>(v0.Pos.Py()));
-    // sov.Pos.Pz->push_back(static_cast<float>(v0.Pos.Pz()));
-    // sov.Pos.E->push_back(static_cast<float>(v0.Pos.E()));
-
-    sov.Pos_X_AtPCA->push_back(static_cast<float>(v0.fParamP.GetX()));
-    sov.Pos_Y_AtPCA->push_back(static_cast<float>(v0.fParamP.GetY()));
-    sov.Pos_Z_AtPCA->push_back(static_cast<float>(v0.fParamP.GetZ()));
-    // sov.Pos_Px_AtPCA->push_back(static_cast<float>(v0.Pos_PCA_PxPyPz()[0]));
-    // sov.Pos_Py_AtPCA->push_back(static_cast<float>(v0.Pos_PCA_PxPyPz()[1]));
-    // sov.Pos_Pz_AtPCA->push_back(static_cast<float>(v0.Pos_PCA_PxPyPz()[2]));
 }
 
 void Packager::Store(const KF::V0& v0, PackedEvents::V0s& sov) {
@@ -1244,7 +1093,6 @@ void Packager::StoreMC(const MC::V0& mc_v0, PackedEvents::MC_V0s& sov) {
     sov.ReactionID->push_back(mc_v0.ReactionID);
     sov.IsHybrid->push_back(static_cast<char>(mc_v0.IsHybrid));
 
-    // neg //
     sov.Neg_Entry->push_back(mc_v0.neg.Entry);
     sov.Neg_Px->push_back(mc_v0.neg.Px);
     sov.Neg_Py->push_back(mc_v0.neg.Py);
@@ -1255,7 +1103,6 @@ void Packager::StoreMC(const MC::V0& mc_v0, PackedEvents::MC_V0s& sov) {
     sov.Neg_IsSecondary->push_back(static_cast<char>(mc_v0.neg.IsSecondary));
     sov.Neg_ReactionID->push_back(mc_v0.neg.ReactionID);
 
-    // pos //
     sov.Pos_Entry->push_back(mc_v0.pos.Entry);
     sov.Pos_Px->push_back(mc_v0.pos.Px);
     sov.Pos_Py->push_back(mc_v0.pos.Py);

@@ -21,7 +21,6 @@ cmake --build .
 Additional `<options>`:
 
 * `-DT2S_DEBUG=ON` -- (default: OFF) enable debug messages
-* `-DT2S_USE_ALICE=ON` -- (default: OFF) use ALICE Offline V0 Finder instead of KFParticle
 * `-DENABLE_PROFILING=ON` -- (default: OFF) enable profiling (see below)
 
 ## Usage
@@ -29,22 +28,20 @@ Additional `<options>`:
 ```
 ./src/App -i [-o,-n] pack mc [-s] [-c,-a]
 ./src/App -i [-o,-n] pack data
-./src/App -i [-o,-n] search mc [-c,-a]
-./src/App -i [-o,-n] search mc [-s -m] [-c,-a]
+./src/App -i [-o,-n] search mc [-m] [-c,-a]
 ./src/App -i [-o,-n] search data [-c,-a]
 
 SUBCOMMANDS:
   pack    Package V0s and necessary tracks
   search  Search for anti-sexaquark reactions
   data    Process data
-  mc      Process MC
+  mc      Process MC (requires -m)
 OPTIONS:
   -h,--help                     Print help message and exit
   -i,--input {PATH}             [REQUIRED] Path(s) of input file(s)
   -o,--output {PATH}            Path of output file
   -n,--nevents {N}              Limit to N events
-  -s,--signal                   Process Signal MC (requires -m)
-  -m,--mass {MASS}              Injected Anti-Sexaquark Mass (requires -s)
+  -m,--mass {MASS}              Injected anti-sexaquark Mass
   -c,--channel {A,D,E,H}        Process a standard reaction channel
   -a,--anti    {A,D,E,H}        Process an anti-reaction channel
 ```
