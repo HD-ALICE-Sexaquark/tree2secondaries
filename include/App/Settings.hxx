@@ -14,7 +14,7 @@ struct Settings {
     void Print() const {
         Logger::Info("Settings", "Mode            = {}", (DoTheSearch ? "FINDER" : "PACKAGER"));
         Logger::Info("Settings", "ReactionChannel = {}", Name::ReactionChannel[Channel]);
-        Logger::Info("Settings", "InputFiles      =");
+        Logger::Info("Settings", "InputFiles      = ");
         for (const auto& path : PathInputFiles) {
             Logger::Info("Settings", "- {}", path);
         }

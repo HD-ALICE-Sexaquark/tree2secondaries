@@ -3,9 +3,11 @@
 
 #include <vector>
 
+#include "Math/Constants.hxx"
+
 namespace Tree2Secondaries::Events {
 
-struct alignas(32) Event {
+struct alignas(T2S_SIMD_ALIGN) Event {
     unsigned int RunNumber{0};
     unsigned int DirNumber{0};
     unsigned int DirNumberB{0};
@@ -21,7 +23,7 @@ struct alignas(32) Event {
     float MC_PV_Zv{0.};
 };
 
-struct alignas(32) Injected {
+struct alignas(T2S_SIMD_ALIGN) Injected {
     std::vector<int> *ReactionID{nullptr};
     std::vector<float> *X{nullptr};
     std::vector<float> *Y{nullptr};
@@ -44,7 +46,7 @@ struct alignas(32) Injected {
     }
 };
 
-struct alignas(32) MC {
+struct alignas(T2S_SIMD_ALIGN) MC {
     std::vector<float> *X{nullptr};
     std::vector<float> *Y{nullptr};
     std::vector<float> *Z{nullptr};
@@ -62,7 +64,7 @@ struct alignas(32) MC {
     std::vector<char> *IsSecFromWeak{nullptr};
 };
 
-struct alignas(32) Tracks {
+struct alignas(T2S_SIMD_ALIGN) Tracks {
     std::vector<float> *X{nullptr};
     std::vector<float> *Y{nullptr};
     std::vector<float> *Z{nullptr};

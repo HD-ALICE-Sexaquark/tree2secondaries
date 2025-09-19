@@ -112,14 +112,14 @@ class Parser {
             // -- suffix
             std::string filename_suffix{};
             if (settings.IsMC)
-                filename_suffix = fmt::format("MC_{}_{:.2f}", Name::ReactionChannel[settings.Channel], settings.SexaquarkMass);
+                filename_suffix = std::format("MC_{}_{:.2f}", Name::ReactionChannel[settings.Channel], settings.SexaquarkMass);
             else
-                filename_suffix = fmt::format("Data_{}", Name::ReactionChannel[settings.Channel]);
+                filename_suffix = std::format("Data_{}", Name::ReactionChannel[settings.Channel]);
             // -- prefix
             if (settings.DoTheSearch)
-                settings.PathOutputFile = fmt::format("Searched_{}.root", filename_suffix);
+                settings.PathOutputFile = std::format("Searched_{}.root", filename_suffix);
             else
-                settings.PathOutputFile = fmt::format("Packed_{}.root", filename_suffix);
+                settings.PathOutputFile = std::format("Packed_{}.root", filename_suffix);
         }
     }
 

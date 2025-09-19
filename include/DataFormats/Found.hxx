@@ -1,9 +1,11 @@
 #ifndef T2S_STRUCTS_FOUND_HXX
 #define T2S_STRUCTS_FOUND_HXX
 
+#include "Math/Constants.hxx"
+
 namespace Tree2Secondaries::Found {
 
-struct alignas(32) State {
+struct alignas(T2S_SIMD_ALIGN) State {
     float X{};
     float Y{};
     float Z{};
@@ -13,7 +15,7 @@ struct alignas(32) State {
     float E{};
 };
 
-struct alignas(32) Sexaquark : State {
+struct alignas(T2S_SIMD_ALIGN) Sexaquark : State {
     unsigned int RunNumber{};
     unsigned int DirNumber{};
     unsigned int DirNumberB{};
@@ -28,7 +30,7 @@ struct alignas(32) Sexaquark : State {
     float E_MinusNucleon{};
 };
 
-struct alignas(32) ChannelA : Sexaquark {
+struct alignas(T2S_SIMD_ALIGN) ChannelA : Sexaquark {
     State V0A;
     State V0B;
 
@@ -49,7 +51,7 @@ struct alignas(32) ChannelA : Sexaquark {
     float V0B_Z_AtPCA{};
 };
 
-struct alignas(32) ChannelD : Sexaquark {
+struct alignas(T2S_SIMD_ALIGN) ChannelD : Sexaquark {
     State V0;
     State Kaon;
 
@@ -71,24 +73,24 @@ struct alignas(32) ChannelD : Sexaquark {
     float Kaon_Pz_AtPCA{};
 };
 
-struct alignas(32) ChannelE : ChannelD {
+struct alignas(T2S_SIMD_ALIGN) ChannelE : ChannelD {
     State PiMinus;
     State PiPlus;
 };
 
-struct alignas(32) ChannelH : Sexaquark {
+struct alignas(T2S_SIMD_ALIGN) ChannelH : Sexaquark {
     State Kaon1;
     State Kaon2;
 };
 
-struct alignas(32) Injected : State {
+struct alignas(T2S_SIMD_ALIGN) Injected : State {
     unsigned int RunNumber{};
     unsigned int DirNumber{};
     unsigned int EventNumber{};
     int ReactionID{};
 };
 
-struct alignas(32) MC_Sexaquark {
+struct alignas(T2S_SIMD_ALIGN) MC_Sexaquark {
     float X{};
     float Y{};
     float Z{};
@@ -112,7 +114,7 @@ struct alignas(32) MC_Sexaquark {
     bool IsHybrid{};
 };
 
-struct alignas(32) MC_ChannelA : MC_Sexaquark {
+struct alignas(T2S_SIMD_ALIGN) MC_ChannelA : MC_Sexaquark {
     float V0A_Px{};
     float V0A_Py{};
     float V0A_Pz{};
@@ -150,7 +152,7 @@ struct alignas(32) MC_ChannelA : MC_Sexaquark {
     bool V0B_IsHybrid{};
 };
 
-struct alignas(32) MC_ChannelD : MC_Sexaquark {
+struct alignas(T2S_SIMD_ALIGN) MC_ChannelD : MC_Sexaquark {
     float V0_Px{};
     float V0_Py{};
     float V0_Pz{};

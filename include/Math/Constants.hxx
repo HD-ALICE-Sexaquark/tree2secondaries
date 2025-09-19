@@ -4,6 +4,16 @@
 #include <string_view>
 #include <vector>
 
+#if defined(__AVX512F__)
+#define T2S_SIMD_ALIGN 64
+#elif defined(__AVX2__)
+#define T2S_SIMD_ALIGN 32
+#elif defined(__ARM_NEON)
+#define T2S_SIMD_ALIGN 16
+#else
+#define T2S_SIMD_ALIGN alignof(double)
+#endif
+
 namespace Tree2Secondaries {
 
 enum EReactionChannel { All, A, D, E, H, AntiA, AntiD, AntiE, AntiH };

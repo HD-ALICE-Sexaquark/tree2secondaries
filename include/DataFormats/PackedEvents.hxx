@@ -3,9 +3,11 @@
 
 #include <vector>
 
+#include "Math/Constants.hxx"
+
 namespace Tree2Secondaries::PackedEvents {
 
-struct alignas(32) Cov {
+struct alignas(T2S_SIMD_ALIGN) Cov {
     std::vector<float>* X2{nullptr};
     std::vector<float>* XY{nullptr};
     std::vector<float>* Y2{nullptr};
@@ -67,7 +69,7 @@ struct alignas(32) Cov {
     }
 };
 
-struct alignas(32) State {
+struct alignas(T2S_SIMD_ALIGN) State {
     std::vector<int>* Entry{nullptr};
     std::vector<float>* X{nullptr};
     std::vector<float>* Y{nullptr};
@@ -89,7 +91,7 @@ struct alignas(32) State {
     }
 };
 
-struct alignas(32) Particle : State {
+struct alignas(T2S_SIMD_ALIGN) Particle : State {
     Cov Sigma;
 
     void ClearParticle() {
@@ -98,11 +100,11 @@ struct alignas(32) Particle : State {
     }
 };
 
-struct alignas(32) Tracks : Particle {
+struct alignas(T2S_SIMD_ALIGN) Tracks : Particle {
     void Clear() { ClearParticle(); }
 };
 
-struct alignas(32) V0s : Particle {
+struct alignas(T2S_SIMD_ALIGN) V0s : Particle {
     State Neg;
     State Pos;
     std::vector<float>* Neg_X_AtPCA{nullptr};
@@ -137,7 +139,7 @@ struct alignas(32) V0s : Particle {
     }
 };
 
-struct alignas(32) MC_Tracks : State {
+struct alignas(T2S_SIMD_ALIGN) MC_Tracks : State {
     std::vector<int>* Mother_Entry{nullptr};
     std::vector<int>* GrandMother_Entry{nullptr};
     std::vector<int>* PdgCode{nullptr};
@@ -162,7 +164,7 @@ struct alignas(32) MC_Tracks : State {
     }
 };
 
-struct alignas(32) MC_V0s : State {
+struct alignas(T2S_SIMD_ALIGN) MC_V0s : State {
     std::vector<float>* DecayX{nullptr};
     std::vector<float>* DecayY{nullptr};
     std::vector<float>* DecayZ{nullptr};

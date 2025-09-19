@@ -12,7 +12,7 @@
 
 namespace Tree2Secondaries::MC {
 
-struct alignas(32) Particle {
+struct alignas(T2S_SIMD_ALIGN) Particle {
     // constructors //
     Particle() = default;
     Particle(int entry, int pdg_code, int mother_entry, int mother_pdg_code, float x, float y, float z, float px, float py, float pz, float energy)
@@ -61,7 +61,7 @@ struct alignas(32) Particle {
 };
 
 // `MC::Track`
-struct alignas(32) Track : MC::Particle {
+struct alignas(T2S_SIMD_ALIGN) Track : MC::Particle {
     // constructors //
     Track() = default;
     Track(const Events::MC& soa, int mc_idx, Tree2Secondaries::EParticle pid_hypothesis) { Init(soa, mc_idx, pid_hypothesis); }
@@ -119,7 +119,7 @@ struct alignas(32) Track : MC::Particle {
 };
 
 // `MC::V0`
-struct alignas(32) V0 : MC::Particle {
+struct alignas(T2S_SIMD_ALIGN) V0 : MC::Particle {
     // constructors //
     V0() = default;
     V0(const Events::MC& soa, int mc_neg, int mc_pos, Tree2Secondaries::EParticle v0_hypothesis, Tree2Secondaries::EParticle neg_hypothesis,
@@ -199,7 +199,7 @@ struct alignas(32) V0 : MC::Particle {
 };
 
 // `MC::Sexaquark`
-struct alignas(32) Sexaquark {
+struct alignas(T2S_SIMD_ALIGN) Sexaquark {
     // constructors //
     Sexaquark() = default;
     Sexaquark(const Events::Injected& sov, double mass_sexaquark, double mass_nucleon, int reaction_id) {
@@ -236,7 +236,7 @@ struct alignas(32) Sexaquark {
 
 // `MC::ChannelA`
 // Reminder: AntiSexaquark + Neutron -> AntiLambda + KaonZeroShort
-struct alignas(32) ChannelA : MC::Sexaquark {
+struct alignas(T2S_SIMD_ALIGN) ChannelA : MC::Sexaquark {
     // constructors //
     ChannelA() = default;
     ChannelA(const Events::Injected& sov_inj, double mass_sexaquark, const V0& v0a, const V0& v0b)
@@ -274,7 +274,7 @@ struct alignas(32) ChannelA : MC::Sexaquark {
 
 // `MC::ChannelD`
 // Reminder: AntiSexaquark + Proton -> AntiLambda + PosKaon
-struct alignas(32) ChannelD : MC::Sexaquark {
+struct alignas(T2S_SIMD_ALIGN) ChannelD : MC::Sexaquark {
     // constructors //
     ChannelD() = default;
     ChannelD(const Events::Injected& sov_inj, double mass_sexaquark, const V0& v0, const Track& kaon)

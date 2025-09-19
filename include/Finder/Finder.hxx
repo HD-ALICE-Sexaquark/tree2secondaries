@@ -30,7 +30,7 @@ class Finder {
 
     explicit Finder(Settings settings) : fSettings{std::move(settings)} {}
 
-    EReactionChannel GetReactionChannel() const { return fSettings.Channel; }
+    [[nodiscard]] EReactionChannel GetReactionChannel() const { return fSettings.Channel; }
 
     bool Initialize();
     void ConnectInputBranches();

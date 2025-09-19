@@ -13,7 +13,7 @@
 
 namespace KF {
 
-struct alignas(32) Track : Particle {
+struct alignas(T2S_SIMD_ALIGN) Track : Particle {
     // constructors //
     Track() = delete;
     Track(const Particle& p, int idx_track) : Particle{p}, idx{idx_track} {}
@@ -24,7 +24,7 @@ struct alignas(32) Track : Particle {
     int idx{};
 };
 
-struct alignas(32) V0 : Particle {
+struct alignas(T2S_SIMD_ALIGN) V0 : Particle {
     // constructors //
     V0() = delete;
     // -- to use when fitting V0 //
@@ -77,7 +77,7 @@ struct alignas(32) V0 : Particle {
     Tree2Secondaries::EParticle hypothesis{};
 };
 
-struct alignas(32) Sexaquark : Particle {
+struct alignas(T2S_SIMD_ALIGN) Sexaquark : Particle {
     // constructors //
     Sexaquark() = delete;
     explicit Sexaquark(double nucleon_mass) : Nucleon_Mass{nucleon_mass} {};
@@ -100,7 +100,7 @@ struct alignas(32) Sexaquark : Particle {
     double Nucleon_Mass{};
 };
 
-struct alignas(32) ChannelA : Sexaquark {
+struct alignas(T2S_SIMD_ALIGN) ChannelA : Sexaquark {
     // constructors //
     ChannelA() = delete;
     ChannelA(const KF::V0& v0a, const KF::V0& v0b)  //
@@ -136,7 +136,7 @@ struct alignas(32) ChannelA : Sexaquark {
     KF::V0 V0B;
 };
 
-struct alignas(32) ChannelD : Sexaquark {
+struct alignas(T2S_SIMD_ALIGN) ChannelD : Sexaquark {
     // constructors //
     ChannelD() = delete;
     ChannelD(const KF::V0& v0, const KF::Track& kaon)
@@ -167,11 +167,11 @@ struct alignas(32) ChannelD : Sexaquark {
     KF::Track Kaon;
 };
 
-struct alignas(32) ChannelE : Sexaquark {
+struct alignas(T2S_SIMD_ALIGN) ChannelE : Sexaquark {
     // PENDING
 };
 
-struct alignas(32) ChannelH : Sexaquark {
+struct alignas(T2S_SIMD_ALIGN) ChannelH : Sexaquark {
     // PENDING
 };
 
