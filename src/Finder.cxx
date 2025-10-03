@@ -420,7 +420,7 @@ bool Finder::PrepareOutputTree() {
     Logger::Debug(__FUNCTION__, "Starting.");
 #endif
 
-    std::string tree_name{std::format("Candidates_{}", Name::ReactionChannel[GetReactionChannel()])};
+    std::string tree_name{std::format("FoundSexa_{}", Name::ReactionChannel_Long[GetReactionChannel()])};
 
     fOutputTree = std::make_unique<TTree>(tree_name.c_str(), "");
     if (!fOutputTree) {

@@ -34,8 +34,8 @@ class Parser {
             ch_opt_group->require_option(1);
         };
 
-        auto add_signal_mc_opt = [](CLI::App* subcmd) {
-            subcmd->add_option("-m,--mass", "Assign Injected Sexaquark Mass")->expected(1)->check(CLI::PositiveNumber);
+        auto add_mass_opt = [](CLI::App* subcmd) {
+            subcmd->add_option("-m,--mass", "Assign Injected Sexaquark Mass")->expected(1)->check(CLI::PositiveNumber)->required();
         };
 
         CLI_APP
@@ -53,7 +53,7 @@ class Parser {
 
         auto* package_cmd = CLI_APP.add_subcommand("pack", "Package V0s and necessary tracks");
         auto* package_mc_cmd = package_cmd->add_subcommand("mc", "Process MC");
-        add_signal_mc_opt(package_mc_cmd);
+        add_mass_opt(package_mc_cmd);
         add_channels_opt(package_mc_cmd);
         package_cmd->add_subcommand("data", "Process data");
         package_cmd->require_subcommand(1);
@@ -62,7 +62,7 @@ class Parser {
 
         auto* search_cmd = CLI_APP.add_subcommand("search", "Search for anti-sexaquark reactions");
         auto* search_mc_cmd = search_cmd->add_subcommand("mc", "Process MC");
-        add_signal_mc_opt(search_mc_cmd);
+        add_mass_opt(search_mc_cmd);
         add_channels_opt(search_mc_cmd);
         auto* search_data = search_cmd->add_subcommand("data", "Process data");
         add_channels_opt(search_data);
@@ -90,16 +90,17 @@ class Parser {
         // mc vs data //
         settings.IsMC = mode_cmd->got_subcommand("mc");
         auto* type_cmd = settings.IsMC ? mode_cmd->get_subcommand("mc") : mode_cmd->get_subcommand("data");
-        if (settings.DoTheSearch) settings.SexaquarkMass = type_cmd->get_option("-m")->as<double>();
+        if (settings.IsMC) settings.SexaquarkMass = type_cmd->get_option("-m")->as<double>();
         // reaction channels //
+        // -- `pack data` doesn't care about reaction channel
         if (settings.DoTheSearch || settings.IsMC) {
             auto* opt_grp = type_cmd->get_option_group("channels");
             auto* std_channel = opt_grp->get_option("-c");
             auto* anti_channel = opt_grp->get_option("-a");
             if (std_channel->count()) {
-                settings.Channel = static_cast<EReactionChannel>(std_channel->as<char>());
+                settings.Channel = CharReactionChannel_To_EReactionChannel.at(std_channel->as<char>());
             } else {
-                settings.Channel = static_cast<EReactionChannel>(std::tolower(anti_channel->as<char>()));
+                settings.Channel = CharReactionChannel_To_EReactionChannel.at(static_cast<char>(std::tolower(anti_channel->as<char>())));
             }
         }
         // input path //
@@ -109,17 +110,13 @@ class Parser {
         // output path //
         settings.PathOutputFile = CLI_APP.get_option("-o")->as<std::string>();
         if (settings.PathOutputFile.empty()) {
-            // -- suffix
+            std::string filename_prefix{settings.DoTheSearch ? "Found" : "Packed"};
             std::string filename_suffix{};
             if (settings.IsMC)
-                filename_suffix = std::format("MC_{}_{:.2f}", Name::ReactionChannel[settings.Channel], settings.SexaquarkMass);
+                filename_suffix = std::format("MC_{}{:.2f}", Name::ReactionChannel_Short[settings.Channel], settings.SexaquarkMass);
             else
-                filename_suffix = std::format("Data_{}", Name::ReactionChannel[settings.Channel]);
-            // -- prefix
-            if (settings.DoTheSearch)
-                settings.PathOutputFile = std::format("Searched_{}.root", filename_suffix);
-            else
-                settings.PathOutputFile = std::format("Packed_{}.root", filename_suffix);
+                filename_suffix = std::format("Data_{}", Name::ReactionChannel_Long[settings.Channel]);
+            settings.PathOutputFile = std::format("{}_{}.root", filename_prefix, filename_suffix);
         }
     }
 

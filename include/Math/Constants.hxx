@@ -2,14 +2,13 @@
 #define T2S_CONSTANTS_HXX
 
 #include <string_view>
+#include <unordered_map>
 #include <vector>
 
 #if defined(__AVX512F__)
 #define T2S_SIMD_ALIGN 64
 #elif defined(__AVX2__)
 #define T2S_SIMD_ALIGN 32
-#elif defined(__ARM_NEON)
-#define T2S_SIMD_ALIGN 16
 #else
 #define T2S_SIMD_ALIGN alignof(double)
 #endif
@@ -17,9 +16,16 @@
 namespace Tree2Secondaries {
 
 enum EReactionChannel { All, A, D, E, H, AntiA, AntiD, AntiE, AntiH };
+const std::unordered_map<char, EReactionChannel> CharReactionChannel_To_EReactionChannel{
+    {' ', EReactionChannel::All},   {'A', EReactionChannel::A},     {'D', EReactionChannel::D},
+    {'E', EReactionChannel::E},     {'H', EReactionChannel::H},     {'a', EReactionChannel::AntiA},
+    {'d', EReactionChannel::AntiD}, {'e', EReactionChannel::AntiE}, {'h', EReactionChannel::AntiH},
+};
 
 namespace Name {
-static const std::vector<std::string_view> ReactionChannel{"AllChannels", "A", "D", "E", "H", "AntiA", "AntiD", "AntiE", "AntiH"};
+static const std::vector<std::string_view> ReactionChannel_Long{"AllChannels", "ChannelA", "ChannelD", "ChannelE", "ChannelH",
+                                                                "AntiA",       "AntiD",    "AntiE",    "AntiH"};
+static const std::vector<std::string_view> ReactionChannel_Short{"All", "A", "D", "E", "H", "AntiA", "AntiD", "AntiE", "AntiH"};
 static constexpr std::string_view Events{"Events"};
 static constexpr std::string_view PackedEvents{"PackedEvents"};
 }  // namespace Name
