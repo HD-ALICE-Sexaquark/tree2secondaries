@@ -2,12 +2,25 @@
 
 # Script to submit batch Slurm jobs.
 # It works if the MC output of `esd2vector` has the following dir structure:
+#
 # [production dir]
-# ├── [simulation set]
-# │   ├── AnalysisResults_[run number 1].root
-# │   └── AnalysisResults_[run number 2].root
+# └── [simulation set]
+#     ├── AnalysisResults_[run number 1].root
+#     └── AnalysisResults_[run number 2].root
+#
+# The output will be:
+#
+# T2S_OUTPUT_DIR
+# └── packed
+#     └── [production name]_[simulation set]
+#         ├── Packed_[run number 1].root
+#         └── Packed_[run number 2].root
 
 function print_usage() { echo "Usage: pack_mc_wrapper.sh [production dir]"; }
+
+# command-line arguments
+if [[ $# -ne 1 ]]; then print_usage; exit 1; fi
+export PRODUCTION_PATH=$1
 
 # hardcoded options
 max_parallel_jobs=32
@@ -24,13 +37,10 @@ mkdir -p "${T2S_SLURM_DIR}"
 # -- confirm state of executable
 if [[ -z ${T2S_BIN} ]]; then echo "missing T2S_BIN"; exit 1; fi
 if [[ ! -e ${T2S_BIN} ]]; then echo "missing file ${T2S_BIN}"; exit 1; fi
-echo "pack_mc_wrapper @ farm-pi :: Executable ${T2S_BIN} was last edited on $(stat -c %y "${T2S_BIN}"). Do you want to continue? (y/n)"
-read -n 1 -p "y" answer
-if [[ ${answer} != "y" ]]; then exit 1; fi
-
-# command-line arguments
-if [[ $# -ne 1 ]]; then print_usage; exit 1; fi
-export PRODUCTION_PATH=$1
+last_mod_bin=$(date -d @"$(stat -c %Y "${T2S_BIN}")" '+%Y-%m-%d %H:%M:%S')
+echo "pack_mc_wrapper @ farm-pi :: Executable ${T2S_BIN} was last edited on ${last_mod_bin}."
+read -p "pack_mc_wrapper @ farm-pi :: Do you want to continue? (y/n) " -r bin_confirmation
+if [[ ${bin_confirmation} != "y" ]]; then exit 1; fi
 
 # define strings (NOTE: not arrays, because Slurm)
 export UNROLLED_CHANNELS=""

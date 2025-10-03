@@ -35,19 +35,18 @@ sim_set="${reaction_channel}${sexa_mass}"
 input_file=${PRODUCTION_PATH}/${sim_set}/AnalysisResults_${run_number}.root
 production_name=$(basename "${PRODUCTION_PATH}")
 production_name=${production_name##*_} # remove long prefix
-mode_str=; if [[ ${MODE} == "pack" ]]; then mode_str="packed"; else mode_str="found"; fi
-output_dir=${T2S_OUTPUT_DIR}/${mode_str}/${production_name}_${sim_set}
+output_dir=${T2S_OUTPUT_DIR}/${MODE}ed/${production_name}_${sim_set}
 mkdir -p "${output_dir}"
-output_file=${output_dir}/${mode_str^}_${run_number}.root
+output_file=${output_dir}/${MODE^}ed_${run_number}.root
 
 # log hack (https://unix.stackexchange.com/a/585453)
 tmp_logfile=${T2S_SLURM_DIR}/tmp/${SLURM_ARRAY_JOB_ID}_${SLURM_ARRAY_TASK_ID}.log # = ${T2S_SLURM_DIR}/tmp/%A_%a.log
-slurm_subdir=${T2S_SLURM_DIR}/${mode_str}_${production_name}_${sim_set}
+slurm_subdir=${T2S_SLURM_DIR}/${MODE}ed_${production_name}_${sim_set}
 mkdir -p "${slurm_subdir}"
 ln -f "${tmp_logfile}" "${slurm_subdir}/${SLURM_ARRAY_JOB_ID}_${SLURM_ARRAY_TASK_ID}.log"
 
 t2s_command="${T2S_BIN} -i ${input_file} -o ${output_file} ${MODE} ${DATA_TYPE} -c ${reaction_channel} -m ${sexa_mass}"
-echo "analysis_single_run @ farm-pi :: executing \"${t2s_command}\""
+echo "executing \"${t2s_command}\""
 ${t2s_command}
 
 rm "${tmp_logfile}" # end of log hack
