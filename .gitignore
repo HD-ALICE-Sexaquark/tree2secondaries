@@ -1,8 +1,7 @@
+.env
 .vscode/
 .cache/
 build/
 files/
-compile_commands.json
-test/
-.env
 deprecated/
+compile_commands.json
