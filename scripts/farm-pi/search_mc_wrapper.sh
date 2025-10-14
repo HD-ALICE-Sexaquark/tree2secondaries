@@ -1,1 +1,82 @@
 #!/bin/bash
+
+# Script to submit batch Slurm jobs.
+# It works if the MC packed of `tree2secondaries` have the following dir structure:
+#
+# T2S_OUTPUT_DIR
+# └── packed
+#     └── [production name]_[simulation set]
+#         ├── Packed_[run number 1].root
+#         └── Packed_[run number 2].root
+#
+# The output will be:
+#
+# T2S_OUTPUT_DIR
+# └── found
+#     └── [production name]_[simulation set]
+#         ├── Found_[run number 1].root
+#         └── Found_[run number 2].root
+
+function print_usage() { echo "Usage: search_mc_wrapper.sh [23l1a3,23l1b3]"; }
+
+# command-line arguments
+if [[ $# -ne 1 ]]; then print_usage; exit 1; fi
+export PRODUCTION_NAME=$1
+
+# hardcoded options
+max_parallel_jobs=64
+reaction_channels=("A" "D")
+injected_masses=("1.73" "1.8" "1.87" "1.94" "2.01")
+export MODE="search"
+export DATA_TYPE="mc"
+
+# check environment
+if [[ -z ${T2S_OUTPUT_DIR} ]]; then echo "missing T2S_OUTPUT_DIR"; exit 1; fi
+mkdir -p "${T2S_OUTPUT_DIR}"
+if [[ -z ${T2S_SLURM_DIR} ]]; then echo "missing T2S_SLURM_DIR"; exit 1; fi
+mkdir -p "${T2S_SLURM_DIR}"
+# -- confirm state of executable
+if [[ -z ${T2S_BIN} ]]; then echo "missing T2S_BIN"; exit 1; fi
+if [[ ! -e ${T2S_BIN} ]]; then echo "missing file ${T2S_BIN}"; exit 1; fi
+last_mod_bin=$(date -d @"$(stat -c %Y "${T2S_BIN}")" '+%Y-%m-%d %H:%M:%S')
+echo "search_mc_wrapper @ farm-pi :: Executable ${T2S_BIN} was last edited on ${last_mod_bin}."
+read -p "search_mc_wrapper @ farm-pi :: Do you want to continue? (y/n) " -r bin_confirmation
+if [[ ${bin_confirmation} != "y" ]]; then exit 1; fi
+
+# define strings (NOTE: not arrays, because Slurm)
+export UNROLLED_CHANNELS=""
+export UNROLLED_MASSES=""
+export UNROLLED_RUNS=""
+n_total_jobs=0
+
+# main loop
+for reaction_channel in "${reaction_channels[@]}"; do
+    for injected_mass in "${injected_masses[@]}"; do
+        sim_set="${reaction_channel}${injected_mass}"
+        for rn_file in "${T2S_OUTPUT_DIR}/packed/${PRODUCTION_NAME}_${sim_set}"/Packed_*.root; do
+
+            run_number=${rn_file/.root/} # remove .root
+            run_number=${run_number##*_} # remove long prefix
+
+            UNROLLED_CHANNELS+="${reaction_channel} "
+            UNROLLED_MASSES+="${injected_mass} "
+            UNROLLED_RUNS+="${run_number} "
+
+            n_total_jobs=$((n_total_jobs + 1))
+        done
+    done
+done
+
+array_max=$((n_total_jobs - 1))
+
+# tmp dir for log hack
+tmp_slurm_dir="${T2S_SLURM_DIR}/tmp"
+mkdir -p "${tmp_slurm_dir}"
+
+if [[ ${n_total_jobs} -gt 0 ]]; then
+    sbatch \
+        --output="${tmp_slurm_dir}"/%A_%a.log \
+        --array="0-${array_max}%${max_parallel_jobs}" \
+        -- search_mc_exec.sh && \
+    echo "search_mc_wrapper @ farm-pi :: a total of ${n_total_jobs} jobs have been submitted"
+fi

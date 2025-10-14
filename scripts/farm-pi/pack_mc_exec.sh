@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# !! Don't execute this script directly, it is meant to be used by `analysis_wrapper.sh` !!
+# !! Don't execute this script directly, it is meant to be used by `pack_mc_wrapper.sh` !!
 
 #SBATCH --partition=main
 #SBATCH --time=1:00:00

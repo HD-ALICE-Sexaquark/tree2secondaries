@@ -5,3 +5,5 @@ build/
 files/
 deprecated/
 compile_commands.json
+output/
+slurm/
