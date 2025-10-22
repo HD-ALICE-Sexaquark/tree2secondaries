@@ -10,6 +10,7 @@
 
 #include "App/Settings.hxx"
 #include "DataFormats/Events.hxx"
+#include "DataFormats/Injected.hxx"
 #include "DataFormats/PackedEvents.hxx"
 #include "KF/Extensions.hxx"
 #include "MC/Particles.hxx"
@@ -28,15 +29,15 @@ class Packager {
 
     explicit Packager(Settings settings) : fSettings{std::move(settings)} {}
 
-    EReactionChannel GetReactionChannel() const { return fSettings.Channel; }
+    [[nodiscard]] EReactionChannel GetReactionChannel() const { return fSettings.Channel; }
 
     bool Initialize();
-    void ConnectInputBranches();
+    void ReadInputBranches();
 
-    void ConnectBranches_Events();
-    void ConnectBranches_Injected();
-    void ConnectBranches_MC();
-    void ConnectBranches_Tracks();
+    void ReadBranches_Events();
+    void ReadBranches_Injected();
+    void ReadBranches_MC();
+    void ReadBranches_Tracks();
 
     bool PrepareOutputFile();
     bool PrepareOutputTree();
@@ -45,20 +46,23 @@ class Packager {
 
     void CreateOutputBranches_Events();
     void CreateOutputBranches_Injected();
-    void CreateOutputBranches_V0s(EParticle pid, PackedEvents::V0s &sov);
-    void CreateOutputBranches_Tracks(EParticle pid, PackedEvents::Tracks &sov);
-    void CreateOutputBranches_MC_V0s(EParticle pid, PackedEvents::MC_V0s &sov);
-    void CreateOutputBranches_MC_Tracks(EParticle pid, PackedEvents::MC_Tracks &sov);
+    void CreateOutputBranches_V0s(EParticle pid, DF::Packed::V0s &df);
+    void CreateOutputBranches_Tracks(EParticle pid, DF::Packed::Tracks &df);
+    void CreateOutputBranches_LinkedV0s(EParticle pid, DF::Packed::LinkedV0s &df);
+    void CreateOutputBranches_LinkedTracks(EParticle pid, DF::Packed::LinkedTracks &df);
 
-    int NumberEventsToRead() const { return fSettings.LimitToNEvents ? fSettings.LimitToNEvents : static_cast<int>(fEventsTree->GetEntries()); }
-    bool IsMC() const { return fSettings.IsMC; }
-    void GetEvent(int i_event) { fEventsTree->GetEntry(i_event); }
+    [[nodiscard]] int NumberEventsToRead() const {
+        return fSettings.LimitToNEvents ? fSettings.LimitToNEvents : static_cast<int>(fInputChain_Events->GetEntries());
+    }
+    [[nodiscard]] bool IsMC() const { return fSettings.IsMC; }
+    void GetEvent(int i_event) { fInputChain_Events->GetEntry(i_event); }
 
-    int NumberMC() const { return static_cast<int>(fInput_MC.Px->size()); }
-    int NumberInjected() const { return static_cast<int>(fInput_Injected.ReactionID->size()); }
-    int NumberTracks() const { return static_cast<int>(fInput_Tracks.Px->size()); }
+    [[nodiscard]] int NumberMC() const { return static_cast<int>(fInput_MC.Px->size()); }
+    [[nodiscard]] int NumberInjected() const { return static_cast<int>(fInput_Injected.ReactionID->size()); }
+    [[nodiscard]] int NumberTracks() const { return static_cast<int>(fInput_Tracks.Px->size()); }
 
     void ProcessEvent();
+    void ProcessMCEvent();
 
     void Injected_GetSecondaryVertex();
     void Injected_Store();
@@ -72,7 +76,7 @@ class Packager {
     void PackTracks(EParticle pid);
 
     void FindV0s(EParticle pid);
-    bool PassesCuts(const KF::V0 &v0, EParticle pid) const {
+    [[nodiscard]] bool PassesCuts(const KF::V0 &v0, EParticle pid) const {
         switch (pid) {
             case EParticle::AntiLambda:
             case EParticle::Lambda:
@@ -88,16 +92,16 @@ class Packager {
     void EndOfAnalysis();
 
    private:
-    void Store(const KF::Track &track, PackedEvents::Tracks &sov);
-    void StoreMC(const MC::Track &mc_track, PackedEvents::MC_Tracks &sov);
+    void Store(const KF::Track &track, DF::Packed::Tracks &df);
+    void StoreMC(const MC::Track &mc_track, DF::Packed::LinkedTracks &df);
 
-    bool PassesCuts_Lambda(const KF::V0 &v0) const;
-    bool PassesCuts_KaonZeroShort(const KF::V0 &v0) const;
-    void Store(const KF::V0 &v0, PackedEvents::V0s &sov);
-    void StoreMC(const MC::V0 &mc_v0, PackedEvents::MC_V0s &sov);
+    [[nodiscard]] bool PassesCuts_Lambda(const KF::V0 &v0) const;
+    [[nodiscard]] bool PassesCuts_KaonZeroShort(const KF::V0 &v0) const;
+    void Store(const KF::V0 &v0, DF::Packed::V0s &df);
+    void StoreMC(const MC::V0 &mc_v0, DF::Packed::LinkedV0s &df);
 
     Settings fSettings;
-    std::unique_ptr<TChain> fEventsTree;
+    std::unique_ptr<TChain> fInputChain_Events;
 
     std::unique_ptr<TFile> fOutputFile;
     std::unique_ptr<TTree> fOutputTree;
@@ -108,11 +112,11 @@ class Packager {
 
     // input branches //
 
-    Events::Event fInput_Event;
-    Events::Injected fInput_Injected;
+    DF::Flat::Event fInput_Event;
+    DF::SOV::Injected fInput_Injected;
 
-    Events::MC fInput_MC;
-    Events::Tracks fInput_Tracks;
+    DF::SOV::MC_Particles fInput_MC;
+    DF::SOV::Tracks fInput_Tracks;
 
     // temporary containers, cleaned after event loop //
 
@@ -129,26 +133,26 @@ class Packager {
 
     // output branches //
 
-    Events::Event fOutput_Event;
-    Events::Injected fOutput_Injected;
+    DF::Flat::Event fOutput_Event;
+    DF::SOV::Injected fOutput_Injected;
 
-    PackedEvents::MC_V0s fOutput_MC_AntiLambdas;
-    PackedEvents::MC_V0s fOutput_MC_Lambdas;
-    PackedEvents::MC_V0s fOutput_MC_KaonsZeroShort;
+    DF::Packed::LinkedV0s fOutput_Linked_AntiLambdas;
+    DF::Packed::LinkedV0s fOutput_Linked_Lambdas;
+    DF::Packed::LinkedV0s fOutput_Linked_KaonsZeroShort;
 
-    PackedEvents::MC_Tracks fOutput_MC_NegKaons;
-    PackedEvents::MC_Tracks fOutput_MC_PosKaons;
-    PackedEvents::MC_Tracks fOutput_MC_PiMinus;
-    PackedEvents::MC_Tracks fOutput_MC_PiPlus;
+    DF::Packed::LinkedTracks fOutput_Linked_NegKaons;
+    DF::Packed::LinkedTracks fOutput_Linked_PosKaons;
+    DF::Packed::LinkedTracks fOutput_Linked_PiMinus;
+    DF::Packed::LinkedTracks fOutput_Linked_PiPlus;
 
-    PackedEvents::V0s fOutput_AntiLambdas;
-    PackedEvents::V0s fOutput_Lambdas;
-    PackedEvents::V0s fOutput_KaonsZeroShort;
+    DF::Packed::V0s fOutput_AntiLambdas;
+    DF::Packed::V0s fOutput_Lambdas;
+    DF::Packed::V0s fOutput_KaonsZeroShort;
 
-    PackedEvents::Tracks fOutput_NegKaons;
-    PackedEvents::Tracks fOutput_PosKaons;
-    PackedEvents::Tracks fOutput_PiMinus;
-    PackedEvents::Tracks fOutput_PiPlus;
+    DF::Packed::Tracks fOutput_NegKaons;
+    DF::Packed::Tracks fOutput_PosKaons;
+    DF::Packed::Tracks fOutput_PiMinus;
+    DF::Packed::Tracks fOutput_PiPlus;
 };
 
 }  // namespace Tree2Secondaries

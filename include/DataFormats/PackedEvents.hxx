@@ -1,244 +1,141 @@
-#ifndef T2S_STRUCTS_PACKED_HXX
-#define T2S_STRUCTS_PACKED_HXX
+#ifndef T2S_DF_PACKED_HXX
+#define T2S_DF_PACKED_HXX
 
+#include <format>
+#include <string_view>
 #include <vector>
 
+#include <TTree.h>
+
+#include "App/Utilities.hxx"
+#include "DataFormats/DataFormats.hxx"
 #include "Math/Constants.hxx"
 
-namespace Tree2Secondaries::PackedEvents {
+namespace Tree2Secondaries::DF::Packed {
 
-struct alignas(T2S_SIMD_ALIGN) Cov {
-    std::vector<float>* X2{nullptr};
-    std::vector<float>* XY{nullptr};
-    std::vector<float>* Y2{nullptr};
-    std::vector<float>* XZ{nullptr};
-    std::vector<float>* YZ{nullptr};
-    std::vector<float>* Z2{nullptr};
-    std::vector<float>* XPx{nullptr};
-    std::vector<float>* YPx{nullptr};
-    std::vector<float>* ZPx{nullptr};
-    std::vector<float>* Px2{nullptr};
-    std::vector<float>* XPy{nullptr};
-    std::vector<float>* YPy{nullptr};
-    std::vector<float>* ZPy{nullptr};
-    std::vector<float>* PxPy{nullptr};
-    std::vector<float>* Py2{nullptr};
-    std::vector<float>* XPz{nullptr};
-    std::vector<float>* YPz{nullptr};
-    std::vector<float>* ZPz{nullptr};
-    std::vector<float>* PxPz{nullptr};
-    std::vector<float>* PyPz{nullptr};
-    std::vector<float>* Pz2{nullptr};
-    std::vector<float>* XE{nullptr};
-    std::vector<float>* YE{nullptr};
-    std::vector<float>* ZE{nullptr};
-    std::vector<float>* PxE{nullptr};
-    std::vector<float>* PyE{nullptr};
-    std::vector<float>* PzE{nullptr};
-    std::vector<float>* E2{nullptr};
-
-    void ClearCov() {
-        X2->clear();
-        XY->clear();
-        Y2->clear();
-        XZ->clear();
-        YZ->clear();
-        Z2->clear();
-        XPx->clear();
-        YPx->clear();
-        ZPx->clear();
-        Px2->clear();
-        XPy->clear();
-        YPy->clear();
-        ZPy->clear();
-        PxPy->clear();
-        Py2->clear();
-        XPz->clear();
-        YPz->clear();
-        ZPz->clear();
-        PxPz->clear();
-        PyPz->clear();
-        Pz2->clear();
-        XE->clear();
-        YE->clear();
-        ZE->clear();
-        PxE->clear();
-        PyE->clear();
-        PzE->clear();
-        E2->clear();
-    }
-};
-
-struct alignas(T2S_SIMD_ALIGN) State {
+struct alignas(T2S_SIMD_ALIGN) Tracks : SOV::States_NoE, SOV::CovMatrices_NoE {
     std::vector<int>* Entry{nullptr};
-    std::vector<float>* X{nullptr};
-    std::vector<float>* Y{nullptr};
-    std::vector<float>* Z{nullptr};
-    std::vector<float>* Px{nullptr};
-    std::vector<float>* Py{nullptr};
-    std::vector<float>* Pz{nullptr};
-    std::vector<float>* E{nullptr};
 
-    void ClearState() {
+    void Clear_PackedTracks() {
+        Clear_States_NoE();
+        Clear_CovMatrices_NoE();
         Entry->clear();
-        X->clear();
-        Y->clear();
-        Z->clear();
-        Px->clear();
-        Py->clear();
-        Pz->clear();
-        E->clear();
+    }
+    void CreateBranches_PackedTracks(TTree* tree, std::string_view suffix = "") {
+        CreateBranches_States_NoE(tree, suffix);
+        CreateBranches_CovMatrices_NoE(tree, suffix);
+        Utils::CreateBranch(tree, std::format("{}_Entry", suffix), &Entry);
+    }
+    void ReadBranches_PackedTracks(TTree* tree, std::string_view suffix = "") {
+        ReadBranches_States_NoE(tree, suffix);
+        ReadBranches_CovMatrices_NoE(tree, suffix);
+        Utils::ReadBranch(tree, std::format("{}_Entry", suffix), &Entry);
     }
 };
 
-struct alignas(T2S_SIMD_ALIGN) Particle : State {
-    Cov Sigma;
+struct alignas(T2S_SIMD_ALIGN) V0s : SOV::States, SOV::CovMatrices {
+    Tracks Neg;
+    Tracks Pos;
+    SOV::States_NoE Neg_atPCA;
+    SOV::States_NoE Pos_atPCA;
+    std::vector<int>* Entry{nullptr};
+    std::vector<float>* Chi2NDF{nullptr};
 
-    void ClearParticle() {
-        ClearState();
-        Sigma.ClearCov();
+    void Clear_PackedV0s() {
+        Clear_States();
+        Clear_CovMatrices();
+        Neg.Clear_PackedTracks();
+        Pos.Clear_PackedTracks();
+        Neg_atPCA.Clear_States_NoE();
+        Pos_atPCA.Clear_States_NoE();
+        Entry->clear();
+        Chi2NDF->clear();
+    }
+    void CreateBranches_PackedV0s(TTree* tree, std::string_view suffix = "") {
+        const std::string& neg_suffix{std::format("{}_Neg", suffix)};
+        const std::string& pos_suffix{std::format("{}_Pos", suffix)};
+        CreateBranches_States(tree, suffix);
+        CreateBranches_CovMatrices(tree, suffix);
+        Neg.CreateBranches_PackedTracks(tree, neg_suffix);
+        Pos.CreateBranches_PackedTracks(tree, pos_suffix);
+        Neg_atPCA.CreateBranches_States_NoE(tree, std::format("{}_atPCA", neg_suffix));
+        Pos_atPCA.CreateBranches_States_NoE(tree, std::format("{}_atPCA", pos_suffix));
+        Utils::CreateBranch(tree, std::format("{}_Entry", suffix), &Entry);
+        Utils::CreateBranch(tree, std::format("{}_Chi2NDF", suffix), &Chi2NDF);
+    }
+    void ReadBranches_PackedV0s(TTree* tree, std::string_view suffix = "") {
+        const std::string& neg_suffix{std::format("{}_Neg", suffix)};
+        const std::string& pos_suffix{std::format("{}_Pos", suffix)};
+        ReadBranches_States(tree, suffix);
+        ReadBranches_CovMatrices(tree, suffix);
+        Neg.ReadBranches_PackedTracks(tree, neg_suffix);
+        Pos.ReadBranches_PackedTracks(tree, pos_suffix);
+        Neg_atPCA.ReadBranches_States_NoE(tree, std::format("{}_atPCA", neg_suffix));
+        Pos_atPCA.ReadBranches_States_NoE(tree, std::format("{}_atPCA", pos_suffix));
+        Utils::ReadBranch(tree, std::format("{}_Entry", suffix), &Entry);
+        Utils::ReadBranch(tree, std::format("{}_Chi2NDF", suffix), &Chi2NDF);
     }
 };
 
-struct alignas(T2S_SIMD_ALIGN) Tracks : Particle {
-    void Clear() { ClearParticle(); }
-};
-
-struct alignas(T2S_SIMD_ALIGN) V0s : Particle {
-    State Neg;
-    State Pos;
-    std::vector<float>* Neg_X_AtPCA{nullptr};
-    std::vector<float>* Neg_Y_AtPCA{nullptr};
-    std::vector<float>* Neg_Z_AtPCA{nullptr};
-    std::vector<float>* Neg_Px_AtPCA{nullptr};
-    std::vector<float>* Neg_Py_AtPCA{nullptr};
-    std::vector<float>* Neg_Pz_AtPCA{nullptr};
-    std::vector<float>* Pos_X_AtPCA{nullptr};
-    std::vector<float>* Pos_Y_AtPCA{nullptr};
-    std::vector<float>* Pos_Z_AtPCA{nullptr};
-    std::vector<float>* Pos_Px_AtPCA{nullptr};
-    std::vector<float>* Pos_Py_AtPCA{nullptr};
-    std::vector<float>* Pos_Pz_AtPCA{nullptr};
-
-    void Clear() {
-        ClearParticle();
-        Neg.ClearState();
-        Pos.ClearState();
-        Neg_X_AtPCA->clear();
-        Neg_Y_AtPCA->clear();
-        Neg_Z_AtPCA->clear();
-        Neg_Px_AtPCA->clear();
-        Neg_Py_AtPCA->clear();
-        Neg_Pz_AtPCA->clear();
-        Pos_X_AtPCA->clear();
-        Pos_Y_AtPCA->clear();
-        Pos_Z_AtPCA->clear();
-        Pos_Px_AtPCA->clear();
-        Pos_Py_AtPCA->clear();
-        Pos_Pz_AtPCA->clear();
-    }
-};
-
-struct alignas(T2S_SIMD_ALIGN) MC_Tracks : State {
-    std::vector<int>* Mother_Entry{nullptr};
+// NOTE: similar but different from `DF::SOV::MC_Particles`
+struct alignas(T2S_SIMD_ALIGN) LinkedTracks : SOV::MCInfo {
     std::vector<int>* GrandMother_Entry{nullptr};
-    std::vector<int>* PdgCode{nullptr};
-    std::vector<int>* Mother_PdgCode{nullptr};
     std::vector<int>* GrandMother_PdgCode{nullptr};
-    std::vector<int>* ReactionID{nullptr};
-    std::vector<char>* IsTrue{nullptr};
-    std::vector<char>* IsSignal{nullptr};
-    std::vector<char>* IsSecondary{nullptr};
 
-    void Clear() {
-        ClearState();
-        Mother_Entry->clear();
+    void Clear_LinkedTracks() {
+        Clear_MCInfo();
         GrandMother_Entry->clear();
-        PdgCode->clear();
-        Mother_PdgCode->clear();
         GrandMother_PdgCode->clear();
-        ReactionID->clear();
-        IsTrue->clear();
-        IsSignal->clear();
-        IsSecondary->clear();
+    }
+    void CreateBranches_LinkedTracks(TTree* tree, std::string_view acronym = "") {
+        CreateBranches_MCInfo(tree, acronym);
+        Utils::CreateBranch(tree, std::format("MC_{}_GrandMother_Entry", acronym), &GrandMother_Entry);
+        Utils::CreateBranch(tree, std::format("MC_{}_GrandMother_PdgCode", acronym), &GrandMother_PdgCode);
+    }
+    void ReadBranches_LinkedTracks(TTree* tree, std::string_view acronym = "") {
+        ReadBranches_MCInfo(tree, acronym);
+        Utils::ReadBranch(tree, std::format("MC_{}_GrandMother_Entry", acronym), &GrandMother_Entry);
+        Utils::ReadBranch(tree, std::format("MC_{}_GrandMother_PdgCode", acronym), &GrandMother_PdgCode);
     }
 };
 
-struct alignas(T2S_SIMD_ALIGN) MC_V0s : State {
+struct alignas(T2S_SIMD_ALIGN) LinkedV0s : SOV::MCInfo {
+    SOV::MCInfo_Reduced Neg;
+    SOV::MCInfo_Reduced Pos;
     std::vector<float>* DecayX{nullptr};
     std::vector<float>* DecayY{nullptr};
     std::vector<float>* DecayZ{nullptr};
-
-    std::vector<int>* PdgCode{nullptr};
-    std::vector<int>* Mother_Entry{nullptr};
-    std::vector<int>* Mother_PdgCode{nullptr};
-    std::vector<char>* IsTrue{nullptr};
-    std::vector<char>* IsSignal{nullptr};
-    std::vector<char>* IsSecondary{nullptr};
-    std::vector<int>* ReactionID{nullptr};
     std::vector<char>* IsHybrid{nullptr};
 
-    // neg //
-    std::vector<int>* Neg_Entry{nullptr};
-    std::vector<float>* Neg_Px{nullptr};
-    std::vector<float>* Neg_Py{nullptr};
-    std::vector<float>* Neg_Pz{nullptr};
-    std::vector<int>* Neg_PdgCode{nullptr};
-    std::vector<char>* Neg_IsTrue{nullptr};
-    std::vector<char>* Neg_IsSignal{nullptr};
-    std::vector<char>* Neg_IsSecondary{nullptr};
-    std::vector<int>* Neg_ReactionID{nullptr};
-
-    // pos //
-    std::vector<int>* Pos_Entry{nullptr};
-    std::vector<float>* Pos_Px{nullptr};
-    std::vector<float>* Pos_Py{nullptr};
-    std::vector<float>* Pos_Pz{nullptr};
-    std::vector<int>* Pos_PdgCode{nullptr};
-    std::vector<char>* Pos_IsTrue{nullptr};
-    std::vector<char>* Pos_IsSignal{nullptr};
-    std::vector<char>* Pos_IsSecondary{nullptr};
-    std::vector<int>* Pos_ReactionID{nullptr};
-
-    void Clear() {
-        ClearState();
+    void Clear_LinkedV0s() {
+        Clear_MCInfo();
+        Neg.Clear_MCInfo_Reduced();
+        Pos.Clear_MCInfo_Reduced();
         DecayX->clear();
         DecayY->clear();
         DecayZ->clear();
-
-        PdgCode->clear();
-        Mother_Entry->clear();
-        Mother_PdgCode->clear();
-        IsTrue->clear();
-        IsSignal->clear();
-        IsSecondary->clear();
-        ReactionID->clear();
         IsHybrid->clear();
-
-        // neg //
-        Neg_Entry->clear();
-        Neg_Px->clear();
-        Neg_Py->clear();
-        Neg_Pz->clear();
-        Neg_PdgCode->clear();
-        Neg_IsTrue->clear();
-        Neg_IsSignal->clear();
-        Neg_IsSecondary->clear();
-        Neg_ReactionID->clear();
-
-        // pos //
-        Pos_Entry->clear();
-        Pos_Px->clear();
-        Pos_Py->clear();
-        Pos_Pz->clear();
-        Pos_PdgCode->clear();
-        Pos_IsTrue->clear();
-        Pos_IsSignal->clear();
-        Pos_IsSecondary->clear();
-        Pos_ReactionID->clear();
+    }
+    void CreateBranches_LinkedV0s(TTree* tree, std::string_view acronym = "") {
+        CreateBranches_MCInfo(tree, acronym);
+        Neg.CreateBranches_MCInfo_Reduced(tree, std::format("MC_{}_Neg", acronym));
+        Pos.CreateBranches_MCInfo_Reduced(tree, std::format("MC_{}_Pos", acronym));
+        Utils::CreateBranch(tree, std::format("MC_{}_DecayX", acronym), &DecayX);
+        Utils::CreateBranch(tree, std::format("MC_{}_DecayY", acronym), &DecayY);
+        Utils::CreateBranch(tree, std::format("MC_{}_DecayZ", acronym), &DecayZ);
+        Utils::CreateBranch(tree, std::format("MC_{}_IsHybrid", acronym), &IsHybrid);
+    }
+    void ReadBranches_LinkedV0s(TTree* tree, std::string_view acronym = "") {
+        ReadBranches_MCInfo(tree, acronym);
+        Neg.ReadBranches_MCInfo_Reduced(tree, std::format("MC_{}_Neg", acronym));
+        Pos.ReadBranches_MCInfo_Reduced(tree, std::format("MC_{}_Pos", acronym));
+        Utils::ReadBranch(tree, std::format("MC_{}_DecayX", acronym), &DecayX);
+        Utils::ReadBranch(tree, std::format("MC_{}_DecayY", acronym), &DecayY);
+        Utils::ReadBranch(tree, std::format("MC_{}_DecayZ", acronym), &DecayZ);
+        Utils::ReadBranch(tree, std::format("MC_{}_IsHybrid", acronym), &IsHybrid);
     }
 };
 
-}  // namespace Tree2Secondaries::PackedEvents
+}  // namespace Tree2Secondaries::DF::Packed
 
-#endif  // T2S_STRUCTS_PACKED_HXX
+#endif  // T2S_DF_PACKED_HXX

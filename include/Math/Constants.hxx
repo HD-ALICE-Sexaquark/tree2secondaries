@@ -1,7 +1,7 @@
 #ifndef T2S_CONSTANTS_HXX
 #define T2S_CONSTANTS_HXX
 
-#include <string_view>
+#include <string>
 #include <unordered_map>
 #include <vector>
 
@@ -23,22 +23,23 @@ const std::unordered_map<char, EReactionChannel> CharReactionChannel_To_EReactio
 };
 
 namespace Name {
-static const std::vector<std::string_view> ReactionChannel_Long{"AllChannels", "ChannelA", "ChannelD", "ChannelE", "ChannelH",
-                                                                "AntiA",       "AntiD",    "AntiE",    "AntiH"};
-static const std::vector<std::string_view> ReactionChannel_Short{"All", "A", "D", "E", "H", "AntiA", "AntiD", "AntiE", "AntiH"};
-static constexpr std::string_view Events{"Events"};
-static constexpr std::string_view PackedEvents{"PackedEvents"};
+static const std::vector<std::string> ReactionChannel_Long{"AllChannels", "ChannelA", "ChannelD", "ChannelE", "ChannelH",
+                                                           "AntiA",       "AntiD",    "AntiE",    "AntiH"};
+static const std::vector<std::string> ReactionChannel_Short{"All", "A", "D", "E", "H", "AntiA", "AntiD", "AntiE", "AntiH"};
+static constexpr std::string Events{"Events"};
+static constexpr std::string PackedEvents{"PackedEvents"};
 }  // namespace Name
 
 enum EParticle { PiMinus, PiPlus, NegKaon, PosKaon, KaonZeroShort, AntiProton, Proton, AntiNeutron, Neutron, AntiLambda, Lambda };
 
 namespace Particle {
-static const std::vector<std::string_view> Acronym{"PM", "PP", "NK", "PK", "K0S", "AP", "P", "AN", "N", "AL", "L"};
+static const std::vector<std::string> Acronym{"PM", "PP", "NK", "PK", "K0S", "AP", "P", "AN", "N", "AL", "L"};
 static const std::vector<int> PdgCode{-211, 211, -321, 321, 310, -2212, 2212, -2112, 2112, -3122, 3122};
 
 // in (GeV/c^2)
 static const std::vector<double> Mass{0.13957040, 0.13957040, 0.49367700, 0.49367700, 0.49761100, 0.93827210,
                                       0.93827210, 0.93956540, 0.93956540, 1.1156830,  1.1156830};
+static const std::vector<int> Charge{-1, +1, -1, +1, 0, -1, +1, 0, 0, 0, 0};
 }  // namespace Particle
 
 namespace Const {

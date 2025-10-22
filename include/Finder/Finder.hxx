@@ -10,8 +10,9 @@
 #include <TTree.h>
 
 #include "App/Settings.hxx"
+#include "DataFormats/ChannelA.hxx"
+#include "DataFormats/ChannelD.hxx"
 #include "DataFormats/Events.hxx"
-#include "DataFormats/Found.hxx"
 #include "DataFormats/PackedEvents.hxx"
 #include "KF/Extensions.hxx"
 #include "MC/Particles.hxx"
@@ -33,25 +34,23 @@ class Finder {
     [[nodiscard]] EReactionChannel GetReactionChannel() const { return fSettings.Channel; }
 
     bool Initialize();
-    void ConnectInputBranches();
+    void ReadInputBranches();
 
-    void ConnectBranches_Events();
-    void ConnectBranches_Injected();
-    void ConnectBranches_V0s(EParticle pid, PackedEvents::V0s &vec_v0s);
-    void ConnectBranches_Tracks(EParticle pid, PackedEvents::Tracks &vec_tracks);
-    void ConnectBranches_MC_V0s(EParticle pid, PackedEvents::MC_V0s &sov);
-    void ConnectBranches_MC_Tracks(EParticle pid, PackedEvents::MC_Tracks &sov);
+    void ReadBranches_Events();
+    void ReadBranches_Injected();
+    void ReadBranches_V0s(EParticle pid, DF::Packed::V0s &df);
+    void ReadBranches_Tracks(EParticle pid, DF::Packed::Tracks &df);
+    void ReadBranches_LinkedV0s(EParticle pid, DF::Packed::LinkedV0s &df);
+    void ReadBranches_LinkedTracks(EParticle pid, DF::Packed::LinkedTracks &df);
 
     bool PrepareOutputFile();
     bool PrepareOutputTree();
     void CreateCutFlowHistogram();
 
-    void CreateOutputBranches(Found::ChannelA &out_branches);
-    void CreateOutputBranches(Found::ChannelD &out_branches);
-    void CreateOutputBranches(Found::ChannelE &out_branches);
-    void CreateOutputBranches(Found::ChannelH &out_branches);
-    void CreateOutputBranches(Found::MC_ChannelA &sov);
-    void CreateOutputBranches(Found::MC_ChannelD &sov);
+    void CreateOutputBranches(DF::ChannelA &df);
+    void CreateOutputBranches(DF::ChannelD &df);
+    void CreateOutputBranches(DF::MC_ChannelA &df);
+    void CreateOutputBranches(DF::MC_ChannelD &df);
     void CreateOutputBranches() {
         switch (GetReactionChannel()) {
             // standard channels //
@@ -65,14 +64,6 @@ class Finder {
                 CreateOutputBranches(fOutput_ChannelD);
                 if (IsMC()) CreateOutputBranches(fOutput_MC_ChannelD);
                 break;
-            case EReactionChannel::E:
-            case EReactionChannel::AntiE:
-                CreateOutputBranches(fOutput_ChannelE);
-                break;
-            case EReactionChannel::H:
-            case EReactionChannel::AntiH:
-                CreateOutputBranches(fOutput_ChannelH);
-                break;
             default:
                 break;
         }  // end of switch statement
@@ -82,16 +73,14 @@ class Finder {
     void Injected_CreateOutputBranches();
     void Injected_FlattenAndStore();
 
-    int NumberEventsToRead() const {
-        return fSettings.LimitToNEvents ? fSettings.LimitToNEvents : static_cast<int>(fTree_PackedEvents->GetEntries());
+    [[nodiscard]] int NumberEventsToRead() const {
+        return fSettings.LimitToNEvents ? fSettings.LimitToNEvents : static_cast<int>(fInputChain_PackedEvents->GetEntries());
     }
-    bool IsMC() const { return fSettings.IsMC; }
-    void GetEvent(int i_event) { fTree_PackedEvents->GetEntry(i_event); }
+    [[nodiscard]] bool IsMC() const { return fSettings.IsMC; }
+    void GetEvent(int i_event) { fInputChain_PackedEvents->GetEntry(i_event); }
 
     void FindSexaquarks_ChannelA(bool anti_channel);
     void FindSexaquarks_ChannelD(bool anti_channel);
-    void FindSexaquarks_ChannelE(bool anti_channel);
-    void FindSexaquarks_ChannelH(bool anti_channel);
     void Find(EReactionChannel reaction_channel) {
         switch (reaction_channel) {
             case EReactionChannel::A:
@@ -102,28 +91,16 @@ class Finder {
             case EReactionChannel::AntiD:
                 FindSexaquarks_ChannelD(reaction_channel == EReactionChannel::AntiD);
                 break;
-            case EReactionChannel::E:
-            case EReactionChannel::AntiE:
-                FindSexaquarks_ChannelE(reaction_channel == EReactionChannel::AntiE);
-                break;
-            case EReactionChannel::H:
-            case EReactionChannel::AntiH:
-                FindSexaquarks_ChannelH(reaction_channel == EReactionChannel::AntiH);
-                break;
             default:
                 return;
         }
     }
 
-    bool PassesCuts(const KF::ChannelA &sexa) const;
-    bool PassesCuts(const KF::ChannelD &sexa) const;
-    bool PassesCuts(const KF::ChannelE &sexa) const;
-    bool PassesCuts(const KF::ChannelH &sexa) const;
+    [[nodiscard]] bool PassesCuts(const KF::ChannelA &sexa) const;
+    [[nodiscard]] bool PassesCuts(const KF::ChannelD &sexa) const;
 
     void Store(const KF::ChannelA &sexa);
     void Store(const KF::ChannelD &sexa);
-    void Store(const KF::ChannelE &sexa);
-    void Store(const KF::ChannelH &sexa);
     void StoreMC(const MC::ChannelA &sexa);
     void StoreMC(const MC::ChannelD &sexa);
 
@@ -131,7 +108,7 @@ class Finder {
 
    private:
     Settings fSettings;
-    std::unique_ptr<TChain> fTree_PackedEvents;
+    std::unique_ptr<TChain> fInputChain_PackedEvents;
 
     std::unique_ptr<TFile> fOutputFile;
     std::unique_ptr<TTree> fOutputTree;
@@ -139,40 +116,38 @@ class Finder {
 
     std::unique_ptr<TH1D> fCutFlowHist;
 
-    // input structs //
+    // input //
 
-    Events::Event fInput_Event;
-    Events::Injected fInput_Injected;
+    DF::Flat::Event fInput_Event;
+    DF::SOV::Injected fInput_Injected;
 
-    PackedEvents::V0s fPacked_AntiLambdas;
-    PackedEvents::V0s fPacked_Lambdas;
-    PackedEvents::V0s fPacked_KaonsZeroShort;
+    DF::Packed::V0s fInput_AntiLambdas;
+    DF::Packed::V0s fInput_Lambdas;
+    DF::Packed::V0s fInput_KaonsZeroShort;
 
-    PackedEvents::Tracks fPacked_NegKaons;
-    PackedEvents::Tracks fPacked_PosKaons;
-    PackedEvents::Tracks fPacked_PiMinus;
-    PackedEvents::Tracks fPacked_PiPlus;
+    DF::Packed::Tracks fInput_NegKaons;
+    DF::Packed::Tracks fInput_PosKaons;
+    DF::Packed::Tracks fInput_PiMinus;
+    DF::Packed::Tracks fInput_PiPlus;
 
-    PackedEvents::MC_V0s fPacked_MC_AntiLambdas;
-    PackedEvents::MC_V0s fPacked_MC_Lambdas;
-    PackedEvents::MC_V0s fPacked_MC_KaonsZeroShort;
+    DF::Packed::LinkedV0s fInput_Linked_AntiLambdas;
+    DF::Packed::LinkedV0s fInput_Linked_Lambdas;
+    DF::Packed::LinkedV0s fInput_Linked_KaonsZeroShort;
 
-    PackedEvents::MC_Tracks fPacked_MC_NegKaons;
-    PackedEvents::MC_Tracks fPacked_MC_PosKaons;
-    PackedEvents::MC_Tracks fPacked_MC_PiMinus;
-    PackedEvents::MC_Tracks fPacked_MC_PiPlus;
+    DF::Packed::LinkedTracks fInput_Linked_NegKaons;
+    DF::Packed::LinkedTracks fInput_Linked_PosKaons;
+    DF::Packed::LinkedTracks fInput_Linked_PiMinus;
+    DF::Packed::LinkedTracks fInput_Linked_PiPlus;
 
-    // output structs //
+    // output //
 
-    Found::ChannelA fOutput_ChannelA;
-    Found::ChannelD fOutput_ChannelD;
-    Found::ChannelE fOutput_ChannelE;
-    Found::ChannelH fOutput_ChannelH;
+    DF::ChannelA fOutput_ChannelA;
+    DF::ChannelD fOutput_ChannelD;
 
-    Found::MC_ChannelA fOutput_MC_ChannelA;
-    Found::MC_ChannelD fOutput_MC_ChannelD;
+    DF::Flat::Injected fOutput_Injected;
 
-    Found::Injected fOutput_Injected;
+    DF::MC_ChannelA fOutput_MC_ChannelA;
+    DF::MC_ChannelD fOutput_MC_ChannelD;
 };
 
 }  // namespace Tree2Secondaries

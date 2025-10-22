@@ -7,6 +7,7 @@
 #include <KFParticle_Math.hxx>
 
 #include "DataFormats/Events.hxx"
+#include "DataFormats/Injected.hxx"
 #include "DataFormats/PackedEvents.hxx"
 #include "Math/Constants.hxx"
 
@@ -29,20 +30,20 @@ struct alignas(T2S_SIMD_ALIGN) Particle {
           Mother_PdgCode{mother_pdg_code} {}
 
     // utilities //
-    void FillBasic(const Events::MC& soa, int mc_idx) {
+    void FillBasic(const DF::SOV::MC_Particles& df, int mc_idx) {
         if (mc_idx >= 0) {
             Entry = mc_idx;
-            X = soa.X->at(mc_idx);
-            Y = soa.Y->at(mc_idx);
-            Z = soa.Z->at(mc_idx);
-            Px = soa.Px->at(mc_idx);
-            Py = soa.Py->at(mc_idx);
-            Pz = soa.Pz->at(mc_idx);
-            Energy = soa.E->at(mc_idx);
+            X = df.X->at(mc_idx);
+            Y = df.Y->at(mc_idx);
+            Z = df.Z->at(mc_idx);
+            Px = df.Px->at(mc_idx);
+            Py = df.Py->at(mc_idx);
+            Pz = df.Pz->at(mc_idx);
+            Energy = df.Energy->at(mc_idx);
 
-            PdgCode = soa.PdgCode->at(mc_idx);
-            Mother_Entry = soa.MotherEntry->at(mc_idx);
-            if (Mother_Entry >= 0) Mother_PdgCode = soa.PdgCode->at(Mother_Entry);
+            PdgCode = df.PdgCode->at(mc_idx);
+            Mother_Entry = df.MotherEntry->at(mc_idx);
+            if (Mother_Entry >= 0) Mother_PdgCode = df.PdgCode->at(Mother_Entry);
         }
     }
 
@@ -64,25 +65,25 @@ struct alignas(T2S_SIMD_ALIGN) Particle {
 struct alignas(T2S_SIMD_ALIGN) Track : MC::Particle {
     // constructors //
     Track() = default;
-    Track(const Events::MC& soa, int mc_idx, Tree2Secondaries::EParticle pid_hypothesis) { Init(soa, mc_idx, pid_hypothesis); }
-    Track(const PackedEvents::MC_Tracks& sov, int idx)
-        : MC::Particle{sov.Entry->at(idx),
-                       sov.PdgCode->at(idx),
-                       sov.Mother_Entry->at(idx),
-                       sov.Mother_PdgCode->at(idx),
-                       sov.X->at(idx),
-                       sov.Y->at(idx),
-                       sov.Z->at(idx),
-                       sov.Px->at(idx),
-                       sov.Py->at(idx),
-                       sov.Pz->at(idx),
-                       sov.E->at(idx)},
-          GrandMother_Entry{sov.GrandMother_Entry->at(idx)},
-          GrandMother_PdgCode{sov.GrandMother_PdgCode->at(idx)},
-          ReactionID(sov.ReactionID->at(idx)),
-          IsTrue(sov.IsTrue->at(idx)),
-          IsSignal(sov.IsSignal->at(idx)),
-          IsSecondary(sov.IsSecondary->at(idx)) {}
+    Track(const DF::SOV::MC_Particles& df, int mc_idx, Tree2Secondaries::EParticle pid_hypothesis) { Init(df, mc_idx, pid_hypothesis); }
+    Track(const DF::Packed::LinkedTracks& df, int idx)
+        : MC::Particle{df.Entry->at(idx),
+                       df.PdgCode->at(idx),
+                       df.Mother_Entry->at(idx),
+                       df.Mother_PdgCode->at(idx),
+                       df.X->at(idx),
+                       df.Y->at(idx),
+                       df.Z->at(idx),
+                       df.Px->at(idx),
+                       df.Py->at(idx),
+                       df.Pz->at(idx),
+                       df.Energy->at(idx)},
+          GrandMother_Entry{df.GrandMother_Entry->at(idx)},
+          GrandMother_PdgCode{df.GrandMother_PdgCode->at(idx)},
+          ReactionID(df.ReactionID->at(idx)),
+          IsTrue(df.IsTrue->at(idx)),
+          IsSignal(df.IsSignal->at(idx)),
+          IsSecondary(df.IsSecondary->at(idx)) {}
     Track(int entry, int pdg_code, float px, float py, float pz, bool is_true, bool is_signal, bool is_secondary, int reaction_id)
         : MC::Particle{entry, pdg_code, Const::DummyInt,  Const::DummyInt, Const::DummyFloat, Const::DummyFloat, Const::DummyFloat, px,
                        py,    pz,       Const::DummyFloat},
@@ -92,19 +93,19 @@ struct alignas(T2S_SIMD_ALIGN) Track : MC::Particle {
           IsSecondary(is_secondary) {}
 
     // utilities //
-    void Init(const Events::MC& soa, int mc_idx, Tree2Secondaries::EParticle pid_hypothesis) {
-        FillBasic(soa, mc_idx);
-        FillDerived(soa, mc_idx, pid_hypothesis);
+    void Init(const DF::SOV::MC_Particles& df, int mc_idx, Tree2Secondaries::EParticle pid_hypothesis) {
+        FillBasic(df, mc_idx);
+        FillDerived(df, mc_idx, pid_hypothesis);
     }
-    void FillDerived(const Events::MC& soa, int mc_idx, Tree2Secondaries::EParticle pid_hypothesis) {
+    void FillDerived(const DF::SOV::MC_Particles& df, int mc_idx, Tree2Secondaries::EParticle pid_hypothesis) {
         if (mc_idx >= 0) {
             IsTrue = PdgCode == Tree2Secondaries::Particle::PdgCode[pid_hypothesis];
-            IsSignal = IsTrue && soa.Generator->at(mc_idx) == 2;
-            IsSecondary = soa.IsSecFromMat->at(mc_idx) || soa.IsSecFromWeak->at(mc_idx) || IsSignal;
+            IsSignal = IsTrue && df.Generator->at(mc_idx) == 2;
+            IsSecondary = df.IsSecFromMat->at(mc_idx) || df.IsSecFromWeak->at(mc_idx) || IsSignal;
             if (Mother_Entry >= 0) {
-                if (IsSignal) ReactionID = soa.Status->at(Mother_Entry);
-                GrandMother_Entry = soa.MotherEntry->at(Mother_Entry);
-                if (GrandMother_Entry >= 0) GrandMother_PdgCode = soa.PdgCode->at(GrandMother_Entry);
+                if (IsSignal) ReactionID = df.Status->at(Mother_Entry);
+                GrandMother_Entry = df.MotherEntry->at(Mother_Entry);
+                if (GrandMother_Entry >= 0) GrandMother_PdgCode = df.PdgCode->at(GrandMother_Entry);
             }
         }
     }
@@ -122,71 +123,71 @@ struct alignas(T2S_SIMD_ALIGN) Track : MC::Particle {
 struct alignas(T2S_SIMD_ALIGN) V0 : MC::Particle {
     // constructors //
     V0() = default;
-    V0(const Events::MC& soa, int mc_neg, int mc_pos, Tree2Secondaries::EParticle v0_hypothesis, Tree2Secondaries::EParticle neg_hypothesis,
+    V0(const DF::SOV::MC_Particles& df, int mc_neg, int mc_pos, Tree2Secondaries::EParticle v0_hypothesis, Tree2Secondaries::EParticle neg_hypothesis,
        Tree2Secondaries::EParticle pos_hypothesis) {
         if (mc_neg < 0 || mc_pos < 0) return;  // protection
-        neg.Init(soa, mc_neg, neg_hypothesis);
-        pos.Init(soa, mc_pos, pos_hypothesis);
+        neg.Init(df, mc_neg, neg_hypothesis);
+        pos.Init(df, mc_pos, pos_hypothesis);
 
-        int mc_mother_neg{soa.MotherEntry->at(mc_neg)};
-        int mc_mother_pos{soa.MotherEntry->at(mc_pos)};
+        int mc_mother_neg{df.MotherEntry->at(mc_neg)};
+        int mc_mother_pos{df.MotherEntry->at(mc_pos)};
         if (mc_mother_neg >= 0 && mc_mother_neg == mc_mother_pos) {
             int mc_v0{mc_mother_neg};
-            FillBasic(soa, mc_v0);
+            FillBasic(df, mc_v0);
 
             // fill derived props //
             IsTrue = PdgCode == Tree2Secondaries::Particle::PdgCode[v0_hypothesis] &&
                      neg.PdgCode == Tree2Secondaries::Particle::PdgCode[neg_hypothesis] &&
                      pos.PdgCode == Tree2Secondaries::Particle::PdgCode[pos_hypothesis];
-            IsSignal = IsTrue && soa.Generator->at(mc_v0) == 2 && neg.ReactionID == pos.ReactionID;
-            IsSecondary = soa.IsSecFromMat->at(mc_v0) || soa.IsSecFromWeak->at(mc_v0) || IsSignal;
+            IsSignal = IsTrue && df.Generator->at(mc_v0) == 2 && neg.ReactionID == pos.ReactionID;
+            IsSecondary = df.IsSecFromMat->at(mc_v0) || df.IsSecFromWeak->at(mc_v0) || IsSignal;
             if (IsSignal)
-                ReactionID = soa.Status->at(mc_v0);
+                ReactionID = df.Status->at(mc_v0);
             else
                 IsHybrid = (neg.IsSignal && !pos.IsSignal) || (!neg.IsSignal && pos.IsSignal) ||
                            (neg.IsSignal && pos.IsSignal && neg.Mother_Entry != pos.Mother_Entry);
         }
     }
-    V0(const PackedEvents::MC_V0s& sov, int idx)
-        : MC::Particle{sov.Entry->at(idx),
-                       sov.PdgCode->at(idx),
-                       sov.Mother_Entry->at(idx),
-                       sov.Mother_PdgCode->at(idx),
-                       sov.X->at(idx),
-                       sov.Y->at(idx),
-                       sov.Z->at(idx),
-                       sov.Px->at(idx),
-                       sov.Py->at(idx),
-                       sov.Pz->at(idx),
-                       sov.E->at(idx)},
-          neg{sov.Neg_Entry->at(idx),
-              sov.Neg_PdgCode->at(idx),
-              sov.Neg_Px->at(idx),
-              sov.Neg_Py->at(idx),
-              sov.Neg_Pz->at(idx),
-              static_cast<bool>(sov.Neg_IsTrue->at(idx)),
-              static_cast<bool>(sov.Neg_IsSignal->at(idx)),
-              static_cast<bool>(sov.Neg_IsSecondary->at(idx)),
-              sov.Neg_ReactionID->at(idx)},
-          pos{sov.Pos_Entry->at(idx),
-              sov.Pos_PdgCode->at(idx),
-              sov.Pos_Px->at(idx),
-              sov.Pos_Py->at(idx),
-              sov.Pos_Pz->at(idx),
-              static_cast<bool>(sov.Pos_IsTrue->at(idx)),
-              static_cast<bool>(sov.Pos_IsSignal->at(idx)),
-              static_cast<bool>(sov.Pos_IsSecondary->at(idx)),
-              sov.Pos_ReactionID->at(idx)},
-          ReactionID{sov.ReactionID->at(idx)},
-          IsTrue{static_cast<bool>(sov.IsTrue->at(idx))},
-          IsSignal{static_cast<bool>(sov.IsSignal->at(idx))},
-          IsSecondary{static_cast<bool>(sov.IsSecondary->at(idx))},
-          IsHybrid{static_cast<bool>(sov.IsHybrid->at(idx))} {}
+    V0(const DF::Packed::LinkedV0s& df, int idx)
+        : MC::Particle{df.Entry->at(idx),
+                       df.PdgCode->at(idx),
+                       df.Mother_Entry->at(idx),
+                       df.Mother_PdgCode->at(idx),
+                       df.X->at(idx),
+                       df.Y->at(idx),
+                       df.Z->at(idx),
+                       df.Px->at(idx),
+                       df.Py->at(idx),
+                       df.Pz->at(idx),
+                       df.Energy->at(idx)},
+          neg{df.Neg.Entry->at(idx),
+              df.Neg.PdgCode->at(idx),
+              df.Neg.Px->at(idx),
+              df.Neg.Py->at(idx),
+              df.Neg.Pz->at(idx),
+              static_cast<bool>(df.Neg.IsTrue->at(idx)),
+              static_cast<bool>(df.Neg.IsSignal->at(idx)),
+              static_cast<bool>(df.Neg.IsSecondary->at(idx)),
+              df.Neg.ReactionID->at(idx)},
+          pos{df.Pos.Entry->at(idx),
+              df.Pos.PdgCode->at(idx),
+              df.Pos.Px->at(idx),
+              df.Pos.Py->at(idx),
+              df.Pos.Pz->at(idx),
+              static_cast<bool>(df.Pos.IsTrue->at(idx)),
+              static_cast<bool>(df.Pos.IsSignal->at(idx)),
+              static_cast<bool>(df.Pos.IsSecondary->at(idx)),
+              df.Pos.ReactionID->at(idx)},
+          ReactionID{df.ReactionID->at(idx)},
+          IsTrue{static_cast<bool>(df.IsTrue->at(idx))},
+          IsSignal{static_cast<bool>(df.IsSignal->at(idx))},
+          IsSecondary{static_cast<bool>(df.IsSecondary->at(idx))},
+          IsHybrid{static_cast<bool>(df.IsHybrid->at(idx))} {}
 
     // utilities //
-    float DecayX() const { return neg.Entry >= 0 ? neg.X : pos.X; };
-    float DecayY() const { return neg.Entry >= 0 ? neg.Y : pos.Y; };
-    float DecayZ() const { return neg.Entry >= 0 ? neg.Z : pos.Z; };
+    [[nodiscard]] float DecayX() const { return neg.Entry >= 0 ? neg.X : pos.X; };
+    [[nodiscard]] float DecayY() const { return neg.Entry >= 0 ? neg.Y : pos.Y; };
+    [[nodiscard]] float DecayZ() const { return neg.Entry >= 0 ? neg.Z : pos.Z; };
 
     // member vars //
     MC::Track neg;
@@ -202,22 +203,22 @@ struct alignas(T2S_SIMD_ALIGN) V0 : MC::Particle {
 struct alignas(T2S_SIMD_ALIGN) Sexaquark {
     // constructors //
     Sexaquark() = default;
-    Sexaquark(const Events::Injected& sov, double mass_sexaquark, double mass_nucleon, int reaction_id) {
-        FillInfo_BeforeReaction(sov, mass_sexaquark, mass_nucleon, reaction_id);
+    Sexaquark(const DF::SOV::Injected& df, double mass_sexaquark, double mass_nucleon, int reaction_id) {
+        FillInfo_BeforeReaction(df, mass_sexaquark, mass_nucleon, reaction_id);
     }
 
     // utilities //
-    void FillInfo_BeforeReaction(const Events::Injected& sov, double mass_sexaquark, double mass_nucleon, int reaction_id) {
+    void FillInfo_BeforeReaction(const DF::SOV::Injected& df, double mass_sexaquark, double mass_nucleon, int reaction_id) {
         if (reaction_id >= 600 && reaction_id < 620) {
             int reaction_idx{reaction_id - 600};
-            BeforePx = sov.Px->at(reaction_idx);
-            BeforePy = sov.Py->at(reaction_idx);
-            BeforePz = sov.Pz->at(reaction_idx);
+            BeforePx = df.Px->at(reaction_idx);
+            BeforePy = df.Py->at(reaction_idx);
+            BeforePz = df.Pz->at(reaction_idx);
             BeforeE = std::sqrt(mass_sexaquark * mass_sexaquark + BeforePx * BeforePx + BeforePy * BeforePy + BeforePz * BeforePz);
-            ReactionID = sov.ReactionID->at(reaction_idx);
-            NucleonPx = sov.Nucleon_Px->at(reaction_idx);
-            NucleonPy = sov.Nucleon_Py->at(reaction_idx);
-            NucleonPz = sov.Nucleon_Pz->at(reaction_idx);
+            ReactionID = df.ReactionID->at(reaction_idx);
+            NucleonPx = df.Nucleon_Px->at(reaction_idx);
+            NucleonPy = df.Nucleon_Py->at(reaction_idx);
+            NucleonPz = df.Nucleon_Pz->at(reaction_idx);
             NucleonE = std::sqrt(mass_nucleon * mass_nucleon + NucleonPx * NucleonPx + NucleonPy * NucleonPy + NucleonPz * NucleonPz);
         }
     }
@@ -239,7 +240,7 @@ struct alignas(T2S_SIMD_ALIGN) Sexaquark {
 struct alignas(T2S_SIMD_ALIGN) ChannelA : MC::Sexaquark {
     // constructors //
     ChannelA() = default;
-    ChannelA(const Events::Injected& sov_inj, double mass_sexaquark, const V0& v0a, const V0& v0b)
+    ChannelA(const DF::SOV::Injected& df, double mass_sexaquark, const V0& v0a, const V0& v0b)
         : V0A{v0a},
           V0B{v0b},
           X{v0a.X},
@@ -251,7 +252,7 @@ struct alignas(T2S_SIMD_ALIGN) ChannelA : MC::Sexaquark {
           AfterE{v0a.Energy + v0b.Energy},
           IsSignal{v0a.IsSignal && v0b.IsSignal && v0a.ReactionID == v0b.ReactionID} {
         if (IsSignal) {
-            FillInfo_BeforeReaction(sov_inj, mass_sexaquark, Tree2Secondaries::Particle::Mass[EParticle::Neutron], v0a.ReactionID);
+            FillInfo_BeforeReaction(df, mass_sexaquark, Tree2Secondaries::Particle::Mass[EParticle::Neutron], v0a.ReactionID);
         } else {
             IsHybrid = (v0a.IsSignal && !v0b.IsSignal) || (!v0a.IsSignal && v0b.IsSignal) ||
                        (v0a.IsSignal && v0b.IsSignal && v0a.ReactionID != v0b.ReactionID) || v0a.IsHybrid || v0b.IsHybrid;
@@ -277,7 +278,7 @@ struct alignas(T2S_SIMD_ALIGN) ChannelA : MC::Sexaquark {
 struct alignas(T2S_SIMD_ALIGN) ChannelD : MC::Sexaquark {
     // constructors //
     ChannelD() = default;
-    ChannelD(const Events::Injected& sov_inj, double mass_sexaquark, const V0& v0, const Track& kaon)
+    ChannelD(const DF::SOV::Injected& df, double mass_sexaquark, const V0& v0, const Track& kaon)
         : V0{v0},
           Kaon{kaon},
           X{v0.X},
@@ -289,7 +290,7 @@ struct alignas(T2S_SIMD_ALIGN) ChannelD : MC::Sexaquark {
           AfterE{v0.Energy + kaon.Energy},
           IsSignal{v0.IsSignal && kaon.IsSignal && v0.ReactionID == kaon.ReactionID} {
         if (IsSignal) {
-            FillInfo_BeforeReaction(sov_inj, mass_sexaquark, Tree2Secondaries::Particle::Mass[EParticle::Proton], v0.ReactionID);
+            FillInfo_BeforeReaction(df, mass_sexaquark, Tree2Secondaries::Particle::Mass[EParticle::Proton], v0.ReactionID);
         } else {
             IsHybrid = (v0.IsSignal && !kaon.IsSignal) || (!v0.IsSignal && kaon.IsSignal) ||
                        (v0.IsSignal && kaon.IsSignal && v0.ReactionID != kaon.ReactionID) || v0.IsHybrid;
