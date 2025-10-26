@@ -60,8 +60,8 @@ inline KF::V0 UnpackV0(const DF::Packed::V0s& df, int idx, EParticle v0_pid, EPa
     auto param_v0 = IntoKF_States(df, idx);
     auto cov_v0 = IntoKF_CovMatrices(df, idx);
 
-    KF::Track neg{UnpackTrack(df.Neg, -1, Particle::Mass[neg_pid], df.Neg.Entry->at(idx))};
-    KF::Track pos{UnpackTrack(df.Pos, +1, Particle::Mass[pos_pid], df.Pos.Entry->at(idx))};
+    KF::Track neg{UnpackTrack(df.Neg, -1, Particle::Mass[neg_pid], idx)};
+    KF::Track pos{UnpackTrack(df.Pos, +1, Particle::Mass[pos_pid], idx)};
 
     return {idx, v0_pid, param_v0, cov_v0, neg, pos};
 }

@@ -58,51 +58,51 @@ struct alignas(T2S_SIMD_ALIGN) CovMatrices_NoE {
         SigmaPyPz->clear();
         SigmaPz2->clear();
     }
-    void CreateBranches_CovMatrices_NoE(TTree* tree, std::string_view suffix = "") {
-        tree->Branch(std::format("{}_SigmaX2", suffix).c_str(), &SigmaX2);
-        tree->Branch(std::format("{}_SigmaXY", suffix).c_str(), &SigmaXY);
-        tree->Branch(std::format("{}_SigmaY2", suffix).c_str(), &SigmaY2);
-        tree->Branch(std::format("{}_SigmaXZ", suffix).c_str(), &SigmaXZ);
-        tree->Branch(std::format("{}_SigmaYZ", suffix).c_str(), &SigmaYZ);
-        tree->Branch(std::format("{}_SigmaZ2", suffix).c_str(), &SigmaZ2);
-        tree->Branch(std::format("{}_SigmaXPx", suffix).c_str(), &SigmaXPx);
-        tree->Branch(std::format("{}_SigmaYPx", suffix).c_str(), &SigmaYPx);
-        tree->Branch(std::format("{}_SigmaZPx", suffix).c_str(), &SigmaZPx);
-        tree->Branch(std::format("{}_SigmaPx2", suffix).c_str(), &SigmaPx2);
-        tree->Branch(std::format("{}_SigmaXPy", suffix).c_str(), &SigmaXPy);
-        tree->Branch(std::format("{}_SigmaYPy", suffix).c_str(), &SigmaYPy);
-        tree->Branch(std::format("{}_SigmaZPy", suffix).c_str(), &SigmaZPy);
-        tree->Branch(std::format("{}_SigmaPxPy", suffix).c_str(), &SigmaPxPy);
-        tree->Branch(std::format("{}_SigmaPy2", suffix).c_str(), &SigmaPy2);
-        tree->Branch(std::format("{}_SigmaXPz", suffix).c_str(), &SigmaXPz);
-        tree->Branch(std::format("{}_SigmaYPz", suffix).c_str(), &SigmaYPz);
-        tree->Branch(std::format("{}_SigmaZPz", suffix).c_str(), &SigmaZPz);
-        tree->Branch(std::format("{}_SigmaPxPz", suffix).c_str(), &SigmaPxPz);
-        tree->Branch(std::format("{}_SigmaPyPz", suffix).c_str(), &SigmaPyPz);
-        tree->Branch(std::format("{}_SigmaPz2", suffix).c_str(), &SigmaPz2);
+    void CreateBranches_CovMatrices_NoE(TTree* tree, std::string_view prefix = "") {
+        tree->Branch(std::format("{}_SigmaX2", prefix).c_str(), &SigmaX2);
+        tree->Branch(std::format("{}_SigmaXY", prefix).c_str(), &SigmaXY);
+        tree->Branch(std::format("{}_SigmaY2", prefix).c_str(), &SigmaY2);
+        tree->Branch(std::format("{}_SigmaXZ", prefix).c_str(), &SigmaXZ);
+        tree->Branch(std::format("{}_SigmaYZ", prefix).c_str(), &SigmaYZ);
+        tree->Branch(std::format("{}_SigmaZ2", prefix).c_str(), &SigmaZ2);
+        tree->Branch(std::format("{}_SigmaXPx", prefix).c_str(), &SigmaXPx);
+        tree->Branch(std::format("{}_SigmaYPx", prefix).c_str(), &SigmaYPx);
+        tree->Branch(std::format("{}_SigmaZPx", prefix).c_str(), &SigmaZPx);
+        tree->Branch(std::format("{}_SigmaPx2", prefix).c_str(), &SigmaPx2);
+        tree->Branch(std::format("{}_SigmaXPy", prefix).c_str(), &SigmaXPy);
+        tree->Branch(std::format("{}_SigmaYPy", prefix).c_str(), &SigmaYPy);
+        tree->Branch(std::format("{}_SigmaZPy", prefix).c_str(), &SigmaZPy);
+        tree->Branch(std::format("{}_SigmaPxPy", prefix).c_str(), &SigmaPxPy);
+        tree->Branch(std::format("{}_SigmaPy2", prefix).c_str(), &SigmaPy2);
+        tree->Branch(std::format("{}_SigmaXPz", prefix).c_str(), &SigmaXPz);
+        tree->Branch(std::format("{}_SigmaYPz", prefix).c_str(), &SigmaYPz);
+        tree->Branch(std::format("{}_SigmaZPz", prefix).c_str(), &SigmaZPz);
+        tree->Branch(std::format("{}_SigmaPxPz", prefix).c_str(), &SigmaPxPz);
+        tree->Branch(std::format("{}_SigmaPyPz", prefix).c_str(), &SigmaPyPz);
+        tree->Branch(std::format("{}_SigmaPz2", prefix).c_str(), &SigmaPz2);
     }
-    void ReadBranches_CovMatrices_NoE(TTree* tree, std::string_view suffix = "") {
-        Utils::ReadBranch(tree, std::format("{}_SigmaX2", suffix), &SigmaX2);
-        Utils::ReadBranch(tree, std::format("{}_SigmaXY", suffix), &SigmaXY);
-        Utils::ReadBranch(tree, std::format("{}_SigmaY2", suffix), &SigmaY2);
-        Utils::ReadBranch(tree, std::format("{}_SigmaXZ", suffix), &SigmaXZ);
-        Utils::ReadBranch(tree, std::format("{}_SigmaYZ", suffix), &SigmaYZ);
-        Utils::ReadBranch(tree, std::format("{}_SigmaZ2", suffix), &SigmaZ2);
-        Utils::ReadBranch(tree, std::format("{}_SigmaXPx", suffix), &SigmaXPx);
-        Utils::ReadBranch(tree, std::format("{}_SigmaYPx", suffix), &SigmaYPx);
-        Utils::ReadBranch(tree, std::format("{}_SigmaZPx", suffix), &SigmaZPx);
-        Utils::ReadBranch(tree, std::format("{}_SigmaPx2", suffix), &SigmaPx2);
-        Utils::ReadBranch(tree, std::format("{}_SigmaXPy", suffix), &SigmaXPy);
-        Utils::ReadBranch(tree, std::format("{}_SigmaYPy", suffix), &SigmaYPy);
-        Utils::ReadBranch(tree, std::format("{}_SigmaZPy", suffix), &SigmaZPy);
-        Utils::ReadBranch(tree, std::format("{}_SigmaPxPy", suffix), &SigmaPxPy);
-        Utils::ReadBranch(tree, std::format("{}_SigmaPy2", suffix), &SigmaPy2);
-        Utils::ReadBranch(tree, std::format("{}_SigmaXPz", suffix), &SigmaXPz);
-        Utils::ReadBranch(tree, std::format("{}_SigmaYPz", suffix), &SigmaYPz);
-        Utils::ReadBranch(tree, std::format("{}_SigmaZPz", suffix), &SigmaZPz);
-        Utils::ReadBranch(tree, std::format("{}_SigmaPxPz", suffix), &SigmaPxPz);
-        Utils::ReadBranch(tree, std::format("{}_SigmaPyPz", suffix), &SigmaPyPz);
-        Utils::ReadBranch(tree, std::format("{}_SigmaPz2", suffix), &SigmaPz2);
+    void ReadBranches_CovMatrices_NoE(TTree* tree, std::string_view prefix = "") {
+        Utils::ReadBranch(tree, std::format("{}_SigmaX2", prefix), &SigmaX2);
+        Utils::ReadBranch(tree, std::format("{}_SigmaXY", prefix), &SigmaXY);
+        Utils::ReadBranch(tree, std::format("{}_SigmaY2", prefix), &SigmaY2);
+        Utils::ReadBranch(tree, std::format("{}_SigmaXZ", prefix), &SigmaXZ);
+        Utils::ReadBranch(tree, std::format("{}_SigmaYZ", prefix), &SigmaYZ);
+        Utils::ReadBranch(tree, std::format("{}_SigmaZ2", prefix), &SigmaZ2);
+        Utils::ReadBranch(tree, std::format("{}_SigmaXPx", prefix), &SigmaXPx);
+        Utils::ReadBranch(tree, std::format("{}_SigmaYPx", prefix), &SigmaYPx);
+        Utils::ReadBranch(tree, std::format("{}_SigmaZPx", prefix), &SigmaZPx);
+        Utils::ReadBranch(tree, std::format("{}_SigmaPx2", prefix), &SigmaPx2);
+        Utils::ReadBranch(tree, std::format("{}_SigmaXPy", prefix), &SigmaXPy);
+        Utils::ReadBranch(tree, std::format("{}_SigmaYPy", prefix), &SigmaYPy);
+        Utils::ReadBranch(tree, std::format("{}_SigmaZPy", prefix), &SigmaZPy);
+        Utils::ReadBranch(tree, std::format("{}_SigmaPxPy", prefix), &SigmaPxPy);
+        Utils::ReadBranch(tree, std::format("{}_SigmaPy2", prefix), &SigmaPy2);
+        Utils::ReadBranch(tree, std::format("{}_SigmaXPz", prefix), &SigmaXPz);
+        Utils::ReadBranch(tree, std::format("{}_SigmaYPz", prefix), &SigmaYPz);
+        Utils::ReadBranch(tree, std::format("{}_SigmaZPz", prefix), &SigmaZPz);
+        Utils::ReadBranch(tree, std::format("{}_SigmaPxPz", prefix), &SigmaPxPz);
+        Utils::ReadBranch(tree, std::format("{}_SigmaPyPz", prefix), &SigmaPyPz);
+        Utils::ReadBranch(tree, std::format("{}_SigmaPz2", prefix), &SigmaPz2);
     }
 };
 
@@ -125,25 +125,25 @@ struct alignas(T2S_SIMD_ALIGN) CovMatrices : CovMatrices_NoE {
         SigmaPzE->clear();
         SigmaE2->clear();
     }
-    void CreateBranches_CovMatrices(TTree* tree, std::string_view suffix = "") {
-        CreateBranches_CovMatrices_NoE(tree, suffix);
-        tree->Branch(std::format("{}_SigmaXE", suffix).c_str(), &SigmaXE);
-        tree->Branch(std::format("{}_SigmaYE", suffix).c_str(), &SigmaYE);
-        tree->Branch(std::format("{}_SigmaZE", suffix).c_str(), &SigmaZE);
-        tree->Branch(std::format("{}_SigmaPxE", suffix).c_str(), &SigmaPxE);
-        tree->Branch(std::format("{}_SigmaPyE", suffix).c_str(), &SigmaPyE);
-        tree->Branch(std::format("{}_SigmaPzE", suffix).c_str(), &SigmaPzE);
-        tree->Branch(std::format("{}_SigmaE2", suffix).c_str(), &SigmaE2);
+    void CreateBranches_CovMatrices(TTree* tree, std::string_view prefix = "") {
+        CreateBranches_CovMatrices_NoE(tree, prefix);
+        tree->Branch(std::format("{}_SigmaXE", prefix).c_str(), &SigmaXE);
+        tree->Branch(std::format("{}_SigmaYE", prefix).c_str(), &SigmaYE);
+        tree->Branch(std::format("{}_SigmaZE", prefix).c_str(), &SigmaZE);
+        tree->Branch(std::format("{}_SigmaPxE", prefix).c_str(), &SigmaPxE);
+        tree->Branch(std::format("{}_SigmaPyE", prefix).c_str(), &SigmaPyE);
+        tree->Branch(std::format("{}_SigmaPzE", prefix).c_str(), &SigmaPzE);
+        tree->Branch(std::format("{}_SigmaE2", prefix).c_str(), &SigmaE2);
     }
-    void ReadBranches_CovMatrices(TTree* tree, std::string_view suffix = "") {
-        ReadBranches_CovMatrices_NoE(tree, suffix);
-        Utils::ReadBranch(tree, std::format("{}_SigmaXE", suffix), &SigmaXE);
-        Utils::ReadBranch(tree, std::format("{}_SigmaYE", suffix), &SigmaYE);
-        Utils::ReadBranch(tree, std::format("{}_SigmaZE", suffix), &SigmaZE);
-        Utils::ReadBranch(tree, std::format("{}_SigmaPxE", suffix), &SigmaPxE);
-        Utils::ReadBranch(tree, std::format("{}_SigmaPyE", suffix), &SigmaPyE);
-        Utils::ReadBranch(tree, std::format("{}_SigmaPzE", suffix), &SigmaPzE);
-        Utils::ReadBranch(tree, std::format("{}_SigmaE2", suffix), &SigmaE2);
+    void ReadBranches_CovMatrices(TTree* tree, std::string_view prefix = "") {
+        ReadBranches_CovMatrices_NoE(tree, prefix);
+        Utils::ReadBranch(tree, std::format("{}_SigmaXE", prefix), &SigmaXE);
+        Utils::ReadBranch(tree, std::format("{}_SigmaYE", prefix), &SigmaYE);
+        Utils::ReadBranch(tree, std::format("{}_SigmaZE", prefix), &SigmaZE);
+        Utils::ReadBranch(tree, std::format("{}_SigmaPxE", prefix), &SigmaPxE);
+        Utils::ReadBranch(tree, std::format("{}_SigmaPyE", prefix), &SigmaPyE);
+        Utils::ReadBranch(tree, std::format("{}_SigmaPzE", prefix), &SigmaPzE);
+        Utils::ReadBranch(tree, std::format("{}_SigmaE2", prefix), &SigmaE2);
     }
 };
 
@@ -163,21 +163,21 @@ struct alignas(T2S_SIMD_ALIGN) States_NoE {
         Py->clear();
         Pz->clear();
     }
-    void CreateBranches_States_NoE(TTree* tree, std::string_view suffix = "") {
-        tree->Branch(std::format("{}_X", suffix).c_str(), &X);
-        tree->Branch(std::format("{}_Y", suffix).c_str(), &Y);
-        tree->Branch(std::format("{}_Z", suffix).c_str(), &Z);
-        tree->Branch(std::format("{}_Px", suffix).c_str(), &Px);
-        tree->Branch(std::format("{}_Py", suffix).c_str(), &Py);
-        tree->Branch(std::format("{}_Pz", suffix).c_str(), &Pz);
+    void CreateBranches_States_NoE(TTree* tree, std::string_view prefix = "") {
+        tree->Branch(std::format("{}_X", prefix).c_str(), &X);
+        tree->Branch(std::format("{}_Y", prefix).c_str(), &Y);
+        tree->Branch(std::format("{}_Z", prefix).c_str(), &Z);
+        tree->Branch(std::format("{}_Px", prefix).c_str(), &Px);
+        tree->Branch(std::format("{}_Py", prefix).c_str(), &Py);
+        tree->Branch(std::format("{}_Pz", prefix).c_str(), &Pz);
     }
-    void ReadBranches_States_NoE(TTree* tree, std::string_view suffix = "") {
-        Utils::ReadBranch(tree, std::format("{}_X", suffix), &X);
-        Utils::ReadBranch(tree, std::format("{}_Y", suffix), &Y);
-        Utils::ReadBranch(tree, std::format("{}_Z", suffix), &Z);
-        Utils::ReadBranch(tree, std::format("{}_Px", suffix), &Px);
-        Utils::ReadBranch(tree, std::format("{}_Py", suffix), &Py);
-        Utils::ReadBranch(tree, std::format("{}_Pz", suffix), &Pz);
+    void ReadBranches_States_NoE(TTree* tree, std::string_view prefix = "") {
+        Utils::ReadBranch(tree, std::format("{}_X", prefix), &X);
+        Utils::ReadBranch(tree, std::format("{}_Y", prefix), &Y);
+        Utils::ReadBranch(tree, std::format("{}_Z", prefix), &Z);
+        Utils::ReadBranch(tree, std::format("{}_Px", prefix), &Px);
+        Utils::ReadBranch(tree, std::format("{}_Py", prefix), &Py);
+        Utils::ReadBranch(tree, std::format("{}_Pz", prefix), &Pz);
     }
 };
 
@@ -188,16 +188,17 @@ struct alignas(T2S_SIMD_ALIGN) States : States_NoE {
         Clear_States_NoE();
         Energy->clear();
     }
-    void CreateBranches_States(TTree* tree, std::string_view suffix = "") {
-        CreateBranches_States_NoE(tree, suffix);
-        tree->Branch(std::format("{}_E", suffix).c_str(), &Energy);
+    void CreateBranches_States(TTree* tree, std::string_view prefix = "") {
+        CreateBranches_States_NoE(tree, prefix);
+        tree->Branch(std::format("{}_E", prefix).c_str(), &Energy);
     }
-    void ReadBranches_States(TTree* tree, std::string_view suffix = "") {
-        ReadBranches_States_NoE(tree, suffix);
-        Utils::ReadBranch(tree, std::format("{}_E", suffix), &Energy);
+    void ReadBranches_States(TTree* tree, std::string_view prefix = "") {
+        ReadBranches_States_NoE(tree, prefix);
+        Utils::ReadBranch(tree, std::format("{}_E", prefix), &Energy);
     }
 };
 
+// NOTE: similar but different from `DF::SOV::MCParticles`
 struct alignas(T2S_SIMD_ALIGN) MCInfo : States {
     std::vector<int>* Entry{nullptr};
     std::vector<int>* PdgCode{nullptr};
@@ -237,9 +238,9 @@ struct alignas(T2S_SIMD_ALIGN) MCInfo : States {
         Utils::ReadBranch(tree, std::format("MC_{}_Mother_Entry", acronym), &Mother_Entry);
         Utils::ReadBranch(tree, std::format("MC_{}_Mother_PdgCode", acronym), &Mother_PdgCode);
         Utils::ReadBranch(tree, std::format("MC_{}_ReactionID", acronym), &ReactionID);
-        Utils::ReadBranch(tree, std::format("MC_{}_ IsTrue", acronym), &IsTrue);
-        Utils::ReadBranch(tree, std::format("MC_{}_ IsSignal", acronym), &IsSignal);
-        Utils::ReadBranch(tree, std::format("MC_{}_ IsSecondary", acronym), &IsSecondary);
+        Utils::ReadBranch(tree, std::format("MC_{}_IsTrue", acronym), &IsTrue);
+        Utils::ReadBranch(tree, std::format("MC_{}_IsSignal", acronym), &IsSignal);
+        Utils::ReadBranch(tree, std::format("MC_{}_IsSecondary", acronym), &IsSecondary);
     }
 };
 
@@ -283,12 +284,11 @@ struct alignas(T2S_SIMD_ALIGN) MCInfo_Reduced {
         Utils::ReadBranch(tree, std::format("MC_{}_Entry", acronym), &Entry);
         Utils::ReadBranch(tree, std::format("MC_{}_PdgCode", acronym), &PdgCode);
         Utils::ReadBranch(tree, std::format("MC_{}_ReactionID", acronym), &ReactionID);
-        Utils::ReadBranch(tree, std::format("MC_{}_ IsTrue", acronym), &IsTrue);
-        Utils::ReadBranch(tree, std::format("MC_{}_ IsSignal", acronym), &IsSignal);
-        Utils::ReadBranch(tree, std::format("MC_{}_ IsSecondary", acronym), &IsSecondary);
+        Utils::ReadBranch(tree, std::format("MC_{}_IsTrue", acronym), &IsTrue);
+        Utils::ReadBranch(tree, std::format("MC_{}_IsSignal", acronym), &IsSignal);
+        Utils::ReadBranch(tree, std::format("MC_{}_IsSecondary", acronym), &IsSecondary);
     }
 };
-
 }  // namespace SOV
 
 namespace Flat {
@@ -296,45 +296,78 @@ struct alignas(T2S_SIMD_ALIGN) Coordinates {
     float X{};
     float Y{};
     float Z{};
+
+    void CreateBranches_Coordinates(TTree* tree, std::string_view prefix = "", std::string_view suffix = "v") {
+        tree->Branch(std::format("{}_X{}", prefix, suffix).c_str(), &X);
+        tree->Branch(std::format("{}_Y{}", prefix, suffix).c_str(), &Y);
+        tree->Branch(std::format("{}_Z{}", prefix, suffix).c_str(), &Z);
+    }
+    void ReadBranches_Coordinates(TTree* tree, std::string_view prefix = "", std::string_view suffix = "v") {
+        Utils::ReadBranch(tree, std::format("{}_X{}", prefix, suffix), &X);
+        Utils::ReadBranch(tree, std::format("{}_Y{}", prefix, suffix), &Y);
+        Utils::ReadBranch(tree, std::format("{}_Z{}", prefix, suffix), &Z);
+    }
     void Fill_Coordinates(float xx, float yy, float zz) {
         X = xx;
         Y = yy;
         Z = zz;
     }
-    void CreateBranches_Coordinates(TTree* tree, std::string_view suffix = "") {
-        tree->Branch(std::format("{}_X", suffix).c_str(), &X);
-        tree->Branch(std::format("{}_Y", suffix).c_str(), &Y);
-        tree->Branch(std::format("{}_Z", suffix).c_str(), &Z);
-    }
 };
+
 struct alignas(T2S_SIMD_ALIGN) LorentzVector {
     float Px{};
     float Py{};
     float Pz{};
     float E{};
-    void Fill_LV(float px, float py, float pz, float ee) {
+
+    void CreateBranches_LorentzVector(TTree* tree, std::string_view prefix = "") {
+        tree->Branch(std::format("{}_Px", prefix).c_str(), &Px);
+        tree->Branch(std::format("{}_Py", prefix).c_str(), &Py);
+        tree->Branch(std::format("{}_Pz", prefix).c_str(), &Pz);
+        tree->Branch(std::format("{}_E", prefix).c_str(), &E);
+    }
+    void Fill_LorentzVector(float px, float py, float pz, float ee) {
         Px = px;
         Py = py;
         Pz = pz;
         E = ee;
     }
-    void CreateBranches_LV(TTree* tree, std::string_view suffix = "") {
-        tree->Branch(std::format("{}_Px", suffix).c_str(), &Px);
-        tree->Branch(std::format("{}_Py", suffix).c_str(), &Py);
-        tree->Branch(std::format("{}_Pz", suffix).c_str(), &Pz);
-        tree->Branch(std::format("{}_E", suffix).c_str(), &E);
-    }
 };
+
 struct alignas(T2S_SIMD_ALIGN) State : Coordinates, LorentzVector {
+    void CreateBranches_State(TTree* tree, std::string_view prefix = "") {
+        CreateBranches_Coordinates(tree, prefix);
+        CreateBranches_LorentzVector(tree, prefix);
+    }
     void Fill_State(float xx, float yy, float zz, float px, float py, float pz, float ee) {
         Fill_Coordinates(xx, yy, zz);
-        Fill_LV(px, py, pz, ee);
-    }
-    void CreateBranches_State(TTree* tree, std::string_view suffix = "") {
-        CreateBranches_Coordinates(tree, suffix);
-        CreateBranches_LV(tree, suffix);
+        Fill_LorentzVector(px, py, pz, ee);
     }
 };
+
+struct alignas(T2S_SIMD_ALIGN) TrueInfo : LorentzVector {
+    int Entry{};
+    int PdgCode{};
+    int Mother_Entry{};
+    int Mother_PdgCode{};
+    int ReactionID{};
+    bool IsTrue{};
+    bool IsSignal{};
+    bool IsSecondary{};
+
+    void CreateBranches_TrueInfo(TTree* tree, std::string_view prefix = "") {
+        CreateBranches_LorentzVector(tree, prefix);
+        Utils::CreateBranch(tree, std::format("{}_Entry", prefix), &Entry);
+        Utils::CreateBranch(tree, std::format("{}_PdgCode", prefix), &PdgCode);
+        Utils::CreateBranch(tree, std::format("{}_Mother_Entry", prefix), &Mother_Entry);
+        Utils::CreateBranch(tree, std::format("{}_Mother_PdgCode", prefix), &Mother_PdgCode);
+        Utils::CreateBranch(tree, std::format("{}_ReactionID", prefix), &ReactionID);
+        Utils::CreateBranch(tree, std::format("{}_IsTrue", prefix), &IsTrue);
+        Utils::CreateBranch(tree, std::format("{}_IsSignal", prefix), &IsSignal);
+        Utils::CreateBranch(tree, std::format("{}_IsSecondary", prefix), &IsSecondary);
+    }
+};
+
 }  // namespace Flat
 
 }  // namespace Tree2Secondaries::DF

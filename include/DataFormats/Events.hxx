@@ -14,7 +14,7 @@ namespace Tree2Secondaries::DF {
 namespace Flat {
 struct alignas(T2S_SIMD_ALIGN) Event {
     Flat::Coordinates PV{};
-    Flat::Coordinates MC_PV{};  // NOTE: not used when analyzing RD
+    Flat::Coordinates MC_PV{};  // NOTE: not used when analyzing real data
     unsigned int RunNumber{0};
     unsigned int DirNumber{0};
     unsigned int DirNumberB{0};  // NOTE: not used when analyzing MC
@@ -23,44 +23,31 @@ struct alignas(T2S_SIMD_ALIGN) Event {
     float MagneticField{0.};
 
     void CreateBranches_Event(TTree *tree, bool is_mc) {
+        PV.CreateBranches_Coordinates(tree, "PV");
+        if (is_mc) MC_PV.CreateBranches_Coordinates(tree, "MC_PV");
         Utils::CreateBranch(tree, "RunNumber", &RunNumber);
         Utils::CreateBranch(tree, "DirNumber", &DirNumber);
         if (!is_mc) Utils::CreateBranch(tree, "DirNumberB", &DirNumberB);
         Utils::CreateBranch(tree, "EventNumber", &EventNumber);
         Utils::CreateBranch(tree, "Centrality", &Centrality);
         Utils::CreateBranch(tree, "MagneticField", &MagneticField);
-        // primary vertex
-        Utils::CreateBranch(tree, "PV_Xv", &PV.X);
-        Utils::CreateBranch(tree, "PV_Yv", &PV.Y);
-        Utils::CreateBranch(tree, "PV_Zv", &PV.Z);
-        if (is_mc) {
-            Utils::CreateBranch(tree, "MC_PV_Xv", &MC_PV.X);
-            Utils::CreateBranch(tree, "MC_PV_Yv", &MC_PV.Y);
-            Utils::CreateBranch(tree, "MC_PV_Zv", &MC_PV.Z);
-        }
     }
     void ReadBranches_Event(TTree *tree, bool is_mc) {
+        PV.ReadBranches_Coordinates(tree, "PV");
+        if (is_mc) MC_PV.ReadBranches_Coordinates(tree, "MC_PV");
         Utils::ReadBranch(tree, "RunNumber", &RunNumber);
         Utils::ReadBranch(tree, "DirNumber", &DirNumber);
         if (!is_mc) Utils::ReadBranch(tree, "DirNumberB", &DirNumberB);
         Utils::ReadBranch(tree, "EventNumber", &EventNumber);
         Utils::ReadBranch(tree, "Centrality", &Centrality);
         Utils::ReadBranch(tree, "MagneticField", &MagneticField);
-        // primary vertex
-        Utils::ReadBranch(tree, "PV_Xv", &PV.X);
-        Utils::ReadBranch(tree, "PV_Yv", &PV.Y);
-        Utils::ReadBranch(tree, "PV_Zv", &PV.Z);
-        if (is_mc) {
-            Utils::ReadBranch(tree, "MC_PV_Xv", &MC_PV.X);
-            Utils::ReadBranch(tree, "MC_PV_Yv", &MC_PV.Y);
-            Utils::ReadBranch(tree, "MC_PV_Zv", &MC_PV.Z);
-        }
     }
 };
 }  // namespace Flat
 
 namespace SOV {
-struct alignas(T2S_SIMD_ALIGN) MC_Particles : SOV::States {
+// NOTE: similar but different from `DF::SOV::MCInfo`
+struct alignas(T2S_SIMD_ALIGN) MCParticles : SOV::States {
     std::vector<int> *PdgCode{nullptr};
     std::vector<int> *MotherEntry{nullptr};
     std::vector<int> *Status{nullptr};

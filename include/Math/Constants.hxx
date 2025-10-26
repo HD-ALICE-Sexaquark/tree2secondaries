@@ -15,19 +15,10 @@
 
 namespace Tree2Secondaries {
 
-enum EReactionChannel { All, A, D, E, H, AntiA, AntiD, AntiE, AntiH };
-const std::unordered_map<char, EReactionChannel> CharReactionChannel_To_EReactionChannel{
-    {' ', EReactionChannel::All},   {'A', EReactionChannel::A},     {'D', EReactionChannel::D},
-    {'E', EReactionChannel::E},     {'H', EReactionChannel::H},     {'a', EReactionChannel::AntiA},
-    {'d', EReactionChannel::AntiD}, {'e', EReactionChannel::AntiE}, {'h', EReactionChannel::AntiH},
-};
-
 namespace Name {
-static const std::vector<std::string> ReactionChannel_Long{"AllChannels", "ChannelA", "ChannelD", "ChannelE", "ChannelH",
-                                                           "AntiA",       "AntiD",    "AntiE",    "AntiH"};
-static const std::vector<std::string> ReactionChannel_Short{"All", "A", "D", "E", "H", "AntiA", "AntiD", "AntiE", "AntiH"};
 static constexpr std::string Events{"Events"};
 static constexpr std::string PackedEvents{"PackedEvents"};
+static constexpr std::string Injected{"Injected"};
 }  // namespace Name
 
 enum EParticle { PiMinus, PiPlus, NegKaon, PosKaon, KaonZeroShort, AntiProton, Proton, AntiNeutron, Neutron, AntiLambda, Lambda };
@@ -41,6 +32,12 @@ static const std::vector<double> Mass{0.13957040, 0.13957040, 0.49367700, 0.4936
                                       0.93827210, 0.93956540, 0.93956540, 1.1156830,  1.1156830};
 static const std::vector<int> Charge{-1, +1, -1, +1, 0, -1, +1, 0, 0, 0, 0};
 }  // namespace Particle
+
+enum EReactionChannel : char { A = 'A', D = 'D', E = 'E', H = 'H' };
+static std::unordered_map<EReactionChannel, EParticle> ReactionNucleonPID{{EReactionChannel::A, EParticle::Neutron},
+                                                                          {EReactionChannel::D, EParticle::Proton},
+                                                                          {EReactionChannel::E, EParticle::Proton},
+                                                                          {EReactionChannel::H, EParticle::Proton}};
 
 namespace Const {
 static constexpr double Kappa{0.000299792458};  // (GeV/c) / (kG/cm)

@@ -4,7 +4,6 @@
 #include <KFParticle_Math.hxx>
 
 #include "App/Logger.hxx"
-#include "App/Utilities.hxx"
 #include "KF/Utilities.hxx"
 #include "Math/Constants.hxx"
 #include "Packager/Cuts.hxx"
@@ -14,7 +13,7 @@ namespace Tree2Secondaries {
 
 bool Packager::Initialize() {
 
-    fInputChain_Events = std::make_unique<TChain>("Events");
+    fInputChain_Events = std::make_unique<TChain>(Name::Events.c_str());
     for (const auto& path : fSettings.PathInputFiles) {
         if (fInputChain_Events->Add(path.c_str()) == 0) {
             Logger::Error(__FUNCTION__, "Couldn't add TFile {}", path);
@@ -57,16 +56,7 @@ void Packager::ReadInputBranches() {
 
 void Packager::ReadBranches_Events() { fInput_Event.ReadBranches_Event(fInputChain_Events.get(), IsMC()); }
 
-void Packager::ReadBranches_Injected() {
-    // `DF::SOV::Injected`
-    Utils::ReadBranch(fInputChain_Events.get(), "ReactionID", &fInput_Injected.ReactionID);
-    Utils::ReadBranch(fInputChain_Events.get(), "Sexaquark_Px", &fInput_Injected.Px);
-    Utils::ReadBranch(fInputChain_Events.get(), "Sexaquark_Py", &fInput_Injected.Py);
-    Utils::ReadBranch(fInputChain_Events.get(), "Sexaquark_Pz", &fInput_Injected.Pz);
-    Utils::ReadBranch(fInputChain_Events.get(), "Nucleon_Px", &fInput_Injected.Nucleon_Px);
-    Utils::ReadBranch(fInputChain_Events.get(), "Nucleon_Py", &fInput_Injected.Nucleon_Py);
-    Utils::ReadBranch(fInputChain_Events.get(), "Nucleon_Pz", &fInput_Injected.Nucleon_Pz);
-}
+void Packager::ReadBranches_Injected() { fInput_Injected.ReadBranches_SOV_Injected(fInputChain_Events.get(), false); }
 
 void Packager::ReadBranches_MC() { fInput_MC.ReadBranches_MCParticle(fInputChain_Events.get()); }
 
@@ -108,86 +98,48 @@ void Packager::CreateOutputBranches() {
         // standard channels //
         case EReactionChannel::A:
             CreateOutputBranches_V0s(EParticle::AntiLambda, fOutput_AntiLambdas);
+            CreateOutputBranches_V0s(EParticle::Lambda, fOutput_Lambdas);
             CreateOutputBranches_V0s(EParticle::KaonZeroShort, fOutput_KaonsZeroShort);
             if (IsMC()) {
                 CreateOutputBranches_LinkedV0s(EParticle::AntiLambda, fOutput_Linked_AntiLambdas);
+                CreateOutputBranches_LinkedV0s(EParticle::Lambda, fOutput_Linked_Lambdas);
                 CreateOutputBranches_LinkedV0s(EParticle::KaonZeroShort, fOutput_Linked_KaonsZeroShort);
             }
             break;
         case EReactionChannel::D:
             CreateOutputBranches_V0s(EParticle::AntiLambda, fOutput_AntiLambdas);
+            CreateOutputBranches_V0s(EParticle::Lambda, fOutput_Lambdas);
+            CreateOutputBranches_Tracks(EParticle::NegKaon, fOutput_NegKaons);
             CreateOutputBranches_Tracks(EParticle::PosKaon, fOutput_PosKaons);
             if (IsMC()) {
                 CreateOutputBranches_LinkedV0s(EParticle::AntiLambda, fOutput_Linked_AntiLambdas);
+                CreateOutputBranches_LinkedV0s(EParticle::Lambda, fOutput_Linked_Lambdas);
+                CreateOutputBranches_LinkedTracks(EParticle::NegKaon, fOutput_Linked_NegKaons);
                 CreateOutputBranches_LinkedTracks(EParticle::PosKaon, fOutput_Linked_PosKaons);
             }
             break;
         case EReactionChannel::E:
             CreateOutputBranches_V0s(EParticle::AntiLambda, fOutput_AntiLambdas);
+            CreateOutputBranches_V0s(EParticle::Lambda, fOutput_Lambdas);
+            CreateOutputBranches_Tracks(EParticle::NegKaon, fOutput_NegKaons);
             CreateOutputBranches_Tracks(EParticle::PosKaon, fOutput_PosKaons);
             CreateOutputBranches_Tracks(EParticle::PiMinus, fOutput_PiMinus);
             CreateOutputBranches_Tracks(EParticle::PiPlus, fOutput_PiPlus);
             if (IsMC()) {
                 CreateOutputBranches_LinkedV0s(EParticle::AntiLambda, fOutput_Linked_AntiLambdas);
+                CreateOutputBranches_LinkedV0s(EParticle::Lambda, fOutput_Linked_Lambdas);
+                CreateOutputBranches_LinkedTracks(EParticle::NegKaon, fOutput_Linked_NegKaons);
                 CreateOutputBranches_LinkedTracks(EParticle::PosKaon, fOutput_Linked_PosKaons);
                 CreateOutputBranches_LinkedTracks(EParticle::PiMinus, fOutput_Linked_PiMinus);
                 CreateOutputBranches_LinkedTracks(EParticle::PiPlus, fOutput_Linked_PiPlus);
             }
             break;
         case EReactionChannel::H:
-            CreateOutputBranches_Tracks(EParticle::PosKaon, fOutput_PosKaons);
-            if (IsMC()) CreateOutputBranches_LinkedTracks(EParticle::PosKaon, fOutput_Linked_PosKaons);
-            break;
-        // anti-channels //
-        case EReactionChannel::AntiA:
-            CreateOutputBranches_V0s(EParticle::Lambda, fOutput_Lambdas);
-            CreateOutputBranches_V0s(EParticle::KaonZeroShort, fOutput_KaonsZeroShort);
-            if (IsMC()) {
-                CreateOutputBranches_V0s(EParticle::Lambda, fOutput_Lambdas);
-                CreateOutputBranches_V0s(EParticle::KaonZeroShort, fOutput_KaonsZeroShort);
-            }
-            break;
-        case EReactionChannel::AntiD:
-            CreateOutputBranches_V0s(EParticle::Lambda, fOutput_Lambdas);
-            CreateOutputBranches_Tracks(EParticle::NegKaon, fOutput_NegKaons);
-            if (IsMC()) {
-                CreateOutputBranches_LinkedV0s(EParticle::Lambda, fOutput_Linked_Lambdas);
-                CreateOutputBranches_LinkedTracks(EParticle::NegKaon, fOutput_Linked_NegKaons);
-            }
-            break;
-        case EReactionChannel::AntiE:
-            CreateOutputBranches_V0s(EParticle::Lambda, fOutput_Lambdas);
-            CreateOutputBranches_Tracks(EParticle::NegKaon, fOutput_NegKaons);
-            CreateOutputBranches_Tracks(EParticle::PiMinus, fOutput_PiMinus);
-            CreateOutputBranches_Tracks(EParticle::PiPlus, fOutput_PiPlus);
-            if (IsMC()) {
-                CreateOutputBranches_LinkedV0s(EParticle::Lambda, fOutput_Linked_Lambdas);
-                CreateOutputBranches_LinkedTracks(EParticle::NegKaon, fOutput_Linked_NegKaons);
-                CreateOutputBranches_LinkedTracks(EParticle::PiMinus, fOutput_Linked_PiMinus);
-                CreateOutputBranches_LinkedTracks(EParticle::PiPlus, fOutput_Linked_PiPlus);
-            }
-            break;
-        case EReactionChannel::AntiH:
-            CreateOutputBranches_Tracks(EParticle::NegKaon, fOutput_NegKaons);
-            if (IsMC()) CreateOutputBranches_LinkedTracks(EParticle::NegKaon, fOutput_Linked_NegKaons);
-            break;
-        // for data //
-        case EReactionChannel::All:
-            CreateOutputBranches_V0s(EParticle::AntiLambda, fOutput_AntiLambdas);
-            CreateOutputBranches_V0s(EParticle::Lambda, fOutput_Lambdas);
-            CreateOutputBranches_V0s(EParticle::KaonZeroShort, fOutput_KaonsZeroShort);
             CreateOutputBranches_Tracks(EParticle::NegKaon, fOutput_NegKaons);
             CreateOutputBranches_Tracks(EParticle::PosKaon, fOutput_PosKaons);
-            CreateOutputBranches_Tracks(EParticle::PiMinus, fOutput_PiMinus);
-            CreateOutputBranches_Tracks(EParticle::PiPlus, fOutput_PiPlus);
             if (IsMC()) {
-                CreateOutputBranches_LinkedV0s(EParticle::AntiLambda, fOutput_Linked_AntiLambdas);
-                CreateOutputBranches_LinkedV0s(EParticle::Lambda, fOutput_Linked_Lambdas);
-                CreateOutputBranches_LinkedV0s(EParticle::KaonZeroShort, fOutput_Linked_KaonsZeroShort);
                 CreateOutputBranches_LinkedTracks(EParticle::NegKaon, fOutput_Linked_NegKaons);
                 CreateOutputBranches_LinkedTracks(EParticle::PosKaon, fOutput_Linked_PosKaons);
-                CreateOutputBranches_LinkedTracks(EParticle::PiMinus, fOutput_Linked_PiMinus);
-                CreateOutputBranches_LinkedTracks(EParticle::PiPlus, fOutput_Linked_PiPlus);
             }
             break;
     }  // end of switch statement
@@ -195,19 +147,7 @@ void Packager::CreateOutputBranches() {
 
 void Packager::CreateOutputBranches_Events() { fOutput_Event.CreateBranches_Event(fOutputTree.get(), IsMC()); }
 
-void Packager::CreateOutputBranches_Injected() {
-    // `DF::SOV::Injected`
-    Utils::CreateBranch(fOutputTree.get(), "ReactionID", &fOutput_Injected.ReactionID);
-    Utils::CreateBranch(fOutputTree.get(), "SV_X", &fOutput_Injected.X);
-    Utils::CreateBranch(fOutputTree.get(), "SV_Y", &fOutput_Injected.Y);
-    Utils::CreateBranch(fOutputTree.get(), "SV_Z", &fOutput_Injected.Z);
-    Utils::CreateBranch(fOutputTree.get(), "Sexaquark_Px", &fOutput_Injected.Px);
-    Utils::CreateBranch(fOutputTree.get(), "Sexaquark_Py", &fOutput_Injected.Py);
-    Utils::CreateBranch(fOutputTree.get(), "Sexaquark_Pz", &fOutput_Injected.Pz);
-    Utils::CreateBranch(fOutputTree.get(), "Nucleon_Px", &fOutput_Injected.Nucleon_Px);
-    Utils::CreateBranch(fOutputTree.get(), "Nucleon_Py", &fOutput_Injected.Nucleon_Py);
-    Utils::CreateBranch(fOutputTree.get(), "Nucleon_Pz", &fOutput_Injected.Nucleon_Pz);
-}
+void Packager::CreateOutputBranches_Injected() { fOutput_Injected.CreateBranches_SOV_Injected(fOutputTree.get(), true); }
 
 void Packager::CreateOutputBranches_V0s(EParticle pid, DF::Packed::V0s& df) {
     df.CreateBranches_PackedV0s(fOutputTree.get(), Particle::Acronym[pid]);
@@ -235,27 +175,15 @@ void Packager::CreateCutFlowHistograms() {
     switch (GetReactionChannel()) {
         case EReactionChannel::A:
             fCutFlowHist_AntiLambdas = std::make_unique<TH1D>("CutFlow_AL", hist_title.c_str(), x_nbins, x_min, x_max);
+            fCutFlowHist_Lambdas = std::make_unique<TH1D>("CutFlow_L", hist_title.c_str(), x_nbins, x_min, x_max);
             fCutFlowHist_KaonsZeroShort = std::make_unique<TH1D>("CutFlow_K0S", hist_title.c_str(), x_nbins, x_min, x_max);
             break;
         case EReactionChannel::D:
         case EReactionChannel::E:
             fCutFlowHist_AntiLambdas = std::make_unique<TH1D>("CutFlow_AL", hist_title.c_str(), x_nbins, x_min, x_max);
-            break;
-        case EReactionChannel::AntiA:
-            fCutFlowHist_Lambdas = std::make_unique<TH1D>("CutFlow_L", hist_title.c_str(), x_nbins, x_min, x_max);
-            fCutFlowHist_KaonsZeroShort = std::make_unique<TH1D>("CutFlow_K0S", hist_title.c_str(), x_nbins, x_min, x_max);
-            break;
-        case EReactionChannel::AntiD:
-        case EReactionChannel::AntiE:
             fCutFlowHist_Lambdas = std::make_unique<TH1D>("CutFlow_L", hist_title.c_str(), x_nbins, x_min, x_max);
             break;
         case EReactionChannel::H:
-        case EReactionChannel::AntiH:
-            break;
-        case EReactionChannel::All:
-            fCutFlowHist_AntiLambdas = std::make_unique<TH1D>("CutFlow_AL", hist_title.c_str(), x_nbins, x_min, x_max);
-            fCutFlowHist_Lambdas = std::make_unique<TH1D>("CutFlow_L", hist_title.c_str(), x_nbins, x_min, x_max);
-            fCutFlowHist_KaonsZeroShort = std::make_unique<TH1D>("CutFlow_K0S", hist_title.c_str(), x_nbins, x_min, x_max);
             break;
     }
 }
@@ -483,15 +411,16 @@ void Packager::FindV0s(EParticle pid) {
     // loop over all possible pairs of tracks //
     int v0_entry{0};
     for (auto esd_neg : *vec_neg) {
+
+        // prepare neg //
+        ::KF::Vector<6> neg_params = KF::IntoKF_States_NoE(fInput_Tracks, esd_neg);
+        ::KF::SymMatrix<6> neg_cov = KF::IntoKF_CovMatrices_NoE(fInput_Tracks, esd_neg);
+        KF::Track neg(neg_params, neg_cov, fInput_Tracks.Charge->at(esd_neg), mass_neg, esd_neg);
+
         for (auto esd_pos : *vec_pos) {
 
             // sanity check //
             if (esd_neg == esd_pos) continue;
-
-            // prepare neg //
-            ::KF::Vector<6> neg_params = KF::IntoKF_States_NoE(fInput_Tracks, esd_neg);
-            ::KF::SymMatrix<6> neg_cov = KF::IntoKF_CovMatrices_NoE(fInput_Tracks, esd_neg);
-            KF::Track neg(neg_params, neg_cov, fInput_Tracks.Charge->at(esd_neg), mass_neg, esd_neg);
 
             // prepare pos //
             ::KF::Vector<6> pos_params = KF::IntoKF_States_NoE(fInput_Tracks, esd_pos);
@@ -636,7 +565,7 @@ void Packager::Store(const KF::V0& v0, DF::Packed::V0s& df) {
     df.SigmaPzE->push_back(static_cast<float>(v0.GetCovariance(26)));
     df.SigmaE2->push_back(static_cast<float>(v0.GetCovariance(27)));
 
-    // Neg Daughter
+    // Neg Daughter (`DF::SOV::Tracks`)
     // -- `DF::SOV::States_NoE`
     df.Neg.X->push_back(static_cast<float>(v0.Neg.X()));
     df.Neg.Y->push_back(static_cast<float>(v0.Neg.Y()));
@@ -669,8 +598,7 @@ void Packager::Store(const KF::V0& v0, DF::Packed::V0s& df) {
     // -- `DF::Packed::Tracks`
     df.Neg.Entry->push_back(v0.Neg.idx);
 
-    // Neg Daughter @ PCA w.r.t. V0
-    // -- `DF::SOV::States_NoE`
+    // Neg Daughter @ PCA w.r.t. V0 (`DF::SOV::States_NoE`)
     df.Neg_atPCA.X->push_back(Const::DummyFloat);   // PENDING!
     df.Neg_atPCA.Y->push_back(Const::DummyFloat);   // PENDING!
     df.Neg_atPCA.Z->push_back(Const::DummyFloat);   // PENDING!
@@ -711,8 +639,7 @@ void Packager::Store(const KF::V0& v0, DF::Packed::V0s& df) {
     // -- `DF::Packed::Tracks`
     df.Pos.Entry->push_back(v0.Pos.idx);
 
-    // Pos Daughter @ PCA w.r.t. V0
-    // -- `DF::SOV::States_NoE`
+    // Pos Daughter @ PCA w.r.t. V0 (`DF::SOV::States_NoE`)
     df.Pos_atPCA.X->push_back(Const::DummyFloat);   // PENDING!
     df.Pos_atPCA.Y->push_back(Const::DummyFloat);   // PENDING!
     df.Pos_atPCA.Z->push_back(Const::DummyFloat);   // PENDING!
@@ -743,12 +670,7 @@ void Packager::StoreMC(const MC::V0& mc_v0, DF::Packed::LinkedV0s& df) {
     df.IsTrue->push_back(static_cast<char>(mc_v0.IsTrue));
     df.IsSignal->push_back(static_cast<char>(mc_v0.IsSignal));
     df.IsSecondary->push_back(static_cast<char>(mc_v0.IsSecondary));
-    // `DF::Packed::LinkedV0s`
-    df.DecayX->push_back(mc_v0.DecayX());
-    df.DecayY->push_back(mc_v0.DecayY());
-    df.DecayZ->push_back(mc_v0.DecayZ());
-    df.IsHybrid->push_back(static_cast<char>(mc_v0.IsHybrid));
-    // -- neg. daughter (`DF::SOV::MCInfo_Reduced`)
+    // Neg (`DF::SOV::MCInfo_Reduced`)
     df.Neg.Px->push_back(mc_v0.neg.Px);
     df.Neg.Py->push_back(mc_v0.neg.Py);
     df.Neg.Pz->push_back(mc_v0.neg.Pz);
@@ -758,7 +680,7 @@ void Packager::StoreMC(const MC::V0& mc_v0, DF::Packed::LinkedV0s& df) {
     df.Neg.IsTrue->push_back(static_cast<char>(mc_v0.neg.IsTrue));
     df.Neg.IsSignal->push_back(static_cast<char>(mc_v0.neg.IsSignal));
     df.Neg.IsSecondary->push_back(static_cast<char>(mc_v0.neg.IsSecondary));
-    // -- pos. daughter (`DF::SOV::MCInfo_Reduced`)
+    // Pos (`DF::SOV::MCInfo_Reduced`)
     df.Pos.Px->push_back(mc_v0.pos.Px);
     df.Pos.Py->push_back(mc_v0.pos.Py);
     df.Pos.Pz->push_back(mc_v0.pos.Pz);
@@ -768,6 +690,11 @@ void Packager::StoreMC(const MC::V0& mc_v0, DF::Packed::LinkedV0s& df) {
     df.Pos.IsTrue->push_back(static_cast<char>(mc_v0.pos.IsTrue));
     df.Pos.IsSignal->push_back(static_cast<char>(mc_v0.pos.IsSignal));
     df.Pos.IsSecondary->push_back(static_cast<char>(mc_v0.pos.IsSecondary));
+    // `DF::Packed::LinkedV0s`
+    df.DecayX->push_back(mc_v0.DecayX());
+    df.DecayY->push_back(mc_v0.DecayY());
+    df.DecayZ->push_back(mc_v0.DecayZ());
+    df.IsHybrid->push_back(static_cast<char>(mc_v0.IsHybrid));
 }
 
 // ## END OF CYCLES ## //
@@ -787,91 +714,53 @@ void Packager::EndOfEvent() {
     fVec_PiMinus.clear();
     fVec_PiPlus.clear();
     // clear output branches
-    if (IsMC()) fOutput_Injected.Clear_Injected();
+    if (IsMC()) fOutput_Injected.Clear_SOV_Injected(true);
+    // based on channel
     switch (GetReactionChannel()) {
-        // standard channels
         case EReactionChannel::A:
             fOutput_AntiLambdas.Clear_PackedV0s();
+            fOutput_Lambdas.Clear_PackedV0s();
             fOutput_KaonsZeroShort.Clear_PackedV0s();
             if (IsMC()) {
                 fOutput_Linked_AntiLambdas.Clear_LinkedV0s();
+                fOutput_Linked_Lambdas.Clear_LinkedV0s();
                 fOutput_Linked_KaonsZeroShort.Clear_LinkedV0s();
             }
             break;
         case EReactionChannel::D:
             fOutput_AntiLambdas.Clear_PackedV0s();
+            fOutput_Lambdas.Clear_PackedV0s();
+            fOutput_NegKaons.Clear_PackedTracks();
             fOutput_PosKaons.Clear_PackedTracks();
             if (IsMC()) {
                 fOutput_Linked_AntiLambdas.Clear_LinkedV0s();
+                fOutput_Linked_Lambdas.Clear_LinkedV0s();
+                fOutput_Linked_NegKaons.Clear_LinkedTracks();
                 fOutput_Linked_PosKaons.Clear_LinkedTracks();
             }
             break;
         case EReactionChannel::E:
             fOutput_AntiLambdas.Clear_PackedV0s();
+            fOutput_Lambdas.Clear_PackedV0s();
+            fOutput_NegKaons.Clear_PackedTracks();
             fOutput_PosKaons.Clear_PackedTracks();
             fOutput_PiMinus.Clear_PackedTracks();
             fOutput_PiPlus.Clear_PackedTracks();
             if (IsMC()) {
                 fOutput_Linked_AntiLambdas.Clear_LinkedV0s();
+                fOutput_Linked_Lambdas.Clear_LinkedV0s();
+                fOutput_Linked_NegKaons.Clear_LinkedTracks();
                 fOutput_Linked_PosKaons.Clear_LinkedTracks();
                 fOutput_Linked_PiMinus.Clear_LinkedTracks();
                 fOutput_Linked_PiPlus.Clear_LinkedTracks();
             }
             break;
         case EReactionChannel::H:
-            fOutput_PosKaons.Clear_PackedTracks();
-            if (IsMC()) fOutput_Linked_PosKaons.Clear_LinkedTracks();
-            break;
-        // anti-channels
-        case EReactionChannel::AntiA:
-            fOutput_Lambdas.Clear_PackedV0s();
-            fOutput_KaonsZeroShort.Clear_PackedV0s();
-            if (IsMC()) {
-                fOutput_Linked_Lambdas.Clear_LinkedV0s();
-                fOutput_Linked_KaonsZeroShort.Clear_LinkedV0s();
-            }
-            break;
-        case EReactionChannel::AntiD:
-            fOutput_Lambdas.Clear_PackedV0s();
-            fOutput_NegKaons.Clear_PackedTracks();
-            if (IsMC()) {
-                fOutput_Linked_Lambdas.Clear_LinkedV0s();
-                fOutput_Linked_NegKaons.Clear_LinkedTracks();
-            }
-            break;
-        case EReactionChannel::AntiE:
-            fOutput_Lambdas.Clear_PackedV0s();
-            fOutput_NegKaons.Clear_PackedTracks();
-            fOutput_PiMinus.Clear_PackedTracks();
-            fOutput_PiPlus.Clear_PackedTracks();
-            if (IsMC()) {
-                fOutput_Linked_Lambdas.Clear_LinkedV0s();
-                fOutput_Linked_NegKaons.Clear_LinkedTracks();
-                fOutput_Linked_PiMinus.Clear_LinkedTracks();
-                fOutput_Linked_PiPlus.Clear_LinkedTracks();
-            }
-            break;
-        case EReactionChannel::AntiH:
-            fOutput_NegKaons.Clear_PackedTracks();
-            if (IsMC()) fOutput_Linked_NegKaons.Clear_LinkedTracks();
-            break;
-        // for data
-        case EReactionChannel::All:
-            fOutput_AntiLambdas.Clear_PackedV0s();
-            fOutput_Lambdas.Clear_PackedV0s();
-            fOutput_KaonsZeroShort.Clear_PackedV0s();
             fOutput_NegKaons.Clear_PackedTracks();
             fOutput_PosKaons.Clear_PackedTracks();
-            fOutput_PiMinus.Clear_PackedTracks();
-            fOutput_PiPlus.Clear_PackedTracks();
             if (IsMC()) {
-                fOutput_Linked_AntiLambdas.Clear_LinkedV0s();
-                fOutput_Linked_Lambdas.Clear_LinkedV0s();
-                fOutput_Linked_KaonsZeroShort.Clear_LinkedV0s();
                 fOutput_Linked_NegKaons.Clear_LinkedTracks();
                 fOutput_Linked_PosKaons.Clear_LinkedTracks();
-                fOutput_Linked_PiMinus.Clear_LinkedTracks();
-                fOutput_Linked_PiPlus.Clear_LinkedTracks();
             }
             break;
     }
@@ -885,27 +774,21 @@ void Packager::EndOfAnalysis() {
     switch (GetReactionChannel()) {
         case EReactionChannel::A:
             fCutFlowHist_AntiLambdas->Write();
+            Logger::Info(__FUNCTION__, "TH1D \"{}\" has been written into TFile {}", fCutFlowHist_AntiLambdas->GetName(), fSettings.PathOutputFile);
+            fCutFlowHist_Lambdas->Write();
+            Logger::Info(__FUNCTION__, "TH1D \"{}\" has been written into TFile {}", fCutFlowHist_Lambdas->GetName(), fSettings.PathOutputFile);
             fCutFlowHist_KaonsZeroShort->Write();
+            Logger::Info(__FUNCTION__, "TH1D \"{}\" has been written into TFile {}", fCutFlowHist_KaonsZeroShort->GetName(),
+                         fSettings.PathOutputFile);
             break;
         case EReactionChannel::D:
         case EReactionChannel::E:
             fCutFlowHist_AntiLambdas->Write();
-            break;
-        case EReactionChannel::AntiA:
+            Logger::Info(__FUNCTION__, "TH1D \"{}\" has been written into TFile {}", fCutFlowHist_AntiLambdas->GetName(), fSettings.PathOutputFile);
             fCutFlowHist_Lambdas->Write();
-            fCutFlowHist_KaonsZeroShort->Write();
-            break;
-        case EReactionChannel::AntiD:
-        case EReactionChannel::AntiE:
-            fCutFlowHist_Lambdas->Write();
+            Logger::Info(__FUNCTION__, "TH1D \"{}\" has been written into TFile {}", fCutFlowHist_Lambdas->GetName(), fSettings.PathOutputFile);
             break;
         case EReactionChannel::H:
-        case EReactionChannel::AntiH:
-            break;
-        case EReactionChannel::All:
-            fCutFlowHist_AntiLambdas->Write();
-            fCutFlowHist_Lambdas->Write();
-            fCutFlowHist_KaonsZeroShort->Write();
             break;
     }
 

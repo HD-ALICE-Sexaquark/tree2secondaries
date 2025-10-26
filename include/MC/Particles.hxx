@@ -30,7 +30,7 @@ struct alignas(T2S_SIMD_ALIGN) Particle {
           Mother_PdgCode{mother_pdg_code} {}
 
     // utilities //
-    void FillBasic(const DF::SOV::MC_Particles& df, int mc_idx) {
+    void FillBasic(const DF::SOV::MCParticles& df, int mc_idx) {
         if (mc_idx >= 0) {
             Entry = mc_idx;
             X = df.X->at(mc_idx);
@@ -65,7 +65,7 @@ struct alignas(T2S_SIMD_ALIGN) Particle {
 struct alignas(T2S_SIMD_ALIGN) Track : MC::Particle {
     // constructors //
     Track() = default;
-    Track(const DF::SOV::MC_Particles& df, int mc_idx, Tree2Secondaries::EParticle pid_hypothesis) { Init(df, mc_idx, pid_hypothesis); }
+    Track(const DF::SOV::MCParticles& df, int mc_idx, EParticle pid_hypothesis) { Init(df, mc_idx, pid_hypothesis); }
     Track(const DF::Packed::LinkedTracks& df, int idx)
         : MC::Particle{df.Entry->at(idx),
                        df.PdgCode->at(idx),
@@ -93,11 +93,11 @@ struct alignas(T2S_SIMD_ALIGN) Track : MC::Particle {
           IsSecondary(is_secondary) {}
 
     // utilities //
-    void Init(const DF::SOV::MC_Particles& df, int mc_idx, Tree2Secondaries::EParticle pid_hypothesis) {
+    void Init(const DF::SOV::MCParticles& df, int mc_idx, EParticle pid_hypothesis) {
         FillBasic(df, mc_idx);
         FillDerived(df, mc_idx, pid_hypothesis);
     }
-    void FillDerived(const DF::SOV::MC_Particles& df, int mc_idx, Tree2Secondaries::EParticle pid_hypothesis) {
+    void FillDerived(const DF::SOV::MCParticles& df, int mc_idx, EParticle pid_hypothesis) {
         if (mc_idx >= 0) {
             IsTrue = PdgCode == Tree2Secondaries::Particle::PdgCode[pid_hypothesis];
             IsSignal = IsTrue && df.Generator->at(mc_idx) == 2;
@@ -123,8 +123,7 @@ struct alignas(T2S_SIMD_ALIGN) Track : MC::Particle {
 struct alignas(T2S_SIMD_ALIGN) V0 : MC::Particle {
     // constructors //
     V0() = default;
-    V0(const DF::SOV::MC_Particles& df, int mc_neg, int mc_pos, Tree2Secondaries::EParticle v0_hypothesis, Tree2Secondaries::EParticle neg_hypothesis,
-       Tree2Secondaries::EParticle pos_hypothesis) {
+    V0(const DF::SOV::MCParticles& df, int mc_neg, int mc_pos, EParticle v0_hypothesis, EParticle neg_hypothesis, EParticle pos_hypothesis) {
         if (mc_neg < 0 || mc_pos < 0) return;  // protection
         neg.Init(df, mc_neg, neg_hypothesis);
         pos.Init(df, mc_pos, pos_hypothesis);

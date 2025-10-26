@@ -21,15 +21,15 @@ struct alignas(T2S_SIMD_ALIGN) Tracks : SOV::States_NoE, SOV::CovMatrices_NoE {
         Clear_CovMatrices_NoE();
         Entry->clear();
     }
-    void CreateBranches_PackedTracks(TTree* tree, std::string_view suffix = "") {
-        CreateBranches_States_NoE(tree, suffix);
-        CreateBranches_CovMatrices_NoE(tree, suffix);
-        Utils::CreateBranch(tree, std::format("{}_Entry", suffix), &Entry);
+    void CreateBranches_PackedTracks(TTree* tree, std::string_view prefix = "") {
+        CreateBranches_States_NoE(tree, prefix);
+        CreateBranches_CovMatrices_NoE(tree, prefix);
+        Utils::CreateBranch(tree, std::format("{}_Entry", prefix), &Entry);
     }
-    void ReadBranches_PackedTracks(TTree* tree, std::string_view suffix = "") {
-        ReadBranches_States_NoE(tree, suffix);
-        ReadBranches_CovMatrices_NoE(tree, suffix);
-        Utils::ReadBranch(tree, std::format("{}_Entry", suffix), &Entry);
+    void ReadBranches_PackedTracks(TTree* tree, std::string_view prefix = "") {
+        ReadBranches_States_NoE(tree, prefix);
+        ReadBranches_CovMatrices_NoE(tree, prefix);
+        Utils::ReadBranch(tree, std::format("{}_Entry", prefix), &Entry);
     }
 };
 
@@ -51,33 +51,32 @@ struct alignas(T2S_SIMD_ALIGN) V0s : SOV::States, SOV::CovMatrices {
         Entry->clear();
         Chi2NDF->clear();
     }
-    void CreateBranches_PackedV0s(TTree* tree, std::string_view suffix = "") {
-        const std::string& neg_suffix{std::format("{}_Neg", suffix)};
-        const std::string& pos_suffix{std::format("{}_Pos", suffix)};
-        CreateBranches_States(tree, suffix);
-        CreateBranches_CovMatrices(tree, suffix);
-        Neg.CreateBranches_PackedTracks(tree, neg_suffix);
-        Pos.CreateBranches_PackedTracks(tree, pos_suffix);
-        Neg_atPCA.CreateBranches_States_NoE(tree, std::format("{}_atPCA", neg_suffix));
-        Pos_atPCA.CreateBranches_States_NoE(tree, std::format("{}_atPCA", pos_suffix));
-        Utils::CreateBranch(tree, std::format("{}_Entry", suffix), &Entry);
-        Utils::CreateBranch(tree, std::format("{}_Chi2NDF", suffix), &Chi2NDF);
+    void CreateBranches_PackedV0s(TTree* tree, std::string_view prefix = "") {
+        const std::string& neg_prefix{std::format("{}_Neg", prefix)};
+        const std::string& pos_prefix{std::format("{}_Pos", prefix)};
+        CreateBranches_States(tree, prefix);
+        CreateBranches_CovMatrices(tree, prefix);
+        Neg.CreateBranches_PackedTracks(tree, neg_prefix);
+        Pos.CreateBranches_PackedTracks(tree, pos_prefix);
+        Neg_atPCA.CreateBranches_States_NoE(tree, std::format("{}_atPCA", neg_prefix));
+        Pos_atPCA.CreateBranches_States_NoE(tree, std::format("{}_atPCA", pos_prefix));
+        Utils::CreateBranch(tree, std::format("{}_Entry", prefix), &Entry);
+        Utils::CreateBranch(tree, std::format("{}_Chi2NDF", prefix), &Chi2NDF);
     }
-    void ReadBranches_PackedV0s(TTree* tree, std::string_view suffix = "") {
-        const std::string& neg_suffix{std::format("{}_Neg", suffix)};
-        const std::string& pos_suffix{std::format("{}_Pos", suffix)};
-        ReadBranches_States(tree, suffix);
-        ReadBranches_CovMatrices(tree, suffix);
-        Neg.ReadBranches_PackedTracks(tree, neg_suffix);
-        Pos.ReadBranches_PackedTracks(tree, pos_suffix);
-        Neg_atPCA.ReadBranches_States_NoE(tree, std::format("{}_atPCA", neg_suffix));
-        Pos_atPCA.ReadBranches_States_NoE(tree, std::format("{}_atPCA", pos_suffix));
-        Utils::ReadBranch(tree, std::format("{}_Entry", suffix), &Entry);
-        Utils::ReadBranch(tree, std::format("{}_Chi2NDF", suffix), &Chi2NDF);
+    void ReadBranches_PackedV0s(TTree* tree, std::string_view prefix = "") {
+        const std::string& neg_prefix{std::format("{}_Neg", prefix)};
+        const std::string& pos_prefix{std::format("{}_Pos", prefix)};
+        ReadBranches_States(tree, prefix);
+        ReadBranches_CovMatrices(tree, prefix);
+        Neg.ReadBranches_PackedTracks(tree, neg_prefix);
+        Pos.ReadBranches_PackedTracks(tree, pos_prefix);
+        Neg_atPCA.ReadBranches_States_NoE(tree, std::format("{}_atPCA", neg_prefix));
+        Pos_atPCA.ReadBranches_States_NoE(tree, std::format("{}_atPCA", pos_prefix));
+        Utils::ReadBranch(tree, std::format("{}_Entry", prefix), &Entry);
+        Utils::ReadBranch(tree, std::format("{}_Chi2NDF", prefix), &Chi2NDF);
     }
 };
 
-// NOTE: similar but different from `DF::SOV::MC_Particles`
 struct alignas(T2S_SIMD_ALIGN) LinkedTracks : SOV::MCInfo {
     std::vector<int>* GrandMother_Entry{nullptr};
     std::vector<int>* GrandMother_PdgCode{nullptr};
@@ -118,8 +117,8 @@ struct alignas(T2S_SIMD_ALIGN) LinkedV0s : SOV::MCInfo {
     }
     void CreateBranches_LinkedV0s(TTree* tree, std::string_view acronym = "") {
         CreateBranches_MCInfo(tree, acronym);
-        Neg.CreateBranches_MCInfo_Reduced(tree, std::format("MC_{}_Neg", acronym));
-        Pos.CreateBranches_MCInfo_Reduced(tree, std::format("MC_{}_Pos", acronym));
+        Neg.CreateBranches_MCInfo_Reduced(tree, std::format("{}_Neg", acronym));
+        Pos.CreateBranches_MCInfo_Reduced(tree, std::format("{}_Pos", acronym));
         Utils::CreateBranch(tree, std::format("MC_{}_DecayX", acronym), &DecayX);
         Utils::CreateBranch(tree, std::format("MC_{}_DecayY", acronym), &DecayY);
         Utils::CreateBranch(tree, std::format("MC_{}_DecayZ", acronym), &DecayZ);
@@ -127,8 +126,8 @@ struct alignas(T2S_SIMD_ALIGN) LinkedV0s : SOV::MCInfo {
     }
     void ReadBranches_LinkedV0s(TTree* tree, std::string_view acronym = "") {
         ReadBranches_MCInfo(tree, acronym);
-        Neg.ReadBranches_MCInfo_Reduced(tree, std::format("MC_{}_Neg", acronym));
-        Pos.ReadBranches_MCInfo_Reduced(tree, std::format("MC_{}_Pos", acronym));
+        Neg.ReadBranches_MCInfo_Reduced(tree, std::format("{}_Neg", acronym));
+        Pos.ReadBranches_MCInfo_Reduced(tree, std::format("{}_Pos", acronym));
         Utils::ReadBranch(tree, std::format("MC_{}_DecayX", acronym), &DecayX);
         Utils::ReadBranch(tree, std::format("MC_{}_DecayY", acronym), &DecayY);
         Utils::ReadBranch(tree, std::format("MC_{}_DecayZ", acronym), &DecayZ);

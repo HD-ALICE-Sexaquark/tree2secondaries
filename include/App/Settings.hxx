@@ -13,7 +13,7 @@ namespace Tree2Secondaries {
 struct Settings {
     void Print() const {
         Logger::Info("Settings", "Mode            = {}", (DoTheSearch ? "FINDER" : "PACKAGER"));
-        Logger::Info("Settings", "ReactionChannel = {}", Name::ReactionChannel_Short[Channel]);
+        Logger::Info("Settings", "ReactionChannel = {}", static_cast<char>(ReactionChannel));
         Logger::Info("Settings", "InputFiles      = ");
         for (const auto& path : PathInputFiles) {
             Logger::Info("Settings", "- {}", path);
@@ -28,7 +28,7 @@ struct Settings {
     std::string PathOutputFile;
     int LimitToNEvents{0};
     double SexaquarkMass{Const::StandardSexaquarkMass};
-    EReactionChannel Channel{EReactionChannel::All};
+    EReactionChannel ReactionChannel{EReactionChannel::A};
     bool IsMC{false};
     bool DoTheSearch{false};
 };

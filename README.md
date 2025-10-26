@@ -28,27 +28,31 @@ Additional `<options>`:
 ## Usage
 
 ```
-./src/App -i [-o,-n] pack mc [-s] [-c,-a]
-./src/App -i [-o,-n] pack data
-./src/App -i [-o,-n] search mc [-m] [-c,-a]
-./src/App -i [-o,-n] search data [-c,-a]
+./src/App -i [-o,-n] pack mc -c -m
+./src/App -i [-o,-n] pack data -c
+./src/App -i [-o,-n] search mc -c -m
+./src/App -i [-o,-n] search data -c
 
 SUBCOMMANDS:
   pack    Package V0s and necessary tracks
   search  Search for anti-sexaquark reactions
   data    Process data
-  mc      Process MC (requires -m)
+  mc      Process MC
 OPTIONS:
   -h,--help                     Print help message and exit
   -i,--input {PATH}             [REQUIRED] Path(s) of input file(s)
   -o,--output {PATH}            Path of output file
   -n,--nevents {N}              Limit to N events
-  -m,--mass {MASS}              Injected anti-sexaquark Mass
-  -c,--channel {A,D,E,H}        Process a standard reaction channel
-  -a,--anti    {A,D,E,H}        Process an anti-reaction channel
+  -c,--channel {A,D,E,H}        [REQUIRED] Injected reaction channel
+  -m,--mass {MASS}              [REQUIRED for MC] Injected anti-sexaquark mass
 ```
 
 ## Quick Reference
+
+```bash
+./src/App -i ../files/23l1b3_A1.8/AnalysisResults_245452.root -n 10 pack mc -c A -m 1.8
+./src/App -i Packed_MC_A1.80.root -n 10 search mc -c A -m 1.8
+```
 
 ```bash
 ./src/App -i ../files/data_15o/AnalysisResults_data_15o_245554_001.root -n 100 pack data

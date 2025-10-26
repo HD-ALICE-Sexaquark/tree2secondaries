@@ -29,7 +29,7 @@ class Packager {
 
     explicit Packager(Settings settings) : fSettings{std::move(settings)} {}
 
-    [[nodiscard]] EReactionChannel GetReactionChannel() const { return fSettings.Channel; }
+    [[nodiscard]] EReactionChannel GetReactionChannel() const { return fSettings.ReactionChannel; }
 
     bool Initialize();
     void ReadInputBranches();
@@ -115,7 +115,7 @@ class Packager {
     DF::Flat::Event fInput_Event;
     DF::SOV::Injected fInput_Injected;
 
-    DF::SOV::MC_Particles fInput_MC;
+    DF::SOV::MCParticles fInput_MC;
     DF::SOV::Tracks fInput_Tracks;
 
     // temporary containers, cleaned after event loop //

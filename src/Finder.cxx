@@ -2,7 +2,6 @@
 #include <memory>
 
 #include "App/Logger.hxx"
-#include "App/Utilities.hxx"
 #include "DataFormats/PackedEvents.hxx"
 #include "Finder/Cuts.hxx"
 #include "Finder/Finder.hxx"
@@ -14,7 +13,7 @@ namespace Tree2Secondaries {
 
 bool Finder::Initialize() {
 
-    fInputChain_PackedEvents = std::make_unique<TChain>("PackedEvents");
+    fInputChain_PackedEvents = std::make_unique<TChain>(Name::PackedEvents.c_str());
     for (const auto& path : fSettings.PathInputFiles) {
         if (fInputChain_PackedEvents->Add(path.c_str()) == 0) {
             Logger::Error(__FUNCTION__, "Couldn't add TFile {}", path);
@@ -56,30 +55,39 @@ void Finder::ReadInputBranches() {
     if (IsMC()) ReadBranches_Injected();
     // -- depending on reaction channels
     switch (GetReactionChannel()) {
-        // -- standard channels
         case EReactionChannel::A:
             ReadBranches_V0s(EParticle::AntiLambda, fInput_AntiLambdas);
+            ReadBranches_V0s(EParticle::Lambda, fInput_Lambdas);
             ReadBranches_V0s(EParticle::KaonZeroShort, fInput_KaonsZeroShort);
             if (IsMC()) {
                 ReadBranches_LinkedV0s(EParticle::AntiLambda, fInput_Linked_AntiLambdas);
+                ReadBranches_LinkedV0s(EParticle::Lambda, fInput_Linked_Lambdas);
                 ReadBranches_LinkedV0s(EParticle::KaonZeroShort, fInput_Linked_KaonsZeroShort);
             }
             break;
         case EReactionChannel::D:
             ReadBranches_V0s(EParticle::AntiLambda, fInput_AntiLambdas);
+            ReadBranches_V0s(EParticle::Lambda, fInput_Lambdas);
+            ReadBranches_Tracks(EParticle::NegKaon, fInput_NegKaons);
             ReadBranches_Tracks(EParticle::PosKaon, fInput_PosKaons);
             if (IsMC()) {
                 ReadBranches_LinkedV0s(EParticle::AntiLambda, fInput_Linked_AntiLambdas);
+                ReadBranches_LinkedV0s(EParticle::Lambda, fInput_Linked_Lambdas);
+                ReadBranches_LinkedTracks(EParticle::NegKaon, fInput_Linked_NegKaons);
                 ReadBranches_LinkedTracks(EParticle::PosKaon, fInput_Linked_PosKaons);
             }
             break;
         case EReactionChannel::E:
             ReadBranches_V0s(EParticle::AntiLambda, fInput_AntiLambdas);
+            ReadBranches_V0s(EParticle::Lambda, fInput_Lambdas);
+            ReadBranches_Tracks(EParticle::NegKaon, fInput_NegKaons);
             ReadBranches_Tracks(EParticle::PosKaon, fInput_PosKaons);
             ReadBranches_Tracks(EParticle::PiMinus, fInput_PiMinus);
             ReadBranches_Tracks(EParticle::PiPlus, fInput_PiPlus);
             if (IsMC()) {
                 ReadBranches_LinkedV0s(EParticle::AntiLambda, fInput_Linked_AntiLambdas);
+                ReadBranches_LinkedV0s(EParticle::Lambda, fInput_Linked_Lambdas);
+                ReadBranches_LinkedTracks(EParticle::NegKaon, fInput_Linked_NegKaons);
                 ReadBranches_LinkedTracks(EParticle::PosKaon, fInput_Linked_PosKaons);
                 ReadBranches_LinkedTracks(EParticle::PiMinus, fInput_Linked_PiMinus);
                 ReadBranches_LinkedTracks(EParticle::PiPlus, fInput_Linked_PiPlus);
@@ -87,61 +95,18 @@ void Finder::ReadInputBranches() {
             break;
         case EReactionChannel::H:
             ReadBranches_Tracks(EParticle::PosKaon, fInput_PosKaons);
-            if (IsMC()) ReadBranches_LinkedTracks(EParticle::PosKaon, fInput_Linked_PosKaons);
-            break;
-        // -- anti-channels
-        case EReactionChannel::AntiA:
-            ReadBranches_V0s(EParticle::Lambda, fInput_Lambdas);
-            ReadBranches_V0s(EParticle::KaonZeroShort, fInput_KaonsZeroShort);
-            if (IsMC()) {
-                ReadBranches_LinkedV0s(EParticle::Lambda, fInput_Linked_Lambdas);
-                ReadBranches_LinkedV0s(EParticle::KaonZeroShort, fInput_Linked_KaonsZeroShort);
-            }
-            break;
-        case EReactionChannel::AntiD:
-            ReadBranches_V0s(EParticle::Lambda, fInput_Lambdas);
             ReadBranches_Tracks(EParticle::NegKaon, fInput_NegKaons);
             if (IsMC()) {
-                ReadBranches_LinkedV0s(EParticle::Lambda, fInput_Linked_Lambdas);
                 ReadBranches_LinkedTracks(EParticle::NegKaon, fInput_Linked_NegKaons);
+                ReadBranches_LinkedTracks(EParticle::PosKaon, fInput_Linked_PosKaons);
             }
-            break;
-        case EReactionChannel::AntiE:
-            ReadBranches_V0s(EParticle::Lambda, fInput_Lambdas);
-            ReadBranches_Tracks(EParticle::NegKaon, fInput_NegKaons);
-            ReadBranches_Tracks(EParticle::PiMinus, fInput_PiMinus);
-            ReadBranches_Tracks(EParticle::PiPlus, fInput_PiPlus);
-            if (IsMC()) {
-                ReadBranches_LinkedV0s(EParticle::Lambda, fInput_Linked_Lambdas);
-                ReadBranches_LinkedTracks(EParticle::NegKaon, fInput_Linked_NegKaons);
-                ReadBranches_LinkedTracks(EParticle::PiMinus, fInput_Linked_PiMinus);
-                ReadBranches_LinkedTracks(EParticle::PiPlus, fInput_Linked_PiPlus);
-            }
-            break;
-        case EReactionChannel::AntiH:
-            ReadBranches_Tracks(EParticle::NegKaon, fInput_NegKaons);
-            if (IsMC()) ReadBranches_LinkedTracks(EParticle::NegKaon, fInput_Linked_NegKaons);
-            break;
-        default:
             break;
     }  // end of switch statement
 }
 
 void Finder::ReadBranches_Events() { fInput_Event.ReadBranches_Event(fInputChain_PackedEvents.get(), IsMC()); }
 
-void Finder::ReadBranches_Injected() {
-    // `DF::SOV::Injected`
-    Utils::ReadBranch(fInputChain_PackedEvents.get(), "ReactionID", &fInput_Injected.ReactionID);
-    Utils::ReadBranch(fInputChain_PackedEvents.get(), "SV_X", &fInput_Injected.X);
-    Utils::ReadBranch(fInputChain_PackedEvents.get(), "SV_Y", &fInput_Injected.Y);
-    Utils::ReadBranch(fInputChain_PackedEvents.get(), "SV_Z", &fInput_Injected.Z);
-    Utils::ReadBranch(fInputChain_PackedEvents.get(), "Sexaquark_Px", &fInput_Injected.Px);
-    Utils::ReadBranch(fInputChain_PackedEvents.get(), "Sexaquark_Py", &fInput_Injected.Py);
-    Utils::ReadBranch(fInputChain_PackedEvents.get(), "Sexaquark_Pz", &fInput_Injected.Pz);
-    Utils::ReadBranch(fInputChain_PackedEvents.get(), "Nucleon_Px", &fInput_Injected.Nucleon_Px);
-    Utils::ReadBranch(fInputChain_PackedEvents.get(), "Nucleon_Py", &fInput_Injected.Nucleon_Py);
-    Utils::ReadBranch(fInputChain_PackedEvents.get(), "Nucleon_Pz", &fInput_Injected.Nucleon_Pz);
-}
+void Finder::ReadBranches_Injected() { fInput_Injected.ReadBranches_SOV_Injected(fInputChain_PackedEvents.get(), true); }
 
 void Finder::ReadBranches_V0s(EParticle pid, DF::Packed::V0s& df) {
     df.ReadBranches_PackedV0s(fInputChain_PackedEvents.get(), Particle::Acronym[pid]);
@@ -177,7 +142,7 @@ bool Finder::PrepareOutputFile() {
 
 bool Finder::PrepareOutputTree() {
 
-    std::string tree_name{std::format("FoundSexa_{}", Name::ReactionChannel_Long[GetReactionChannel()])};
+    std::string tree_name{std::format("FoundSexa_Channel{}", static_cast<char>(fSettings.ReactionChannel))};
 
     fOutputTree = std::make_unique<TTree>(tree_name.c_str(), "");
     if (!fOutputTree) {
@@ -188,183 +153,16 @@ bool Finder::PrepareOutputTree() {
     return true;
 }
 
-void Finder::CreateOutputBranches(DF::ChannelA& df) {
-    // `DF::Sexaquark`
-    df.CreateBranches_State(fOutputTree.get());
-    // -- event properties
-    Utils::CreateBranch(fOutputTree.get(), "RunNumber", &df.RunNumber);
-    Utils::CreateBranch(fOutputTree.get(), "DirNumber", &df.DirNumber);
-    if (!IsMC()) Utils::CreateBranch(fOutputTree.get(), "DirNumberB", &df.DirNumberB);
-    Utils::CreateBranch(fOutputTree.get(), "EventNumber", &df.EventNumber);
-    Utils::CreateBranch(fOutputTree.get(), "MagneticField", &df.MagneticField);
-    Utils::CreateBranch(fOutputTree.get(), "PV_Xv", &df.PV_Xv);
-    Utils::CreateBranch(fOutputTree.get(), "PV_Yv", &df.PV_Yv);
-    Utils::CreateBranch(fOutputTree.get(), "PV_Zv", &df.PV_Zv);
-    // -- extra kinematics
-    Utils::CreateBranch(fOutputTree.get(), "E_MinusNucleon", &df.E_MinusNucleon);
-    // `DF::ChannelA`
-    // -- V0A
-    df.V0A_atPCA.CreateBranches_State(fOutputTree.get(), "V0A_atPCA_");
-    df.V0A_atDecay.CreateBranches_State(fOutputTree.get(), "V0A_atDecay_");
-    // -- V0B
-    df.V0B_atPCA.CreateBranches_State(fOutputTree.get(), "V0B_atPCA_");
-    df.V0B_atDecay.CreateBranches_State(fOutputTree.get(), "V0B_atDecay_");
-    // -- V0A daughters
-    df.V0A_Neg_atPCA.CreateBranches_State(fOutputTree.get(), "V0A_Neg_atPCA_");
-    df.V0A_Neg_atV0.CreateBranches_State(fOutputTree.get(), "V0A_Neg_atV0_");
-    df.V0A_Pos_atPCA.CreateBranches_State(fOutputTree.get(), "V0A_Pos_atPCA_");
-    df.V0A_Pos_atV0.CreateBranches_State(fOutputTree.get(), "V0A_Pos_atV0_");
-    // -- V0B daughters
-    df.V0B_Neg_atPCA.CreateBranches_State(fOutputTree.get(), "V0B_Neg_atPCA_");
-    df.V0B_Neg_atV0.CreateBranches_State(fOutputTree.get(), "V0B_Neg_atV0_");
-    df.V0B_Pos_atPCA.CreateBranches_State(fOutputTree.get(), "V0B_Pos_atPCA_");
-    df.V0B_Pos_atV0.CreateBranches_State(fOutputTree.get(), "V0B_Pos_atV0_");
-    // -- indices
-    Utils::CreateBranch(fOutputTree.get(), "V0A_Entry", &df.V0A_Entry);
-    Utils::CreateBranch(fOutputTree.get(), "V0B_Entry", &df.V0B_Entry);
-    Utils::CreateBranch(fOutputTree.get(), "V0A_Neg_Entry", &df.V0A_Neg_Entry);
-    Utils::CreateBranch(fOutputTree.get(), "V0A_Pos_Entry", &df.V0A_Pos_Entry);
-    Utils::CreateBranch(fOutputTree.get(), "V0B_Neg_Entry", &df.V0B_Neg_Entry);
-    Utils::CreateBranch(fOutputTree.get(), "V0B_Pos_Entry", &df.V0B_Pos_Entry);
-}
+void Finder::CreateOutputBranches(DF::ChannelA& df) { df.CreateBranches_ChannelA(fOutputTree.get(), IsMC()); }
 
 void Finder::CreateOutputBranches(DF::ChannelD& df) {
-    // `Found::Sexaquark`
-    df.CreateBranches_State(fOutputTree.get());
-    // -- event properties
-    Utils::CreateBranch(fOutputTree.get(), "RunNumber", &df.RunNumber);
-    Utils::CreateBranch(fOutputTree.get(), "DirNumber", &df.DirNumber);
-    if (!IsMC()) Utils::CreateBranch(fOutputTree.get(), "DirNumberB", &df.DirNumberB);
-    Utils::CreateBranch(fOutputTree.get(), "EventNumber", &df.EventNumber);
-    Utils::CreateBranch(fOutputTree.get(), "MagneticField", &df.MagneticField);
-    // -- primary vertex
-    Utils::CreateBranch(fOutputTree.get(), "PV_Xv", &df.PV_Xv);
-    Utils::CreateBranch(fOutputTree.get(), "PV_Yv", &df.PV_Yv);
-    Utils::CreateBranch(fOutputTree.get(), "PV_Zv", &df.PV_Zv);
-    // -- fit info
-    Utils::CreateBranch(fOutputTree.get(), "Chi2NDF", &df.Chi2NDF);
-    // -- extra kinematics
-    Utils::CreateBranch(fOutputTree.get(), "E_MinusNucleon", &df.E_MinusNucleon);
-    // `Found::ChannelD`
-    // -- V0
-    df.V0_atPCA.CreateBranches_State(fOutputTree.get(), "V0_atPCA_");
-    df.V0_atDecay.CreateBranches_State(fOutputTree.get(), "V0_atDecay_");
-    // -- Kaon
-    df.Kaon_atPCA.CreateBranches_State(fOutputTree.get(), "V0B_atPCA_");
-    // -- V0 daughters
-    df.V0_Neg_atPCA.CreateBranches_State(fOutputTree.get(), "V0_Neg_atPCA_");
-    df.V0_Neg_atV0.CreateBranches_State(fOutputTree.get(), "V0_Neg_atV0_");
-    df.V0_Pos_atPCA.CreateBranches_State(fOutputTree.get(), "V0_Pos_atPCA_");
-    df.V0_Pos_atV0.CreateBranches_State(fOutputTree.get(), "V0_Pos_atV0_");
-    // -- indices
-    Utils::CreateBranch(fOutputTree.get(), "V0_Entry", &df.V0_Entry);
-    Utils::CreateBranch(fOutputTree.get(), "Kaon_Entry", &df.Kaon_Entry);
-    Utils::CreateBranch(fOutputTree.get(), "V0_Neg_Entry", &df.V0_Neg_Entry);
-    Utils::CreateBranch(fOutputTree.get(), "V0_Pos_Entry", &df.V0_Pos_Entry);
+    // PENDING
 }
 
-void Finder::CreateOutputBranches(DF::MC_ChannelA& df) {
-    // `Found::MC_Sexaquark`
-    df.Before.CreateBranches_LV(fOutputTree.get(), "MC_Before_");
-    df.After.CreateBranches_LV(fOutputTree.get(), "MC_After_");
-    df.Nucleon.CreateBranches_LV(fOutputTree.get(), "MC_Nucleon_");
-    // -- secondary vertex
-    Utils::CreateBranch(fOutputTree.get(), "MC_X", &df.X);
-    Utils::CreateBranch(fOutputTree.get(), "MC_Y", &df.Y);
-    Utils::CreateBranch(fOutputTree.get(), "MC_Z", &df.Z);
-    // -- event properties
-    Utils::CreateBranch(fOutputTree.get(), "MC_PV_Xv", &df.PV_Xv);
-    Utils::CreateBranch(fOutputTree.get(), "MC_PV_Yv", &df.PV_Yv);
-    Utils::CreateBranch(fOutputTree.get(), "MC_PV_Zv", &df.PV_Zv);
-    // -- reaction id + flags
-    Utils::CreateBranch(fOutputTree.get(), "MC_ReactionID", &df.ReactionID);
-    Utils::CreateBranch(fOutputTree.get(), "MC_IsSignal", &df.IsSignal);
-    Utils::CreateBranch(fOutputTree.get(), "MC_IsHybrid", &df.IsHybrid);
-    // `Found::MC_ChannelA`
-    // -- V0A
-    df.V0A_atSV.CreateBranches_LV(fOutputTree.get(), "MC_V0A_atSV_");
-    Utils::CreateBranch(fOutputTree.get(), "MC_V0A_Entry", &df.V0A_Entry);
-    Utils::CreateBranch(fOutputTree.get(), "MC_V0A_PdgCode", &df.V0A_PdgCode);
-    Utils::CreateBranch(fOutputTree.get(), "MC_V0A_Mother_Entry", &df.V0A_Mother_Entry);
-    Utils::CreateBranch(fOutputTree.get(), "MC_V0A_Mother_PdgCode", &df.V0A_Mother_PdgCode);
-    Utils::CreateBranch(fOutputTree.get(), "MC_V0A_ReactionID", &df.V0A_ReactionID);
-    // -- V0A flags
-    Utils::CreateBranch(fOutputTree.get(), "MC_V0A_IsTrue", &df.V0A_IsTrue);
-    Utils::CreateBranch(fOutputTree.get(), "MC_V0A_IsSignal", &df.V0A_IsSignal);
-    Utils::CreateBranch(fOutputTree.get(), "MC_V0A_IsSecondary", &df.V0A_IsSecondary);
-    Utils::CreateBranch(fOutputTree.get(), "MC_V0A_IsHybrid", &df.V0A_IsHybrid);
-    // -- V0A daughters
-    Utils::CreateBranch(fOutputTree.get(), "MC_V0A_Neg_Entry", &df.V0A_Neg_Entry);
-    Utils::CreateBranch(fOutputTree.get(), "MC_V0A_Neg_PdgCode", &df.V0A_Neg_PdgCode);
-    Utils::CreateBranch(fOutputTree.get(), "MC_V0A_Pos_Entry", &df.V0A_Pos_Entry);
-    Utils::CreateBranch(fOutputTree.get(), "MC_V0A_Pos_PdgCode", &df.V0A_Pos_PdgCode);
-    // -- V0B
-    df.V0B_atSV.CreateBranches_LV(fOutputTree.get(), "MC_V0B_atSV_");
-    Utils::CreateBranch(fOutputTree.get(), "MC_V0B_Entry", &df.V0B_Entry);
-    Utils::CreateBranch(fOutputTree.get(), "MC_V0B_PdgCode", &df.V0B_PdgCode);
-    Utils::CreateBranch(fOutputTree.get(), "MC_V0B_Mother_Entry", &df.V0B_Mother_Entry);
-    Utils::CreateBranch(fOutputTree.get(), "MC_V0B_Mother_PdgCode", &df.V0B_Mother_PdgCode);
-    Utils::CreateBranch(fOutputTree.get(), "MC_V0B_ReactionID", &df.V0B_ReactionID);
-    // -- V0B flags
-    Utils::CreateBranch(fOutputTree.get(), "MC_V0B_IsTrue", &df.V0B_IsTrue);
-    Utils::CreateBranch(fOutputTree.get(), "MC_V0B_IsSignal", &df.V0B_IsSignal);
-    Utils::CreateBranch(fOutputTree.get(), "MC_V0B_IsSecondary", &df.V0B_IsSecondary);
-    Utils::CreateBranch(fOutputTree.get(), "MC_V0B_IsHybrid", &df.V0B_IsHybrid);
-    // -- V0B daughters
-    Utils::CreateBranch(fOutputTree.get(), "MC_V0B_Neg_Entry", &df.V0B_Neg_Entry);
-    Utils::CreateBranch(fOutputTree.get(), "MC_V0B_Neg_PdgCode", &df.V0B_Neg_PdgCode);
-    Utils::CreateBranch(fOutputTree.get(), "MC_V0B_Pos_Entry", &df.V0B_Pos_Entry);
-    Utils::CreateBranch(fOutputTree.get(), "MC_V0B_Pos_PdgCode", &df.V0B_Pos_PdgCode);
-}
+void Finder::CreateOutputBranches(DF::MC_ChannelA& df) { df.CreateBranches_MC_ChannelA(fOutputTree.get()); }
 
 void Finder::CreateOutputBranches(DF::MC_ChannelD& df) {
-    // `Found::MC_Sexaquark`
-    df.Before.CreateBranches_LV(fOutputTree.get(), "MC_Before_");
-    df.After.CreateBranches_LV(fOutputTree.get(), "MC_After_");
-    df.Nucleon.CreateBranches_LV(fOutputTree.get(), "MC_Nucleon_");
-    // -- secondary vertex
-    Utils::CreateBranch(fOutputTree.get(), "MC_X", &df.X);
-    Utils::CreateBranch(fOutputTree.get(), "MC_Y", &df.Y);
-    Utils::CreateBranch(fOutputTree.get(), "MC_Z", &df.Z);
-    // -- event properties
-    Utils::CreateBranch(fOutputTree.get(), "MC_PV_Xv", &df.PV_Xv);
-    Utils::CreateBranch(fOutputTree.get(), "MC_PV_Yv", &df.PV_Yv);
-    Utils::CreateBranch(fOutputTree.get(), "MC_PV_Zv", &df.PV_Zv);
-    // -- reaction id + flags
-    Utils::CreateBranch(fOutputTree.get(), "MC_ReactionID", &df.ReactionID);
-    Utils::CreateBranch(fOutputTree.get(), "MC_IsSignal", &df.IsSignal);
-    Utils::CreateBranch(fOutputTree.get(), "MC_IsHybrid", &df.IsHybrid);
-    // `Found::MC_ChannelA`
-    df.V0_atSV.CreateBranches_LV(fOutputTree.get(), "MC_V0_atSV_");
-    df.Kaon_atSV.CreateBranches_LV(fOutputTree.get(), "MC_Kaon_atSV_");
-    // -- V0A
-    Utils::CreateBranch(fOutputTree.get(), "MC_V0_Entry", &df.V0_Entry);
-    Utils::CreateBranch(fOutputTree.get(), "MC_V0_PdgCode", &df.V0_PdgCode);
-    Utils::CreateBranch(fOutputTree.get(), "MC_V0_Mother_Entry", &df.V0_Mother_Entry);
-    Utils::CreateBranch(fOutputTree.get(), "MC_V0_Mother_PdgCode", &df.V0_Mother_PdgCode);
-    Utils::CreateBranch(fOutputTree.get(), "MC_V0_ReactionID", &df.V0_ReactionID);
-    // -- V0 daughters
-    Utils::CreateBranch(fOutputTree.get(), "MC_V0_Neg_Entry", &df.V0_Neg_Entry);
-    Utils::CreateBranch(fOutputTree.get(), "MC_V0_Neg_PdgCode", &df.V0_Neg_PdgCode);
-    Utils::CreateBranch(fOutputTree.get(), "MC_V0_Pos_Entry", &df.V0_Pos_Entry);
-    Utils::CreateBranch(fOutputTree.get(), "MC_V0_Pos_PdgCode", &df.V0_Pos_PdgCode);
-    // -- V0 flags
-    Utils::CreateBranch(fOutputTree.get(), "MC_V0_IsTrue", &df.V0_IsTrue);
-    Utils::CreateBranch(fOutputTree.get(), "MC_V0_IsSignal", &df.V0_IsSignal);
-    Utils::CreateBranch(fOutputTree.get(), "MC_V0_IsSecondary", &df.V0_IsSecondary);
-    Utils::CreateBranch(fOutputTree.get(), "MC_V0_IsHybrid", &df.V0_IsHybrid);
-    // -- Kaon
-    Utils::CreateBranch(fOutputTree.get(), "MC_Kaon_Entry", &df.Kaon_Entry);
-    Utils::CreateBranch(fOutputTree.get(), "MC_Kaon_PdgCode", &df.Kaon_PdgCode);
-    Utils::CreateBranch(fOutputTree.get(), "MC_Kaon_Mother_Entry", &df.Kaon_Mother_Entry);
-    Utils::CreateBranch(fOutputTree.get(), "MC_Kaon_Mother_PdgCode", &df.Kaon_Mother_PdgCode);
-    Utils::CreateBranch(fOutputTree.get(), "MC_Kaon_GrandMother_Entry", &df.Kaon_GrandMother_Entry);
-    Utils::CreateBranch(fOutputTree.get(), "MC_Kaon_GrandMother_PdgCode", &df.Kaon_GrandMother_PdgCode);
-    Utils::CreateBranch(fOutputTree.get(), "MC_Kaon_ReactionID", &df.Kaon_ReactionID);
-    // -- Kaon flags
-    Utils::CreateBranch(fOutputTree.get(), "MC_Kaon_IsTrue", &df.Kaon_IsTrue);
-    Utils::CreateBranch(fOutputTree.get(), "MC_Kaon_IsSignal", &df.Kaon_IsSignal);
-    Utils::CreateBranch(fOutputTree.get(), "MC_Kaon_IsSecondary", &df.Kaon_IsSecondary);
+    // PENDING
 }
 
 void Finder::CreateCutFlowHistogram() {
@@ -379,7 +177,7 @@ void Finder::CreateCutFlowHistogram() {
 
 bool Finder::Injected_PrepareOutputTree() {
 
-    std::string tree_name{"Injected"};
+    std::string tree_name{Name::Injected};
 
     fOutputTree_Injected = std::make_unique<TTree>(tree_name.c_str(), "");
     if (!fOutputTree_Injected) {
@@ -390,41 +188,35 @@ bool Finder::Injected_PrepareOutputTree() {
     return true;
 }
 
-void Finder::Injected_CreateOutputBranches() {
-
-    fOutputTree_Injected->Branch("RunNumber", &fOutput_Injected.RunNumber);
-    fOutputTree_Injected->Branch("DirNumber", &fOutput_Injected.DirNumber);
-    fOutputTree_Injected->Branch("EventNumber", &fOutput_Injected.EventNumber);
-    fOutputTree_Injected->Branch("ReactionID", &fOutput_Injected.ReactionID);
-    fOutputTree_Injected->Branch("X", &fOutput_Injected.X);
-    fOutputTree_Injected->Branch("Y", &fOutput_Injected.Y);
-    fOutputTree_Injected->Branch("Z", &fOutput_Injected.Z);
-    fOutputTree_Injected->Branch("Px", &fOutput_Injected.Px);
-    fOutputTree_Injected->Branch("Py", &fOutput_Injected.Py);
-    fOutputTree_Injected->Branch("Pz", &fOutput_Injected.Pz);
-    fOutputTree_Injected->Branch("E", &fOutput_Injected.E);
-};
+void Finder::Injected_CreateOutputBranches() { fOutput_Injected.CreateBranches_Flat_Injected(fOutputTree_Injected.get()); };
 
 void Finder::Injected_FlattenAndStore() {
 
+    double nucleon_mass{Particle::Mass[ReactionNucleonPID[fSettings.ReactionChannel]]};
+
     auto n_injected = static_cast<int>(fInput_Injected.ReactionID->size());
     for (int idx_inj{0}; idx_inj < n_injected; ++idx_inj) {
-        // state
-        fOutput_Injected.X = fInput_Injected.X->at(idx_inj);
-        fOutput_Injected.Y = fInput_Injected.Y->at(idx_inj);
-        fOutput_Injected.Z = fInput_Injected.Z->at(idx_inj);
-        fOutput_Injected.Px = fInput_Injected.Px->at(idx_inj);
-        fOutput_Injected.Py = fInput_Injected.Py->at(idx_inj);
-        fOutput_Injected.Pz = fInput_Injected.Pz->at(idx_inj);
-        fOutput_Injected.E = static_cast<float>(std::sqrt(fSettings.SexaquarkMass * fSettings.SexaquarkMass +
-                                                          static_cast<double>(fOutput_Injected.Px) * static_cast<double>(fOutput_Injected.Px) +
-                                                          static_cast<double>(fOutput_Injected.Py) * static_cast<double>(fOutput_Injected.Py) +
-                                                          static_cast<double>(fOutput_Injected.Pz) * static_cast<double>(fOutput_Injected.Pz)));
-        // event properties
+        // `Flat::State`
+        float sexa_px{fInput_Injected.Px->at(idx_inj)};
+        float sexa_py{fInput_Injected.Py->at(idx_inj)};
+        float sexa_pz{fInput_Injected.Pz->at(idx_inj)};
+        float sexa_energy{static_cast<float>(
+            std::sqrt(fSettings.SexaquarkMass * fSettings.SexaquarkMass + sexa_px * sexa_px + sexa_py * sexa_py + sexa_pz * sexa_pz))};
+        fOutput_Injected.Fill_Coordinates(fInput_Injected.X->at(idx_inj), fInput_Injected.Y->at(idx_inj), fInput_Injected.Z->at(idx_inj));
+        fOutput_Injected.Fill_LorentzVector(sexa_px, sexa_py, sexa_pz, sexa_energy);
+        // `Flat::Injected`
+        // -- nucleon (`Flat::LorentzVector`)
+        float nucleon_px{fInput_Injected.Nucleon_Px->at(idx_inj)};
+        float nucleon_py{fInput_Injected.Nucleon_Py->at(idx_inj)};
+        float nucleon_pz{fInput_Injected.Nucleon_Pz->at(idx_inj)};
+        float nucleon_energy{static_cast<float>(  //
+            std::sqrt(nucleon_mass * nucleon_mass + nucleon_px * nucleon_px + nucleon_py * nucleon_py + nucleon_pz * nucleon_pz))};
+        fOutput_Injected.Nucleon.Fill_LorentzVector(nucleon_px, nucleon_py, nucleon_pz, nucleon_energy);
+        // -- event properties
         fOutput_Injected.RunNumber = fInput_Event.RunNumber;
         fOutput_Injected.DirNumber = fInput_Event.DirNumber;
         fOutput_Injected.EventNumber = fInput_Event.EventNumber;
-        // reaction id
+        // -- reaction id
         fOutput_Injected.ReactionID = fInput_Injected.ReactionID->at(idx_inj);
         fOutputTree_Injected->Fill();
     }
@@ -508,7 +300,7 @@ void Finder::FindSexaquarks_ChannelA(bool anti_channel) {
             if (!PassesCuts(sexa)) continue;
 
             // store //
-            Store(sexa);
+            Store(sexa, anti_channel);
             if (IsMC()) {
                 MC::V0 mc_v0a{*MC_Lambdas, v0a.idx};
                 MC::V0 mc_v0b{fInput_Linked_KaonsZeroShort, v0b.idx};
@@ -558,7 +350,7 @@ bool Finder::PassesCuts(const KF::ChannelA& sexa) const {
     return true;
 }
 
-void Finder::Store(const KF::ChannelA& sexa) {
+void Finder::Store(const KF::ChannelA& sexa, bool anti_channel) {
     // `DF::Sexaquark`
     // -- `DF::Flat::State`
     fOutput_ChannelA.Fill_State(static_cast<float>(sexa.X()), static_cast<float>(sexa.Y()), static_cast<float>(sexa.Z()),
@@ -571,42 +363,41 @@ void Finder::Store(const KF::ChannelA& sexa) {
     fOutput_ChannelA.EventNumber = fInput_Event.EventNumber;
     fOutput_ChannelA.MagneticField = fInput_Event.MagneticField;
     // -- primary vertex
-    fOutput_ChannelA.PV_Xv = fInput_Event.PV.X;
-    fOutput_ChannelA.PV_Yv = fInput_Event.PV.Y;
-    fOutput_ChannelA.PV_Zv = fInput_Event.PV.Z;
+    fOutput_ChannelA.PV = fInput_Event.PV;
     // -- fit info
     fOutput_ChannelA.Chi2NDF = Const::DummyFloat;  // PENDING!
-    // -- extra kinematics
+    // -- extra info
     fOutput_ChannelA.E_MinusNucleon = static_cast<float>(sexa.E_MinusNucleon());
+    fOutput_ChannelA.AntiChannel = anti_channel;
     // `DF::ChannelA`
     // -- V0A
-    fOutput_ChannelA.V0A_atPCA.Fill_State(Const::DummyFloat, Const::DummyFloat, Const::DummyFloat, Const::DummyFloat, Const::DummyFloat,
-                                          Const::DummyFloat, Const::DummyFloat);  // PENDING!
-    fOutput_ChannelA.V0A_atDecay.Fill_State(Const::DummyFloat, Const::DummyFloat, Const::DummyFloat, Const::DummyFloat, Const::DummyFloat,
-                                            Const::DummyFloat, Const::DummyFloat);  // PENDING!
+    fOutput_ChannelA.V0A_atPCA.Fill_State(Const::DummyFloat, Const::DummyFloat, Const::DummyFloat,                        //
+                                          Const::DummyFloat, Const::DummyFloat, Const::DummyFloat, Const::DummyFloat);    // PENDING!
+    fOutput_ChannelA.V0A_atDecay.Fill_State(Const::DummyFloat, Const::DummyFloat, Const::DummyFloat,                      //
+                                            Const::DummyFloat, Const::DummyFloat, Const::DummyFloat, Const::DummyFloat);  // PENDING!
     // -- V0B
-    fOutput_ChannelA.V0B_atPCA.Fill_State(Const::DummyFloat, Const::DummyFloat, Const::DummyFloat, Const::DummyFloat, Const::DummyFloat,
-                                          Const::DummyFloat, Const::DummyFloat);  // PENDING!
-    fOutput_ChannelA.V0B_atDecay.Fill_State(Const::DummyFloat, Const::DummyFloat, Const::DummyFloat, Const::DummyFloat, Const::DummyFloat,
-                                            Const::DummyFloat, Const::DummyFloat);  // PENDING!
+    fOutput_ChannelA.V0B_atPCA.Fill_State(Const::DummyFloat, Const::DummyFloat, Const::DummyFloat,                        //
+                                          Const::DummyFloat, Const::DummyFloat, Const::DummyFloat, Const::DummyFloat);    // PENDING!
+    fOutput_ChannelA.V0B_atDecay.Fill_State(Const::DummyFloat, Const::DummyFloat, Const::DummyFloat,                      //
+                                            Const::DummyFloat, Const::DummyFloat, Const::DummyFloat, Const::DummyFloat);  // PENDING!
     // -- V0A daughters
-    fOutput_ChannelA.V0A_Neg_atPCA.Fill_State(Const::DummyFloat, Const::DummyFloat, Const::DummyFloat, Const::DummyFloat, Const::DummyFloat,
-                                              Const::DummyFloat, Const::DummyFloat);  // PENDING!
-    fOutput_ChannelA.V0A_Neg_atV0.Fill_State(Const::DummyFloat, Const::DummyFloat, Const::DummyFloat, Const::DummyFloat, Const::DummyFloat,
-                                             Const::DummyFloat, Const::DummyFloat);  // PENDING!
-    fOutput_ChannelA.V0A_Pos_atPCA.Fill_State(Const::DummyFloat, Const::DummyFloat, Const::DummyFloat, Const::DummyFloat, Const::DummyFloat,
-                                              Const::DummyFloat, Const::DummyFloat);  // PENDING!
-    fOutput_ChannelA.V0A_Pos_atV0.Fill_State(Const::DummyFloat, Const::DummyFloat, Const::DummyFloat, Const::DummyFloat, Const::DummyFloat,
-                                             Const::DummyFloat, Const::DummyFloat);  // PENDING!
+    fOutput_ChannelA.V0A_Neg_atPCA.Fill_State(Const::DummyFloat, Const::DummyFloat, Const::DummyFloat,                      //
+                                              Const::DummyFloat, Const::DummyFloat, Const::DummyFloat, Const::DummyFloat);  // PENDING!
+    fOutput_ChannelA.V0A_Neg_atV0.Fill_State(Const::DummyFloat, Const::DummyFloat, Const::DummyFloat,                       //
+                                             Const::DummyFloat, Const::DummyFloat, Const::DummyFloat, Const::DummyFloat);   // PENDING!
+    fOutput_ChannelA.V0A_Pos_atPCA.Fill_State(Const::DummyFloat, Const::DummyFloat, Const::DummyFloat,                      //
+                                              Const::DummyFloat, Const::DummyFloat, Const::DummyFloat, Const::DummyFloat);  // PENDING!
+    fOutput_ChannelA.V0A_Pos_atV0.Fill_State(Const::DummyFloat, Const::DummyFloat, Const::DummyFloat,                       //
+                                             Const::DummyFloat, Const::DummyFloat, Const::DummyFloat, Const::DummyFloat);   // PENDING!
     // -- V0B daughters
-    fOutput_ChannelA.V0B_Neg_atPCA.Fill_State(Const::DummyFloat, Const::DummyFloat, Const::DummyFloat, Const::DummyFloat, Const::DummyFloat,
-                                              Const::DummyFloat, Const::DummyFloat);  // PENDING!
-    fOutput_ChannelA.V0B_Neg_atV0.Fill_State(Const::DummyFloat, Const::DummyFloat, Const::DummyFloat, Const::DummyFloat, Const::DummyFloat,
-                                             Const::DummyFloat, Const::DummyFloat);  // PENDING!
-    fOutput_ChannelA.V0B_Pos_atPCA.Fill_State(Const::DummyFloat, Const::DummyFloat, Const::DummyFloat, Const::DummyFloat, Const::DummyFloat,
-                                              Const::DummyFloat, Const::DummyFloat);  // PENDING!
-    fOutput_ChannelA.V0B_Pos_atV0.Fill_State(Const::DummyFloat, Const::DummyFloat, Const::DummyFloat, Const::DummyFloat, Const::DummyFloat,
-                                             Const::DummyFloat, Const::DummyFloat);  // PENDING!
+    fOutput_ChannelA.V0B_Neg_atPCA.Fill_State(Const::DummyFloat, Const::DummyFloat, Const::DummyFloat,                      //
+                                              Const::DummyFloat, Const::DummyFloat, Const::DummyFloat, Const::DummyFloat);  // PENDING!
+    fOutput_ChannelA.V0B_Neg_atV0.Fill_State(Const::DummyFloat, Const::DummyFloat, Const::DummyFloat,                       //
+                                             Const::DummyFloat, Const::DummyFloat, Const::DummyFloat, Const::DummyFloat);   // PENDING!
+    fOutput_ChannelA.V0B_Pos_atPCA.Fill_State(Const::DummyFloat, Const::DummyFloat, Const::DummyFloat,                      //
+                                              Const::DummyFloat, Const::DummyFloat, Const::DummyFloat, Const::DummyFloat);  // PENDING!
+    fOutput_ChannelA.V0B_Pos_atV0.Fill_State(Const::DummyFloat, Const::DummyFloat, Const::DummyFloat,                       //
+                                             Const::DummyFloat, Const::DummyFloat, Const::DummyFloat, Const::DummyFloat);   // PENDING!
     // -- indices
     fOutput_ChannelA.V0A_Entry = sexa.V0A.idx;
     fOutput_ChannelA.V0B_Entry = sexa.V0B.idx;
@@ -618,59 +409,90 @@ void Finder::Store(const KF::ChannelA& sexa) {
 
 void Finder::StoreMC(const MC::ChannelA& sexa) {
     // `Found::MC_Sexaquark`
-    fOutput_MC_ChannelA.Before.Fill_LV(static_cast<float>(sexa.BeforePx), static_cast<float>(sexa.BeforePy), static_cast<float>(sexa.BeforePz),
-                                       static_cast<float>(sexa.BeforeE));
-    fOutput_MC_ChannelA.After.Fill_LV(static_cast<float>(sexa.AfterPx), static_cast<float>(sexa.AfterPy),  //
-                                      static_cast<float>(sexa.AfterPz), static_cast<float>(sexa.AfterE));
-    fOutput_MC_ChannelA.Nucleon.Fill_LV(static_cast<float>(sexa.NucleonPx), static_cast<float>(sexa.NucleonPy), static_cast<float>(sexa.NucleonPz),
-                                        static_cast<float>(sexa.NucleonE));
+    fOutput_MC_ChannelA.Before.Fill_LorentzVector(static_cast<float>(sexa.BeforePx), static_cast<float>(sexa.BeforePy),
+                                                  static_cast<float>(sexa.BeforePz), static_cast<float>(sexa.BeforeE));
+    fOutput_MC_ChannelA.After.Fill_LorentzVector(static_cast<float>(sexa.AfterPx), static_cast<float>(sexa.AfterPy),  //
+                                                 static_cast<float>(sexa.AfterPz), static_cast<float>(sexa.AfterE));
+    fOutput_MC_ChannelA.Nucleon.Fill_LorentzVector(static_cast<float>(sexa.NucleonPx), static_cast<float>(sexa.NucleonPy),
+                                                   static_cast<float>(sexa.NucleonPz), static_cast<float>(sexa.NucleonE));
     // -- secondary vertex
-    fOutput_MC_ChannelA.X = static_cast<float>(sexa.X);
-    fOutput_MC_ChannelA.Y = static_cast<float>(sexa.Y);
-    fOutput_MC_ChannelA.Z = static_cast<float>(sexa.Z);
+    fOutput_MC_ChannelA.SV.X = static_cast<float>(sexa.X);
+    fOutput_MC_ChannelA.SV.Y = static_cast<float>(sexa.Y);
+    fOutput_MC_ChannelA.SV.Z = static_cast<float>(sexa.Z);
     // -- event properties
-    fOutput_MC_ChannelA.PV_Xv = fInput_Event.MC_PV.X;
-    fOutput_MC_ChannelA.PV_Yv = fInput_Event.MC_PV.Y;
-    fOutput_MC_ChannelA.PV_Zv = fInput_Event.MC_PV.Z;
+    fOutput_MC_ChannelA.PV = fInput_Event.MC_PV;
     // -- reaction id + flags
     fOutput_MC_ChannelA.ReactionID = sexa.ReactionID;
     fOutput_MC_ChannelA.IsSignal = sexa.IsSignal;
     fOutput_MC_ChannelA.IsHybrid = sexa.IsHybrid;
     // `Found::MC_ChannelA`
     // -- V0A
-    fOutput_MC_ChannelA.V0A_atSV.Fill_LV(sexa.V0A.Px, sexa.V0A.Py, sexa.V0A.Pz, sexa.V0A.Energy);
-    fOutput_MC_ChannelA.V0A_Entry = sexa.V0A.Entry;
-    fOutput_MC_ChannelA.V0A_PdgCode = sexa.V0A.PdgCode;
-    fOutput_MC_ChannelA.V0A_Mother_Entry = sexa.V0A.Mother_Entry;
-    fOutput_MC_ChannelA.V0A_Mother_PdgCode = sexa.V0A.Mother_PdgCode;
-    fOutput_MC_ChannelA.V0A_ReactionID = sexa.V0A.ReactionID;
-    // -- V0A flags
-    fOutput_MC_ChannelA.V0A_IsTrue = sexa.V0A.IsTrue;
-    fOutput_MC_ChannelA.V0A_IsSignal = sexa.V0A.IsSignal;
-    fOutput_MC_ChannelA.V0A_IsSecondary = sexa.V0A.IsSecondary;
-    fOutput_MC_ChannelA.V0A_IsHybrid = sexa.V0A.IsHybrid;
-    // -- V0A daughters
-    fOutput_MC_ChannelA.V0A_Neg_Entry = sexa.V0A.neg.Entry;
-    fOutput_MC_ChannelA.V0A_Neg_PdgCode = sexa.V0A.neg.PdgCode;
-    fOutput_MC_ChannelA.V0A_Pos_Entry = sexa.V0A.pos.Entry;
-    fOutput_MC_ChannelA.V0A_Pos_PdgCode = sexa.V0A.pos.PdgCode;
+    fOutput_MC_ChannelA.V0A.Fill_LorentzVector(sexa.V0A.Px, sexa.V0A.Py, sexa.V0A.Pz, sexa.V0A.Energy);
+    fOutput_MC_ChannelA.V0A.Entry = sexa.V0A.Entry;
+    fOutput_MC_ChannelA.V0A.PdgCode = sexa.V0A.PdgCode;
+    fOutput_MC_ChannelA.V0A.Mother_Entry = sexa.V0A.Mother_Entry;
+    fOutput_MC_ChannelA.V0A.Mother_PdgCode = sexa.V0A.Mother_PdgCode;
+    fOutput_MC_ChannelA.V0A.ReactionID = sexa.V0A.ReactionID;
+    fOutput_MC_ChannelA.V0A.IsTrue = sexa.V0A.IsTrue;
+    fOutput_MC_ChannelA.V0A.IsSignal = sexa.V0A.IsSignal;
+    fOutput_MC_ChannelA.V0A.IsSecondary = sexa.V0A.IsSecondary;
+    // -- V0A neg
+    fOutput_MC_ChannelA.V0A_Neg.Fill_LorentzVector(Const::DummyInt, Const::DummyInt, Const::DummyInt, Const::DummyInt);  // PENDING!
+    fOutput_MC_ChannelA.V0A_Neg.Entry = sexa.V0A.neg.Entry;
+    fOutput_MC_ChannelA.V0A_Neg.PdgCode = sexa.V0A.neg.PdgCode;
+    fOutput_MC_ChannelA.V0A_Neg.Mother_Entry = Const::DummyInt;    // PENDING!
+    fOutput_MC_ChannelA.V0A_Neg.Mother_PdgCode = Const::DummyInt;  // PENDING!
+    fOutput_MC_ChannelA.V0A_Neg.ReactionID = Const::DummyInt;      // PENDING!
+    fOutput_MC_ChannelA.V0A_Neg.IsTrue = Const::DummyInt;          // PENDING!
+    fOutput_MC_ChannelA.V0A_Neg.IsSignal = Const::DummyInt;        // PENDING!
+    fOutput_MC_ChannelA.V0A_Neg.IsSecondary = Const::DummyInt;     // PENDING!
+    // -- V0A pos
+    fOutput_MC_ChannelA.V0A_Pos.Fill_LorentzVector(Const::DummyInt, Const::DummyInt, Const::DummyInt, Const::DummyInt);  // PENDING!
+    fOutput_MC_ChannelA.V0A_Pos.Entry = sexa.V0A.pos.Entry;
+    fOutput_MC_ChannelA.V0A_Pos.PdgCode = sexa.V0A.pos.PdgCode;
+    fOutput_MC_ChannelA.V0A_Pos.Mother_Entry = Const::DummyInt;    // PENDING!
+    fOutput_MC_ChannelA.V0A_Pos.Mother_PdgCode = Const::DummyInt;  // PENDING!
+    fOutput_MC_ChannelA.V0A_Pos.ReactionID = Const::DummyInt;      // PENDING!
+    fOutput_MC_ChannelA.V0A_Pos.IsTrue = Const::DummyInt;          // PENDING!
+    fOutput_MC_ChannelA.V0A_Pos.IsSignal = Const::DummyInt;        // PENDING!
+    fOutput_MC_ChannelA.V0A_Pos.IsSecondary = Const::DummyInt;     // PENDING!
     // -- V0B
-    fOutput_MC_ChannelA.V0B_atSV.Fill_LV(sexa.V0B.Px, sexa.V0B.Py, sexa.V0B.Pz, sexa.V0B.Energy);
-    fOutput_MC_ChannelA.V0B_Entry = sexa.V0B.Entry;
-    fOutput_MC_ChannelA.V0B_PdgCode = sexa.V0B.PdgCode;
-    fOutput_MC_ChannelA.V0B_Mother_Entry = sexa.V0B.Mother_Entry;
-    fOutput_MC_ChannelA.V0B_Mother_PdgCode = sexa.V0B.Mother_PdgCode;
-    fOutput_MC_ChannelA.V0B_ReactionID = sexa.V0B.ReactionID;
-    // -- V0B flags
-    fOutput_MC_ChannelA.V0B_IsTrue = sexa.V0B.IsTrue;
-    fOutput_MC_ChannelA.V0B_IsSignal = sexa.V0B.IsSignal;
-    fOutput_MC_ChannelA.V0B_IsSecondary = sexa.V0B.IsSecondary;
+    fOutput_MC_ChannelA.V0B.Fill_LorentzVector(sexa.V0B.Px, sexa.V0B.Py, sexa.V0B.Pz, sexa.V0B.Energy);
+    fOutput_MC_ChannelA.V0B.Entry = sexa.V0B.Entry;
+    fOutput_MC_ChannelA.V0B.PdgCode = sexa.V0B.PdgCode;
+    fOutput_MC_ChannelA.V0B.Mother_Entry = sexa.V0B.Mother_Entry;
+    fOutput_MC_ChannelA.V0B.Mother_PdgCode = sexa.V0B.Mother_PdgCode;
+    fOutput_MC_ChannelA.V0B.ReactionID = sexa.V0B.ReactionID;
+    fOutput_MC_ChannelA.V0B.IsTrue = sexa.V0B.IsTrue;
+    fOutput_MC_ChannelA.V0B.IsSignal = sexa.V0B.IsSignal;
+    fOutput_MC_ChannelA.V0B.IsSecondary = sexa.V0B.IsSecondary;
+    // -- V0A neg
+    fOutput_MC_ChannelA.V0B_Neg.Fill_LorentzVector(Const::DummyInt, Const::DummyInt, Const::DummyInt, Const::DummyInt);  // PENDING!
+    fOutput_MC_ChannelA.V0B_Neg.Entry = sexa.V0B.neg.Entry;
+    fOutput_MC_ChannelA.V0B_Neg.PdgCode = sexa.V0B.neg.PdgCode;
+    fOutput_MC_ChannelA.V0B_Neg.Mother_Entry = Const::DummyInt;    // PENDING!
+    fOutput_MC_ChannelA.V0B_Neg.Mother_PdgCode = Const::DummyInt;  // PENDING!
+    fOutput_MC_ChannelA.V0B_Neg.ReactionID = Const::DummyInt;      // PENDING!
+    fOutput_MC_ChannelA.V0B_Neg.IsTrue = Const::DummyInt;          // PENDING!
+    fOutput_MC_ChannelA.V0B_Neg.IsSignal = Const::DummyInt;        // PENDING!
+    fOutput_MC_ChannelA.V0B_Neg.IsSecondary = Const::DummyInt;     // PENDING!
+    // -- V0B pos
+    fOutput_MC_ChannelA.V0B_Pos.Fill_LorentzVector(Const::DummyInt, Const::DummyInt, Const::DummyInt, Const::DummyInt);  // PENDING!
+    fOutput_MC_ChannelA.V0B_Pos.Entry = sexa.V0B.pos.Entry;
+    fOutput_MC_ChannelA.V0B_Pos.PdgCode = sexa.V0B.pos.PdgCode;
+    fOutput_MC_ChannelA.V0B_Pos.Mother_Entry = Const::DummyInt;    // PENDING!
+    fOutput_MC_ChannelA.V0B_Pos.Mother_PdgCode = Const::DummyInt;  // PENDING!
+    fOutput_MC_ChannelA.V0B_Pos.ReactionID = Const::DummyInt;      // PENDING!
+    fOutput_MC_ChannelA.V0B_Pos.IsTrue = Const::DummyInt;          // PENDING!
+    fOutput_MC_ChannelA.V0B_Pos.IsSignal = Const::DummyInt;        // PENDING!
+    fOutput_MC_ChannelA.V0B_Pos.IsSecondary = Const::DummyInt;     // PENDING!
+    // -- V0A @ decay
+    fOutput_MC_ChannelA.V0A_atDecay.Fill_Coordinates(Const::DummyInt, Const::DummyInt, Const::DummyInt);
+    // -- V0B @ decay
+    fOutput_MC_ChannelA.V0B_atDecay.Fill_Coordinates(Const::DummyInt, Const::DummyInt, Const::DummyInt);
+    // hybrid flags
+    fOutput_MC_ChannelA.V0A_IsHybrid = sexa.V0A.IsHybrid;
     fOutput_MC_ChannelA.V0B_IsHybrid = sexa.V0B.IsHybrid;
-    // -- V0B daughters
-    fOutput_MC_ChannelA.V0B_Neg_Entry = sexa.V0B.neg.Entry;
-    fOutput_MC_ChannelA.V0B_Neg_PdgCode = sexa.V0B.neg.PdgCode;
-    fOutput_MC_ChannelA.V0B_Pos_Entry = sexa.V0B.pos.Entry;
-    fOutput_MC_ChannelA.V0B_Pos_PdgCode = sexa.V0B.pos.PdgCode;
 }
 
 // ## Channel D ZONE ## //
@@ -726,7 +548,7 @@ void Finder::FindSexaquarks_ChannelD(bool anti_channel) {
 #endif
 
             // store //
-            Store(sexa);
+            Store(sexa, anti_channel);
             if (IsMC()) {
                 MC::V0 mc_v0{*Linked_Lambdas, v0.idx};
                 MC::Track mc_kaon{*Linked_Kaons, kaon.idx};
@@ -768,7 +590,7 @@ bool Finder::PassesCuts(const KF::ChannelD& sexa) const {
     return true;
 }
 
-void Finder::Store(const KF::ChannelD& sexa) {}
+void Finder::Store(const KF::ChannelD& sexa, bool anti_channel) {}
 
 void Finder::StoreMC(const MC::ChannelD& sexa) {}
 

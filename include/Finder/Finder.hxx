@@ -31,7 +31,7 @@ class Finder {
 
     explicit Finder(Settings settings) : fSettings{std::move(settings)} {}
 
-    [[nodiscard]] EReactionChannel GetReactionChannel() const { return fSettings.Channel; }
+    [[nodiscard]] EReactionChannel GetReactionChannel() const { return fSettings.ReactionChannel; }
 
     bool Initialize();
     void ReadInputBranches();
@@ -55,12 +55,10 @@ class Finder {
         switch (GetReactionChannel()) {
             // standard channels //
             case EReactionChannel::A:
-            case EReactionChannel::AntiA:
                 CreateOutputBranches(fOutput_ChannelA);
                 if (IsMC()) CreateOutputBranches(fOutput_MC_ChannelA);
                 break;
             case EReactionChannel::D:
-            case EReactionChannel::AntiD:
                 CreateOutputBranches(fOutput_ChannelD);
                 if (IsMC()) CreateOutputBranches(fOutput_MC_ChannelD);
                 break;
@@ -84,12 +82,12 @@ class Finder {
     void Find(EReactionChannel reaction_channel) {
         switch (reaction_channel) {
             case EReactionChannel::A:
-            case EReactionChannel::AntiA:
-                FindSexaquarks_ChannelA(reaction_channel == EReactionChannel::AntiA);
+                FindSexaquarks_ChannelA(false);
+                FindSexaquarks_ChannelA(true);
                 break;
             case EReactionChannel::D:
-            case EReactionChannel::AntiD:
-                FindSexaquarks_ChannelD(reaction_channel == EReactionChannel::AntiD);
+                FindSexaquarks_ChannelD(false);
+                FindSexaquarks_ChannelD(true);
                 break;
             default:
                 return;
@@ -99,8 +97,8 @@ class Finder {
     [[nodiscard]] bool PassesCuts(const KF::ChannelA &sexa) const;
     [[nodiscard]] bool PassesCuts(const KF::ChannelD &sexa) const;
 
-    void Store(const KF::ChannelA &sexa);
-    void Store(const KF::ChannelD &sexa);
+    void Store(const KF::ChannelA &sexa, bool anti_channel);
+    void Store(const KF::ChannelD &sexa, bool anti_channel);
     void StoreMC(const MC::ChannelA &sexa);
     void StoreMC(const MC::ChannelD &sexa);
 
