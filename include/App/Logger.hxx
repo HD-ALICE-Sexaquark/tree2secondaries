@@ -1,5 +1,4 @@
-#ifndef T2S_LOGGER_HXX
-#define T2S_LOGGER_HXX
+#pragma once
 
 #include <cstdio>
 #include <format>
@@ -30,5 +29,3 @@ inline void Error(std::string_view func, std::format_string<Args...> fmt, Args &
 }
 
 }  // namespace Logger
-
-#endif  // T2S_LOGGER_HXX

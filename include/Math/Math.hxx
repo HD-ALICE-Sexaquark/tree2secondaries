@@ -1,5 +1,4 @@
-#ifndef T2S_MATH_COMMON_HXX
-#define T2S_MATH_COMMON_HXX
+#pragma once
 
 #include <tuple>
 
@@ -279,5 +278,3 @@ inline double FastDCAHelixHelix(const KF::Particle& p, const KF::Particle& q, fl
 }
 
 }  // namespace Tree2Secondaries::Math
-
-#endif  // T2S_MATH_COMMON_HXX

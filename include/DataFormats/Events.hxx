@@ -1,40 +1,41 @@
-#ifndef T2S_DF_EVENTS_HXX
-#define T2S_DF_EVENTS_HXX
+#pragma once
 
 #include <vector>
 
 #include <TTree.h>
 
 #include "App/Utilities.hxx"
-#include "DataFormats/DataFormats.hxx"
+#include "DataFormats/Flat.hxx"
+#include "DataFormats/StructsOfVectors.hxx"
 #include "Math/Constants.hxx"
 
-namespace Tree2Secondaries::DF {
+namespace Tree2Secondaries::DF::Events {
 
-namespace Flat {
+// `PV` (`Flat::Coordinates`) + `MC_PV` (`Flat::Coordinates`) + `RunNumber` + `DirNumber` + `DirNumberB` + `EventNumber` + `Centrality` +
+// `MagneticField`.
 struct alignas(T2S_SIMD_ALIGN) Event {
     Flat::Coordinates PV{};
-    Flat::Coordinates MC_PV{};  // NOTE: not used when analyzing real data
+    Flat::Coordinates MC_PV{};  // NOTE: only read when analyzing MC
     unsigned int RunNumber{0};
     unsigned int DirNumber{0};
-    unsigned int DirNumberB{0};  // NOTE: not used when analyzing MC
+    unsigned int DirNumberB{0};  // NOTE: only read when analyzing RD
     unsigned int EventNumber{0};
     float Centrality{0.};
     float MagneticField{0.};
 
     void CreateBranches_Event(TTree *tree, bool is_mc) {
-        PV.CreateBranches_Coordinates(tree, "PV");
-        if (is_mc) MC_PV.CreateBranches_Coordinates(tree, "MC_PV");
-        Utils::CreateBranch(tree, "RunNumber", &RunNumber);
-        Utils::CreateBranch(tree, "DirNumber", &DirNumber);
-        if (!is_mc) Utils::CreateBranch(tree, "DirNumberB", &DirNumberB);
-        Utils::CreateBranch(tree, "EventNumber", &EventNumber);
-        Utils::CreateBranch(tree, "Centrality", &Centrality);
-        Utils::CreateBranch(tree, "MagneticField", &MagneticField);
+        PV.CreateBranches_Coordinates(tree, "PV", "v");
+        if (is_mc) MC_PV.CreateBranches_Coordinates(tree, "MC_PV", "v");
+        tree->Branch("RunNumber", &RunNumber);
+        tree->Branch("DirNumber", &DirNumber);
+        if (!is_mc) tree->Branch("DirNumberB", &DirNumberB);
+        tree->Branch("EventNumber", &EventNumber);
+        tree->Branch("Centrality", &Centrality);
+        tree->Branch("MagneticField", &MagneticField);
     }
     void ReadBranches_Event(TTree *tree, bool is_mc) {
-        PV.ReadBranches_Coordinates(tree, "PV");
-        if (is_mc) MC_PV.ReadBranches_Coordinates(tree, "MC_PV");
+        PV.ReadBranches_Coordinates(tree, "PV", "v");
+        if (is_mc) MC_PV.ReadBranches_Coordinates(tree, "MC_PV", "v");
         Utils::ReadBranch(tree, "RunNumber", &RunNumber);
         Utils::ReadBranch(tree, "DirNumber", &DirNumber);
         if (!is_mc) Utils::ReadBranch(tree, "DirNumberB", &DirNumberB);
@@ -43,10 +44,8 @@ struct alignas(T2S_SIMD_ALIGN) Event {
         Utils::ReadBranch(tree, "MagneticField", &MagneticField);
     }
 };
-}  // namespace Flat
 
-namespace SOV {
-// NOTE: similar but different from `DF::SOV::MCInfo`
+// `SOV::States` + `PdgCode` + `MotherEntry` + `Status` + `Generator` + `IsPrimary` + `IsSecFromMat` + `IsSecFromWeak`.
 struct alignas(T2S_SIMD_ALIGN) MCParticles : SOV::States {
     std::vector<int> *PdgCode{nullptr};
     std::vector<int> *MotherEntry{nullptr};
@@ -56,10 +55,10 @@ struct alignas(T2S_SIMD_ALIGN) MCParticles : SOV::States {
     std::vector<char> *IsSecFromMat{nullptr};
     std::vector<char> *IsSecFromWeak{nullptr};
 
-    void ReadBranches_MCParticle(TTree *tree) {
+    void ReadBranches_MCParticles(TTree *tree) {
         ReadBranches_States(tree, "MC");
         Utils::ReadBranch(tree, "MC_PdgCode", &PdgCode);
-        Utils::ReadBranch(tree, "MC_Mother_McEntry", &MotherEntry);  // MAYBE: search a different name
+        Utils::ReadBranch(tree, "MC_Mother_McEntry", &MotherEntry);
         Utils::ReadBranch(tree, "MC_Status", &Status);
         Utils::ReadBranch(tree, "MC_Generator", &Generator);
         Utils::ReadBranch(tree, "MC_IsPrimary", &IsPrimary);
@@ -68,6 +67,7 @@ struct alignas(T2S_SIMD_ALIGN) MCParticles : SOV::States {
     }
 };
 
+// `SOV::States_NoE` + `SOV::CovMatrices_NoE` + `Charge` + `DCAxy` + `DCAz` + `TPCSignal` + `NSigmaPion` + `NSigmaKaon` + `NSigmaProton` + `McEntry`.
 struct alignas(T2S_SIMD_ALIGN) Tracks : SOV::States_NoE, SOV::CovMatrices_NoE {
     std::vector<int> *Charge{nullptr};
     std::vector<float> *DCAxy{nullptr};
@@ -78,9 +78,9 @@ struct alignas(T2S_SIMD_ALIGN) Tracks : SOV::States_NoE, SOV::CovMatrices_NoE {
     std::vector<float> *NSigmaKaon{nullptr};
     std::vector<float> *NSigmaProton{nullptr};
     // mc info
-    std::vector<int> *McEntry{nullptr};  // NOTE: not used when analyzing RD
+    std::vector<int> *McEntry{nullptr};  // NOTE: only read when analyzing MC
 
-    void ReadBranches_MCParticle(TTree *tree, bool is_mc) {
+    void ReadBranches_MCParticles(TTree *tree, bool is_mc) {
         ReadBranches_States_NoE(tree, "Track");
         ReadBranches_CovMatrices_NoE(tree, "Track");
         Utils::ReadBranch(tree, "Track_Charge", &Charge);
@@ -95,8 +95,5 @@ struct alignas(T2S_SIMD_ALIGN) Tracks : SOV::States_NoE, SOV::CovMatrices_NoE {
         if (is_mc) Utils::ReadBranch(tree, "Track_McEntry", &McEntry);
     }
 };
-}  // namespace SOV
 
-}  // namespace Tree2Secondaries::DF
-
-#endif  // T2S_DF_EVENTS_HXX
+}  // namespace Tree2Secondaries::DF::Events

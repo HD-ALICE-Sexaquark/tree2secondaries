@@ -1,5 +1,4 @@
-#ifndef T2S_SETTINGS_HXX
-#define T2S_SETTINGS_HXX
+#pragma once
 
 #include <cctype>
 #include <string>
@@ -34,5 +33,3 @@ struct Settings {
 };
 
 }  // namespace Tree2Secondaries
-
-#endif  // T2S_SETTINGS_HXX

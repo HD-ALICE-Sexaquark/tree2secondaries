@@ -1,5 +1,4 @@
-#ifndef T2S_PACKAGER_CUTS_HXX
-#define T2S_PACKAGER_CUTS_HXX
+#pragma once
 
 namespace Tree2Secondaries::Cuts {
 
@@ -45,5 +44,3 @@ constexpr double Max_DCAbtwDau{10.};
 }  // namespace KaonZeroShort
 
 }  // namespace Tree2Secondaries::Cuts
-
-#endif  // T2S_PACKAGER_CUTS_HXX

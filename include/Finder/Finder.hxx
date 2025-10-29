@@ -1,5 +1,4 @@
-#ifndef T2S_FINDER_HXX
-#define T2S_FINDER_HXX
+#pragma once
 
 #include <memory>
 #include <utility>
@@ -13,10 +12,12 @@
 #include "DataFormats/ChannelA.hxx"
 #include "DataFormats/ChannelD.hxx"
 #include "DataFormats/Events.hxx"
+#include "DataFormats/Injected.hxx"
 #include "DataFormats/PackedEvents.hxx"
-#include "KF/Extensions.hxx"
-#include "MC/Particles.hxx"
+#include "Fit/ChannelA.hxx"
+#include "Fit/ChannelD.hxx"
 #include "Math/Constants.hxx"
+#include "References/References2.hxx"
 
 namespace Tree2Secondaries {
 
@@ -47,10 +48,10 @@ class Finder {
     bool PrepareOutputTree();
     void CreateCutFlowHistogram();
 
-    void CreateOutputBranches(DF::ChannelA &df);
-    void CreateOutputBranches(DF::ChannelD &df);
-    void CreateOutputBranches(DF::MC_ChannelA &df);
-    void CreateOutputBranches(DF::MC_ChannelD &df);
+    void CreateOutputBranches(DF::Found::ChannelA &df);
+    void CreateOutputBranches(DF::Found::ChannelD &df);
+    void CreateOutputBranches(DF::Found::MC_ChannelA &df);
+    void CreateOutputBranches(DF::Found::MC_ChannelD &df);
     void CreateOutputBranches() {
         switch (GetReactionChannel()) {
             // standard channels //
@@ -94,13 +95,13 @@ class Finder {
         }
     }
 
-    [[nodiscard]] bool PassesCuts(const KF::ChannelA &sexa) const;
-    [[nodiscard]] bool PassesCuts(const KF::ChannelD &sexa) const;
+    [[nodiscard]] bool PassesCuts(const Fit::ChannelA &sexa, TH1D *cut_flow_hist) const;
+    [[nodiscard]] bool PassesCuts(const Fit::ChannelD &sexa, TH1D *cut_flow_hist) const;
 
-    void Store(const KF::ChannelA &sexa, bool anti_channel);
-    void Store(const KF::ChannelD &sexa, bool anti_channel);
-    void StoreMC(const MC::ChannelA &sexa);
-    void StoreMC(const MC::ChannelD &sexa);
+    void Store(const Fit::ChannelA &sexa, bool anti_channel);
+    void Store(const Fit::ChannelD &sexa, bool anti_channel);
+    void StoreMC(const Ref::ChannelA &sexa);
+    void StoreMC(const Ref::ChannelD &sexa);
 
     void EndOfAnalysis();
 
@@ -113,10 +114,11 @@ class Finder {
     std::unique_ptr<TTree> fOutputTree_Injected;
 
     std::unique_ptr<TH1D> fCutFlowHist;
+    std::unique_ptr<TH1D> fCutFlowHist_Anti;
 
     // input //
 
-    DF::Flat::Event fInput_Event;
+    DF::Events::Event fInput_Event;
     DF::SOV::Injected fInput_Injected;
 
     DF::Packed::V0s fInput_AntiLambdas;
@@ -139,15 +141,13 @@ class Finder {
 
     // output //
 
-    DF::ChannelA fOutput_ChannelA;
-    DF::ChannelD fOutput_ChannelD;
+    DF::Found::ChannelA fOutput_ChannelA;
+    DF::Found::ChannelD fOutput_ChannelD;
 
     DF::Flat::Injected fOutput_Injected;
 
-    DF::MC_ChannelA fOutput_MC_ChannelA;
-    DF::MC_ChannelD fOutput_MC_ChannelD;
+    DF::Found::MC_ChannelA fOutput_MC_ChannelA;
+    DF::Found::MC_ChannelD fOutput_MC_ChannelD;
 };
 
 }  // namespace Tree2Secondaries
-
-#endif  // T2S_FINDER_HXX

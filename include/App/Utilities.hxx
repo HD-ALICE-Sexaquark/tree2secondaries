@@ -1,5 +1,4 @@
-#ifndef T2S_UTILS_HXX
-#define T2S_UTILS_HXX
+#pragma once
 
 #include <string>
 
@@ -13,11 +12,4 @@ inline void ReadBranch(TTree* tree, const std::string& branch_name, T address) {
     tree->SetBranchAddress(branch_name.c_str(), address);
 }
 
-template <typename T>
-inline void CreateBranch(TTree* tree, const std::string& branch_name, T address) {
-    tree->Branch(branch_name.c_str(), address);
-}
-
 }  // namespace Tree2Secondaries::Utils
-
-#endif  // T2S_UTILS_HXX

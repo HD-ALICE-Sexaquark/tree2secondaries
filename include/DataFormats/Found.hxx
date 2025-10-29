@@ -1,14 +1,13 @@
-#ifndef T2S_DF_SEXAQUARK_HXX
-#define T2S_DF_SEXAQUARK_HXX
+#pragma once
 
 #include <TTree.h>
 
-#include "App/Utilities.hxx"
-#include "DataFormats/DataFormats.hxx"
+#include "DataFormats/Flat.hxx"
 #include "Math/Constants.hxx"
 
-namespace Tree2Secondaries::DF {
+namespace Tree2Secondaries::DF::Found {
 
+// `Flat::State` + `PV` + `RunNumber` + `DirNumber` + `DirNumberB` + `EventNumber` + `MagneticField` + `Chi2NDF` + `E_MinusNucleon` + `AntiChannel`
 struct alignas(T2S_SIMD_ALIGN) Sexaquark : Flat::State {
     // event properties
     Flat::Coordinates PV{};
@@ -24,22 +23,24 @@ struct alignas(T2S_SIMD_ALIGN) Sexaquark : Flat::State {
     bool AntiChannel{};
 
     void CreateBranches_Sexaquark(TTree* tree, bool is_mc) {
-        CreateBranches_State(tree);
+        CreateBranches_State(tree, "Sexa");
         // event properties
         PV.CreateBranches_Coordinates(tree, "PV", "v");
-        Utils::CreateBranch(tree, "RunNumber", &RunNumber);
-        Utils::CreateBranch(tree, "DirNumber", &DirNumber);
-        if (!is_mc) Utils::CreateBranch(tree, "DirNumberB", &DirNumberB);
-        Utils::CreateBranch(tree, "EventNumber", &EventNumber);
-        Utils::CreateBranch(tree, "MagneticField", &MagneticField);
+        tree->Branch("RunNumber", &RunNumber);
+        tree->Branch("DirNumber", &DirNumber);
+        if (!is_mc) tree->Branch("DirNumberB", &DirNumberB);
+        tree->Branch("EventNumber", &EventNumber);
+        tree->Branch("MagneticField", &MagneticField);
         // fit info
-        Utils::CreateBranch(tree, "Chi2NDF", &Chi2NDF);
+        tree->Branch("Chi2NDF", &Chi2NDF);
         // extra info
-        Utils::CreateBranch(tree, "E_MinusNucleon", &E_MinusNucleon);
-        Utils::CreateBranch(tree, "AntiChannel", &AntiChannel);
+        tree->Branch("E_MinusNucleon", &E_MinusNucleon);
+        tree->Branch("AntiChannel", &AntiChannel);
     }
 };
 
+// `Before` (`Flat::LorentzVector`) + `After` (`Flat::LorentzVector`) + `Nucleon` (`Flat::LorentzVector`) + `SV` (`Flat::Coordinates`) + `PV`
+// (`Flat::Coordinates`) + `ReactionID`  + `IsSignal`  + `IsHybrid`
 struct alignas(T2S_SIMD_ALIGN) MC_Sexaquark {
     Flat::LorentzVector Before{};
     Flat::LorentzVector After{};
@@ -58,16 +59,14 @@ struct alignas(T2S_SIMD_ALIGN) MC_Sexaquark {
         After.CreateBranches_LorentzVector(tree, "MC_After");
         Nucleon.CreateBranches_LorentzVector(tree, "MC_Nucleon");
         // secondary vertex
-        SV.CreateBranches_Coordinates(tree, "MC_SV");
+        SV.CreateBranches_Coordinates(tree, "MC_SV", "");
         // event properties
         PV.CreateBranches_Coordinates(tree, "MC_PV", "v");
         // reaction id + flags
-        Utils::CreateBranch(tree, "ReactionID", &ReactionID);
-        Utils::CreateBranch(tree, "IsSignal", &IsSignal);
-        Utils::CreateBranch(tree, "IsHybrid", &IsHybrid);
+        tree->Branch("ReactionID", &ReactionID);
+        tree->Branch("IsSignal", &IsSignal);
+        tree->Branch("IsHybrid", &IsHybrid);
     }
 };
 
-}  // namespace Tree2Secondaries::DF
-
-#endif  // T2S_DF_SEXAQUARK_HXX
+}  // namespace Tree2Secondaries::DF::Found

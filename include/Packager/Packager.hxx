@@ -1,5 +1,4 @@
-#ifndef T2S_PACKAGER_HXX
-#define T2S_PACKAGER_HXX
+#pragma once
 
 #include <memory>
 
@@ -12,9 +11,10 @@
 #include "DataFormats/Events.hxx"
 #include "DataFormats/Injected.hxx"
 #include "DataFormats/PackedEvents.hxx"
-#include "KF/Extensions.hxx"
-#include "MC/Particles.hxx"
+#include "Fit/Track.hxx"
+#include "Fit/V0.hxx"
 #include "Math/Constants.hxx"
+#include "References/References.hxx"
 
 namespace Tree2Secondaries {
 
@@ -76,13 +76,14 @@ class Packager {
     void PackTracks(EParticle pid);
 
     void FindV0s(EParticle pid);
-    [[nodiscard]] bool PassesCuts(const KF::V0 &v0, EParticle pid) const {
+    [[nodiscard]] bool PassesCuts(const Fit::V0 &v0, EParticle pid) const {
         switch (pid) {
             case EParticle::AntiLambda:
+                return PassesCuts_Lambda(v0, fCutFlowHist_AntiLambdas.get());
             case EParticle::Lambda:
-                return PassesCuts_Lambda(v0);
+                return PassesCuts_Lambda(v0, fCutFlowHist_Lambdas.get());
             case EParticle::KaonZeroShort:
-                return PassesCuts_KaonZeroShort(v0);
+                return PassesCuts_KaonZeroShort(v0, fCutFlowHist_KaonsZeroShort.get());
             default:
                 return false;
         }
@@ -92,13 +93,13 @@ class Packager {
     void EndOfAnalysis();
 
    private:
-    void Store(const KF::Track &track, DF::Packed::Tracks &df);
-    void StoreMC(const MC::Track &mc_track, DF::Packed::LinkedTracks &df);
+    void Store(const Fit::Track &track, DF::Packed::Tracks &df);
+    void StoreMC(const Ref::MC_Track &mc, DF::Packed::LinkedTracks &df);
 
-    [[nodiscard]] bool PassesCuts_Lambda(const KF::V0 &v0) const;
-    [[nodiscard]] bool PassesCuts_KaonZeroShort(const KF::V0 &v0) const;
-    void Store(const KF::V0 &v0, DF::Packed::V0s &df);
-    void StoreMC(const MC::V0 &mc_v0, DF::Packed::LinkedV0s &df);
+    [[nodiscard]] bool PassesCuts_Lambda(const Fit::V0 &v0, TH1D *cut_flow_hist) const;
+    [[nodiscard]] bool PassesCuts_KaonZeroShort(const Fit::V0 &v0, TH1D *cut_flow_hist) const;
+    void Store(const Fit::V0 &v0, DF::Packed::V0s &df);
+    void StoreMC(const Ref::MC_V0 &mc, DF::Packed::LinkedV0s &df);
 
     Settings fSettings;
     std::unique_ptr<TChain> fInputChain_Events;
@@ -112,11 +113,11 @@ class Packager {
 
     // input branches //
 
-    DF::Flat::Event fInput_Event;
+    DF::Events::Event fInput_Event;
     DF::SOV::Injected fInput_Injected;
 
-    DF::SOV::MCParticles fInput_MC;
-    DF::SOV::Tracks fInput_Tracks;
+    DF::Events::MCParticles fInput_MC;
+    DF::Events::Tracks fInput_Tracks;
 
     // temporary containers, cleaned after event loop //
 
@@ -133,7 +134,7 @@ class Packager {
 
     // output branches //
 
-    DF::Flat::Event fOutput_Event;
+    DF::Events::Event fOutput_Event;
     DF::SOV::Injected fOutput_Injected;
 
     DF::Packed::LinkedV0s fOutput_Linked_AntiLambdas;
@@ -156,5 +157,3 @@ class Packager {
 };
 
 }  // namespace Tree2Secondaries
-
-#endif  // T2S_PACKAGER_HXX

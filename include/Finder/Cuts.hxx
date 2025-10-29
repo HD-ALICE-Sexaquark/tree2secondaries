@@ -1,5 +1,4 @@
-#ifndef T2S_FINDER_CUTS_HXX
-#define T2S_FINDER_CUTS_HXX
+#pragma once
 
 namespace Tree2Secondaries::Cuts {
 
@@ -42,5 +41,3 @@ constexpr double Max_DCALaPosKa{10.};
 }  // namespace ChannelD
 
 }  // namespace Tree2Secondaries::Cuts
-
-#endif  // T2S_FINDER_CUTS_HXX

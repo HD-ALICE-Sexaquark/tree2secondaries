@@ -1,5 +1,4 @@
-#ifndef T2S_PARSER_HXX
-#define T2S_PARSER_HXX
+#pragma once
 
 #include <cctype>
 #include <set>
@@ -128,5 +127,3 @@ class Parser {
 };
 
 }  // namespace Tree2Secondaries
-
-#endif  // T2S_PARSER_HXX
