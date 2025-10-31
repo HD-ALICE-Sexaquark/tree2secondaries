@@ -17,7 +17,7 @@
 #include "Fit/ChannelA.hxx"
 #include "Fit/ChannelD.hxx"
 #include "Math/Constants.hxx"
-#include "References/References2.hxx"
+#include "References/Injected.hxx"
 
 namespace Tree2Secondaries {
 
@@ -37,21 +37,33 @@ class Finder {
     bool Initialize();
     void ReadInputBranches();
 
-    void ReadBranches_Events();
-    void ReadBranches_Injected();
-    void ReadBranches_V0s(EParticle pid, DF::Packed::V0s &df);
-    void ReadBranches_Tracks(EParticle pid, DF::Packed::Tracks &df);
-    void ReadBranches_LinkedV0s(EParticle pid, DF::Packed::LinkedV0s &df);
-    void ReadBranches_LinkedTracks(EParticle pid, DF::Packed::LinkedTracks &df);
+    void ReadBranches_Events() {  //
+        fInput_Event.ReadBranches_Event(fInputChain_PackedEvents.get(), IsMC());
+    }
+    void ReadBranches_Injected() {  //
+        fInput_Injected.ReadBranches_SOV_Injected(fInputChain_PackedEvents.get(), true);
+    }
+    void ReadBranches_V0s(EParticle pid, DF::Packed::V0s &df) {
+        df.ReadBranches_PackedV0s(fInputChain_PackedEvents.get(), Const::Particle_Acronym[pid]);
+    }
+    void ReadBranches_Tracks(EParticle pid, DF::Packed::Tracks &df) {
+        df.ReadBranches_PackedTracks(fInputChain_PackedEvents.get(), Const::Particle_Acronym[pid]);
+    }
+    void ReadBranches_LinkedV0s(EParticle pid, DF::Packed::LinkedV0s &df) {
+        df.ReadBranches_LinkedV0s(fInputChain_PackedEvents.get(), Const::Particle_Acronym[pid]);
+    }
+    void ReadBranches_LinkedTracks(EParticle pid, DF::Packed::LinkedTracks &df) {
+        df.ReadBranches_LinkedTracks(fInputChain_PackedEvents.get(), Const::Particle_Acronym[pid]);
+    }
 
     bool PrepareOutputFile();
     bool PrepareOutputTree();
-    void CreateCutFlowHistogram();
+    void PrepareOutputHistograms();
 
-    void CreateOutputBranches(DF::Found::ChannelA &df);
-    void CreateOutputBranches(DF::Found::ChannelD &df);
-    void CreateOutputBranches(DF::Found::MC_ChannelA &df);
-    void CreateOutputBranches(DF::Found::MC_ChannelD &df);
+    void CreateOutputBranches(DF::Found::ChannelA &df) { df.CreateBranches_ChannelA(fOutputTree.get(), IsMC()); }
+    void CreateOutputBranches(DF::Found::ChannelD &df) { df.CreateBranches_ChannelD(fOutputTree.get(), IsMC()); }
+    void CreateOutputBranches(DF::Found::MC_ChannelA &df) { df.CreateBranches_MC_ChannelA(fOutputTree.get()); }
+    void CreateOutputBranches(DF::Found::MC_ChannelD &df) { df.CreateBranches_MC_ChannelD(fOutputTree.get()); }
     void CreateOutputBranches() {
         switch (GetReactionChannel()) {
             // standard channels //
@@ -68,8 +80,10 @@ class Finder {
         }  // end of switch statement
     }
 
+    void ProcessEvent() { fHist_EventCounter->Fill(0.); }
+
     bool Injected_PrepareOutputTree();
-    void Injected_CreateOutputBranches();
+    void Injected_CreateOutputBranches() { fOutput_Injected.CreateBranches_Flat_Injected(fOutputTree_Injected.get()); };
     void Injected_FlattenAndStore();
 
     [[nodiscard]] int NumberEventsToRead() const {
@@ -113,8 +127,10 @@ class Finder {
     std::unique_ptr<TTree> fOutputTree;
     std::unique_ptr<TTree> fOutputTree_Injected;
 
-    std::unique_ptr<TH1D> fCutFlowHist;
-    std::unique_ptr<TH1D> fCutFlowHist_Anti;
+    std::unique_ptr<TH1D> fHist_EventCounter;
+
+    std::unique_ptr<TH1D> fHist_CutFlow;
+    std::unique_ptr<TH1D> fHist_CutFlow_AntiChannel;
 
     // input //
 

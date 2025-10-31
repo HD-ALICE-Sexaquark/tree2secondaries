@@ -6,7 +6,7 @@
 #include "Math/Constants.hxx"
 #include "Packager/Cuts.hxx"
 #include "Packager/Packager.hxx"
-#include "References/References.hxx"
+#include "References/Events.hxx"
 
 namespace Tree2Secondaries {
 
@@ -29,7 +29,7 @@ bool Packager::Initialize() {
 
     if (!PrepareOutputFile()) return false;
 
-    CreateCutFlowHistograms();
+    PrepareOutputHistograms();
 
     if (!PrepareOutputTree()) return false;
     CreateOutputBranches();
@@ -53,14 +53,6 @@ void Packager::ReadInputBranches() {
     ReadBranches_Tracks();
 }
 
-void Packager::ReadBranches_Events() { fInput_Event.ReadBranches_Event(fInputChain_Events.get(), IsMC()); }
-
-void Packager::ReadBranches_Injected() { fInput_Injected.ReadBranches_SOV_Injected(fInputChain_Events.get(), false); }
-
-void Packager::ReadBranches_MC() { fInput_MC.ReadBranches_MCParticles(fInputChain_Events.get()); }
-
-void Packager::ReadBranches_Tracks() { fInput_Tracks.ReadBranches_MCParticles(fInputChain_Events.get(), IsMC()); }
-
 // ## OUTPUT ZONE ## //
 
 bool Packager::PrepareOutputFile() {
@@ -79,9 +71,9 @@ bool Packager::PrepareOutputFile() {
 
 bool Packager::PrepareOutputTree() {
 
-    fOutputTree = std::make_unique<TTree>("PackedEvents", "Packed Events");
+    fOutputTree = std::make_unique<TTree>(Const::TreeName_PackedEvents.c_str(), "Packed Events");
     if (!fOutputTree) {
-        Logger::Error(__FUNCTION__, "Couldn't create TTree \"PackedEvents\"");
+        Logger::Error(__FUNCTION__, "Couldn't create TTree \"{}\"", fOutputTree->GetName());
         return false;
     }
 
@@ -144,52 +136,46 @@ void Packager::CreateOutputBranches() {
     }  // end of switch statement
 }
 
-void Packager::CreateOutputBranches_Events() { fOutput_Event.CreateBranches_Event(fOutputTree.get(), IsMC()); }
-
-void Packager::CreateOutputBranches_Injected() { fOutput_Injected.CreateBranches_SOV_Injected(fOutputTree.get(), true); }
-
-void Packager::CreateOutputBranches_V0s(EParticle pid, DF::Packed::V0s& df) {
-    df.CreateBranches_PackedV0s(fOutputTree.get(), Const::Particle_Acronym[pid]);
-}
-
-void Packager::CreateOutputBranches_Tracks(EParticle pid, DF::Packed::Tracks& df) {
-    df.CreateBranches_PackedTracks(fOutputTree.get(), Const::Particle_Acronym[pid]);
-}
-
-void Packager::CreateOutputBranches_LinkedV0s(EParticle pid, DF::Packed::LinkedV0s& df) {
-    df.CreateBranches_LinkedV0s(fOutputTree.get(), Const::Particle_Acronym[pid]);
-}
-
-void Packager::CreateOutputBranches_LinkedTracks(EParticle pid, DF::Packed::LinkedTracks& df) {
-    df.CreateBranches_LinkedTracks(fOutputTree.get(), Const::Particle_Acronym[pid]);
-}
-
-void Packager::CreateCutFlowHistograms() {
+void Packager::PrepareOutputHistograms() {
 
     const int x_nbins{20};
     const float x_min{0.};
     const float x_max{20.};
     std::string hist_title{";Cut N;N Passed Cut"};
 
+    fHist_CutFlow_AntiProton = std::make_unique<TH1D>(  //
+        std::format("CutFlow_{}", Const::Particle_Acronym[EParticle::AntiProton]).c_str(), hist_title.c_str(), x_nbins, x_min, x_max);
+    fHist_CutFlow_Proton = std::make_unique<TH1D>(  //
+        std::format("CutFlow_{}", Const::Particle_Acronym[EParticle::Proton]).c_str(), hist_title.c_str(), x_nbins, x_min, x_max);
+    fHist_CutFlow_NegKaon = std::make_unique<TH1D>(  //
+        std::format("CutFlow_{}", Const::Particle_Acronym[EParticle::NegKaon]).c_str(), hist_title.c_str(), x_nbins, x_min, x_max);
+    fHist_CutFlow_PosKaon = std::make_unique<TH1D>(  //
+        std::format("CutFlow_{}", Const::Particle_Acronym[EParticle::PosKaon]).c_str(), hist_title.c_str(), x_nbins, x_min, x_max);
+    fHist_CutFlow_PiMinus = std::make_unique<TH1D>(  //
+        std::format("CutFlow_{}", Const::Particle_Acronym[EParticle::PiMinus]).c_str(), hist_title.c_str(), x_nbins, x_min, x_max);
+    fHist_CutFlow_PiPlus = std::make_unique<TH1D>(  //
+        std::format("CutFlow_{}", Const::Particle_Acronym[EParticle::PiPlus]).c_str(), hist_title.c_str(), x_nbins, x_min, x_max);
+
     switch (GetReactionChannel()) {
         case EReactionChannel::A:
-            fCutFlowHist_AntiLambdas = std::make_unique<TH1D>("CutFlow_AL", hist_title.c_str(), x_nbins, x_min, x_max);
-            fCutFlowHist_Lambdas = std::make_unique<TH1D>("CutFlow_L", hist_title.c_str(), x_nbins, x_min, x_max);
-            fCutFlowHist_KaonsZeroShort = std::make_unique<TH1D>("CutFlow_K0S", hist_title.c_str(), x_nbins, x_min, x_max);
+            fHist_CutFlow_AntiLambda = std::make_unique<TH1D>(  //
+                std::format("CutFlow_{}", Const::Particle_Acronym[EParticle::AntiLambda]).c_str(), hist_title.c_str(), x_nbins, x_min, x_max);
+            fHist_CutFlow_Lambda = std::make_unique<TH1D>(  //
+                std::format("CutFlow_{}", Const::Particle_Acronym[EParticle::Lambda]).c_str(), hist_title.c_str(), x_nbins, x_min, x_max);
+            fHist_CutFlow_KaonZeroShort = std::make_unique<TH1D>(  //
+                std::format("CutFlow_{}", Const::Particle_Acronym[EParticle::KaonZeroShort]).c_str(), hist_title.c_str(), x_nbins, x_min, x_max);
             break;
         case EReactionChannel::D:
         case EReactionChannel::E:
-            fCutFlowHist_AntiLambdas = std::make_unique<TH1D>("CutFlow_AL", hist_title.c_str(), x_nbins, x_min, x_max);
-            fCutFlowHist_Lambdas = std::make_unique<TH1D>("CutFlow_L", hist_title.c_str(), x_nbins, x_min, x_max);
+            fHist_CutFlow_AntiLambda = std::make_unique<TH1D>(  //
+                std::format("CutFlow_{}", Const::Particle_Acronym[EParticle::AntiLambda]).c_str(), hist_title.c_str(), x_nbins, x_min, x_max);
+            fHist_CutFlow_Lambda = std::make_unique<TH1D>(  //
+                std::format("CutFlow_{}", Const::Particle_Acronym[EParticle::Lambda]).c_str(), hist_title.c_str(), x_nbins, x_min, x_max);
             break;
-        case EReactionChannel::H:
+        default:
             break;
     }
 }
-
-// ## Event ZONE ## //
-
-void Packager::ProcessEvent() { fOutput_Event = fInput_Event; }
 
 // ## MC/Injected ZONE ## //
 
@@ -228,26 +214,24 @@ void Packager::Injected_Store() {
 
 // ## Tracks ZONE ## //
 
-// Store tracks' ESD indices into vectors, according to their respective track PID and charge.
+// Filter and group tracks into indices vectors, according to their respective species.
 void Packager::ProcessTracks() {
 
-    for (int iESD{0}; iESD < NumberTracks(); ++iESD) {
-        // get charge //
-        int charge{fInput_Tracks.Charge->at(iESD)};
-        // PID //
-        if (std::abs(fInput_Tracks.NSigmaProton->at(iESD)) < Cuts::Track::AbsMax_PID_NSigma) {
-            if (charge < 0) fVec_AntiProtons.push_back(iESD);
-            if (charge > 0) fVec_Protons.push_back(iESD);
+    for (int esd_idx{0}; esd_idx < NumberTracks(); ++esd_idx) {
+        // create view //
+        Ref::Track track{.source = &fInput_Tracks, .index = esd_idx};
+        // PID and pre-selection //
+        if (track.Charge() < 0) {
+            if (PassesCuts_Proton(track, fHist_CutFlow_AntiProton.get())) fVec_AntiProtons.push_back(esd_idx);
+            if (PassesCuts_Kaon(track, fHist_CutFlow_NegKaon.get())) fVec_NegKaons.push_back(esd_idx);
+            if (PassesCuts_Pion(track, fHist_CutFlow_PiMinus.get())) fVec_PiMinus.push_back(esd_idx);
         }
-        if (std::abs(fInput_Tracks.NSigmaKaon->at(iESD)) < Cuts::Track::AbsMax_PID_NSigma) {
-            if (charge < 0) fVec_NegKaons.push_back(iESD);
-            if (charge > 0) fVec_PosKaons.push_back(iESD);
+        if (track.Charge() > 0) {
+            if (PassesCuts_Proton(track, fHist_CutFlow_Proton.get())) fVec_Protons.push_back(esd_idx);
+            if (PassesCuts_Kaon(track, fHist_CutFlow_PosKaon.get())) fVec_PosKaons.push_back(esd_idx);
+            if (PassesCuts_Pion(track, fHist_CutFlow_PiPlus.get())) fVec_PiPlus.push_back(esd_idx);
         }
-        if (std::abs(fInput_Tracks.NSigmaPion->at(iESD)) < Cuts::Track::AbsMax_PID_NSigma) {
-            if (charge < 0) fVec_PiMinus.push_back(iESD);
-            if (charge > 0) fVec_PiPlus.push_back(iESD);
-        }
-    }
+    }  // end of loop over tracks
 
 #ifdef T2S_DEBUG
     Logger::Debug(__FUNCTION__, "n_antiprotons = {}", fVec_AntiProtons.size());
@@ -262,8 +246,9 @@ void Packager::ProcessTracks() {
 
 // NOTE: intended for light particles only, i.e., kaons and pions.
 void Packager::PackTracks(EParticle pid) {
-    // determine rules based on particle id
-    const std::vector<int>* vec{nullptr};
+
+    // determine rules based on particle species
+    std::vector<int>* vec{nullptr};
     DF::Packed::Tracks* out{nullptr};
     DF::Packed::LinkedTracks* mc_out{nullptr};
     int charge{Const::Particle_Charge[pid]};
@@ -293,16 +278,13 @@ void Packager::PackTracks(EParticle pid) {
             return;
     }
 
-    // loop over selected tracks //
+    // loop over selected tracks
     for (auto esd_idx : *vec) {
 
-        // prepare fit object //
+        // prepare fit object
         Fit::Track track{Fit::CreateTrack(fInput_Tracks, esd_idx, charge, mass)};
 
-        // cuts //
-        // PENDING!
-
-        // store //
+        // store
         Store(track, *out);
         if (IsMC()) {
             Ref::MC_Track mc{&fInput_MC, fInput_Tracks.McEntry->at(esd_idx), pid};
@@ -370,6 +352,47 @@ void Packager::StoreMC(const Ref::MC_Track& mc, DF::Packed::LinkedTracks& df) {
     Ref::MC_Particle grandmother{.source = mother.source, .entry = mother.MotherEntry()};
     df.GrandMother_Entry->push_back(grandmother.Entry());
     df.GrandMother_PdgCode->push_back(grandmother.PdgCode());
+}
+
+bool Packager::PassesCuts_Proton(const Ref::Track& track, TH1D* cut_flow_hist) const {
+
+    cut_flow_hist->Fill(0.);
+    if (std::abs(track.NSigmaProton()) > Cuts::Proton::AbsMax_NSigmaProton) return false;
+    cut_flow_hist->Fill(1.);
+    if (track.TPCSignal() < Cuts::Proton::Min_TPCSignal) return false;
+    cut_flow_hist->Fill(2.);
+    if (track.P() > Cuts::Proton::Max_P) return false;
+    cut_flow_hist->Fill(3.);
+    if (track.DCAxy() > Cuts::Proton::Max_DCAxy) return false;
+    cut_flow_hist->Fill(4.);
+
+    return true;
+}
+
+bool Packager::PassesCuts_Kaon(const Ref::Track& track, TH1D* cut_flow_hist) const {
+
+    cut_flow_hist->Fill(0.);
+    if (std::abs(track.NSigmaKaon()) > Cuts::Kaon::AbsMax_NSigmaKaon) return false;
+    cut_flow_hist->Fill(1.);
+    if (track.TPCSignal() < Cuts::Kaon::Min_TPCSignal) return false;
+    cut_flow_hist->Fill(2.);
+    if (track.DCAxy() > Cuts::Proton::Max_DCAxy) return false;
+    cut_flow_hist->Fill(3.);
+
+    return true;
+}
+
+bool Packager::PassesCuts_Pion(const Ref::Track& track, TH1D* cut_flow_hist) const {
+
+    cut_flow_hist->Fill(0.);
+    if (std::abs(track.NSigmaPion()) > Cuts::Pion::AbsMax_NSigmaPion) return false;
+    cut_flow_hist->Fill(1.);
+    if (track.P() > Cuts::Proton::Max_P) return false;
+    cut_flow_hist->Fill(2.);
+    if (track.DCAxy() > Cuts::Proton::Max_DCAxy) return false;
+    cut_flow_hist->Fill(3.);
+
+    return true;
 }
 
 // ## V0s ZONE ## //
@@ -782,25 +805,42 @@ void Packager::EndOfEvent() {
 
 void Packager::EndOfAnalysis() {
 
-    fOutputTree->Write();
-    Logger::Info(__FUNCTION__, "TTree \"{}\" has been written into TFile {}", fOutputTree->GetName(), fSettings.PathOutputFile);
+    Logger::Info(__FUNCTION__, "The following objects have been written into TFile {}:", fSettings.PathOutputFile);
 
+    // write tree
+    fOutputTree->Write();
+    Logger::Info(__FUNCTION__, "- TTree \"{}\"", fOutputTree->GetName());
+
+    // write histograms
+    // -- selected tracks
+    fHist_CutFlow_AntiProton->Write();
+    Logger::Info(__FUNCTION__, "- TH1D  \"{}\"", fHist_CutFlow_AntiProton->GetName());
+    fHist_CutFlow_Proton->Write();
+    Logger::Info(__FUNCTION__, "- TH1D  \"{}\"", fHist_CutFlow_Proton->GetName());
+    fHist_CutFlow_NegKaon->Write();
+    Logger::Info(__FUNCTION__, "- TH1D  \"{}\"", fHist_CutFlow_NegKaon->GetName());
+    fHist_CutFlow_PosKaon->Write();
+    Logger::Info(__FUNCTION__, "- TH1D  \"{}\"", fHist_CutFlow_PosKaon->GetName());
+    fHist_CutFlow_PiMinus->Write();
+    Logger::Info(__FUNCTION__, "- TH1D  \"{}\"", fHist_CutFlow_PiMinus->GetName());
+    fHist_CutFlow_PiPlus->Write();
+    Logger::Info(__FUNCTION__, "- TH1D  \"{}\"", fHist_CutFlow_PiPlus->GetName());
+    // -- found v0s
     switch (GetReactionChannel()) {
         case EReactionChannel::A:
-            fCutFlowHist_AntiLambdas->Write();
-            Logger::Info(__FUNCTION__, "TH1D \"{}\" has been written into TFile {}", fCutFlowHist_AntiLambdas->GetName(), fSettings.PathOutputFile);
-            fCutFlowHist_Lambdas->Write();
-            Logger::Info(__FUNCTION__, "TH1D \"{}\" has been written into TFile {}", fCutFlowHist_Lambdas->GetName(), fSettings.PathOutputFile);
-            fCutFlowHist_KaonsZeroShort->Write();
-            Logger::Info(__FUNCTION__, "TH1D \"{}\" has been written into TFile {}", fCutFlowHist_KaonsZeroShort->GetName(),
-                         fSettings.PathOutputFile);
+            fHist_CutFlow_AntiLambda->Write();
+            Logger::Info(__FUNCTION__, "- TH1D  \"{}\"", fHist_CutFlow_AntiLambda->GetName());
+            fHist_CutFlow_Lambda->Write();
+            Logger::Info(__FUNCTION__, "- TH1D  \"{}\"", fHist_CutFlow_Lambda->GetName());
+            fHist_CutFlow_KaonZeroShort->Write();
+            Logger::Info(__FUNCTION__, "- TH1D  \"{}\"", fHist_CutFlow_KaonZeroShort->GetName());
             break;
         case EReactionChannel::D:
         case EReactionChannel::E:
-            fCutFlowHist_AntiLambdas->Write();
-            Logger::Info(__FUNCTION__, "TH1D \"{}\" has been written into TFile {}", fCutFlowHist_AntiLambdas->GetName(), fSettings.PathOutputFile);
-            fCutFlowHist_Lambdas->Write();
-            Logger::Info(__FUNCTION__, "TH1D \"{}\" has been written into TFile {}", fCutFlowHist_Lambdas->GetName(), fSettings.PathOutputFile);
+            fHist_CutFlow_AntiLambda->Write();
+            Logger::Info(__FUNCTION__, "- TH1D  \"{}\"", fHist_CutFlow_AntiLambda->GetName());
+            fHist_CutFlow_Lambda->Write();
+            Logger::Info(__FUNCTION__, "- TH1D  \"{}\"", fHist_CutFlow_Lambda->GetName());
             break;
         case EReactionChannel::H:
             break;

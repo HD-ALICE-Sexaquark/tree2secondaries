@@ -7,7 +7,33 @@
 
 namespace Tree2Secondaries::Ref {
 
-struct MC_Particle {
+// Reconstructed //
+
+struct alignas(T2S_SIMD_ALIGN) Track {
+
+    [[nodiscard]] int Charge() const { return source->Charge->at(index); };
+    [[nodiscard]] float Px() const { return source->Px->at(index); };
+    [[nodiscard]] float Py() const { return source->Py->at(index); };
+    [[nodiscard]] float Pz() const { return source->Pz->at(index); };
+    [[nodiscard]] float Pt2() const { return Px() * Px() + Py() * Py(); };
+    [[nodiscard]] float Pt() const { return std::sqrt(Pt2()); };
+    [[nodiscard]] float P2() const { return Pt2() + Pz() * Pz(); };
+    [[nodiscard]] float P() const { return std::sqrt(P2()); };
+
+    [[nodiscard]] float NSigmaProton() const { return source->NSigmaProton->at(index); };
+    [[nodiscard]] float NSigmaKaon() const { return source->NSigmaKaon->at(index); };
+    [[nodiscard]] float NSigmaPion() const { return source->NSigmaPion->at(index); };
+    [[nodiscard]] float TPCSignal() const { return source->TPCSignal->at(index); };
+    [[nodiscard]] float DCAxy() const { return source->DCAxy->at(index); };
+    [[nodiscard]] float DCAz() const { return source->DCAz->at(index); };
+
+    const DF::Events::Tracks* source{};
+    int index{};
+};
+
+// MC //
+
+struct alignas(T2S_SIMD_ALIGN) MC_Particle {
 
     [[nodiscard]] int Entry() const { return entry; };
     [[nodiscard]] bool FoundEntry() const { return Entry() > Const::DummyInt; }
@@ -32,7 +58,7 @@ struct MC_Particle {
     EParticle hyp{};  // hypothesis
 };
 
-struct MC_Track : Ref::MC_Particle {
+struct alignas(T2S_SIMD_ALIGN) MC_Track : Ref::MC_Particle {
     [[nodiscard]] bool AsTrack_IsTrue() const {  //
         return Const::Particle_PdgCode[hyp] == PdgCode();
     };
@@ -47,7 +73,7 @@ struct MC_Track : Ref::MC_Particle {
     };
 };
 
-struct MC_V0 : Ref::MC_Particle {
+struct alignas(T2S_SIMD_ALIGN) MC_V0 : Ref::MC_Particle {
 
     MC_V0() = delete;
     MC_V0(const Ref::MC_Track& neg_ref, const Ref::MC_Track& pos_ref, EParticle pid)

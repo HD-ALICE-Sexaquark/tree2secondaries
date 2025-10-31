@@ -14,7 +14,7 @@
 #include "Fit/Track.hxx"
 #include "Fit/V0.hxx"
 #include "Math/Constants.hxx"
-#include "References/References.hxx"
+#include "References/Events.hxx"
 
 namespace Tree2Secondaries {
 
@@ -34,22 +34,34 @@ class Packager {
     bool Initialize();
     void ReadInputBranches();
 
-    void ReadBranches_Events();
-    void ReadBranches_Injected();
-    void ReadBranches_MC();
-    void ReadBranches_Tracks();
+    void ReadBranches_Events() { fInput_Event.ReadBranches_Event(fInputChain_Events.get(), IsMC()); }
+    void ReadBranches_Injected() { fInput_Injected.ReadBranches_SOV_Injected(fInputChain_Events.get(), false); }
+    void ReadBranches_MC() { fInput_MC.ReadBranches_MCParticles(fInputChain_Events.get()); }
+    void ReadBranches_Tracks() { fInput_Tracks.ReadBranches_MCParticles(fInputChain_Events.get(), IsMC()); }
 
     bool PrepareOutputFile();
     bool PrepareOutputTree();
     void CreateOutputBranches();
-    void CreateCutFlowHistograms();
+    void PrepareOutputHistograms();
 
-    void CreateOutputBranches_Events();
-    void CreateOutputBranches_Injected();
-    void CreateOutputBranches_V0s(EParticle pid, DF::Packed::V0s &df);
-    void CreateOutputBranches_Tracks(EParticle pid, DF::Packed::Tracks &df);
-    void CreateOutputBranches_LinkedV0s(EParticle pid, DF::Packed::LinkedV0s &df);
-    void CreateOutputBranches_LinkedTracks(EParticle pid, DF::Packed::LinkedTracks &df);
+    void CreateOutputBranches_Events() {  //
+        fOutput_Event.CreateBranches_Event(fOutputTree.get(), IsMC());
+    }
+    void CreateOutputBranches_Injected() {  //
+        fOutput_Injected.CreateBranches_SOV_Injected(fOutputTree.get(), true);
+    }
+    void CreateOutputBranches_V0s(EParticle pid, DF::Packed::V0s &df) {
+        df.CreateBranches_PackedV0s(fOutputTree.get(), Const::Particle_Acronym[pid]);
+    }
+    void CreateOutputBranches_Tracks(EParticle pid, DF::Packed::Tracks &df) {
+        df.CreateBranches_PackedTracks(fOutputTree.get(), Const::Particle_Acronym[pid]);
+    }
+    void CreateOutputBranches_LinkedV0s(EParticle pid, DF::Packed::LinkedV0s &df) {
+        df.CreateBranches_LinkedV0s(fOutputTree.get(), Const::Particle_Acronym[pid]);
+    }
+    void CreateOutputBranches_LinkedTracks(EParticle pid, DF::Packed::LinkedTracks &df) {
+        df.CreateBranches_LinkedTracks(fOutputTree.get(), Const::Particle_Acronym[pid]);
+    }
 
     [[nodiscard]] int NumberEventsToRead() const {
         return fSettings.LimitToNEvents ? fSettings.LimitToNEvents : static_cast<int>(fInputChain_Events->GetEntries());
@@ -61,8 +73,7 @@ class Packager {
     [[nodiscard]] int NumberInjected() const { return static_cast<int>(fInput_Injected.ReactionID->size()); }
     [[nodiscard]] int NumberTracks() const { return static_cast<int>(fInput_Tracks.Px->size()); }
 
-    void ProcessEvent();
-    void ProcessMCEvent();
+    void ProcessEvent() { fOutput_Event = fInput_Event; }
 
     void Injected_GetSecondaryVertex();
     void Injected_Store();
@@ -79,11 +90,11 @@ class Packager {
     [[nodiscard]] bool PassesCuts(const Fit::V0 &v0, EParticle pid) const {
         switch (pid) {
             case EParticle::AntiLambda:
-                return PassesCuts_Lambda(v0, fCutFlowHist_AntiLambdas.get());
+                return PassesCuts_Lambda(v0, fHist_CutFlow_AntiLambda.get());
             case EParticle::Lambda:
-                return PassesCuts_Lambda(v0, fCutFlowHist_Lambdas.get());
+                return PassesCuts_Lambda(v0, fHist_CutFlow_Lambda.get());
             case EParticle::KaonZeroShort:
-                return PassesCuts_KaonZeroShort(v0, fCutFlowHist_KaonsZeroShort.get());
+                return PassesCuts_KaonZeroShort(v0, fHist_CutFlow_KaonZeroShort.get());
             default:
                 return false;
         }
@@ -93,11 +104,14 @@ class Packager {
     void EndOfAnalysis();
 
    private:
+    bool PassesCuts_Proton(const Ref::Track &track, TH1D *cut_flow_hist) const;
+    bool PassesCuts_Kaon(const Ref::Track &track, TH1D *cut_flow_hist) const;
+    bool PassesCuts_Pion(const Ref::Track &track, TH1D *cut_flow_hist) const;
     void Store(const Fit::Track &track, DF::Packed::Tracks &df);
     void StoreMC(const Ref::MC_Track &mc, DF::Packed::LinkedTracks &df);
 
-    [[nodiscard]] bool PassesCuts_Lambda(const Fit::V0 &v0, TH1D *cut_flow_hist) const;
-    [[nodiscard]] bool PassesCuts_KaonZeroShort(const Fit::V0 &v0, TH1D *cut_flow_hist) const;
+    bool PassesCuts_Lambda(const Fit::V0 &v0, TH1D *cut_flow_hist) const;
+    bool PassesCuts_KaonZeroShort(const Fit::V0 &v0, TH1D *cut_flow_hist) const;
     void Store(const Fit::V0 &v0, DF::Packed::V0s &df);
     void StoreMC(const Ref::MC_V0 &mc, DF::Packed::LinkedV0s &df);
 
@@ -107,9 +121,16 @@ class Packager {
     std::unique_ptr<TFile> fOutputFile;
     std::unique_ptr<TTree> fOutputTree;
 
-    std::unique_ptr<TH1D> fCutFlowHist_AntiLambdas;
-    std::unique_ptr<TH1D> fCutFlowHist_Lambdas;
-    std::unique_ptr<TH1D> fCutFlowHist_KaonsZeroShort;
+    std::unique_ptr<TH1D> fHist_CutFlow_AntiProton;
+    std::unique_ptr<TH1D> fHist_CutFlow_Proton;
+    std::unique_ptr<TH1D> fHist_CutFlow_NegKaon;
+    std::unique_ptr<TH1D> fHist_CutFlow_PosKaon;
+    std::unique_ptr<TH1D> fHist_CutFlow_PiMinus;
+    std::unique_ptr<TH1D> fHist_CutFlow_PiPlus;
+
+    std::unique_ptr<TH1D> fHist_CutFlow_AntiLambda;
+    std::unique_ptr<TH1D> fHist_CutFlow_Lambda;
+    std::unique_ptr<TH1D> fHist_CutFlow_KaonZeroShort;
 
     // input branches //
 

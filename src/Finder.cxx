@@ -10,7 +10,6 @@
 #include "Fit/Track.hxx"
 #include "Fit/Utilities.hxx"
 #include "Math/Constants.hxx"
-#include "References/References2.hxx"
 
 namespace Tree2Secondaries {
 
@@ -33,7 +32,7 @@ bool Finder::Initialize() {
 
     if (!PrepareOutputFile()) return false;
 
-    CreateCutFlowHistogram();
+    PrepareOutputHistograms();
 
     if (!PrepareOutputTree()) return false;
     CreateOutputBranches();
@@ -107,26 +106,6 @@ void Finder::ReadInputBranches() {
     }  // end of switch statement
 }
 
-void Finder::ReadBranches_Events() { fInput_Event.ReadBranches_Event(fInputChain_PackedEvents.get(), IsMC()); }
-
-void Finder::ReadBranches_Injected() { fInput_Injected.ReadBranches_SOV_Injected(fInputChain_PackedEvents.get(), true); }
-
-void Finder::ReadBranches_V0s(EParticle pid, DF::Packed::V0s& df) {
-    df.ReadBranches_PackedV0s(fInputChain_PackedEvents.get(), Const::Particle_Acronym[pid]);
-}
-
-void Finder::ReadBranches_Tracks(EParticle pid, DF::Packed::Tracks& df) {
-    df.ReadBranches_PackedTracks(fInputChain_PackedEvents.get(), Const::Particle_Acronym[pid]);
-}
-
-void Finder::ReadBranches_LinkedV0s(EParticle pid, DF::Packed::LinkedV0s& df) {
-    df.ReadBranches_LinkedV0s(fInputChain_PackedEvents.get(), Const::Particle_Acronym[pid]);
-}
-
-void Finder::ReadBranches_LinkedTracks(EParticle pid, DF::Packed::LinkedTracks& df) {
-    df.ReadBranches_LinkedTracks(fInputChain_PackedEvents.get(), Const::Particle_Acronym[pid]);
-}
-
 // ## OUTPUT ZONE ## //
 
 bool Finder::PrepareOutputFile() {
@@ -156,21 +135,16 @@ bool Finder::PrepareOutputTree() {
     return true;
 }
 
-void Finder::CreateOutputBranches(DF::Found::ChannelA& df) { df.CreateBranches_ChannelA(fOutputTree.get(), IsMC()); }
-
-void Finder::CreateOutputBranches(DF::Found::ChannelD& df) { df.CreateBranches_ChannelD(fOutputTree.get(), IsMC()); }
-
-void Finder::CreateOutputBranches(DF::Found::MC_ChannelA& df) { df.CreateBranches_MC_ChannelA(fOutputTree.get()); }
-
-void Finder::CreateOutputBranches(DF::Found::MC_ChannelD& df) { df.CreateBranches_MC_ChannelD(fOutputTree.get()); }
-
-void Finder::CreateCutFlowHistogram() {
+void Finder::PrepareOutputHistograms() {
+    // event counter //
+    fHist_EventCounter = std::make_unique<TH1D>("N_Events", ";;N_Events", 1, 0, 1);
+    // cut flows //
     const int x_nbins{20};
     const float x_min{0.};
     const float x_max{20.};
     std::string hist_title{";Cut N;N Passed Cut"};
-    fCutFlowHist = std::make_unique<TH1D>("CutFlow", hist_title.c_str(), x_nbins, x_min, x_max);
-    fCutFlowHist_Anti = std::make_unique<TH1D>("CutFlow_Anti", hist_title.c_str(), x_nbins, x_min, x_max);
+    fHist_CutFlow = std::make_unique<TH1D>("CutFlow", hist_title.c_str(), x_nbins, x_min, x_max);
+    fHist_CutFlow_AntiChannel = std::make_unique<TH1D>("CutFlow_Anti", hist_title.c_str(), x_nbins, x_min, x_max);
 }
 
 // ## OUTPUT / Injected ZONE ## //
@@ -187,8 +161,6 @@ bool Finder::Injected_PrepareOutputTree() {
 
     return true;
 }
-
-void Finder::Injected_CreateOutputBranches() { fOutput_Injected.CreateBranches_Flat_Injected(fOutputTree_Injected.get()); };
 
 void Finder::Injected_FlattenAndStore() {
 
@@ -252,7 +224,7 @@ void Finder::FindSexaquarks_ChannelA(bool anti_channel) {
     double mass_v0b_neg{Const::Particle_Mass[pid_v0b_neg]};
     double mass_v0b_pos{Const::Particle_Mass[pid_v0b_pos]};
     // -- cut flow hist
-    TH1D* hist{anti_channel ? fCutFlowHist_Anti.get() : fCutFlowHist.get()};
+    TH1D* hist{anti_channel ? fHist_CutFlow_AntiChannel.get() : fHist_CutFlow.get()};
 
     // loop over all possible pairs of (anti)lambda + K0S //
     auto n_v0a = static_cast<int>(Packed_V0A->Entry->size());
@@ -580,7 +552,7 @@ void Finder::FindSexaquarks_ChannelD(bool anti_channel) {
     double mass_kaon{Const::Particle_Mass[pid_kaon]};
     int charge_kaon{Const::Particle_Charge[pid_kaon]};
     // -- cut flow hist
-    TH1D* hist{anti_channel ? fCutFlowHist_Anti.get() : fCutFlowHist.get()};
+    TH1D* hist{anti_channel ? fHist_CutFlow_AntiChannel.get() : fHist_CutFlow.get()};
 
     // loop over all possible pairs of (anti)lambda + (pos/neg)kaon //
     auto n_v0 = static_cast<int>(Packed_V0s->Entry->size());
@@ -800,19 +772,25 @@ void Finder::StoreMC(const Ref::ChannelD& sexa) {
 
 void Finder::EndOfAnalysis() {
 
+    Logger::Info(__FUNCTION__, "The following objects have been written into TFile {}:", fSettings.PathOutputFile);
+
+    // write trees
     if (IsMC()) {
         fOutputTree_Injected->Write();
-        Logger::Info(__FUNCTION__, "TTree \"{}\" has been written onto TFile {}", fOutputTree_Injected->GetName(), fSettings.PathOutputFile);
+        Logger::Info(__FUNCTION__, "- TTree \"{}\"", fOutputTree_Injected->GetName());
     }
-
     fOutputTree->Write();
-    Logger::Info(__FUNCTION__, "TTree \"{}\" has been written onto TFile {}", fOutputTree->GetName(), fSettings.PathOutputFile);
+    Logger::Info(__FUNCTION__, "- TTree \"{}\"", fOutputTree->GetName());
 
-    fCutFlowHist->Write();
-    Logger::Info(__FUNCTION__, "TH1D \"{}\" has been written into TFile {}", fCutFlowHist->GetName(), fSettings.PathOutputFile);
-
-    fCutFlowHist_Anti->Write();
-    Logger::Info(__FUNCTION__, "TH1D \"{}\" has been written into TFile {}", fCutFlowHist_Anti->GetName(), fSettings.PathOutputFile);
+    // write histograms
+    // -- event counter
+    fHist_EventCounter->Write();
+    Logger::Info(__FUNCTION__, "- TH1D  \"{}\"", fHist_EventCounter->GetName());
+    fHist_CutFlow->Write();
+    // -- cut flows
+    Logger::Info(__FUNCTION__, "- TH1D  \"{}\"", fHist_CutFlow->GetName());
+    fHist_CutFlow_AntiChannel->Write();
+    Logger::Info(__FUNCTION__, "- TH1D  \"{}\"", fHist_CutFlow_AntiChannel->GetName());
 
     fInputChain_PackedEvents->ResetBranchAddresses();
     fOutputTree->ResetBranchAddresses();

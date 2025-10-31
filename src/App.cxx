@@ -64,6 +64,8 @@ int main(int argc, char *argv[]) {
 
         for (int i_event{0}; i_event < finder.NumberEventsToRead(); ++i_event) {
             finder.GetEvent(i_event);
+
+            finder.ProcessEvent();
             if (finder.IsMC()) finder.Injected_FlattenAndStore();
             finder.Find(finder.GetReactionChannel());
         }
