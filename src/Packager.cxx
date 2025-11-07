@@ -138,6 +138,9 @@ void Packager::CreateOutputBranches() {
 
 void Packager::PrepareOutputHistograms() {
 
+    // event counter //
+    fHist_EventCounter = std::make_unique<TH1D>("N_Events", ";;N_Events", 1, 0, 1);
+
     const int x_nbins{20};
     const float x_min{0.};
     const float x_max{20.};
@@ -363,8 +366,6 @@ bool Packager::PassesCuts_Proton(const Ref::Track& track, TH1D* cut_flow_hist) c
     cut_flow_hist->Fill(2.);
     if (track.P() > Cuts::Proton::Max_P) return false;
     cut_flow_hist->Fill(3.);
-    if (track.DCAxy() > Cuts::Proton::Max_DCAxy) return false;
-    cut_flow_hist->Fill(4.);
 
     return true;
 }
@@ -376,8 +377,6 @@ bool Packager::PassesCuts_Kaon(const Ref::Track& track, TH1D* cut_flow_hist) con
     cut_flow_hist->Fill(1.);
     if (track.TPCSignal() < Cuts::Kaon::Min_TPCSignal) return false;
     cut_flow_hist->Fill(2.);
-    if (track.DCAxy() > Cuts::Proton::Max_DCAxy) return false;
-    cut_flow_hist->Fill(3.);
 
     return true;
 }
@@ -387,10 +386,8 @@ bool Packager::PassesCuts_Pion(const Ref::Track& track, TH1D* cut_flow_hist) con
     cut_flow_hist->Fill(0.);
     if (std::abs(track.NSigmaPion()) > Cuts::Pion::AbsMax_NSigmaPion) return false;
     cut_flow_hist->Fill(1.);
-    if (track.P() > Cuts::Proton::Max_P) return false;
+    if (track.P() > Cuts::Pion::Max_P) return false;
     cut_flow_hist->Fill(2.);
-    if (track.DCAxy() > Cuts::Proton::Max_DCAxy) return false;
-    cut_flow_hist->Fill(3.);
 
     return true;
 }
@@ -812,6 +809,9 @@ void Packager::EndOfAnalysis() {
     Logger::Info(__FUNCTION__, "- TTree \"{}\"", fOutputTree->GetName());
 
     // write histograms
+    // -- event counter
+    fHist_EventCounter->Write();
+    Logger::Info(__FUNCTION__, "- TH1D  \"{}\"", fHist_EventCounter->GetName());
     // -- selected tracks
     fHist_CutFlow_AntiProton->Write();
     Logger::Info(__FUNCTION__, "- TH1D  \"{}\"", fHist_CutFlow_AntiProton->GetName());

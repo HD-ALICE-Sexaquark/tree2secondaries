@@ -73,7 +73,10 @@ class Packager {
     [[nodiscard]] int NumberInjected() const { return static_cast<int>(fInput_Injected.ReactionID->size()); }
     [[nodiscard]] int NumberTracks() const { return static_cast<int>(fInput_Tracks.Px->size()); }
 
-    void ProcessEvent() { fOutput_Event = fInput_Event; }
+    void ProcessEvent() {
+        fOutput_Event = fInput_Event;
+        fHist_EventCounter->Fill(0.);
+    }
 
     void Injected_GetSecondaryVertex();
     void Injected_Store();
@@ -120,6 +123,8 @@ class Packager {
 
     std::unique_ptr<TFile> fOutputFile;
     std::unique_ptr<TTree> fOutputTree;
+
+    std::unique_ptr<TH1D> fHist_EventCounter;
 
     std::unique_ptr<TH1D> fHist_CutFlow_AntiProton;
     std::unique_ptr<TH1D> fHist_CutFlow_Proton;

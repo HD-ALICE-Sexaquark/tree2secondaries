@@ -305,8 +305,8 @@ void Finder::FindSexaquarks_ChannelA(bool anti_channel) {
             Store(sexa, anti_channel);
 
             if (IsMC()) {
-                Ref::PackedV0 mc_v0a{MC_V0A, v0a.Entry};
-                Ref::PackedV0 mc_v0b{MC_V0B, v0b.Entry};
+                Ref::PackedV0 mc_v0a{.source = MC_V0A, .entry = v0a.Entry};
+                Ref::PackedV0 mc_v0b{.source = MC_V0B, .entry = v0b.Entry};
                 Ref::Injected mc_injected{
                     .source = &fInput_Injected, .mass = fSettings.SexaquarkMass, .nucleon_pid = Const::ReactionNucleonPID[fSettings.ReactionChannel]};
                 Ref::ChannelA mc_sexa{mc_injected, mc_v0a, mc_v0b};
@@ -326,16 +326,16 @@ bool Finder::PassesCuts(const Fit::ChannelA& sexa, TH1D* cut_flow_hist) const {
     cut_flow_hist->Fill(2.);
     if (sexa.DecayLength_V0B() > Cuts::ChannelA::Max_DecayLengthK0) return false;
     cut_flow_hist->Fill(3.);
-    if (sexa.AbsRapidity_MinusNucleon() > Cuts::ChannelA::AbsMax_Rapidity) return false;  // PENDING: kinematic cut, affected by Fermi motion
+    // if (sexa.AbsRapidity_MinusNucleon() > Cuts::ChannelA::AbsMax_Rapidity) return false;  // PENDING: kinematic cut, affected by Fermi motion
     cut_flow_hist->Fill(4.);
-    if (sexa.Mass_MinusNucleon() < Cuts::ChannelA::Min_MassMinusNucleon || sexa.Mass_MinusNucleon() > Cuts::ChannelA::Max_MassMinusNucleon) {
-        return false;  // PENDING: kinematic cut, affected by Fermi motion
-    }
+    // if (sexa.Mass_MinusNucleon() < Cuts::ChannelA::Min_MassMinusNucleon || sexa.Mass_MinusNucleon() > Cuts::ChannelA::Max_MassMinusNucleon) {
+    // return false;  // PENDING: kinematic cut, affected by Fermi motion
+    // }
     cut_flow_hist->Fill(5.);
-    if (sexa.CPA_Point(fInput_Event.PV.X, fInput_Event.PV.Y, fInput_Event.PV.Z) < Cuts::ChannelA::Min_CPAwrtPV ||
-        sexa.CPA_Point(fInput_Event.PV.X, fInput_Event.PV.Y, fInput_Event.PV.Z) > Cuts::ChannelA::Max_CPAwrtPV) {
-        return false;  // PENDING: kinematic cut, affected by Fermi motion
-    }
+    // if (sexa.CPA_Point(fInput_Event.PV.X, fInput_Event.PV.Y, fInput_Event.PV.Z) < Cuts::ChannelA::Min_CPAwrtPV ||
+    // sexa.CPA_Point(fInput_Event.PV.X, fInput_Event.PV.Y, fInput_Event.PV.Z) > Cuts::ChannelA::Max_CPAwrtPV) {
+    // return false;  // PENDING: kinematic cut, affected by Fermi motion
+    // }
     cut_flow_hist->Fill(6.);
     if (sexa.DCA_V0ANeg_wrt_SV(fInput_Event.MagneticField) > Cuts::ChannelA::Max_DCALaNegSV) return false;
     cut_flow_hist->Fill(7.);
@@ -613,12 +613,12 @@ bool Finder::PassesCuts(const Fit::ChannelD& sexa, TH1D* cut_flow_hist) const {
     cut_flow_hist->Fill(0.);
     if (sexa.Radius2D() < Cuts::ChannelD::Min_Radius2D || sexa.Radius2D() > Cuts::ChannelD::Max_Radius2D) return false;
     cut_flow_hist->Fill(1.);
-    if (sexa.AbsRapidity_MinusNucleon() > Cuts::ChannelD::AbsMax_Rapidity) return false;  // PENDING: kinematics, affected by Fermi motion
+    // if (sexa.AbsRapidity_MinusNucleon() > Cuts::ChannelD::AbsMax_Rapidity) return false;  // PENDING: kinematics, affected by Fermi motion
     cut_flow_hist->Fill(2.);
-    if (sexa.CPA_Point(fInput_Event.PV.X, fInput_Event.PV.Y, fInput_Event.PV.Z) < Cuts::ChannelD::Min_CPAwrtPV ||
-        sexa.CPA_Point(fInput_Event.PV.X, fInput_Event.PV.Y, fInput_Event.PV.Z) > Cuts::ChannelD::Max_CPAwrtPV) {
-        return false;  // PENDING: kinematics, affected by Fermi motion
-    }
+    // if (sexa.CPA_Point(fInput_Event.PV.X, fInput_Event.PV.Y, fInput_Event.PV.Z) < Cuts::ChannelD::Min_CPAwrtPV ||
+    // sexa.CPA_Point(fInput_Event.PV.X, fInput_Event.PV.Y, fInput_Event.PV.Z) > Cuts::ChannelD::Max_CPAwrtPV) {
+    // return false;  // PENDING: kinematics, affected by Fermi motion
+    // }
     cut_flow_hist->Fill(3.);
     if (sexa.DCA_V0_wrt_SV() > Cuts::ChannelD::Max_DCALaSV) return false;
     cut_flow_hist->Fill(4.);
@@ -786,8 +786,8 @@ void Finder::EndOfAnalysis() {
     // -- event counter
     fHist_EventCounter->Write();
     Logger::Info(__FUNCTION__, "- TH1D  \"{}\"", fHist_EventCounter->GetName());
-    fHist_CutFlow->Write();
     // -- cut flows
+    fHist_CutFlow->Write();
     Logger::Info(__FUNCTION__, "- TH1D  \"{}\"", fHist_CutFlow->GetName());
     fHist_CutFlow_AntiChannel->Write();
     Logger::Info(__FUNCTION__, "- TH1D  \"{}\"", fHist_CutFlow_AntiChannel->GetName());

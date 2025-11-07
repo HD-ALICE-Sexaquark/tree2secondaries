@@ -29,10 +29,10 @@ struct alignas(T2S_SIMD_ALIGN) ChannelA : Fit::Sexaquark {
 
     // cuts //
     [[nodiscard]] double DecayLength_V0A() const {
-        return KF::Math::Norm(::KF::Vector<3>{V0A.X() - V0A_PCA_XYZ()[0], V0A.Y() - V0A_PCA_XYZ()[1], V0A.Z() - V0A_PCA_XYZ()[2]});
+        return KF::Math::Norm(KF::Vector<3>{V0A.X() - V0A_PCA_XYZ()[0], V0A.Y() - V0A_PCA_XYZ()[1], V0A.Z() - V0A_PCA_XYZ()[2]});
     };
     [[nodiscard]] double DecayLength_V0B() const {
-        return KF::Math::Norm(::KF::Vector<3>{V0B.X() - V0B_PCA_XYZ()[0], V0B.Y() - V0B_PCA_XYZ()[1], V0B.Z() - V0B_PCA_XYZ()[2]});
+        return KF::Math::Norm(KF::Vector<3>{V0B.X() - V0B_PCA_XYZ()[0], V0B.Y() - V0B_PCA_XYZ()[1], V0B.Z() - V0B_PCA_XYZ()[2]});
     };
     [[nodiscard]] double DCA_btw_V0s() const { return GetDCA(0, 1); };
     [[nodiscard]] double DCA_V0A_wrt_SV() const { return GetDCA(0); };

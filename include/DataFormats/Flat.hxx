@@ -167,9 +167,9 @@ struct alignas(T2S_SIMD_ALIGN) MCInfo_V0 : Flat::MCInfo_LV_Mother {
 
     void CreateBranches_MCInfo_V0(TTree* tree, std::string_view acronym = "") {
         CreateBranches_MCInfo_LV_Mother(tree, acronym);
-        Neg.CreateBranches_MCInfo_PxPyPz(tree, acronym);
-        Pos.CreateBranches_MCInfo_PxPyPz(tree, acronym);
-        AtDecay.CreateBranches_Coordinates(tree, std::format("MC_{}", acronym), "");
+        Neg.CreateBranches_MCInfo_PxPyPz(tree, std::format("{}_Neg", acronym));
+        Pos.CreateBranches_MCInfo_PxPyPz(tree, std::format("{}_Pos", acronym));
+        AtDecay.CreateBranches_Coordinates(tree, std::format("MC_{}_atDecay", acronym), "");
         tree->Branch(std::format("MC_{}_IsHybrid", acronym).c_str(), &IsHybrid);
     }
 };
