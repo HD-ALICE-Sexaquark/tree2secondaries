@@ -3,9 +3,9 @@
 #include <KFParticle.hxx>
 #include <KFParticle_Math.hxx>
 
-#include "Fit/Sexaquark.hxx"
-#include "Fit/Track.hxx"
-#include "Fit/V0.hxx"
+#include "Fit/FitSexaquark.hxx"
+#include "Fit/FitTrack.hxx"
+#include "Fit/FitV0.hxx"
 #include "Math/Constants.hxx"
 
 namespace Tree2Secondaries::Fit {

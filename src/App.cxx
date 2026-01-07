@@ -66,7 +66,7 @@ int main(int argc, char *argv[]) {
             finder.GetEvent(i_event);
 
             finder.ProcessEvent();
-            if (finder.IsMC()) finder.Injected_FlattenAndStore();
+            if (finder.IsMC()) finder.ProcessInjected();
             finder.Find(finder.GetReactionChannel());
         }
         finder.EndOfAnalysis();

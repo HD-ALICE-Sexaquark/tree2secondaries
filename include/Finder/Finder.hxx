@@ -9,19 +9,21 @@
 #include <TTree.h>
 
 #include "App/Settings.hxx"
-#include "DataFormats/ChannelA.hxx"
-#include "DataFormats/ChannelD.hxx"
-#include "DataFormats/Events.hxx"
-#include "DataFormats/Injected.hxx"
-#include "DataFormats/PackedEvents.hxx"
-#include "Fit/ChannelA.hxx"
-#include "Fit/ChannelD.hxx"
+#include "Fit/FitChannelA.hxx"
+#include "Fit/FitChannelD.hxx"
 #include "Math/Constants.hxx"
-#include "References/Injected.hxx"
+#include "Storage/Flat/FlatChannelA.hxx"
+#include "Storage/Flat/FlatChannelD.hxx"
+#include "Storage/Flat/FlatEvent.hxx"
+#include "Storage/Flat/FlatInjected.hxx"
+#include "Storage/Vector/VectorInjected.hxx"
+#include "Storage/Vector/VectorTracks.hxx"
+#include "Storage/Vector/VectorV0s.hxx"
+#include "View/MC/ViewMcInjected.hxx"
 
 namespace Tree2Secondaries {
 
-// Read packed events and find anti-sexaquarks reactions.
+// Read Vector events and find anti-sexaquarks reactions.
 class Finder {
    public:
     Finder(const Finder &) = delete;
@@ -37,54 +39,15 @@ class Finder {
     bool Initialize();
     void ReadInputBranches();
 
-    void ReadBranches_Events() {  //
-        fInput_Event.ReadBranches_Event(fInputChain_PackedEvents.get(), IsMC());
-    }
-    void ReadBranches_Injected() {  //
-        fInput_Injected.ReadBranches_SOV_Injected(fInputChain_PackedEvents.get(), true);
-    }
-    void ReadBranches_V0s(EParticle pid, DF::Packed::V0s &df) {
-        df.ReadBranches_PackedV0s(fInputChain_PackedEvents.get(), Const::Particle_Acronym[pid]);
-    }
-    void ReadBranches_Tracks(EParticle pid, DF::Packed::Tracks &df) {
-        df.ReadBranches_PackedTracks(fInputChain_PackedEvents.get(), Const::Particle_Acronym[pid]);
-    }
-    void ReadBranches_LinkedV0s(EParticle pid, DF::Packed::LinkedV0s &df) {
-        df.ReadBranches_LinkedV0s(fInputChain_PackedEvents.get(), Const::Particle_Acronym[pid]);
-    }
-    void ReadBranches_LinkedTracks(EParticle pid, DF::Packed::LinkedTracks &df) {
-        df.ReadBranches_LinkedTracks(fInputChain_PackedEvents.get(), Const::Particle_Acronym[pid]);
-    }
-
     bool PrepareOutputFile();
-    bool PrepareOutputTree();
     void PrepareOutputHistograms();
+    bool PrepareOutputTree();
+    void CreateOutputBranches();
 
-    void CreateOutputBranches(DF::Found::ChannelA &df) { df.CreateBranches_ChannelA(fOutputTree.get(), IsMC()); }
-    void CreateOutputBranches(DF::Found::ChannelD &df) { df.CreateBranches_ChannelD(fOutputTree.get(), IsMC()); }
-    void CreateOutputBranches(DF::Found::MC_ChannelA &df) { df.CreateBranches_MC_ChannelA(fOutputTree.get()); }
-    void CreateOutputBranches(DF::Found::MC_ChannelD &df) { df.CreateBranches_MC_ChannelD(fOutputTree.get()); }
-    void CreateOutputBranches() {
-        switch (GetReactionChannel()) {
-            // standard channels //
-            case EReactionChannel::A:
-                CreateOutputBranches(fOutput_ChannelA);
-                if (IsMC()) CreateOutputBranches(fOutput_MC_ChannelA);
-                break;
-            case EReactionChannel::D:
-                CreateOutputBranches(fOutput_ChannelD);
-                if (IsMC()) CreateOutputBranches(fOutput_MC_ChannelD);
-                break;
-            default:
-                break;
-        }  // end of switch statement
-    }
-
-    void ProcessEvent() { fHist_EventCounter->Fill(0.); }
+    void ProcessEvent();
 
     bool Injected_PrepareOutputTree();
-    void Injected_CreateOutputBranches() { fOutput_Injected.CreateBranches_Flat_Injected(fOutputTree_Injected.get()); };
-    void Injected_FlattenAndStore();
+    void ProcessInjected();
 
     [[nodiscard]] int NumberEventsToRead() const {
         return fSettings.LimitToNEvents ? fSettings.LimitToNEvents : static_cast<int>(fInputChain_PackedEvents->GetEntries());
@@ -114,8 +77,8 @@ class Finder {
 
     void Store(const Fit::ChannelA &sexa, bool anti_channel);
     void Store(const Fit::ChannelD &sexa, bool anti_channel);
-    void StoreMC(const Ref::ChannelA &sexa);
-    void StoreMC(const Ref::ChannelD &sexa);
+    void StoreMC(const View::MC::ChannelA &view);
+    void StoreMC(const View::MC::ChannelD &view);
 
     void EndOfAnalysis();
 
@@ -134,36 +97,37 @@ class Finder {
 
     // input //
 
-    DF::Events::Event fInput_Event;
-    DF::SOV::Injected fInput_Injected;
+    Storage::Flat::Event fInput_Event;
+    Storage::Flat::Coordinates fInput_MC_PV;
+    Storage::Vector::Injected fInput_Injected;
 
-    DF::Packed::V0s fInput_AntiLambdas;
-    DF::Packed::V0s fInput_Lambdas;
-    DF::Packed::V0s fInput_KaonsZeroShort;
+    Storage::Vector::V0s fInput_AntiLambdas;
+    Storage::Vector::V0s fInput_Lambdas;
+    Storage::Vector::V0s fInput_KaonsZeroShort;
 
-    DF::Packed::Tracks fInput_NegKaons;
-    DF::Packed::Tracks fInput_PosKaons;
-    DF::Packed::Tracks fInput_PiMinus;
-    DF::Packed::Tracks fInput_PiPlus;
+    Storage::Vector::Tracks fInput_NegKaons;
+    Storage::Vector::Tracks fInput_PosKaons;
+    Storage::Vector::Tracks fInput_PiMinus;
+    Storage::Vector::Tracks fInput_PiPlus;
 
-    DF::Packed::LinkedV0s fInput_Linked_AntiLambdas;
-    DF::Packed::LinkedV0s fInput_Linked_Lambdas;
-    DF::Packed::LinkedV0s fInput_Linked_KaonsZeroShort;
+    Storage::Vector::MC_V0s fInput_MC_AntiLambdas;
+    Storage::Vector::MC_V0s fInput_MC_Lambdas;
+    Storage::Vector::MC_V0s fInput_MC_KaonsZeroShort;
 
-    DF::Packed::LinkedTracks fInput_Linked_NegKaons;
-    DF::Packed::LinkedTracks fInput_Linked_PosKaons;
-    DF::Packed::LinkedTracks fInput_Linked_PiMinus;
-    DF::Packed::LinkedTracks fInput_Linked_PiPlus;
+    Storage::Vector::MC_Tracks fInput_MC_NegKaons;
+    Storage::Vector::MC_Tracks fInput_MC_PosKaons;
+    Storage::Vector::MC_Tracks fInput_MC_PiMinus;
+    Storage::Vector::MC_Tracks fInput_MC_PiPlus;
 
     // output //
 
-    DF::Found::ChannelA fOutput_ChannelA;
-    DF::Found::ChannelD fOutput_ChannelD;
+    Storage::Flat::Injected fOutput_Injected;
 
-    DF::Flat::Injected fOutput_Injected;
+    Storage::Flat::ChannelA fOutput_ChannelA;
+    Storage::Flat::ChannelD fOutput_ChannelD;
 
-    DF::Found::MC_ChannelA fOutput_MC_ChannelA;
-    DF::Found::MC_ChannelD fOutput_MC_ChannelD;
+    Storage::Flat::MC_ChannelA fOutput_MC_ChannelA;
+    Storage::Flat::MC_ChannelD fOutput_MC_ChannelD;
 };
 
 }  // namespace Tree2Secondaries

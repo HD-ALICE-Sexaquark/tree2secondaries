@@ -34,6 +34,10 @@ static std::unordered_map<EReactionChannel, EParticle> ReactionNucleonPID{{EReac
                                                                           {EReactionChannel::D, EParticle::Proton},
                                                                           {EReactionChannel::E, EParticle::Proton},
                                                                           {EReactionChannel::H, EParticle::Proton}};
+static std::unordered_map<EParticle, EParticle> V0_NegativePID{
+    {EParticle::AntiLambda, EParticle::AntiProton}, {EParticle::Lambda, EParticle::PiMinus}, {EParticle::KaonZeroShort, EParticle::PiMinus}};
+static std::unordered_map<EParticle, EParticle> V0_PositivePID{
+    {EParticle::AntiLambda, EParticle::PiPlus}, {EParticle::Lambda, EParticle::Proton}, {EParticle::KaonZeroShort, EParticle::PiPlus}};
 
 static constexpr double Kappa{0.000299792458};  // (GeV/c) / (kG/cm)
 static constexpr double AbsAlmostZero{1.E-8};
@@ -42,6 +46,8 @@ static constexpr int DummyInt{-1};
 static constexpr float DummyFloat{-999.};
 static constexpr double DummyDouble{-999.};
 static constexpr double StandardSexaquarkMass{1.8};  // (GeV/c^2)
+static constexpr int ReactionID_Offset{600};
+
 }  // namespace Const
 
 }  // namespace Tree2Secondaries

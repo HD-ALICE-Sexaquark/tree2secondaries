@@ -8,13 +8,15 @@
 #include <TTree.h>
 
 #include "App/Settings.hxx"
-#include "DataFormats/Events.hxx"
-#include "DataFormats/Injected.hxx"
-#include "DataFormats/PackedEvents.hxx"
-#include "Fit/Track.hxx"
-#include "Fit/V0.hxx"
+#include "Fit/FitV0.hxx"
 #include "Math/Constants.hxx"
-#include "References/Events.hxx"
+#include "Storage/Flat/FlatEvent.hxx"
+#include "Storage/Vector/VectorInjected.hxx"
+#include "Storage/Vector/VectorMcParticles.hxx"
+#include "Storage/Vector/VectorTracks.hxx"
+#include "Storage/Vector/VectorV0s.hxx"
+#include "View/MC/ViewMcParticle.hxx"
+#include "View/Reconstructed/ViewTrack.hxx"
 
 namespace Tree2Secondaries {
 
@@ -34,34 +36,10 @@ class Packager {
     bool Initialize();
     void ReadInputBranches();
 
-    void ReadBranches_Events() { fInput_Event.ReadBranches_Event(fInputChain_Events.get(), IsMC()); }
-    void ReadBranches_Injected() { fInput_Injected.ReadBranches_SOV_Injected(fInputChain_Events.get(), false); }
-    void ReadBranches_MC() { fInput_MC.ReadBranches_MCParticles(fInputChain_Events.get()); }
-    void ReadBranches_Tracks() { fInput_Tracks.ReadBranches_MCParticles(fInputChain_Events.get(), IsMC()); }
-
     bool PrepareOutputFile();
     bool PrepareOutputTree();
     void CreateOutputBranches();
     void PrepareOutputHistograms();
-
-    void CreateOutputBranches_Events() {  //
-        fOutput_Event.CreateBranches_Event(fOutputTree.get(), IsMC());
-    }
-    void CreateOutputBranches_Injected() {  //
-        fOutput_Injected.CreateBranches_SOV_Injected(fOutputTree.get(), true);
-    }
-    void CreateOutputBranches_V0s(EParticle pid, DF::Packed::V0s &df) {
-        df.CreateBranches_PackedV0s(fOutputTree.get(), Const::Particle_Acronym[pid]);
-    }
-    void CreateOutputBranches_Tracks(EParticle pid, DF::Packed::Tracks &df) {
-        df.CreateBranches_PackedTracks(fOutputTree.get(), Const::Particle_Acronym[pid]);
-    }
-    void CreateOutputBranches_LinkedV0s(EParticle pid, DF::Packed::LinkedV0s &df) {
-        df.CreateBranches_LinkedV0s(fOutputTree.get(), Const::Particle_Acronym[pid]);
-    }
-    void CreateOutputBranches_LinkedTracks(EParticle pid, DF::Packed::LinkedTracks &df) {
-        df.CreateBranches_LinkedTracks(fOutputTree.get(), Const::Particle_Acronym[pid]);
-    }
 
     [[nodiscard]] int NumberEventsToRead() const {
         return fSettings.LimitToNEvents ? fSettings.LimitToNEvents : static_cast<int>(fInputChain_Events->GetEntries());
@@ -73,10 +51,7 @@ class Packager {
     [[nodiscard]] int NumberInjected() const { return static_cast<int>(fInput_Injected.ReactionID->size()); }
     [[nodiscard]] int NumberTracks() const { return static_cast<int>(fInput_Tracks.Px->size()); }
 
-    void ProcessEvent() {
-        fOutput_Event = fInput_Event;
-        fHist_EventCounter->Fill(0.);
-    }
+    void ProcessEvent();
 
     void Injected_GetSecondaryVertex();
     void Injected_Store();
@@ -107,16 +82,16 @@ class Packager {
     void EndOfAnalysis();
 
    private:
-    bool PassesCuts_Proton(const Ref::Track &track, TH1D *cut_flow_hist) const;
-    bool PassesCuts_Kaon(const Ref::Track &track, TH1D *cut_flow_hist) const;
-    bool PassesCuts_Pion(const Ref::Track &track, TH1D *cut_flow_hist) const;
-    void Store(const Fit::Track &track, DF::Packed::Tracks &df);
-    void StoreMC(const Ref::MC_Track &mc, DF::Packed::LinkedTracks &df);
+    void Store(const View::Rec::Track &view, Storage::Vector::Tracks &df);
+    void StoreMC(const View::MC::Particle &view, Storage::Vector::MC_Tracks &df, EParticle pid);
+    bool PassesCuts_Proton(const View::Rec::Track &track, TH1D *cut_flow_hist) const;
+    bool PassesCuts_Kaon(const View::Rec::Track &track, TH1D *cut_flow_hist) const;
+    bool PassesCuts_Pion(const View::Rec::Track &track, TH1D *cut_flow_hist) const;
 
     bool PassesCuts_Lambda(const Fit::V0 &v0, TH1D *cut_flow_hist) const;
     bool PassesCuts_KaonZeroShort(const Fit::V0 &v0, TH1D *cut_flow_hist) const;
-    void Store(const Fit::V0 &v0, DF::Packed::V0s &df);
-    void StoreMC(const Ref::MC_V0 &mc, DF::Packed::LinkedV0s &df);
+    void Store(const Fit::V0 &v0, Storage::Vector::V0s &df);
+    void StoreMC(const View::MC::V0 &v0_view, Storage::Vector::MC_V0s &df, EParticle v0_pid);
 
     Settings fSettings;
     std::unique_ptr<TChain> fInputChain_Events;
@@ -137,49 +112,51 @@ class Packager {
     std::unique_ptr<TH1D> fHist_CutFlow_Lambda;
     std::unique_ptr<TH1D> fHist_CutFlow_KaonZeroShort;
 
-    // input branches //
-
-    DF::Events::Event fInput_Event;
-    DF::SOV::Injected fInput_Injected;
-
-    DF::Events::MCParticles fInput_MC;
-    DF::Events::Tracks fInput_Tracks;
-
     // temporary containers, cleaned after event loop //
 
     std::vector<float> fVec_SV_X;
     std::vector<float> fVec_SV_Y;
     std::vector<float> fVec_SV_Z;
 
-    std::vector<int> fVec_AntiProtons;
-    std::vector<int> fVec_Protons;
-    std::vector<int> fVec_NegKaons;
-    std::vector<int> fVec_PosKaons;
-    std::vector<int> fVec_PiMinus;
-    std::vector<int> fVec_PiPlus;
+    std::vector<Fit::Track> fVec_AntiProtons;
+    std::vector<Fit::Track> fVec_Protons;
+    std::vector<Fit::Track> fVec_NegKaons;
+    std::vector<Fit::Track> fVec_PosKaons;
+    std::vector<Fit::Track> fVec_PiMinus;
+    std::vector<Fit::Track> fVec_PiPlus;
 
-    // output branches //
+    // input //
 
-    DF::Events::Event fOutput_Event;
-    DF::SOV::Injected fOutput_Injected;
+    Storage::Flat::Event fInput_Event;
+    Storage::Flat::Coordinates fInput_MC_PV;
+    Storage::Vector::Injected fInput_Injected;
 
-    DF::Packed::LinkedV0s fOutput_Linked_AntiLambdas;
-    DF::Packed::LinkedV0s fOutput_Linked_Lambdas;
-    DF::Packed::LinkedV0s fOutput_Linked_KaonsZeroShort;
+    Storage::Vector::MCParticles fInput_MC;
+    Storage::Vector::Tracks fInput_Tracks;
 
-    DF::Packed::LinkedTracks fOutput_Linked_NegKaons;
-    DF::Packed::LinkedTracks fOutput_Linked_PosKaons;
-    DF::Packed::LinkedTracks fOutput_Linked_PiMinus;
-    DF::Packed::LinkedTracks fOutput_Linked_PiPlus;
+    // output //
 
-    DF::Packed::V0s fOutput_AntiLambdas;
-    DF::Packed::V0s fOutput_Lambdas;
-    DF::Packed::V0s fOutput_KaonsZeroShort;
+    Storage::Flat::Event fOutput_Event;
+    Storage::Flat::Coordinates fOutput_MC_PV;
+    Storage::Vector::Injected fOutput_Injected;
 
-    DF::Packed::Tracks fOutput_NegKaons;
-    DF::Packed::Tracks fOutput_PosKaons;
-    DF::Packed::Tracks fOutput_PiMinus;
-    DF::Packed::Tracks fOutput_PiPlus;
+    Storage::Vector::V0s fOutput_AntiLambdas;
+    Storage::Vector::V0s fOutput_Lambdas;
+    Storage::Vector::V0s fOutput_KaonsZeroShort;
+
+    Storage::Vector::Tracks fOutput_NegKaons;
+    Storage::Vector::Tracks fOutput_PosKaons;
+    Storage::Vector::Tracks fOutput_PiMinus;
+    Storage::Vector::Tracks fOutput_PiPlus;
+
+    Storage::Vector::MC_V0s fOutput_MC_AntiLambdas;
+    Storage::Vector::MC_V0s fOutput_MC_Lambdas;
+    Storage::Vector::MC_V0s fOutput_MC_KaonsZeroShort;
+
+    Storage::Vector::MC_Tracks fOutput_MC_NegKaons;
+    Storage::Vector::MC_Tracks fOutput_MC_PosKaons;
+    Storage::Vector::MC_Tracks fOutput_MC_PiMinus;
+    Storage::Vector::MC_Tracks fOutput_MC_PiPlus;
 };
 
 }  // namespace Tree2Secondaries

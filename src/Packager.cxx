@@ -1,12 +1,13 @@
 #include <filesystem>
 
 #include "App/Logger.hxx"
-#include "Fit/Track.hxx"
-#include "Fit/Utilities.hxx"
+#include "Fit/FitTrack.hxx"
 #include "Math/Constants.hxx"
-#include "Packager/Cuts.hxx"
 #include "Packager/Packager.hxx"
-#include "References/Events.hxx"
+#include "Packager/PackagerCuts.hxx"
+#include "Truth/TruthParticle.hxx"
+#include "View/MC/ViewMcParticle.hxx"
+#include "View/Reconstructed/ViewTrack.hxx"
 
 namespace Tree2Secondaries {
 
@@ -45,12 +46,13 @@ void Packager::ReadInputBranches() {
     // by default, turn off all branches
     fInputChain_Events->SetBranchStatus("*", false);
     // connect input branches to memory
-    ReadBranches_Events();
+    fInput_Event.ReadBranches_FlatEvent(fInputChain_Events.get(), IsMC());
     if (IsMC()) {
-        ReadBranches_MC();
-        ReadBranches_Injected();
+        fInput_MC_PV.ReadBranches_FlatCoordinates(fInputChain_Events.get(), "MC_PV", "v");
+        fInput_MC.ReadBranches_VectorMCParticles(fInputChain_Events.get());
+        fInput_Injected.ReadBranches_VectorInjected(fInputChain_Events.get(), false);
     }
-    ReadBranches_Tracks();
+    fInput_Tracks.ReadBranches_VectorTracks(fInputChain_Events.get(), IsMC(), false, "Track");
 }
 
 // ## OUTPUT ZONE ## //
@@ -82,55 +84,58 @@ bool Packager::PrepareOutputTree() {
 
 void Packager::CreateOutputBranches() {
 
-    CreateOutputBranches_Events();
-    if (IsMC()) CreateOutputBranches_Injected();
+    fOutput_Event.CreateBranches_FlatEvent(fOutputTree.get(), IsMC());
+    if (IsMC()) {
+        fOutput_MC_PV.CreateBranches_FlatCoordinates(fOutputTree.get(), "MC_PV", "v");
+        fOutput_Injected.CreateBranches_VectorInjected(fOutputTree.get(), true);
+    }
 
     switch (GetReactionChannel()) {
         // standard channels //
         case EReactionChannel::A:
-            CreateOutputBranches_V0s(EParticle::AntiLambda, fOutput_AntiLambdas);
-            CreateOutputBranches_V0s(EParticle::Lambda, fOutput_Lambdas);
-            CreateOutputBranches_V0s(EParticle::KaonZeroShort, fOutput_KaonsZeroShort);
+            fOutput_AntiLambdas.CreateBranches_VectorV0s(fOutputTree.get(), Const::Particle_Acronym[EParticle::AntiLambda]);
+            fOutput_Lambdas.CreateBranches_VectorV0s(fOutputTree.get(), Const::Particle_Acronym[EParticle::Lambda]);
+            fOutput_KaonsZeroShort.CreateBranches_VectorV0s(fOutputTree.get(), Const::Particle_Acronym[EParticle::KaonZeroShort]);
             if (IsMC()) {
-                CreateOutputBranches_LinkedV0s(EParticle::AntiLambda, fOutput_Linked_AntiLambdas);
-                CreateOutputBranches_LinkedV0s(EParticle::Lambda, fOutput_Linked_Lambdas);
-                CreateOutputBranches_LinkedV0s(EParticle::KaonZeroShort, fOutput_Linked_KaonsZeroShort);
+                fOutput_MC_AntiLambdas.CreateBranches_VectorMC_V0s(fOutputTree.get(), Const::Particle_Acronym[EParticle::AntiLambda]);
+                fOutput_MC_Lambdas.CreateBranches_VectorMC_V0s(fOutputTree.get(), Const::Particle_Acronym[EParticle::Lambda]);
+                fOutput_MC_KaonsZeroShort.CreateBranches_VectorMC_V0s(fOutputTree.get(), Const::Particle_Acronym[EParticle::KaonZeroShort]);
             }
             break;
         case EReactionChannel::D:
-            CreateOutputBranches_V0s(EParticle::AntiLambda, fOutput_AntiLambdas);
-            CreateOutputBranches_V0s(EParticle::Lambda, fOutput_Lambdas);
-            CreateOutputBranches_Tracks(EParticle::NegKaon, fOutput_NegKaons);
-            CreateOutputBranches_Tracks(EParticle::PosKaon, fOutput_PosKaons);
+            fOutput_AntiLambdas.CreateBranches_VectorV0s(fOutputTree.get(), Const::Particle_Acronym[EParticle::AntiLambda]);
+            fOutput_Lambdas.CreateBranches_VectorV0s(fOutputTree.get(), Const::Particle_Acronym[EParticle::Lambda]);
+            fOutput_NegKaons.CreateBranches_VectorTracks(fOutputTree.get(), false, true, Const::Particle_Acronym[NegKaon]);
+            fOutput_PosKaons.CreateBranches_VectorTracks(fOutputTree.get(), false, true, Const::Particle_Acronym[PosKaon]);
             if (IsMC()) {
-                CreateOutputBranches_LinkedV0s(EParticle::AntiLambda, fOutput_Linked_AntiLambdas);
-                CreateOutputBranches_LinkedV0s(EParticle::Lambda, fOutput_Linked_Lambdas);
-                CreateOutputBranches_LinkedTracks(EParticle::NegKaon, fOutput_Linked_NegKaons);
-                CreateOutputBranches_LinkedTracks(EParticle::PosKaon, fOutput_Linked_PosKaons);
+                fOutput_MC_AntiLambdas.CreateBranches_VectorMC_V0s(fOutputTree.get(), Const::Particle_Acronym[EParticle::AntiLambda]);
+                fOutput_MC_Lambdas.CreateBranches_VectorMC_V0s(fOutputTree.get(), Const::Particle_Acronym[EParticle::Lambda]);
+                fOutput_MC_NegKaons.CreateBranches_VectorMC_Tracks(fOutputTree.get(), Const::Particle_Acronym[EParticle::NegKaon]);
+                fOutput_MC_PosKaons.CreateBranches_VectorMC_Tracks(fOutputTree.get(), Const::Particle_Acronym[EParticle::PosKaon]);
             }
             break;
         case EReactionChannel::E:
-            CreateOutputBranches_V0s(EParticle::AntiLambda, fOutput_AntiLambdas);
-            CreateOutputBranches_V0s(EParticle::Lambda, fOutput_Lambdas);
-            CreateOutputBranches_Tracks(EParticle::NegKaon, fOutput_NegKaons);
-            CreateOutputBranches_Tracks(EParticle::PosKaon, fOutput_PosKaons);
-            CreateOutputBranches_Tracks(EParticle::PiMinus, fOutput_PiMinus);
-            CreateOutputBranches_Tracks(EParticle::PiPlus, fOutput_PiPlus);
+            fOutput_AntiLambdas.CreateBranches_VectorV0s(fOutputTree.get(), Const::Particle_Acronym[EParticle::AntiLambda]);
+            fOutput_Lambdas.CreateBranches_VectorV0s(fOutputTree.get(), Const::Particle_Acronym[EParticle::Lambda]);
+            fOutput_NegKaons.CreateBranches_VectorTracks(fOutputTree.get(), false, true, Const::Particle_Acronym[NegKaon]);
+            fOutput_PosKaons.CreateBranches_VectorTracks(fOutputTree.get(), false, true, Const::Particle_Acronym[PosKaon]);
+            fOutput_PiMinus.CreateBranches_VectorTracks(fOutputTree.get(), false, true, Const::Particle_Acronym[PiMinus]);
+            fOutput_PiPlus.CreateBranches_VectorTracks(fOutputTree.get(), false, true, Const::Particle_Acronym[PiPlus]);
             if (IsMC()) {
-                CreateOutputBranches_LinkedV0s(EParticle::AntiLambda, fOutput_Linked_AntiLambdas);
-                CreateOutputBranches_LinkedV0s(EParticle::Lambda, fOutput_Linked_Lambdas);
-                CreateOutputBranches_LinkedTracks(EParticle::NegKaon, fOutput_Linked_NegKaons);
-                CreateOutputBranches_LinkedTracks(EParticle::PosKaon, fOutput_Linked_PosKaons);
-                CreateOutputBranches_LinkedTracks(EParticle::PiMinus, fOutput_Linked_PiMinus);
-                CreateOutputBranches_LinkedTracks(EParticle::PiPlus, fOutput_Linked_PiPlus);
+                fOutput_MC_AntiLambdas.CreateBranches_VectorMC_V0s(fOutputTree.get(), Const::Particle_Acronym[EParticle::AntiLambda]);
+                fOutput_MC_Lambdas.CreateBranches_VectorMC_V0s(fOutputTree.get(), Const::Particle_Acronym[EParticle::Lambda]);
+                fOutput_MC_NegKaons.CreateBranches_VectorMC_Tracks(fOutputTree.get(), Const::Particle_Acronym[EParticle::NegKaon]);
+                fOutput_MC_PosKaons.CreateBranches_VectorMC_Tracks(fOutputTree.get(), Const::Particle_Acronym[EParticle::PosKaon]);
+                fOutput_MC_PiMinus.CreateBranches_VectorMC_Tracks(fOutputTree.get(), Const::Particle_Acronym[EParticle::PiMinus]);
+                fOutput_MC_PiPlus.CreateBranches_VectorMC_Tracks(fOutputTree.get(), Const::Particle_Acronym[EParticle::PiPlus]);
             }
             break;
         case EReactionChannel::H:
-            CreateOutputBranches_Tracks(EParticle::NegKaon, fOutput_NegKaons);
-            CreateOutputBranches_Tracks(EParticle::PosKaon, fOutput_PosKaons);
+            fOutput_NegKaons.CreateBranches_VectorTracks(fOutputTree.get(), false, true, Const::Particle_Acronym[NegKaon]);
+            fOutput_PosKaons.CreateBranches_VectorTracks(fOutputTree.get(), false, true, Const::Particle_Acronym[PosKaon]);
             if (IsMC()) {
-                CreateOutputBranches_LinkedTracks(EParticle::NegKaon, fOutput_Linked_NegKaons);
-                CreateOutputBranches_LinkedTracks(EParticle::PosKaon, fOutput_Linked_PosKaons);
+                fOutput_MC_NegKaons.CreateBranches_VectorMC_Tracks(fOutputTree.get(), Const::Particle_Acronym[EParticle::NegKaon]);
+                fOutput_MC_PosKaons.CreateBranches_VectorMC_Tracks(fOutputTree.get(), Const::Particle_Acronym[EParticle::PosKaon]);
             }
             break;
     }  // end of switch statement
@@ -180,6 +185,14 @@ void Packager::PrepareOutputHistograms() {
     }
 }
 
+// ## Event ZONE ## //
+
+void Packager::ProcessEvent() {
+    fOutput_Event = fInput_Event;
+    if (IsMC()) fOutput_MC_PV = fInput_MC_PV;
+    fHist_EventCounter->Fill(0.);
+}
+
 // ## MC/Injected ZONE ## //
 
 void Packager::Injected_GetSecondaryVertex() {
@@ -195,18 +208,18 @@ void Packager::Injected_GetSecondaryVertex() {
         int status{fInput_MC.Status->at(idx_mc)};
         if (status < 600 || status > 619) continue;
 
-        if (fVec_SV_X[status - 600] != 0.) continue;
-        fVec_SV_X[status - 600] = fInput_MC.X->at(idx_mc);
-        fVec_SV_Y[status - 600] = fInput_MC.Y->at(idx_mc);
-        fVec_SV_Z[status - 600] = fInput_MC.Z->at(idx_mc);
+        if (fVec_SV_X[status - Const::ReactionID_Offset] != 0.) continue;
+        fVec_SV_X[status - Const::ReactionID_Offset] = fInput_MC.X->at(idx_mc);
+        fVec_SV_Y[status - Const::ReactionID_Offset] = fInput_MC.Y->at(idx_mc);
+        fVec_SV_Z[status - Const::ReactionID_Offset] = fInput_MC.Z->at(idx_mc);
     }
 }
 
 void Packager::Injected_Store() {
     fOutput_Injected.ReactionID = fInput_Injected.ReactionID;
-    fOutput_Injected.X = &fVec_SV_X;
-    fOutput_Injected.Y = &fVec_SV_Y;
-    fOutput_Injected.Z = &fVec_SV_Z;
+    fOutput_Injected.SV.X = &fVec_SV_X;
+    fOutput_Injected.SV.Y = &fVec_SV_Y;
+    fOutput_Injected.SV.Z = &fVec_SV_Z;
     fOutput_Injected.Px = fInput_Injected.Px;
     fOutput_Injected.Py = fInput_Injected.Py;
     fOutput_Injected.Pz = fInput_Injected.Pz;
@@ -220,19 +233,38 @@ void Packager::Injected_Store() {
 // Filter and group tracks into indices vectors, according to their respective species.
 void Packager::ProcessTracks() {
 
+    fVec_AntiProtons.reserve(NumberTracks());
+    fVec_NegKaons.reserve(NumberTracks());
+    fVec_PiMinus.reserve(NumberTracks());
+    fVec_Protons.reserve(NumberTracks());
+    fVec_PosKaons.reserve(NumberTracks());
+    fVec_PiPlus.reserve(NumberTracks());
+
     for (int esd_idx{0}; esd_idx < NumberTracks(); ++esd_idx) {
-        // create view //
-        Ref::Track track{.source = &fInput_Tracks, .index = esd_idx};
+        // create track reference //
+        View::Rec::Track track{&fInput_Tracks, esd_idx};
         // PID and pre-selection //
         if (track.Charge() < 0) {
-            if (PassesCuts_Proton(track, fHist_CutFlow_AntiProton.get())) fVec_AntiProtons.push_back(esd_idx);
-            if (PassesCuts_Kaon(track, fHist_CutFlow_NegKaon.get())) fVec_NegKaons.push_back(esd_idx);
-            if (PassesCuts_Pion(track, fHist_CutFlow_PiMinus.get())) fVec_PiMinus.push_back(esd_idx);
+            if (PassesCuts_Proton(track, fHist_CutFlow_AntiProton.get())) {
+                fVec_AntiProtons.emplace_back(track, Const::Particle_Mass[EParticle::AntiProton]);
+            }
+            if (PassesCuts_Kaon(track, fHist_CutFlow_NegKaon.get())) {
+                fVec_NegKaons.emplace_back(track, Const::Particle_Mass[EParticle::NegKaon]);
+            }
+            if (PassesCuts_Pion(track, fHist_CutFlow_PiMinus.get())) {
+                fVec_PiMinus.emplace_back(track, Const::Particle_Mass[EParticle::PiMinus]);
+            }
         }
         if (track.Charge() > 0) {
-            if (PassesCuts_Proton(track, fHist_CutFlow_Proton.get())) fVec_Protons.push_back(esd_idx);
-            if (PassesCuts_Kaon(track, fHist_CutFlow_PosKaon.get())) fVec_PosKaons.push_back(esd_idx);
-            if (PassesCuts_Pion(track, fHist_CutFlow_PiPlus.get())) fVec_PiPlus.push_back(esd_idx);
+            if (PassesCuts_Proton(track, fHist_CutFlow_Proton.get())) {
+                fVec_Protons.emplace_back(track, Const::Particle_Mass[EParticle::Proton]);
+            }
+            if (PassesCuts_Kaon(track, fHist_CutFlow_PosKaon.get())) {
+                fVec_PosKaons.emplace_back(track, Const::Particle_Mass[EParticle::PosKaon]);
+            }
+            if (PassesCuts_Pion(track, fHist_CutFlow_PiPlus.get())) {
+                fVec_PiPlus.emplace_back(track, Const::Particle_Mass[EParticle::PiPlus]);
+            }
         }
     }  // end of loop over tracks
 
@@ -251,143 +283,145 @@ void Packager::ProcessTracks() {
 void Packager::PackTracks(EParticle pid) {
 
     // determine rules based on particle species
-    std::vector<int>* vec{nullptr};
-    DF::Packed::Tracks* out{nullptr};
-    DF::Packed::LinkedTracks* mc_out{nullptr};
-    int charge{Const::Particle_Charge[pid]};
-    double mass{Const::Particle_Mass[pid]};
+    std::vector<Fit::Track>* vec{nullptr};
+    Storage::Vector::Tracks* out{nullptr};  // PENDING
+    Storage::Vector::MC_Tracks* mc_out{nullptr};
     switch (pid) {
         case EParticle::NegKaon:
             vec = &fVec_NegKaons;
             out = &fOutput_NegKaons;
-            if (IsMC()) mc_out = &fOutput_Linked_NegKaons;
+            if (IsMC()) mc_out = &fOutput_MC_NegKaons;
             break;
         case EParticle::PosKaon:
             vec = &fVec_PosKaons;
             out = &fOutput_PosKaons;
-            if (IsMC()) mc_out = &fOutput_Linked_PosKaons;
+            if (IsMC()) mc_out = &fOutput_MC_PosKaons;
             break;
         case EParticle::PiMinus:
             vec = &fVec_PiMinus;
             out = &fOutput_PiMinus;
-            if (IsMC()) mc_out = &fOutput_Linked_PiMinus;
+            if (IsMC()) mc_out = &fOutput_MC_PiMinus;
             break;
         case EParticle::PiPlus:
             vec = &fVec_PiPlus;
             out = &fOutput_PiPlus;
-            if (IsMC()) mc_out = &fOutput_Linked_PiPlus;
+            if (IsMC()) mc_out = &fOutput_MC_PiPlus;
             break;
         default:
             return;
     }
 
     // loop over selected tracks
-    for (auto esd_idx : *vec) {
-
-        // prepare fit object
-        Fit::Track track{Fit::CreateTrack(fInput_Tracks, esd_idx, charge, mass)};
+    for (const auto& kf_track : *vec) {
 
         // store
-        Store(track, *out);
+        Store(kf_track.View, *out);
+
         if (IsMC()) {
-            Ref::MC_Track mc{&fInput_MC, fInput_Tracks.McEntry->at(esd_idx), pid};
-            StoreMC(mc, *mc_out);
+            View::MC::Particle mc{&fInput_MC, fInput_Tracks.McEntry->at(kf_track.View.Entry)};
+            StoreMC(mc, *mc_out, pid);
         }
     }  // end of loop over selected tracks
 }
 
-void Packager::Store(const Fit::Track& track, DF::Packed::Tracks& df) {
-    // `DF::SOV::States_NoE`
-    df.X->push_back(static_cast<float>(track.GetParameter(0)));
-    df.Y->push_back(static_cast<float>(track.GetParameter(1)));
-    df.Z->push_back(static_cast<float>(track.GetParameter(2)));
-    df.Px->push_back(static_cast<float>(track.GetParameter(3)));
-    df.Py->push_back(static_cast<float>(track.GetParameter(4)));
-    df.Pz->push_back(static_cast<float>(track.GetParameter(5)));
-    // `DF::SOV::CovMatrices_NoE`
-    df.SigmaX2->push_back(static_cast<float>(track.GetCovariance(0)));
-    df.SigmaXY->push_back(static_cast<float>(track.GetCovariance(1)));
-    df.SigmaY2->push_back(static_cast<float>(track.GetCovariance(2)));
-    df.SigmaXZ->push_back(static_cast<float>(track.GetCovariance(3)));
-    df.SigmaYZ->push_back(static_cast<float>(track.GetCovariance(4)));
-    df.SigmaZ2->push_back(static_cast<float>(track.GetCovariance(5)));
-    df.SigmaXPx->push_back(static_cast<float>(track.GetCovariance(6)));
-    df.SigmaYPx->push_back(static_cast<float>(track.GetCovariance(7)));
-    df.SigmaZPx->push_back(static_cast<float>(track.GetCovariance(8)));
-    df.SigmaPx2->push_back(static_cast<float>(track.GetCovariance(9)));
-    df.SigmaXPy->push_back(static_cast<float>(track.GetCovariance(10)));
-    df.SigmaYPy->push_back(static_cast<float>(track.GetCovariance(11)));
-    df.SigmaZPy->push_back(static_cast<float>(track.GetCovariance(12)));
-    df.SigmaPxPy->push_back(static_cast<float>(track.GetCovariance(13)));
-    df.SigmaPy2->push_back(static_cast<float>(track.GetCovariance(14)));
-    df.SigmaXPz->push_back(static_cast<float>(track.GetCovariance(15)));
-    df.SigmaYPz->push_back(static_cast<float>(track.GetCovariance(16)));
-    df.SigmaZPz->push_back(static_cast<float>(track.GetCovariance(17)));
-    df.SigmaPxPz->push_back(static_cast<float>(track.GetCovariance(18)));
-    df.SigmaPyPz->push_back(static_cast<float>(track.GetCovariance(19)));
-    df.SigmaPz2->push_back(static_cast<float>(track.GetCovariance(20)));
-    // `DF::Packed::Tracks`
-    df.Index->push_back(track.Index);
+void Packager::Store(const View::Rec::Track& view, Storage::Vector::Tracks& df) {
+    // `Vector::Tracks`
+    // -- `Vector::States_NoE`
+    df.X->push_back(view.X());
+    df.Y->push_back(view.Y());
+    df.Z->push_back(view.Z());
+    df.Px->push_back(view.Px());
+    df.Py->push_back(view.Py());
+    df.Pz->push_back(view.Pz());
+    // -- `Vector::CovMatrices_NoE`
+    df.SigmaX2->push_back(view.SigmaX2());
+    df.SigmaXY->push_back(view.SigmaXY());
+    df.SigmaY2->push_back(view.SigmaY2());
+    df.SigmaXZ->push_back(view.SigmaXZ());
+    df.SigmaYZ->push_back(view.SigmaYZ());
+    df.SigmaZ2->push_back(view.SigmaZ2());
+    df.SigmaXPx->push_back(view.SigmaXPx());
+    df.SigmaYPx->push_back(view.SigmaYPx());
+    df.SigmaZPx->push_back(view.SigmaZPx());
+    df.SigmaPx2->push_back(view.SigmaPx2());
+    df.SigmaXPy->push_back(view.SigmaXPy());
+    df.SigmaYPy->push_back(view.SigmaYPy());
+    df.SigmaZPy->push_back(view.SigmaZPy());
+    df.SigmaPxPy->push_back(view.SigmaPxPy());
+    df.SigmaPy2->push_back(view.SigmaPy2());
+    df.SigmaXPz->push_back(view.SigmaXPz());
+    df.SigmaYPz->push_back(view.SigmaYPz());
+    df.SigmaZPz->push_back(view.SigmaZPz());
+    df.SigmaPxPz->push_back(view.SigmaPxPz());
+    df.SigmaPyPz->push_back(view.SigmaPyPz());
+    df.SigmaPz2->push_back(view.SigmaPz2());
+    // -- rest of variables
+    df.Charge->push_back(view.Charge());
+    df.DCAxy->push_back(view.DCAxy());
+    df.DCAz->push_back(view.DCAz());
+    df.TPCSignal->push_back(view.TPCSignal());
+    df.NSigmaPion->push_back(view.NSigmaPion());
+    df.NSigmaKaon->push_back(view.NSigmaKaon());
+    df.NSigmaProton->push_back(view.NSigmaProton());
+    // -- ESD index
+    df.Index->push_back(view.Entry);  // NOTE: store current track entry as ESD index
 }
 
-void Packager::StoreMC(const Ref::MC_Track& mc, DF::Packed::LinkedTracks& df) {
-    // `DF::SOV::MCInfo_Composite`
-    // -- `DF::SOV::States`
-    df.X->push_back(mc.X());
-    df.Y->push_back(mc.Y());
-    df.Z->push_back(mc.Z());
-    df.Px->push_back(mc.Px());
-    df.Py->push_back(mc.Py());
-    df.Pz->push_back(mc.Pz());
-    df.Energy->push_back(mc.Energy());
-    // -- mother info
-    Ref::MC_Particle mother{.source = mc.source, .entry = mc.MotherEntry()};
-    df.Mother_Entry->push_back(mother.Entry());
-    df.Mother_PdgCode->push_back(mother.PdgCode());
-    // -- `DF::SOV::MCInfo`
-    df.Entry->push_back(mc.Entry());
-    df.PdgCode->push_back(mc.PdgCode());
-    df.ReactionID->push_back(mc.AsTrack_ReactionID(mother));
-    df.IsTrue->push_back(static_cast<char>(mc.AsTrack_IsTrue()));
-    df.IsSignal->push_back(static_cast<char>(mc.AsTrack_IsSignal()));
-    df.IsSecondary->push_back(static_cast<char>(mc.AsTrack_IsSecondary()));
-    // grandmother info (`DF::Packed::LinkedTracks`)
-    Ref::MC_Particle grandmother{.source = mother.source, .entry = mother.MotherEntry()};
-    df.GrandMother_Entry->push_back(grandmother.Entry());
-    df.GrandMother_PdgCode->push_back(grandmother.PdgCode());
+void Packager::StoreMC(const View::MC::Particle& view, Storage::Vector::MC_Tracks& df, EParticle pid) {
+    // -- `Vector::States`
+    df.X->push_back(view.X());
+    df.Y->push_back(view.Y());
+    df.Z->push_back(view.Z());
+    df.Px->push_back(view.Px());
+    df.Py->push_back(view.Py());
+    df.Pz->push_back(view.Pz());
+    df.Energy->push_back(view.Energy());
+    // -- Mother (`Vector::MC_Id`)
+    View::MC::Particle mother{view.Source, view.MotherEntry()};
+    df.Mother.McEntry->push_back(mother.Entry);
+    df.Mother.PdgCode->push_back(mother.PdgCode());
+    // -- `Vector::MC`
+    df.McEntry->push_back(view.Entry);
+    df.PdgCode->push_back(view.PdgCode());
+    df.ReactionID->push_back(Truth::Particle::AsTrack_ReactionID(view, mother, pid));
+    df.IsTrue->push_back(static_cast<char>(Truth::Particle::AsTrack_IsTrue(view, pid)));
+    df.IsSignal->push_back(static_cast<char>(Truth::Particle::AsTrack_IsSignal(view, pid)));
+    df.IsSecondary->push_back(static_cast<char>(Truth::Particle::AsTrack_IsSecondary(view, pid)));
+    // -- Grandmother (`Vector::MC_Id`)
+    View::MC::Particle grandmother{mother.Source, mother.MotherEntry()};
+    df.GrandMother.McEntry->push_back(grandmother.Entry);
+    df.GrandMother.PdgCode->push_back(grandmother.PdgCode());
 }
 
-bool Packager::PassesCuts_Proton(const Ref::Track& track, TH1D* cut_flow_hist) const {
+bool Packager::PassesCuts_Proton(const View::Rec::Track& track, TH1D* cut_flow_hist) const {
 
     cut_flow_hist->Fill(0.);
     if (std::abs(track.NSigmaProton()) > Cuts::Proton::AbsMax_NSigmaProton) return false;
     cut_flow_hist->Fill(1.);
-    if (track.TPCSignal() < Cuts::Proton::Min_TPCSignal) return false;
-    cut_flow_hist->Fill(2.);
-    if (track.P() > Cuts::Proton::Max_P) return false;
-    cut_flow_hist->Fill(3.);
+    // if (std::abs(track.DCAxy()) < Cuts::Proton::AbsMin_DCAxy) return false;  // TEMPORARY
+    // cut_flow_hist->Fill(2.);                                                 // TEMPORARY
 
     return true;
 }
 
-bool Packager::PassesCuts_Kaon(const Ref::Track& track, TH1D* cut_flow_hist) const {
+bool Packager::PassesCuts_Kaon(const View::Rec::Track& track, TH1D* cut_flow_hist) const {
 
     cut_flow_hist->Fill(0.);
     if (std::abs(track.NSigmaKaon()) > Cuts::Kaon::AbsMax_NSigmaKaon) return false;
     cut_flow_hist->Fill(1.);
-    if (track.TPCSignal() < Cuts::Kaon::Min_TPCSignal) return false;
+    // if (track.TPCSignal() < Cuts::Kaon::Min_TPCSignal) return false; // PENDING
     cut_flow_hist->Fill(2.);
 
     return true;
 }
 
-bool Packager::PassesCuts_Pion(const Ref::Track& track, TH1D* cut_flow_hist) const {
+bool Packager::PassesCuts_Pion(const View::Rec::Track& track, TH1D* cut_flow_hist) const {
 
     cut_flow_hist->Fill(0.);
     if (std::abs(track.NSigmaPion()) > Cuts::Pion::AbsMax_NSigmaPion) return false;
     cut_flow_hist->Fill(1.);
-    if (track.P() > Cuts::Pion::Max_P) return false;
-    cut_flow_hist->Fill(2.);
+    // if (std::abs(track.DCAxy()) < Cuts::Pion::AbsMin_DCAxy) return false;  // TEMPORARY
+    // cut_flow_hist->Fill(2.);                                               // TEMPORARY
 
     return true;
 }
@@ -397,68 +431,49 @@ bool Packager::PassesCuts_Pion(const Ref::Track& track, TH1D* cut_flow_hist) con
 void Packager::FindV0s(EParticle pid) {
 
     // determine rules based on V0 species
-    DF::Packed::V0s* out{nullptr};
-    DF::Packed::LinkedV0s* mc_out{nullptr};
-    EParticle pid_neg{EParticle::PiMinus};
-    EParticle pid_pos{EParticle::PiPlus};
-    const std::vector<int>* vec_neg{&fVec_PiMinus};
-    const std::vector<int>* vec_pos{&fVec_PiPlus};
+    Storage::Vector::V0s* out{nullptr};
+    Storage::Vector::MC_V0s* mc_out{nullptr};
+    const std::vector<Fit::Track>* vec_neg{&fVec_PiMinus};
+    const std::vector<Fit::Track>* vec_pos{&fVec_PiPlus};
     switch (pid) {
         case EParticle::AntiLambda:
             out = &fOutput_AntiLambdas;
-            if (IsMC()) mc_out = &fOutput_Linked_AntiLambdas;
-            pid_neg = EParticle::AntiProton;
+            if (IsMC()) mc_out = &fOutput_MC_AntiLambdas;
             vec_neg = &fVec_AntiProtons;
             break;
         case EParticle::Lambda:
             out = &fOutput_Lambdas;
-            if (IsMC()) mc_out = &fOutput_Linked_Lambdas;
-            pid_pos = EParticle::Proton;
+            if (IsMC()) mc_out = &fOutput_MC_Lambdas;
             vec_pos = &fVec_Protons;
             break;
         case EParticle::KaonZeroShort:
             out = &fOutput_KaonsZeroShort;
-            if (IsMC()) mc_out = &fOutput_Linked_KaonsZeroShort;
+            if (IsMC()) mc_out = &fOutput_MC_KaonsZeroShort;
             break;
         default:
             Logger::Error(__FUNCTION__, "Invalid PID {} for a V0.", Const::Particle_Acronym[pid]);
             return;
     }
-    int charge_neg{Const::Particle_Charge[pid_neg]};
-    int charge_pos{Const::Particle_Charge[pid_pos]};
-    double mass_neg{Const::Particle_Mass[pid_neg]};
-    double mass_pos{Const::Particle_Mass[pid_pos]};
 
     // loop over all possible pairs of tracks //
     int v0_entry{0};
-    for (auto esd_neg : *vec_neg) {
-
-        // prepare neg //
-        Fit::Track neg{Fit::CreateTrack(fInput_Tracks, esd_neg, charge_neg, mass_neg)};
-
-        // cut neg //
-        // PENDING
-
-        for (auto esd_pos : *vec_pos) {
+    for (const auto& kf_neg : *vec_neg) {
+        for (const auto& kf_pos : *vec_pos) {
 
             // sanity check //
+            int esd_neg{kf_neg.View.Entry};
+            int esd_pos{kf_pos.View.Entry};
             if (esd_neg == esd_pos) continue;
 
-            // prepare pos //
-            Fit::Track pos{Fit::CreateTrack(fInput_Tracks, esd_pos, charge_pos, mass_pos)};
-
-            // cut pos //
-            // PENDING
-
             // fit v0 //
-            Fit::V0 v0{v0_entry, neg, pos};
+            Fit::V0 v0{v0_entry, kf_neg, kf_pos};
             v0.DoFit(fInput_Event.MagneticField);
 
             // apply cuts //
             if (!PassesCuts(v0, pid)) continue;
 
 #ifdef T2S_DEBUG
-            Logger::Debug(__FUNCTION__, "idx,neg,pos={},{},{}", v0.Entry, neg.Index, pos.Index);
+            Logger::Debug(__FUNCTION__, "idx,neg,pos={},{},{}", v0.View.Entry, esd_neg, esd_pos);
             Logger::Debug(__FUNCTION__, ";x,y,z={},{},{}", v0.X(), v0.Y(), v0.Z());
             Logger::Debug(__FUNCTION__, ";x,y,z(neg)={},{},{}", v0.Neg_PCA_XYZ()[0], v0.Neg_PCA_XYZ()[1], v0.Neg_PCA_XYZ()[2]);
             Logger::Debug(__FUNCTION__, ";x,y,z(pos)={},{},{}", v0.Pos_PCA_XYZ()[0], v0.Pos_PCA_XYZ()[1], v0.Pos_PCA_XYZ()[2]);
@@ -479,10 +494,8 @@ void Packager::FindV0s(EParticle pid) {
             Store(v0, *out);
 
             if (IsMC()) {
-                Ref::MC_Track mc_neg{&fInput_MC, fInput_Tracks.McEntry->at(esd_neg), pid_neg};
-                Ref::MC_Track mc_pos{&fInput_MC, fInput_Tracks.McEntry->at(esd_pos), pid_pos};
-                Ref::MC_V0 mc_v0{mc_neg, mc_pos, pid};
-                StoreMC(mc_v0, *mc_out);
+                View::MC::V0 mc_v0{&fInput_MC, fInput_Tracks.McEntry->at(esd_neg), fInput_Tracks.McEntry->at(esd_pos)};
+                StoreMC(mc_v0, *mc_out, pid);
             }
             ++v0_entry;
         }  // end of loop over pos
@@ -492,31 +505,38 @@ void Packager::FindV0s(EParticle pid) {
 bool Packager::PassesCuts_Lambda(const Fit::V0& v0, TH1D* cut_flow_hist) const {
 
     cut_flow_hist->Fill(0.);
-    if (v0.Mass() < Cuts::Lambda::Min_Mass || v0.Mass() > Cuts::Lambda::Max_Mass) return false;
+
+    double mass{v0.Mass()};  // cache
+    if (mass < Cuts::Lambda::Min_Mass || mass > Cuts::Lambda::Max_Mass) return false;
     cut_flow_hist->Fill(1.);
+
     if (v0.DCA_Daughters() > Cuts::Lambda::Max_DCAbtwDau) return false;
     cut_flow_hist->Fill(2.);
-    if (v0.AbsZ() > Cuts::Lambda::AbsMax_Zv) return false;
+
+    if (v0.Radius2D() < Cuts::Lambda::Min_Radius2D) return false;
     cut_flow_hist->Fill(3.);
-    if (v0.Radius2D() < Cuts::Lambda::Min_Radius2D || v0.Radius2D() > Cuts::Lambda::Max_Radius2D) return false;
-    cut_flow_hist->Fill(4.);
+
     if (v0.DCA_Neg_V0() > Cuts::Lambda::Max_DCAnegV0) return false;
-    cut_flow_hist->Fill(5.);
+    cut_flow_hist->Fill(4.);
+
     if (v0.DCA_Pos_V0() > Cuts::Lambda::Max_DCAposV0) return false;
-    cut_flow_hist->Fill(6.);
-    if (v0.Pt() < Cuts::Lambda::Min_Pt) return false;
+    cut_flow_hist->Fill(5.);
+
+    // if (v0.Pt() < Cuts::Lambda::Min_Pt) return false; // TEMP
+    // cut_flow_hist->Fill(6.); // TEMP
+
+    if (std::abs(v0.Rapidity()) > Cuts::Lambda::AbsMax_Rapidity) return false;
     cut_flow_hist->Fill(7.);
-    if (v0.AbsEta() > Cuts::Lambda::AbsMax_Eta) return false;
-    cut_flow_hist->Fill(8.);
+
     if (v0.AbsArmQtOverAlpha() > Cuts::Lambda::AbsMax_ArmQtOverAlpha) return false;
+    cut_flow_hist->Fill(8.);
+
+    double cpa_wrt_pv{v0.CPA_Point(fInput_Event.PV.X, fInput_Event.PV.Y, fInput_Event.PV.Z)};  // cache
+    if (cpa_wrt_pv < Cuts::Lambda::Min_CPAwrtPV || cpa_wrt_pv > Cuts::Lambda::Max_CPAwrtPV) return false;
     cut_flow_hist->Fill(9.);
-    if (v0.CPA_Point(fInput_Event.PV.X, fInput_Event.PV.Y, fInput_Event.PV.Z) < Cuts::Lambda::Min_CPAwrtPV ||
-        v0.CPA_Point(fInput_Event.PV.X, fInput_Event.PV.Y, fInput_Event.PV.Z) > Cuts::Lambda::Max_CPAwrtPV) {
-        return false;
-    }
-    cut_flow_hist->Fill(10.);
+
     if (v0.DCA_Point(fInput_Event.PV.X, fInput_Event.PV.Y, fInput_Event.PV.Z) < Cuts::Lambda::Min_DCAwrtPV) return false;
-    cut_flow_hist->Fill(11.);
+    cut_flow_hist->Fill(10.);
 
     return true;
 }
@@ -524,35 +544,43 @@ bool Packager::PassesCuts_Lambda(const Fit::V0& v0, TH1D* cut_flow_hist) const {
 bool Packager::PassesCuts_KaonZeroShort(const Fit::V0& v0, TH1D* cut_flow_hist) const {
 
     cut_flow_hist->Fill(0.);
+
     if (v0.DCA_Daughters() > Cuts::KaonZeroShort::Max_DCAbtwDau) return false;
     cut_flow_hist->Fill(1.);
-    if (v0.Pt() < Cuts::KaonZeroShort::Min_Pt) return false;
-    cut_flow_hist->Fill(2.);
-    if (v0.Mass() < Cuts::KaonZeroShort::Min_Mass || v0.Mass() > Cuts::KaonZeroShort::Max_Mass) return false;
+
+    // if (v0.Pt() < Cuts::KaonZeroShort::Min_Pt) return false; // TEMP
+    // cut_flow_hist->Fill(2.); // TEMP
+
+    double mass{v0.Mass()};  // cache
+    if (mass < Cuts::KaonZeroShort::Min_Mass || mass > Cuts::KaonZeroShort::Max_Mass) return false;
     cut_flow_hist->Fill(3.);
-    if (v0.AbsEta() > Cuts::KaonZeroShort::AbsMax_Eta) return false;
+
+    if (std::abs(v0.Rapidity()) > Cuts::KaonZeroShort::AbsMax_Rapidity) return false;
     cut_flow_hist->Fill(4.);
-    if (v0.AbsZ() > Cuts::KaonZeroShort::AbsMax_Zv) return false;
+
+    if (v0.Radius2D() < Cuts::KaonZeroShort::Min_Radius2D) return false;
     cut_flow_hist->Fill(5.);
-    if (v0.Radius2D() < Cuts::KaonZeroShort::Min_Radius2D || v0.Radius2D() > Cuts::KaonZeroShort::Max_Radius2D) return false;
-    cut_flow_hist->Fill(6.);
+
     if (v0.DCA_Neg_V0() > Cuts::KaonZeroShort::Max_DCAnegV0) return false;
-    cut_flow_hist->Fill(7.);
+    cut_flow_hist->Fill(6.);
+
     if (v0.DCA_Pos_V0() > Cuts::KaonZeroShort::Max_DCAposV0) return false;
+    cut_flow_hist->Fill(7.);
+
+    double cpa_wrt_pv{v0.CPA_Point(fInput_Event.PV.X, fInput_Event.PV.Y, fInput_Event.PV.Z)};  // cache
+    if (cpa_wrt_pv < Cuts::KaonZeroShort::Min_CPAwrtPV || cpa_wrt_pv > Cuts::KaonZeroShort::Max_CPAwrtPV) return false;
     cut_flow_hist->Fill(8.);
-    if (v0.CPA_Point(fInput_Event.PV.X, fInput_Event.PV.Y, fInput_Event.PV.Z) < Cuts::KaonZeroShort::Min_CPAwrtPV ||
-        v0.CPA_Point(fInput_Event.PV.X, fInput_Event.PV.Y, fInput_Event.PV.Z) > Cuts::KaonZeroShort::Max_CPAwrtPV) {
-        return false;
-    }
-    cut_flow_hist->Fill(9.);
+
     if (v0.DCA_Point(fInput_Event.PV.X, fInput_Event.PV.Y, fInput_Event.PV.Z) < Cuts::KaonZeroShort::Min_DCAwrtPV) return false;
-    cut_flow_hist->Fill(10.);
+    cut_flow_hist->Fill(9.);
 
     return true;
 }
 
-void Packager::Store(const Fit::V0& v0, DF::Packed::V0s& df) {
-    // `DF::SOV::States`
+void Packager::Store(const Fit::V0& v0, Storage::Vector::V0s& df) {
+
+    // V0
+    // -- `Vector::States`
     df.X->push_back(static_cast<float>(v0.X()));
     df.Y->push_back(static_cast<float>(v0.Y()));
     df.Z->push_back(static_cast<float>(v0.Z()));
@@ -560,7 +588,7 @@ void Packager::Store(const Fit::V0& v0, DF::Packed::V0s& df) {
     df.Py->push_back(static_cast<float>(v0.Py()));
     df.Pz->push_back(static_cast<float>(v0.Pz()));
     df.Energy->push_back(static_cast<float>(v0.E()));
-    // `DF::SOV::CovMatrices`
+    // -- `Vector::CovMatrices`
     df.SigmaX2->push_back(static_cast<float>(v0.GetCovariance(0)));
     df.SigmaXY->push_back(static_cast<float>(v0.GetCovariance(1)));
     df.SigmaY2->push_back(static_cast<float>(v0.GetCovariance(2)));
@@ -589,41 +617,49 @@ void Packager::Store(const Fit::V0& v0, DF::Packed::V0s& df) {
     df.SigmaPyE->push_back(static_cast<float>(v0.GetCovariance(25)));
     df.SigmaPzE->push_back(static_cast<float>(v0.GetCovariance(26)));
     df.SigmaE2->push_back(static_cast<float>(v0.GetCovariance(27)));
+    // -- fit info
+    df.Chi2NDF->push_back(static_cast<float>(v0.Chi2NDF()));
 
-    // Neg Daughter (`DF::SOV::Tracks`)
-    // -- `DF::SOV::States_NoE`
-    df.Neg.X->push_back(static_cast<float>(v0.Neg.X()));
-    df.Neg.Y->push_back(static_cast<float>(v0.Neg.Y()));
-    df.Neg.Z->push_back(static_cast<float>(v0.Neg.Z()));
-    df.Neg.Px->push_back(static_cast<float>(v0.Neg.Px()));
-    df.Neg.Py->push_back(static_cast<float>(v0.Neg.Py()));
-    df.Neg.Pz->push_back(static_cast<float>(v0.Neg.Pz()));
-    // -- `DF::SOV::CovMatrices_NoE`
-    df.Neg.SigmaX2->push_back(static_cast<float>(v0.Neg.GetCovariance(0)));
-    df.Neg.SigmaXY->push_back(static_cast<float>(v0.Neg.GetCovariance(1)));
-    df.Neg.SigmaY2->push_back(static_cast<float>(v0.Neg.GetCovariance(2)));
-    df.Neg.SigmaXZ->push_back(static_cast<float>(v0.Neg.GetCovariance(3)));
-    df.Neg.SigmaYZ->push_back(static_cast<float>(v0.Neg.GetCovariance(4)));
-    df.Neg.SigmaZ2->push_back(static_cast<float>(v0.Neg.GetCovariance(5)));
-    df.Neg.SigmaXPx->push_back(static_cast<float>(v0.Neg.GetCovariance(6)));
-    df.Neg.SigmaYPx->push_back(static_cast<float>(v0.Neg.GetCovariance(7)));
-    df.Neg.SigmaZPx->push_back(static_cast<float>(v0.Neg.GetCovariance(8)));
-    df.Neg.SigmaPx2->push_back(static_cast<float>(v0.Neg.GetCovariance(9)));
-    df.Neg.SigmaXPy->push_back(static_cast<float>(v0.Neg.GetCovariance(10)));
-    df.Neg.SigmaYPy->push_back(static_cast<float>(v0.Neg.GetCovariance(11)));
-    df.Neg.SigmaZPy->push_back(static_cast<float>(v0.Neg.GetCovariance(12)));
-    df.Neg.SigmaPxPy->push_back(static_cast<float>(v0.Neg.GetCovariance(13)));
-    df.Neg.SigmaPy2->push_back(static_cast<float>(v0.Neg.GetCovariance(14)));
-    df.Neg.SigmaXPz->push_back(static_cast<float>(v0.Neg.GetCovariance(15)));
-    df.Neg.SigmaYPz->push_back(static_cast<float>(v0.Neg.GetCovariance(16)));
-    df.Neg.SigmaZPz->push_back(static_cast<float>(v0.Neg.GetCovariance(17)));
-    df.Neg.SigmaPxPz->push_back(static_cast<float>(v0.Neg.GetCovariance(18)));
-    df.Neg.SigmaPyPz->push_back(static_cast<float>(v0.Neg.GetCovariance(19)));
-    df.Neg.SigmaPz2->push_back(static_cast<float>(v0.Neg.GetCovariance(20)));
-    // -- `DF::Packed::Tracks`
-    df.Neg.Index->push_back(v0.Neg.Index);
-
-    // Neg Daughter @ PCA w.r.t. V0 (`DF::SOV::States_NoE`)
+    // Neg Daughter (`Vector::Tracks`)
+    // -- `States_NoE`
+    df.Neg.X->push_back(v0.Neg.View.X());
+    df.Neg.Y->push_back(v0.Neg.View.Y());
+    df.Neg.Z->push_back(v0.Neg.View.Z());
+    df.Neg.Px->push_back(v0.Neg.View.Px());
+    df.Neg.Py->push_back(v0.Neg.View.Py());
+    df.Neg.Pz->push_back(v0.Neg.View.Pz());
+    // -- `CovMatrices_NoE`
+    df.Neg.SigmaX2->push_back(v0.Neg.View.SigmaX2());
+    df.Neg.SigmaXY->push_back(v0.Neg.View.SigmaXY());
+    df.Neg.SigmaY2->push_back(v0.Neg.View.SigmaY2());
+    df.Neg.SigmaXZ->push_back(v0.Neg.View.SigmaXZ());
+    df.Neg.SigmaYZ->push_back(v0.Neg.View.SigmaYZ());
+    df.Neg.SigmaZ2->push_back(v0.Neg.View.SigmaZ2());
+    df.Neg.SigmaXPx->push_back(v0.Neg.View.SigmaXPx());
+    df.Neg.SigmaYPx->push_back(v0.Neg.View.SigmaYPx());
+    df.Neg.SigmaZPx->push_back(v0.Neg.View.SigmaZPx());
+    df.Neg.SigmaPx2->push_back(v0.Neg.View.SigmaPx2());
+    df.Neg.SigmaXPy->push_back(v0.Neg.View.SigmaXPy());
+    df.Neg.SigmaYPy->push_back(v0.Neg.View.SigmaYPy());
+    df.Neg.SigmaZPy->push_back(v0.Neg.View.SigmaZPy());
+    df.Neg.SigmaPxPy->push_back(v0.Neg.View.SigmaPxPy());
+    df.Neg.SigmaPy2->push_back(v0.Neg.View.SigmaPy2());
+    df.Neg.SigmaXPz->push_back(v0.Neg.View.SigmaXPz());
+    df.Neg.SigmaYPz->push_back(v0.Neg.View.SigmaYPz());
+    df.Neg.SigmaZPz->push_back(v0.Neg.View.SigmaZPz());
+    df.Neg.SigmaPxPz->push_back(v0.Neg.View.SigmaPxPz());
+    df.Neg.SigmaPyPz->push_back(v0.Neg.View.SigmaPyPz());
+    df.Neg.SigmaPz2->push_back(v0.Neg.View.SigmaPz2());
+    // -- the rest
+    df.Neg.Charge->push_back(v0.Neg.View.Charge());
+    df.Neg.DCAxy->push_back(v0.Neg.View.DCAxy());
+    df.Neg.DCAz->push_back(v0.Neg.View.DCAz());
+    df.Neg.TPCSignal->push_back(v0.Neg.View.TPCSignal());
+    df.Neg.NSigmaPion->push_back(v0.Neg.View.NSigmaPion());
+    df.Neg.NSigmaKaon->push_back(v0.Neg.View.NSigmaKaon());
+    df.Neg.NSigmaProton->push_back(v0.Neg.View.NSigmaProton());
+    df.Neg.Index->push_back(v0.Neg.View.Entry);  // NOTE: store current track entry as ESD index
+    // -- @ PCA w.r.t. V0 (`Storage::Vector::States_NoE`)
     df.Neg_atPCA.X->push_back(static_cast<float>(v0.Neg_PCA_XYZ()[0]));
     df.Neg_atPCA.Y->push_back(static_cast<float>(v0.Neg_PCA_XYZ()[1]));
     df.Neg_atPCA.Z->push_back(static_cast<float>(v0.Neg_PCA_XYZ()[2]));
@@ -631,104 +667,107 @@ void Packager::Store(const Fit::V0& v0, DF::Packed::V0s& df) {
     df.Neg_atPCA.Py->push_back(static_cast<float>(v0.Neg_PCA_PxPyPz()[1]));
     df.Neg_atPCA.Pz->push_back(static_cast<float>(v0.Neg_PCA_PxPyPz()[2]));
 
-    // Pos Daughter
-    // -- `DF::SOV::States_NoE`
-    df.Pos.X->push_back(static_cast<float>(v0.Pos.X()));
-    df.Pos.Y->push_back(static_cast<float>(v0.Pos.Y()));
-    df.Pos.Z->push_back(static_cast<float>(v0.Pos.Z()));
-    df.Pos.Px->push_back(static_cast<float>(v0.Pos.Px()));
-    df.Pos.Py->push_back(static_cast<float>(v0.Pos.Py()));
-    df.Pos.Pz->push_back(static_cast<float>(v0.Pos.Pz()));
-    // -- `DF::SOV::CovMatrices_NoE`
-    df.Pos.SigmaX2->push_back(static_cast<float>(v0.Pos.GetCovariance(0)));
-    df.Pos.SigmaXY->push_back(static_cast<float>(v0.Pos.GetCovariance(1)));
-    df.Pos.SigmaY2->push_back(static_cast<float>(v0.Pos.GetCovariance(2)));
-    df.Pos.SigmaXZ->push_back(static_cast<float>(v0.Pos.GetCovariance(3)));
-    df.Pos.SigmaYZ->push_back(static_cast<float>(v0.Pos.GetCovariance(4)));
-    df.Pos.SigmaZ2->push_back(static_cast<float>(v0.Pos.GetCovariance(5)));
-    df.Pos.SigmaXPx->push_back(static_cast<float>(v0.Pos.GetCovariance(6)));
-    df.Pos.SigmaYPx->push_back(static_cast<float>(v0.Pos.GetCovariance(7)));
-    df.Pos.SigmaZPx->push_back(static_cast<float>(v0.Pos.GetCovariance(8)));
-    df.Pos.SigmaPx2->push_back(static_cast<float>(v0.Pos.GetCovariance(9)));
-    df.Pos.SigmaXPy->push_back(static_cast<float>(v0.Pos.GetCovariance(10)));
-    df.Pos.SigmaYPy->push_back(static_cast<float>(v0.Pos.GetCovariance(11)));
-    df.Pos.SigmaZPy->push_back(static_cast<float>(v0.Pos.GetCovariance(12)));
-    df.Pos.SigmaPxPy->push_back(static_cast<float>(v0.Pos.GetCovariance(13)));
-    df.Pos.SigmaPy2->push_back(static_cast<float>(v0.Pos.GetCovariance(14)));
-    df.Pos.SigmaXPz->push_back(static_cast<float>(v0.Pos.GetCovariance(15)));
-    df.Pos.SigmaYPz->push_back(static_cast<float>(v0.Pos.GetCovariance(16)));
-    df.Pos.SigmaZPz->push_back(static_cast<float>(v0.Pos.GetCovariance(17)));
-    df.Pos.SigmaPxPz->push_back(static_cast<float>(v0.Pos.GetCovariance(18)));
-    df.Pos.SigmaPyPz->push_back(static_cast<float>(v0.Pos.GetCovariance(19)));
-    df.Pos.SigmaPz2->push_back(static_cast<float>(v0.Pos.GetCovariance(20)));
-    // -- `DF::Packed::Tracks`
-    df.Pos.Index->push_back(v0.Pos.Index);
-
-    // Pos Daughter @ PCA w.r.t. V0 (`DF::SOV::States_NoE`)
+    // Pos Daughter (`Vector::Tracks`)
+    // -- `States_NoE`
+    df.Pos.X->push_back(v0.Pos.View.X());
+    df.Pos.Y->push_back(v0.Pos.View.Y());
+    df.Pos.Z->push_back(v0.Pos.View.Z());
+    df.Pos.Px->push_back(v0.Pos.View.Px());
+    df.Pos.Py->push_back(v0.Pos.View.Py());
+    df.Pos.Pz->push_back(v0.Pos.View.Pz());
+    // -- `CovMatrices_NoE`
+    df.Pos.SigmaX2->push_back(v0.Pos.View.SigmaX2());
+    df.Pos.SigmaXY->push_back(v0.Pos.View.SigmaXY());
+    df.Pos.SigmaY2->push_back(v0.Pos.View.SigmaY2());
+    df.Pos.SigmaXZ->push_back(v0.Pos.View.SigmaXZ());
+    df.Pos.SigmaYZ->push_back(v0.Pos.View.SigmaYZ());
+    df.Pos.SigmaZ2->push_back(v0.Pos.View.SigmaZ2());
+    df.Pos.SigmaXPx->push_back(v0.Pos.View.SigmaXPx());
+    df.Pos.SigmaYPx->push_back(v0.Pos.View.SigmaYPx());
+    df.Pos.SigmaZPx->push_back(v0.Pos.View.SigmaZPx());
+    df.Pos.SigmaPx2->push_back(v0.Pos.View.SigmaPx2());
+    df.Pos.SigmaXPy->push_back(v0.Pos.View.SigmaXPy());
+    df.Pos.SigmaYPy->push_back(v0.Pos.View.SigmaYPy());
+    df.Pos.SigmaZPy->push_back(v0.Pos.View.SigmaZPy());
+    df.Pos.SigmaPxPy->push_back(v0.Pos.View.SigmaPxPy());
+    df.Pos.SigmaPy2->push_back(v0.Pos.View.SigmaPy2());
+    df.Pos.SigmaXPz->push_back(v0.Pos.View.SigmaXPz());
+    df.Pos.SigmaYPz->push_back(v0.Pos.View.SigmaYPz());
+    df.Pos.SigmaZPz->push_back(v0.Pos.View.SigmaZPz());
+    df.Pos.SigmaPxPz->push_back(v0.Pos.View.SigmaPxPz());
+    df.Pos.SigmaPyPz->push_back(v0.Pos.View.SigmaPyPz());
+    df.Pos.SigmaPz2->push_back(v0.Pos.View.SigmaPz2());
+    // -- the rest
+    df.Pos.Charge->push_back(v0.Pos.View.Charge());
+    df.Pos.DCAxy->push_back(v0.Pos.View.DCAxy());
+    df.Pos.DCAz->push_back(v0.Pos.View.DCAz());
+    df.Pos.TPCSignal->push_back(v0.Pos.View.TPCSignal());
+    df.Pos.NSigmaPion->push_back(v0.Pos.View.NSigmaPion());
+    df.Pos.NSigmaKaon->push_back(v0.Pos.View.NSigmaKaon());
+    df.Pos.NSigmaProton->push_back(v0.Pos.View.NSigmaProton());
+    df.Pos.Index->push_back(v0.Pos.View.Entry);  // NOTE: store current track entry as ESD index
+    // -- @ PCA w.r.t. V0 (`Storage::Vector::States_NoE`)
     df.Pos_atPCA.X->push_back(static_cast<float>(v0.Pos_PCA_XYZ()[0]));
     df.Pos_atPCA.Y->push_back(static_cast<float>(v0.Pos_PCA_XYZ()[1]));
     df.Pos_atPCA.Z->push_back(static_cast<float>(v0.Pos_PCA_XYZ()[2]));
     df.Pos_atPCA.Px->push_back(static_cast<float>(v0.Pos_PCA_PxPyPz()[0]));
     df.Pos_atPCA.Py->push_back(static_cast<float>(v0.Pos_PCA_PxPyPz()[1]));
     df.Pos_atPCA.Pz->push_back(static_cast<float>(v0.Pos_PCA_PxPyPz()[2]));
-
-    // `DF::Packed::V0s`
-    df.Entry->push_back(v0.Entry);
-    df.Chi2NDF->push_back(static_cast<float>(v0.Chi2NDF()));
 }
 
-void Packager::StoreMC(const Ref::MC_V0& mc, DF::Packed::LinkedV0s& df) {
-    // `DF::SOV::MCInfo_Composite`
-    // -- `DF::SOV::States`
-    df.X->push_back(mc.X());
-    df.Y->push_back(mc.Y());
-    df.Z->push_back(mc.Z());
-    df.Px->push_back(mc.Px());
-    df.Py->push_back(mc.Py());
-    df.Pz->push_back(mc.Pz());
-    df.Energy->push_back(mc.Energy());
-    // -- mother info
-    Ref::MC_Particle mother{.source = mc.source, .entry = mc.MotherEntry()};  // NOTE: no hypothesis
-    df.Mother_Entry->push_back(mother.Entry());
-    df.Mother_PdgCode->push_back(mother.PdgCode());
-    // -- `DF::SOV::MCInfo`
-    df.Entry->push_back(mc.Entry());
-    df.PdgCode->push_back(mc.PdgCode());
-    df.ReactionID->push_back(mc.AsV0_ReactionID());
-    df.IsTrue->push_back(static_cast<char>(mc.AsV0_IsTrue()));
-    df.IsSignal->push_back(static_cast<char>(mc.AsV0_IsSignal()));
-    df.IsSecondary->push_back(static_cast<char>(mc.AsV0_IsSecondary()));
-    // Neg (`DF::SOV::MCInfo_Track`)
-    // -- `DF::SOV::PxPyPz`
-    df.Neg.Px->push_back(mc.neg.Px());
-    df.Neg.Py->push_back(mc.neg.Py());
-    df.Neg.Pz->push_back(mc.neg.Pz());
-    // -- `DF::SOV::MCInfo`
-    df.Neg.Entry->push_back(mc.neg.Entry());
-    df.Neg.PdgCode->push_back(mc.neg.PdgCode());
-    df.Neg.ReactionID->push_back(mc.neg.AsTrack_ReactionID(mc));
-    df.Neg.IsTrue->push_back(static_cast<char>(mc.neg.AsTrack_IsTrue()));
-    df.Neg.IsSignal->push_back(static_cast<char>(mc.neg.AsTrack_IsSignal()));
-    df.Neg.IsSecondary->push_back(static_cast<char>(mc.neg.AsTrack_IsSecondary()));
-    // Pos (`DF::SOV::MCInfo_Track`)
-    // -- `DF::SOV::PxPyPz`
-    df.Pos.Px->push_back(mc.pos.Px());
-    df.Pos.Py->push_back(mc.pos.Py());
-    df.Pos.Pz->push_back(mc.pos.Pz());
-    // -- `DF::SOV::MCInfo`
-    df.Pos.Entry->push_back(mc.pos.Entry());
-    df.Pos.PdgCode->push_back(mc.pos.PdgCode());
-    df.Pos.ReactionID->push_back(mc.pos.AsTrack_ReactionID(mc));
-    df.Pos.IsTrue->push_back(static_cast<char>(mc.pos.AsTrack_IsTrue()));
-    df.Pos.IsSignal->push_back(static_cast<char>(mc.pos.AsTrack_IsSignal()));
-    df.Pos.IsSecondary->push_back(static_cast<char>(mc.pos.AsTrack_IsSecondary()));
-    // `DF::Packed::LinkedV0s`
-    // -- `SOV::Coordinates`
-    df.AtDecay.X->push_back(mc.DecayX());
-    df.AtDecay.Y->push_back(mc.DecayY());
-    df.AtDecay.Z->push_back(mc.DecayZ());
-    // -- the rest
-    df.IsHybrid->push_back(static_cast<char>(mc.AsV0_IsHybrid()));
+void Packager::StoreMC(const View::MC::V0& v0_view, Storage::Vector::MC_V0s& df, EParticle v0_pid) {
+    // V0
+    // -- `Vector::States`
+    df.X->push_back(v0_view.X());
+    df.Y->push_back(v0_view.Y());
+    df.Z->push_back(v0_view.Z());
+    df.Px->push_back(v0_view.Px());
+    df.Py->push_back(v0_view.Py());
+    df.Pz->push_back(v0_view.Pz());
+    df.Energy->push_back(v0_view.Energy());
+    // -- Mother (`Vector::MC_Id`)
+    View::MC::Particle mother{v0_view.Source, v0_view.MotherEntry()};  // NOTE: no hypothesis
+    df.Mother.McEntry->push_back(mother.Entry);
+    df.Mother.PdgCode->push_back(mother.PdgCode());
+    // -- `Vector::MC`
+    df.McEntry->push_back(v0_view.Entry);
+    df.PdgCode->push_back(v0_view.PdgCode());
+    df.ReactionID->push_back(Truth::Particle::AsV0_ReactionID(v0_view, v0_pid));
+    df.IsTrue->push_back(static_cast<char>(Truth::Particle::AsV0_IsTrue(v0_view, v0_pid)));
+    df.IsSignal->push_back(static_cast<char>(Truth::Particle::AsV0_IsSignal(v0_view, v0_pid)));
+    df.IsSecondary->push_back(static_cast<char>(Truth::Particle::AsV0_IsSecondary(v0_view, v0_pid)));
+    // -- `Vector::Coordinates`
+    df.AtDecay.X->push_back(Truth::Particle::AsV0_DecayX(v0_view));
+    df.AtDecay.Y->push_back(Truth::Particle::AsV0_DecayY(v0_view));
+    df.AtDecay.Z->push_back(Truth::Particle::AsV0_DecayZ(v0_view));
+    // -- final flag
+    df.IsHybrid->push_back(static_cast<char>(Truth::Particle::AsV0_IsHybrid(v0_view, v0_pid)));
+
+    // Neg
+    // -- `Vector::PxPyPz`
+    df.Neg_Momentum.Px->push_back(v0_view.Neg.Px());
+    df.Neg_Momentum.Py->push_back(v0_view.Neg.Py());
+    df.Neg_Momentum.Pz->push_back(v0_view.Neg.Pz());
+    // -- `Vector::MC`
+    df.Neg.McEntry->push_back(v0_view.Neg.Entry);
+    df.Neg.PdgCode->push_back(v0_view.Neg.PdgCode());
+    df.Neg.ReactionID->push_back(Truth::Particle::AsTrack_ReactionID(v0_view.Neg, v0_view, Const::V0_NegativePID[v0_pid]));
+    df.Neg.IsTrue->push_back(static_cast<char>(Truth::Particle::AsTrack_IsTrue(v0_view.Neg, Const::V0_NegativePID[v0_pid])));
+    df.Neg.IsSignal->push_back(static_cast<char>(Truth::Particle::AsTrack_IsSignal(v0_view.Neg, Const::V0_NegativePID[v0_pid])));
+    df.Neg.IsSecondary->push_back(static_cast<char>(Truth::Particle::AsTrack_IsSecondary(v0_view.Neg, Const::V0_NegativePID[v0_pid])));
+
+    // Pos
+    // -- `Vector::PxPyPz`
+    df.Pos_Momentum.Px->push_back(v0_view.Pos.Px());
+    df.Pos_Momentum.Py->push_back(v0_view.Pos.Py());
+    df.Pos_Momentum.Pz->push_back(v0_view.Pos.Pz());
+    // -- `Vector::MC`
+    df.Pos.McEntry->push_back(v0_view.Pos.Entry);
+    df.Pos.PdgCode->push_back(v0_view.Pos.PdgCode());
+    df.Pos.ReactionID->push_back(Truth::Particle::AsTrack_ReactionID(v0_view.Pos, v0_view, Const::V0_PositivePID[v0_pid]));
+    df.Pos.IsTrue->push_back(static_cast<char>(Truth::Particle::AsTrack_IsTrue(v0_view.Pos, Const::V0_PositivePID[v0_pid])));
+    df.Pos.IsSignal->push_back(static_cast<char>(Truth::Particle::AsTrack_IsSignal(v0_view.Pos, Const::V0_PositivePID[v0_pid])));
+    df.Pos.IsSecondary->push_back(static_cast<char>(Truth::Particle::AsTrack_IsSecondary(v0_view.Pos, Const::V0_PositivePID[v0_pid])));
 }
 
 // ## END OF CYCLES ## //
@@ -747,54 +786,54 @@ void Packager::EndOfEvent() {
     fVec_PosKaons.clear();
     fVec_PiMinus.clear();
     fVec_PiPlus.clear();
-    // clear output branches
-    if (IsMC()) fOutput_Injected.Clear_SOV_Injected(true);
+    // clear output vector branches
+    if (IsMC()) fOutput_Injected.Clear_VectorInjected(true);
     // based on channel
     switch (GetReactionChannel()) {
         case EReactionChannel::A:
-            fOutput_AntiLambdas.Clear_PackedV0s();
-            fOutput_Lambdas.Clear_PackedV0s();
-            fOutput_KaonsZeroShort.Clear_PackedV0s();
+            fOutput_AntiLambdas.Clear_VectorV0s();
+            fOutput_Lambdas.Clear_VectorV0s();
+            fOutput_KaonsZeroShort.Clear_VectorV0s();
             if (IsMC()) {
-                fOutput_Linked_AntiLambdas.Clear_LinkedV0s();
-                fOutput_Linked_Lambdas.Clear_LinkedV0s();
-                fOutput_Linked_KaonsZeroShort.Clear_LinkedV0s();
+                fOutput_MC_AntiLambdas.Clear_VectorMC_V0s();
+                fOutput_MC_Lambdas.Clear_VectorMC_V0s();
+                fOutput_MC_KaonsZeroShort.Clear_VectorMC_V0s();
             }
             break;
         case EReactionChannel::D:
-            fOutput_AntiLambdas.Clear_PackedV0s();
-            fOutput_Lambdas.Clear_PackedV0s();
-            fOutput_NegKaons.Clear_PackedTracks();
-            fOutput_PosKaons.Clear_PackedTracks();
+            fOutput_AntiLambdas.Clear_VectorV0s();
+            fOutput_Lambdas.Clear_VectorV0s();
+            fOutput_NegKaons.Clear_VectorTracks(false, true);
+            fOutput_PosKaons.Clear_VectorTracks(false, true);
             if (IsMC()) {
-                fOutput_Linked_AntiLambdas.Clear_LinkedV0s();
-                fOutput_Linked_Lambdas.Clear_LinkedV0s();
-                fOutput_Linked_NegKaons.Clear_LinkedTracks();
-                fOutput_Linked_PosKaons.Clear_LinkedTracks();
+                fOutput_MC_AntiLambdas.Clear_VectorMC_V0s();
+                fOutput_MC_Lambdas.Clear_VectorMC_V0s();
+                fOutput_MC_NegKaons.Clear_VectorMC_Tracks();
+                fOutput_MC_PosKaons.Clear_VectorMC_Tracks();
             }
             break;
         case EReactionChannel::E:
-            fOutput_AntiLambdas.Clear_PackedV0s();
-            fOutput_Lambdas.Clear_PackedV0s();
-            fOutput_NegKaons.Clear_PackedTracks();
-            fOutput_PosKaons.Clear_PackedTracks();
-            fOutput_PiMinus.Clear_PackedTracks();
-            fOutput_PiPlus.Clear_PackedTracks();
+            fOutput_AntiLambdas.Clear_VectorV0s();
+            fOutput_Lambdas.Clear_VectorV0s();
+            fOutput_NegKaons.Clear_VectorTracks(false, true);
+            fOutput_PosKaons.Clear_VectorTracks(false, true);
+            fOutput_PiMinus.Clear_VectorTracks(false, true);
+            fOutput_PiPlus.Clear_VectorTracks(false, true);
             if (IsMC()) {
-                fOutput_Linked_AntiLambdas.Clear_LinkedV0s();
-                fOutput_Linked_Lambdas.Clear_LinkedV0s();
-                fOutput_Linked_NegKaons.Clear_LinkedTracks();
-                fOutput_Linked_PosKaons.Clear_LinkedTracks();
-                fOutput_Linked_PiMinus.Clear_LinkedTracks();
-                fOutput_Linked_PiPlus.Clear_LinkedTracks();
+                fOutput_MC_AntiLambdas.Clear_VectorMC_V0s();
+                fOutput_MC_Lambdas.Clear_VectorMC_V0s();
+                fOutput_MC_NegKaons.Clear_VectorMC_Tracks();
+                fOutput_MC_PosKaons.Clear_VectorMC_Tracks();
+                fOutput_MC_PiMinus.Clear_VectorMC_Tracks();
+                fOutput_MC_PiPlus.Clear_VectorMC_Tracks();
             }
             break;
         case EReactionChannel::H:
-            fOutput_NegKaons.Clear_PackedTracks();
-            fOutput_PosKaons.Clear_PackedTracks();
+            fOutput_NegKaons.Clear_VectorTracks(false, true);
+            fOutput_PosKaons.Clear_VectorTracks(false, true);
             if (IsMC()) {
-                fOutput_Linked_NegKaons.Clear_LinkedTracks();
-                fOutput_Linked_PosKaons.Clear_LinkedTracks();
+                fOutput_MC_NegKaons.Clear_VectorMC_Tracks();
+                fOutput_MC_PosKaons.Clear_VectorMC_Tracks();
             }
             break;
     }

@@ -8,26 +8,24 @@
 #include "App/Utilities.hxx"
 #include "Math/Constants.hxx"
 
-namespace Tree2Secondaries::DF::SOV {
-
-// General //
+namespace Tree2Secondaries::Storage::Vector {
 
 struct alignas(T2S_SIMD_ALIGN) Coordinates {
     std::vector<float>* X{nullptr};
     std::vector<float>* Y{nullptr};
     std::vector<float>* Z{nullptr};
 
-    void Clear_Coordinates() {
+    void Clear_VectorCoordinates() {
         X->clear();
         Y->clear();
         Z->clear();
     }
-    void CreateBranches_Coordinates(TTree* tree, std::string_view prefix, std::string_view suffix) {
+    void CreateBranches_VectorCoordinates(TTree* tree, std::string_view prefix, std::string_view suffix) {
         tree->Branch(std::format("{}_X{}", prefix, suffix).c_str(), &X);
         tree->Branch(std::format("{}_Y{}", prefix, suffix).c_str(), &Y);
         tree->Branch(std::format("{}_Z{}", prefix, suffix).c_str(), &Z);
     }
-    void ReadBranches_Coordinates(TTree* tree, std::string_view prefix, std::string_view suffix) {
+    void ReadBranches_VectorCoordinates(TTree* tree, std::string_view prefix, std::string_view suffix) {
         Utils::ReadBranch(tree, std::format("{}_X{}", prefix, suffix), &X);
         Utils::ReadBranch(tree, std::format("{}_Y{}", prefix, suffix), &Y);
         Utils::ReadBranch(tree, std::format("{}_Z{}", prefix, suffix), &Z);
@@ -39,52 +37,67 @@ struct alignas(T2S_SIMD_ALIGN) PxPyPz {
     std::vector<float>* Py{nullptr};
     std::vector<float>* Pz{nullptr};
 
-    void Clear_PxPyPz() {
+    void Clear_VectorPxPyPz() {
         Px->clear();
         Py->clear();
         Pz->clear();
     }
-    void CreateBranches_PxPyPz(TTree* tree, std::string_view prefix) {
+    void CreateBranches_VectorPxPyPz(TTree* tree, std::string_view prefix) {
         tree->Branch(std::format("{}_Px", prefix).c_str(), &Px);
         tree->Branch(std::format("{}_Py", prefix).c_str(), &Py);
         tree->Branch(std::format("{}_Pz", prefix).c_str(), &Pz);
     }
-    void ReadBranches_PxPyPz(TTree* tree, std::string_view prefix) {
+    void ReadBranches_VectorPxPyPz(TTree* tree, std::string_view prefix) {
         Utils::ReadBranch(tree, std::format("{}_Px", prefix), &Px);
         Utils::ReadBranch(tree, std::format("{}_Py", prefix), &Py);
         Utils::ReadBranch(tree, std::format("{}_Pz", prefix), &Pz);
     }
 };
 
-struct alignas(T2S_SIMD_ALIGN) States_NoE : SOV::Coordinates, SOV::PxPyPz {
-    void Clear_States_NoE() {
-        Clear_Coordinates();
-        Clear_PxPyPz();
+struct alignas(T2S_SIMD_ALIGN) LorentzVectors : Vector::PxPyPz {
+    std::vector<float>* Energy{nullptr};
+
+    void Clear_VectorLV() {
+        Clear_VectorPxPyPz();
+        Energy->clear();
     }
-    void CreateBranches_States_NoE(TTree* tree, std::string_view prefix) {
-        CreateBranches_Coordinates(tree, prefix, "");
-        CreateBranches_PxPyPz(tree, prefix);
+    void CreateBranches_VectorLV(TTree* tree, std::string_view prefix) {
+        CreateBranches_VectorPxPyPz(tree, prefix);
+        tree->Branch(std::format("{}_E", prefix).c_str(), &Energy);
     }
-    void ReadBranches_States_NoE(TTree* tree, std::string_view prefix) {
-        ReadBranches_Coordinates(tree, prefix, "");
-        ReadBranches_PxPyPz(tree, prefix);
+    void ReadBranches_VectorLV(TTree* tree, std::string_view prefix) {
+        ReadBranches_VectorPxPyPz(tree, prefix);
+        Utils::ReadBranch(tree, std::format("{}_E", prefix), &Energy);
     }
 };
 
-struct alignas(T2S_SIMD_ALIGN) States : SOV::States_NoE {
-    std::vector<float>* Energy{nullptr};
+struct alignas(T2S_SIMD_ALIGN) States_NoE : Vector::Coordinates, Vector::PxPyPz {
+    void Clear_VectorStates_NoE() {
+        Clear_VectorCoordinates();
+        Clear_VectorPxPyPz();
+    }
+    void CreateBranches_VectorStates_NoE(TTree* tree, std::string_view prefix) {
+        CreateBranches_VectorCoordinates(tree, prefix, "");
+        CreateBranches_VectorPxPyPz(tree, prefix);
+    }
+    void ReadBranches_VectorStates_NoE(TTree* tree, std::string_view prefix) {
+        ReadBranches_VectorCoordinates(tree, prefix, "");
+        ReadBranches_VectorPxPyPz(tree, prefix);
+    }
+};
 
-    void Clear_States() {
-        Clear_States_NoE();
-        Energy->clear();
+struct alignas(T2S_SIMD_ALIGN) States : Vector::Coordinates, Vector::LorentzVectors {
+    void Clear_VectorStates() {
+        Clear_VectorCoordinates();
+        Clear_VectorLV();
     }
-    void CreateBranches_States(TTree* tree, std::string_view prefix) {
-        CreateBranches_States_NoE(tree, prefix);
-        tree->Branch(std::format("{}_E", prefix).c_str(), &Energy);
+    void CreateBranches_VectorStates(TTree* tree, std::string_view prefix) {
+        CreateBranches_VectorCoordinates(tree, prefix, "");
+        CreateBranches_VectorLV(tree, prefix);
     }
-    void ReadBranches_States(TTree* tree, std::string_view prefix) {
-        ReadBranches_States_NoE(tree, prefix);
-        Utils::ReadBranch(tree, std::format("{}_E", prefix), &Energy);
+    void ReadBranches_VectorStates(TTree* tree, std::string_view prefix) {
+        ReadBranches_VectorCoordinates(tree, prefix, "");
+        ReadBranches_VectorLV(tree, prefix);
     }
 };
 
@@ -111,7 +124,7 @@ struct alignas(T2S_SIMD_ALIGN) CovMatrices_NoE {
     std::vector<float>* SigmaPyPz{nullptr};
     std::vector<float>* SigmaPz2{nullptr};
 
-    void Clear_CovMatrices_NoE() {
+    void Clear_VectorCovMatrices_NoE() {
         SigmaX2->clear();
         SigmaXY->clear();
         SigmaY2->clear();
@@ -134,7 +147,7 @@ struct alignas(T2S_SIMD_ALIGN) CovMatrices_NoE {
         SigmaPyPz->clear();
         SigmaPz2->clear();
     }
-    void CreateBranches_CovMatrices_NoE(TTree* tree, std::string_view prefix) {
+    void CreateBranches_VectorCovMatrices_NoE(TTree* tree, std::string_view prefix) {
         tree->Branch(std::format("{}_SigmaX2", prefix).c_str(), &SigmaX2);
         tree->Branch(std::format("{}_SigmaXY", prefix).c_str(), &SigmaXY);
         tree->Branch(std::format("{}_SigmaY2", prefix).c_str(), &SigmaY2);
@@ -157,7 +170,7 @@ struct alignas(T2S_SIMD_ALIGN) CovMatrices_NoE {
         tree->Branch(std::format("{}_SigmaPyPz", prefix).c_str(), &SigmaPyPz);
         tree->Branch(std::format("{}_SigmaPz2", prefix).c_str(), &SigmaPz2);
     }
-    void ReadBranches_CovMatrices_NoE(TTree* tree, std::string_view prefix) {
+    void ReadBranches_VectorCovMatrices_NoE(TTree* tree, std::string_view prefix) {
         Utils::ReadBranch(tree, std::format("{}_SigmaX2", prefix), &SigmaX2);
         Utils::ReadBranch(tree, std::format("{}_SigmaXY", prefix), &SigmaXY);
         Utils::ReadBranch(tree, std::format("{}_SigmaY2", prefix), &SigmaY2);
@@ -182,7 +195,7 @@ struct alignas(T2S_SIMD_ALIGN) CovMatrices_NoE {
     }
 };
 
-struct alignas(T2S_SIMD_ALIGN) CovMatrices : SOV::CovMatrices_NoE {
+struct alignas(T2S_SIMD_ALIGN) CovMatrices : Vector::CovMatrices_NoE {
     std::vector<float>* SigmaXE{nullptr};
     std::vector<float>* SigmaYE{nullptr};
     std::vector<float>* SigmaZE{nullptr};
@@ -191,8 +204,8 @@ struct alignas(T2S_SIMD_ALIGN) CovMatrices : SOV::CovMatrices_NoE {
     std::vector<float>* SigmaPzE{nullptr};
     std::vector<float>* SigmaE2{nullptr};
 
-    void Clear_CovMatrices() {
-        Clear_CovMatrices_NoE();
+    void Clear_VectorCovMatrices() {
+        Clear_VectorCovMatrices_NoE();
         SigmaXE->clear();
         SigmaYE->clear();
         SigmaZE->clear();
@@ -201,8 +214,8 @@ struct alignas(T2S_SIMD_ALIGN) CovMatrices : SOV::CovMatrices_NoE {
         SigmaPzE->clear();
         SigmaE2->clear();
     }
-    void CreateBranches_CovMatrices(TTree* tree, std::string_view prefix) {
-        CreateBranches_CovMatrices_NoE(tree, prefix);
+    void CreateBranches_VectorCovMatrices(TTree* tree, std::string_view prefix) {
+        CreateBranches_VectorCovMatrices_NoE(tree, prefix);
         tree->Branch(std::format("{}_SigmaXE", prefix).c_str(), &SigmaXE);
         tree->Branch(std::format("{}_SigmaYE", prefix).c_str(), &SigmaYE);
         tree->Branch(std::format("{}_SigmaZE", prefix).c_str(), &SigmaZE);
@@ -211,8 +224,8 @@ struct alignas(T2S_SIMD_ALIGN) CovMatrices : SOV::CovMatrices_NoE {
         tree->Branch(std::format("{}_SigmaPzE", prefix).c_str(), &SigmaPzE);
         tree->Branch(std::format("{}_SigmaE2", prefix).c_str(), &SigmaE2);
     }
-    void ReadBranches_CovMatrices(TTree* tree, std::string_view prefix) {
-        ReadBranches_CovMatrices_NoE(tree, prefix);
+    void ReadBranches_VectorCovMatrices(TTree* tree, std::string_view prefix) {
+        ReadBranches_VectorCovMatrices_NoE(tree, prefix);
         Utils::ReadBranch(tree, std::format("{}_SigmaXE", prefix), &SigmaXE);
         Utils::ReadBranch(tree, std::format("{}_SigmaYE", prefix), &SigmaYE);
         Utils::ReadBranch(tree, std::format("{}_SigmaZE", prefix), &SigmaZE);
@@ -225,35 +238,49 @@ struct alignas(T2S_SIMD_ALIGN) CovMatrices : SOV::CovMatrices_NoE {
 
 // MC Information //
 
-// `Entry` + `PdgCode` + `ReactionID` + `IsTrue` + `IsSignal` + `IsSecondary`.
-struct alignas(T2S_SIMD_ALIGN) MCInfo {
-
-    std::vector<int>* Entry{nullptr};
+// `McEntry` + `PdgCode`.
+struct alignas(T2S_SIMD_ALIGN) MC_Id {
+    std::vector<int>* McEntry{nullptr};
     std::vector<int>* PdgCode{nullptr};
+
+    void Clear_VectorMC_Id() {
+        McEntry->clear();
+        PdgCode->clear();
+    }
+    // NOTE: will add "MC_" as prefix.
+    void CreateBranches_VectorMC_Id(TTree* tree, std::string_view acronym = "") {
+        tree->Branch(std::format("MC_{}_McEntry", acronym).c_str(), &McEntry);
+        tree->Branch(std::format("MC_{}_PdgCode", acronym).c_str(), &PdgCode);
+    }
+    // NOTE: will add "MC_" as prefix.
+    void ReadBranches_VectorMC_Id(TTree* tree, std::string_view acronym = "") {
+        Utils::ReadBranch(tree, std::format("MC_{}_McEntry", acronym), &McEntry);
+        Utils::ReadBranch(tree, std::format("MC_{}_PdgCode", acronym), &PdgCode);
+    }
+};
+
+// `ReactionID` + `IsTrue` + `IsSignal` + `IsSecondary`.
+struct alignas(T2S_SIMD_ALIGN) MC_Flags {
     std::vector<int>* ReactionID{nullptr};
     std::vector<char>* IsTrue{nullptr};
     std::vector<char>* IsSignal{nullptr};
     std::vector<char>* IsSecondary{nullptr};
 
-    void Clear_MCInfo() {
-        Entry->clear();
-        PdgCode->clear();
+    void Clear_VectorMC_Flags() {
         ReactionID->clear();
         IsTrue->clear();
         IsSignal->clear();
         IsSecondary->clear();
     }
-    void CreateBranches_MCInfo(TTree* tree, std::string_view acronym = "") {
-        tree->Branch(std::format("MC_{}_Entry", acronym).c_str(), &Entry);
-        tree->Branch(std::format("MC_{}_PdgCode", acronym).c_str(), &PdgCode);
+    // NOTE: will add "MC_" as prefix.
+    void CreateBranches_VectorMC_Flags(TTree* tree, std::string_view acronym = "") {
         tree->Branch(std::format("MC_{}_ReactionID", acronym).c_str(), &ReactionID);
         tree->Branch(std::format("MC_{}_IsTrue", acronym).c_str(), &IsTrue);
         tree->Branch(std::format("MC_{}_IsSignal", acronym).c_str(), &IsSignal);
         tree->Branch(std::format("MC_{}_IsSecondary", acronym).c_str(), &IsSecondary);
     }
-    void ReadBranches_MCInfo(TTree* tree, std::string_view acronym = "") {
-        Utils::ReadBranch(tree, std::format("MC_{}_Entry", acronym), &Entry);
-        Utils::ReadBranch(tree, std::format("MC_{}_PdgCode", acronym), &PdgCode);
+    // NOTE: will add "MC_" as prefix.
+    void ReadBranches_VectorMC_Flags(TTree* tree, std::string_view acronym = "") {
         Utils::ReadBranch(tree, std::format("MC_{}_ReactionID", acronym), &ReactionID);
         Utils::ReadBranch(tree, std::format("MC_{}_IsTrue", acronym), &IsTrue);
         Utils::ReadBranch(tree, std::format("MC_{}_IsSignal", acronym), &IsSignal);
@@ -261,46 +288,22 @@ struct alignas(T2S_SIMD_ALIGN) MCInfo {
     }
 };
 
-// `SOV::MCInfo` + `SOV::PxPyPz`.
-struct alignas(T2S_SIMD_ALIGN) MCInfo_PxPyPz : SOV::MCInfo, SOV::PxPyPz {
-    void Clear_MCInfo_PxPyPz() {
-        Clear_MCInfo();
-        Clear_PxPyPz();
+// `Vector::MC_Id` + `Vector::MC_Flags`
+struct alignas(T2S_SIMD_ALIGN) MC : Vector::MC_Id, Vector::MC_Flags {
+    void Clear_VectorMC() {
+        Clear_VectorMC_Id();
+        Clear_VectorMC_Flags();
     }
-    void CreateBranches_MCInfo_PxPyPz(TTree* tree, std::string_view acronym = "") {
-        CreateBranches_MCInfo(tree, acronym);
-        CreateBranches_PxPyPz(tree, std::format("MC_{}", acronym));
+    // NOTE: will add "MC_" as prefix.
+    void CreateBranches_VectorMC(TTree* tree, std::string_view acronym = "") {
+        CreateBranches_VectorMC_Id(tree, acronym);
+        CreateBranches_VectorMC_Flags(tree, acronym);
     }
-    void ReadBranches_MCInfo_PxPyPz(TTree* tree, std::string_view acronym = "") {
-        ReadBranches_MCInfo(tree, acronym);
-        ReadBranches_PxPyPz(tree, std::format("MC_{}", acronym));
-    }
-};
-
-// `SOV::MCInfo` + `SOV::States` + `Mother_Entry` + `Mother_PdgCode`.
-struct alignas(T2S_SIMD_ALIGN) MCInfo_States_Mother : SOV::MCInfo, SOV::States {
-
-    std::vector<int>* Mother_Entry{nullptr};
-    std::vector<int>* Mother_PdgCode{nullptr};
-
-    void Clear_MCInfo_States_Mother() {
-        Clear_MCInfo();
-        Clear_States();
-        Mother_Entry->clear();
-        Mother_PdgCode->clear();
-    }
-    void CreateBranches_MCInfo_States_Mother(TTree* tree, std::string_view acronym = "") {
-        CreateBranches_MCInfo(tree, std::format("{}", acronym));
-        CreateBranches_States(tree, std::format("MC_{}", acronym));
-        tree->Branch(std::format("MC_{}_Mother_Entry", acronym).c_str(), &Mother_Entry);
-        tree->Branch(std::format("MC_{}_Mother_PdgCode", acronym).c_str(), &Mother_PdgCode);
-    }
-    void ReadBranches_MCInfo_States_Mother(TTree* tree, std::string_view acronym = "") {
-        ReadBranches_MCInfo(tree, std::format("{}", acronym));
-        ReadBranches_States(tree, std::format("MC_{}", acronym));
-        Utils::ReadBranch(tree, std::format("MC_{}_Mother_Entry", acronym), &Mother_Entry);
-        Utils::ReadBranch(tree, std::format("MC_{}_Mother_PdgCode", acronym), &Mother_PdgCode);
+    // NOTE: will add "MC_" as prefix.
+    void ReadBranches_VectorMC(TTree* tree, std::string_view acronym = "") {
+        ReadBranches_VectorMC_Id(tree, acronym);
+        ReadBranches_VectorMC_Flags(tree, acronym);
     }
 };
 
-}  // namespace Tree2Secondaries::DF::SOV
+}  // namespace Tree2Secondaries::Storage::Vector
