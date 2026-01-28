@@ -4,10 +4,6 @@
 #include "App/Logger.hxx"
 #include "Finder/Finder.hxx"
 #include "Finder/FinderCuts.hxx"
-#include "Fit/FitChannelA.hxx"
-#include "Fit/FitChannelD.hxx"
-#include "Fit/FitTrack.hxx"
-#include "Math/BaseMath.hxx"
 #include "Math/Constants.hxx"
 #include "Storage/Vector/VectorTracks.hxx"
 #include "Storage/Vector/VectorV0s.hxx"
@@ -15,7 +11,19 @@
 #include "View/MC/ViewMcInjected.hxx"
 #include "View/MC/ViewMcPackedTrack.hxx"
 #include "View/MC/ViewMcPackedV0.hxx"
+#ifdef T2S_LEGACY_KF
+#include "Fit/Legacy/FitChannelA_Legacy.hxx"
+#include "Fit/Legacy/FitChannelD_Legacy.hxx"
+#include "Fit/Legacy/FitTrack_Legacy.hxx"
+#include "Math/Legacy/BaseMath_Legacy.hxx"
+#include "View/Reconstructed/Legacy/ViewTrack_Legacy.hxx"
+#else
+#include "Fit/FitChannelA.hxx"
+#include "Fit/FitChannelD.hxx"
+#include "Fit/FitTrack.hxx"
+#include "Math/BaseMath.hxx"
 #include "View/Reconstructed/ViewTrack.hxx"
+#endif
 
 namespace Tree2Secondaries {
 
@@ -281,26 +289,41 @@ void Finder::FindSexaquarks_ChannelA(bool anti_channel) {
             Logger::Debug(__FUNCTION__, "idx(v0a,neg,pos)={},{},{}", v0a_entry, v0a.Neg.View.Index(), v0a.Pos.View.Index());
             Logger::Debug(__FUNCTION__, ";x,y,z={},{},{}", v0a.X(), v0a.Y(), v0a.Z());
             Logger::Debug(__FUNCTION__, ";px,py,pz={},{},{}", v0a.Px(), v0a.Py(), v0a.Pz());
+#ifdef T2S_LEGACY_KF
+            Logger::Debug(__FUNCTION__, ";mass={}", v0a.GetMass());
+#else
             Logger::Debug(__FUNCTION__, ";mass={}", v0a.Mass());
-
+#endif
             Logger::Debug(__FUNCTION__, "idx(v0b,neg,pos)={},{},{}", v0b_entry, v0b.Neg.View.Index(), v0b.Pos.View.Index());
             Logger::Debug(__FUNCTION__, ";x,y,z={},{},{}", v0b.X(), v0b.Y(), v0b.Z());
             Logger::Debug(__FUNCTION__, ";px,py,pz={},{},{}", v0b.Px(), v0b.Py(), v0b.Pz());
+#ifdef T2S_LEGACY_KF
+            Logger::Debug(__FUNCTION__, ";mass={}", v0b.GetMass());
+#else
             Logger::Debug(__FUNCTION__, ";mass={}", v0b.Mass());
-
+#endif
             Logger::Debug(__FUNCTION__, "x,y,z={},{},{}", sexa.X(), sexa.Y(), sexa.Z());
-            // Logger::Debug(__FUNCTION__, ";x,y,z(v0a)={},{},{}", sexa.V0A_PCA_XYZ()[0], sexa.V0A_PCA_XYZ()[1], sexa.V0A_PCA_XYZ()[2]);
-            // Logger::Debug(__FUNCTION__, ";x,y,z(v0b)={},{},{}", sexa.V0B_PCA_XYZ()[0], sexa.V0B_PCA_XYZ()[1], sexa.V0B_PCA_XYZ()[2]);
+// Logger::Debug(__FUNCTION__, ";x,y,z(v0a)={},{},{}", sexa.V0A_PCA_XYZ()[0], sexa.V0A_PCA_XYZ()[1], sexa.V0A_PCA_XYZ()[2]);
+// Logger::Debug(__FUNCTION__, ";x,y,z(v0b)={},{},{}", sexa.V0B_PCA_XYZ()[0], sexa.V0B_PCA_XYZ()[1], sexa.V0B_PCA_XYZ()[2]);
+#ifdef T2S_LEGACY_KF
+            Logger::Debug(__FUNCTION__, ";mass={}", sexa.GetMass());
+#else
             Logger::Debug(__FUNCTION__, ";mass={}", sexa.Mass());
+#endif
             Logger::Debug(__FUNCTION__, ";mass_minus_n={}", sexa.Mass_MinusNucleon());
             Logger::Debug(__FUNCTION__, ";dca_btw_v0s={}", sexa.DCA_btw_V0s());
-            Logger::Debug(__FUNCTION__, ";radius={}", sexa.Radius2D());
+            // Logger::Debug(__FUNCTION__, ";radius={}", sexa.Radius2D()); // PENDING
             Logger::Debug(__FUNCTION__, ";dca_v0a={}", sexa.DCA_V0A_wrt_SV());
             Logger::Debug(__FUNCTION__, ";dca_v0b={}", sexa.DCA_V0B_wrt_SV());
+#ifdef T2S_LEGACY_KF
+            Logger::Debug(__FUNCTION__, ";pt={}", sexa.GetPt());
+            Logger::Debug(__FUNCTION__, ";eta={}", sexa.GetEta());
+#else
             Logger::Debug(__FUNCTION__, ";pt={}", sexa.Pt());
             Logger::Debug(__FUNCTION__, ";eta={}", sexa.Eta());
+#endif
             Logger::Debug(__FUNCTION__, ";decay_length(v0a,v0b)={},{}", sexa.DecayLength_V0A(), sexa.DecayLength_V0B());
-            Logger::Debug(__FUNCTION__, ";cpa_pv={}", sexa.CPA_Point(fInput_Event.PV.X, fInput_Event.PV.Y, fInput_Event.PV.Z));
+            // Logger::Debug(__FUNCTION__, ";cpa_pv={}", sexa.CPA_Point(fInput_Event.PV.X, fInput_Event.PV.Y, fInput_Event.PV.Z)); // PENDING
 
             // PENDING: to rewrite... chore
             // if (IsMC()) {
@@ -337,8 +360,8 @@ bool Finder::PassesCuts(const Fit::ChannelA& sexa, TH1D* cut_flow_hist) const {
 
     cut_flow_hist->Fill(0.);
 
-    if (sexa.Radius2D() < Cuts::ChannelA::Min_Radius2D) return false;
-    cut_flow_hist->Fill(1.);
+    // if (sexa.Radius2D() < Cuts::ChannelA::Min_Radius2D) return false; // PENDING
+    // cut_flow_hist->Fill(1.); // PENDING
 
     if (sexa.DCA_V0A_wrt_SV() > Cuts::ChannelA::Max_DCALaSV) return false;
     cut_flow_hist->Fill(2.);
@@ -379,7 +402,11 @@ void Finder::Store(const Fit::ChannelA& sexa, bool anti_channel) {
     // -- event properties
     fOutput_ChannelA.Event = fInput_Event;
     // -- fit info
+#ifdef T2S_LEGACY_KF
+    fOutput_ChannelA.Chi2NDF = static_cast<float>(double(sexa.Chi2()) / double(sexa.NDF()));
+#else
     fOutput_ChannelA.Chi2NDF = static_cast<float>(sexa.Chi2NDF());
+#endif
     // -- extra info
     fOutput_ChannelA.E_MinusNucleon = static_cast<float>(sexa.E_MinusNucleon());
     fOutput_ChannelA.AntiChannel = anti_channel;
@@ -705,14 +732,23 @@ void Finder::FindSexaquarks_ChannelD(bool anti_channel) {
             Logger::Debug(__FUNCTION__, ";x,y,z={},{},{}", sexa.X(), sexa.Y(), sexa.Z());
             Logger::Debug(__FUNCTION__, ";x,y,z(v0)={},{},{}", sexa.V0_PCA_XYZ()[0], sexa.V0_PCA_XYZ()[1], sexa.V0_PCA_XYZ()[2]);
             Logger::Debug(__FUNCTION__, ";x,y,z(kaon)={},{},{}", sexa.Kaon_PCA_XYZ()[0], sexa.Kaon_PCA_XYZ()[1], sexa.Kaon_PCA_XYZ()[2]);
+#ifdef T2S_LEGACY_KF
+            Logger::Debug(__FUNCTION__, ";mass={}", sexa.GetMass());
+#else
             Logger::Debug(__FUNCTION__, ";mass={}", sexa.Mass());
+#endif
             Logger::Debug(__FUNCTION__, ";dca_v0_kaon={}", sexa.DCA_btw_V0_Kaon());
-            Logger::Debug(__FUNCTION__, ";radius={}", sexa.Radius2D());
+            // Logger::Debug(__FUNCTION__, ";radius={}", sexa.Radius2D()); // PENDING
             Logger::Debug(__FUNCTION__, ";dca_v0={}", sexa.DCA_V0_wrt_SV());
             Logger::Debug(__FUNCTION__, ";dca_kaon={}", sexa.DCA_Kaon_wrt_SV());
+#ifdef T2S_LEGACY_KF
+            Logger::Debug(__FUNCTION__, ";pt={}", sexa.GetPt());
+            Logger::Debug(__FUNCTION__, ";eta={}", sexa.GetEta());
+#else
             Logger::Debug(__FUNCTION__, ";pt={}", sexa.Pt());
             Logger::Debug(__FUNCTION__, ";eta={}", sexa.Eta());
-            Logger::Debug(__FUNCTION__, ";cpa_pv={}", sexa.CPA_Point(fInput_Event.PV.X, fInput_Event.PV.Y, fInput_Event.PV.Z));
+#endif
+            // Logger::Debug(__FUNCTION__, ";cpa_pv={}", sexa.CPA_Point(fInput_Event.PV.X, fInput_Event.PV.Y, fInput_Event.PV.Z)); // PENDING
 #endif
 
             // store //
@@ -730,23 +766,31 @@ void Finder::FindSexaquarks_ChannelD(bool anti_channel) {
 bool Finder::PassesCuts(const Fit::ChannelD& sexa, TH1D* cut_flow_hist) const {
 
     cut_flow_hist->Fill(0.);
-    if (sexa.Radius2D() < Cuts::ChannelD::Min_Radius2D || sexa.Radius2D() > Cuts::ChannelD::Max_Radius2D) return false;
-    cut_flow_hist->Fill(1.);
+
+    // if (sexa.Radius2D() < Cuts::ChannelD::Min_Radius2D || sexa.Radius2D() > Cuts::ChannelD::Max_Radius2D) return false; // PENDING
+    // cut_flow_hist->Fill(1.); // PENDING
+
     // if (sexa.AbsRapidity_MinusNucleon() > Cuts::ChannelD::AbsMax_Rapidity) return false;  // PENDING: kinematics, affected by Fermi motion
     cut_flow_hist->Fill(2.);
+
     // if (sexa.CPA_Point(fInput_Event.PV.X, fInput_Event.PV.Y, fInput_Event.PV.Z) < Cuts::ChannelD::Min_CPAwrtPV ||
     // sexa.CPA_Point(fInput_Event.PV.X, fInput_Event.PV.Y, fInput_Event.PV.Z) > Cuts::ChannelD::Max_CPAwrtPV) {
     // return false;  // PENDING: kinematics, affected by Fermi motion
     // }
     cut_flow_hist->Fill(3.);
+
     if (sexa.DCA_V0_wrt_SV() > Cuts::ChannelD::Max_DCALaSV) return false;
     cut_flow_hist->Fill(4.);
+
     if (sexa.DCA_Kaon_wrt_SV() > Cuts::ChannelD::Max_DCAKaSV) return false;
     cut_flow_hist->Fill(5.);
+
     // if (sexa.DCA_V0Neg_wrt_SV(fInput_Event.MagneticField) > Cuts::ChannelD::Max_DCALaNegSV) return false;
     cut_flow_hist->Fill(6.);
+
     // if (sexa.DCA_V0Pos_wrt_SV(fInput_Event.MagneticField) > Cuts::ChannelD::Max_DCALaPosSV) return false;
     cut_flow_hist->Fill(7.);
+
     if (sexa.DCA_btw_V0_Kaon() > Cuts::ChannelD::Max_DCAKaLa) return false;
     cut_flow_hist->Fill(8.);
 
@@ -767,9 +811,13 @@ void Finder::Store(const Fit::ChannelD& sexa, bool anti_channel) {
     fOutput_ChannelD.Energy = static_cast<float>(sexa.E());
     // -- `Flat::Event`
     fOutput_ChannelD.Event = fInput_Event;
-    // -- Fit info
+// -- fit info
+#ifdef T2S_LEGACY_KF
+    fOutput_ChannelD.Chi2NDF = static_cast<float>(double(sexa.Chi2()) / double(sexa.NDF()));
+#else
     fOutput_ChannelD.Chi2NDF = static_cast<float>(sexa.Chi2NDF());
-    // -- Extra info
+#endif
+    // -- extra info
     fOutput_ChannelD.E_MinusNucleon = static_cast<float>(sexa.E_MinusNucleon());
     fOutput_ChannelD.AntiChannel = anti_channel;
 
@@ -782,7 +830,7 @@ void Finder::Store(const Fit::ChannelD& sexa, bool anti_channel) {
     fOutput_ChannelD.V0.Py = sexa.V0.View.Py();
     fOutput_ChannelD.V0.Pz = sexa.V0.View.Pz();
     fOutput_ChannelD.V0.Energy = sexa.V0.View.Energy();
-    // -- Fit info
+    // -- fit info
     fOutput_ChannelD.V0.Chi2NDF = sexa.V0.View.Chi2NDF();
     // -- @ PCA (`Flat::State_NoE`)
     fOutput_ChannelD.V0_atPCA.X = static_cast<float>(sexa.V0_PCA_XYZ()[0]);

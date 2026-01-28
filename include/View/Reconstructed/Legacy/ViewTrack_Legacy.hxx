@@ -1,8 +1,7 @@
 #pragma once
 
+#include <array>
 #include <cmath>
-
-#include <KFParticle_Math.hxx>
 
 #include "Storage/Vector/VectorTracks.hxx"
 #include "View/BaseView.hxx"
@@ -22,7 +21,7 @@ struct Track : View::Base<Storage::Vector::Tracks> {
     [[nodiscard]] float Py() const { return Source->Py->at(Entry); }
     [[nodiscard]] float Pz() const { return Source->Pz->at(Entry); }
 
-    [[nodiscard]] KF::Vector<6> State_NoE() const { return {X(), Y(), Z(), Px(), Py(), Pz()}; }
+    [[nodiscard]] std::array<float, 6> State_NoE() const { return {X(), Y(), Z(), Px(), Py(), Pz()}; }
     [[nodiscard]] float Pt2() const { return Px() * Px() + Py() * Py(); }
     [[nodiscard]] float Pt() const { return std::sqrt(Pt2()); }
     [[nodiscard]] float P2() const { return Pt2() + Pz() * Pz(); }
@@ -50,7 +49,7 @@ struct Track : View::Base<Storage::Vector::Tracks> {
     [[nodiscard]] float SigmaPyPz() const { return Source->SigmaPyPz->at(Entry); }
     [[nodiscard]] float SigmaPz2() const { return Source->SigmaPz2->at(Entry); }
 
-    [[nodiscard]] KF::SymMatrix<6> CovMatrix_NoE() const {
+    [[nodiscard]] std::array<float, 21> CovMatrix_NoE() const {
         return {SigmaX2(),                                                    //
                 SigmaXY(),  SigmaY2(),                                        //
                 SigmaXZ(),  SigmaYZ(),  SigmaZ2(),                            //

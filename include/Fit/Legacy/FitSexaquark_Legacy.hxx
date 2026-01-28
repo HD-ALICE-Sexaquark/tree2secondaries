@@ -3,15 +3,14 @@
 #include <Math/Point3D.h>
 #include <Math/Vector3D.h>
 
-#include <KFParticle.hxx>
-#include <KFParticle_Math.hxx>
+#include <KFParticle.h>
 
-#include "Math/BaseMath.hxx"
 #include "Math/Constants.hxx"
+#include "Math/Legacy/BaseMath_Legacy.hxx"
 
 namespace Tree2Secondaries::Fit {
 
-struct alignas(T2S_SIMD_ALIGN) Sexaquark : KF::Particle {
+struct alignas(T2S_SIMD_ALIGN) Sexaquark : KFParticle {
     // constructors //
     Sexaquark() = delete;
     explicit Sexaquark(double nucleon_mass) : Nucleon_Mass{nucleon_mass} {}
@@ -21,7 +20,7 @@ struct alignas(T2S_SIMD_ALIGN) Sexaquark : KF::Particle {
     [[nodiscard]] ROOT::Math::XYZVector GetPxPyPz_AsROOT() const { return {Px(), Py(), Pz()}; }
     [[nodiscard]] double E_MinusNucleon() const { return E() - Nucleon_Mass; }
     [[nodiscard]] double Mass_MinusNucleon() const {
-        double mass2{E_MinusNucleon() * E_MinusNucleon() - P2()};
+        double mass2{E_MinusNucleon() * E_MinusNucleon() - GetP() * GetP()};
         if (mass2 > 0.) return std::sqrt(mass2);
         return Const::DummyDouble;
     }

@@ -9,8 +9,6 @@
 #include <TTree.h>
 
 #include "App/Settings.hxx"
-#include "Fit/FitChannelA.hxx"
-#include "Fit/FitChannelD.hxx"
 #include "Math/Constants.hxx"
 #include "Storage/Flat/FlatChannelA.hxx"
 #include "Storage/Flat/FlatChannelD.hxx"
@@ -20,6 +18,13 @@
 #include "Storage/Vector/VectorTracks.hxx"
 #include "Storage/Vector/VectorV0s.hxx"
 #include "View/MC/ViewMcInjected.hxx"
+#ifdef T2S_LEGACY_KF
+#include "Fit/Legacy/FitChannelA_Legacy.hxx"
+#include "Fit/Legacy/FitChannelD_Legacy.hxx"
+#else
+#include "Fit/FitChannelA.hxx"
+#include "Fit/FitChannelD.hxx"
+#endif
 
 namespace Tree2Secondaries {
 

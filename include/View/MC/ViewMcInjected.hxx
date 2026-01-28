@@ -18,33 +18,33 @@ struct Injected : View::Base<Storage::Vector::Injected> {
     Injected(const Storage::Vector::Injected* df, int entry)  //
         : View::Base<Storage::Vector::Injected>{.Source = df, .Entry = entry} {}
 
-    [[nodiscard]] float Px() const { return IsValid() ? Source->Px->at(Entry) : Const::DummyFloat; };
-    [[nodiscard]] float Py() const { return IsValid() ? Source->Py->at(Entry) : Const::DummyFloat; };
-    [[nodiscard]] float Pz() const { return IsValid() ? Source->Pz->at(Entry) : Const::DummyFloat; };
+    [[nodiscard]] float Px() const { return IsValid() ? Source->Px->at(Entry) : Const::DummyFloat; }
+    [[nodiscard]] float Py() const { return IsValid() ? Source->Py->at(Entry) : Const::DummyFloat; }
+    [[nodiscard]] float Pz() const { return IsValid() ? Source->Pz->at(Entry) : Const::DummyFloat; }
 
     [[nodiscard]] float Pt2() const {  //
         return IsValid() ? Px() * Px() + Py() * Py() : Const::DummyFloat;
-    };
+    }
     [[nodiscard]] float P2() const {  //
         return IsValid() ? Pt2() + Pz() * Pz() : Const::DummyFloat;
-    };
+    }
 
-    [[nodiscard]] float SV_X() const { return IsValid() ? Source->SV.X->at(Entry) : Const::DummyFloat; };
-    [[nodiscard]] float SV_Y() const { return IsValid() ? Source->SV.Y->at(Entry) : Const::DummyFloat; };
-    [[nodiscard]] float SV_Z() const { return IsValid() ? Source->SV.Z->at(Entry) : Const::DummyFloat; };
+    [[nodiscard]] float SV_X() const { return IsValid() ? Source->SV.X->at(Entry) : Const::DummyFloat; }
+    [[nodiscard]] float SV_Y() const { return IsValid() ? Source->SV.Y->at(Entry) : Const::DummyFloat; }
+    [[nodiscard]] float SV_Z() const { return IsValid() ? Source->SV.Z->at(Entry) : Const::DummyFloat; }
 
-    [[nodiscard]] float Nucleon_Px() const { return IsValid() ? Source->Nucleon.Px->at(Entry) : Const::DummyFloat; };
-    [[nodiscard]] float Nucleon_Py() const { return IsValid() ? Source->Nucleon.Py->at(Entry) : Const::DummyFloat; };
-    [[nodiscard]] float Nucleon_Pz() const { return IsValid() ? Source->Nucleon.Pz->at(Entry) : Const::DummyFloat; };
+    [[nodiscard]] float Nucleon_Px() const { return IsValid() ? Source->Nucleon.Px->at(Entry) : Const::DummyFloat; }
+    [[nodiscard]] float Nucleon_Py() const { return IsValid() ? Source->Nucleon.Py->at(Entry) : Const::DummyFloat; }
+    [[nodiscard]] float Nucleon_Pz() const { return IsValid() ? Source->Nucleon.Pz->at(Entry) : Const::DummyFloat; }
 
     [[nodiscard]] float Nucleon_Pt2() const {  //
         return IsValid() ? Nucleon_Px() * Nucleon_Px() + Nucleon_Py() * Nucleon_Py() : Const::DummyFloat;
-    };
+    }
     [[nodiscard]] float Nucleon_P2() const {  //
         return IsValid() ? Nucleon_Pt2() + Nucleon_Pz() * Nucleon_Pz() : Const::DummyFloat;
-    };
+    }
 
-    [[nodiscard]] int ReactionID() const { return IsValid() ? Entry + Const::ReactionID_Offset : Const::DummyInt; };
+    [[nodiscard]] int ReactionID() const { return IsValid() ? Entry + Const::ReactionID_Offset : Const::DummyInt; }
 };
 
 struct ChannelA : View::MC::Injected {

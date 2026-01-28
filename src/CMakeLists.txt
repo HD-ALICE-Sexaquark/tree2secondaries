@@ -11,15 +11,22 @@ target_include_directories(
 
 target_compile_features(App PUBLIC cxx_std_23)
 target_compile_options(App PRIVATE -Wall -Wextra -Wshadow -Wnon-virtual-dtor)
-target_compile_options(App PRIVATE -O3 -DNDEBUG -mtune=native -march=native
-                                   -ffp-contract=fast)
 
-option(T2S_DEBUG "Print debug messages." OFF)
-if(T2S_DEBUG)
+# apply option: optimize #
+
+if(OPTIMIZE)
+  target_compile_options(App PRIVATE -O3 -DNDEBUG -mtune=native -march=native
+                                     -ffp-contract=fast)
+endif(OPTIMIZE)
+
+# apply option: debug #
+
+if(DEBUG)
   target_compile_definitions(App PUBLIC T2S_DEBUG)
-endif(T2S_DEBUG)
+endif(DEBUG)
 
-# print target compile options #
+# apply option: legacy KFParticle #
 
-cmake_print_properties(TARGETS App PROPERTIES COMPILE_FEATURES COMPILE_OPTIONS
-                                              COMPILE_DEFINITIONS)
+if(LEGACY_KF)
+  target_compile_definitions(App PUBLIC T2S_LEGACY_KF HomogeneousField)
+endif(LEGACY_KF)

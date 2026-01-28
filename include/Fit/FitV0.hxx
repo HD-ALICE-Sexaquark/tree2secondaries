@@ -1,5 +1,7 @@
 #pragma once
 
+#include <optional>
+
 #include <Math/Point3D.h>
 #include <Math/Vector3D.h>
 
@@ -52,10 +54,10 @@ struct alignas(T2S_SIMD_ALIGN) V0 : KF::Particle {
     // cuts //
     [[nodiscard]] double AbsZ() const { return std::abs(Z()); }
     [[nodiscard]] double AbsEta() const { return std::abs(Eta()); }
-    [[nodiscard]] double DCA_Daughters() const { return GetDCA(0, 1); }
-    [[nodiscard]] double DCA_Neg_V0() const { return GetDCA(0); }
-    [[nodiscard]] double DCA_Pos_V0() const { return GetDCA(1); }
-    [[nodiscard]] double AbsArmQtOverAlpha() const { return ArmenterosQt() / std::abs(ArmenterosAlpha()); };
+    [[nodiscard]] std::optional<double> DCA_Daughters() const { return GetDCA(0, 1); }
+    [[nodiscard]] std::optional<double> DCA_Neg_V0() const { return GetDCA(0); }
+    [[nodiscard]] std::optional<double> DCA_Pos_V0() const { return GetDCA(1); }
+    [[nodiscard]] double AbsArmQtOverAlpha() const { return ArmenterosQt() / std::abs(ArmenterosAlpha()); }
     [[nodiscard]] double DCA_Point(float x, float y, float z) const {
         return Tree2Secondaries::Math::FastDCALineVertex({Px(), Py(), Pz()}, {X(), Y(), Z()}, {x, y, z});
     }

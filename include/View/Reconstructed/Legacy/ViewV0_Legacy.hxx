@@ -1,12 +1,11 @@
 #pragma once
 
+#include <array>
 #include <cmath>
-
-#include <KFParticle_Math.hxx>
 
 #include "Storage/Vector/VectorV0s.hxx"
 #include "View/BaseView.hxx"
-#include "View/Reconstructed/ViewTrack.hxx"
+#include "View/Reconstructed/Legacy/ViewTrack_Legacy.hxx"
 
 namespace Tree2Secondaries::View::Rec {
 
@@ -30,7 +29,7 @@ struct V0 : View::Base<Storage::Vector::V0s> {
     [[nodiscard]] float Pz() const { return Source->Pz->at(Entry); }
     [[nodiscard]] float Energy() const { return Source->Energy->at(Entry); }
 
-    [[nodiscard]] KF::Vector<7> State() const { return {X(), Y(), Z(), Px(), Py(), Pz(), Energy()}; }
+    [[nodiscard]] std::array<float, 7> State() const { return {X(), Y(), Z(), Px(), Py(), Pz(), Energy()}; }
 
     [[nodiscard]] float SigmaX2() const { return Source->SigmaX2->at(Entry); }
     [[nodiscard]] float SigmaXY() const { return Source->SigmaXY->at(Entry); }
@@ -61,7 +60,7 @@ struct V0 : View::Base<Storage::Vector::V0s> {
     [[nodiscard]] float SigmaPzE() const { return Source->SigmaPzE->at(Entry); }
     [[nodiscard]] float SigmaE2() const { return Source->SigmaE2->at(Entry); }
 
-    [[nodiscard]] KF::SymMatrix<7> CovMatrix() const {
+    [[nodiscard]] std::array<float, 28> CovMatrix() const {
         return {SigmaX2(),                                                                 //
                 SigmaXY(),  SigmaY2(),                                                     //
                 SigmaXZ(),  SigmaYZ(),  SigmaZ2(),                                         //

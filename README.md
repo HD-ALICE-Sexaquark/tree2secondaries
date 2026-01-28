@@ -10,7 +10,7 @@
 - C++ compiler compatible with C++23
 - Internet connection to fetch **[CLIUtils/CLI11](https://github.com/CLIUtils/CLI11)**
 - **[ROOT](https://root.cern.ch)**
-- **[KFParticle](https://github.com/HD-ALICE-Sexaquark/KFParticle)**
+- **[KFParticle](https://github.com/HD-ALICE-Sexaquark/KFParticle)** or the **[legacy version](https://github.com/alisw/KFParticle)**
 
 ## Building
 
@@ -22,7 +22,9 @@ cmake --build .
 
 Additional `<options>`:
 
-* `-DT2S_DEBUG=ON` -- (default: OFF) enable debug messages
+* `-DOPTIMIZE=ON` -- (default: ON) enable optimizations
+* `-DDEBUG=ON` -- (default: OFF) enable debug messages
+* `-DLEGACY_KF=ON` -- (default: OFF) use legacy KFParticle
 * `-DENABLE_PROFILING=ON` -- (default: OFF) enable profiling (see below)
 
 ## Usage
@@ -52,6 +54,8 @@ OPTIONS:
 ```bash
 ./src/App -i ../files/23l1b3_A1.8/AnalysisResults_245452.root -n 10 pack mc -c A -m 1.8
 ./src/App -i Packed_MC_A1.80.root -n 10 search mc -c A -m 1.8
+./src/App -i ../files/18q/296123/AnalysisResults_*.root -n 10 pack data -c A
+./src/App -i Packed_Data_ChannelA.root -n 10 search data -c A
 ```
 
 ```bash
@@ -107,7 +111,28 @@ valgrind --leak-check=full --suppressions=$(root-config --etcdir)/valgrind-root.
 mkdir profile && cd build
 cmake ../ -DCMAKE_EXPORT_COMPILE_COMMANDS=1 -DENABLE_PROFILING=ON
 cmake --build .
-cd apps/
+cd src/
 ./App [options] # will generate gmon.out
 gprof App > gprof.log
+```
+
+## How to use @ GSI Farm
+
+```bash
+# first deploy there, then enter environment
+apptainer shell ${LUSTRE_HOME}/containers/root+kf.sif
+# inside Apptainer>
+source /opt/root/v6-36-04/bin/thisroot.sh
+export CMAKE_PREFIX_PATH=/opt/kfparticle/dev
+mkdir build && cd build
+cmake ../
+cmake --build .
+```
+
+## Test Legacy KFParticle
+
+```bash
+mkdir -p build && cd build
+cmake ../ -DLEGACY_KF=ON -DOPTIMIZE=OFF -DDEBUG=ON
+cmake --build .
 ```

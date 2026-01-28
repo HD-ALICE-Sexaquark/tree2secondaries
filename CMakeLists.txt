@@ -23,7 +23,6 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS True)
 include(CheckIPOSupported)
 include(FetchContent)
 include(GNUInstallDirs) # GNU-like installation paths, e.g. lib/, include/, ...
-include(CMakePrintHelpers)
 
 # enable LTO #
 
@@ -35,7 +34,12 @@ else()
   message(STATUS "LTO/IPO is not supported")
 endif()
 
-# profiling #
+# option: debug mode #
+
+option(DEBUG "Print debug messages" OFF)
+message(STATUS "Option DEBUG -- ${DEBUG}")
+
+# option: profiling #
 
 option(ENABLE_PROFILING "Enable profiling with gprof" OFF)
 if(ENABLE_PROFILING)
@@ -43,6 +47,17 @@ if(ENABLE_PROFILING)
   set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -pg")
   set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -pg")
 endif()
+message(STATUS "Option ENABLE_PROFILING -- ${ENABLE_PROFILING}")
+
+# option: legacy KFParticle #
+
+option(LEGACY_KF "Enable usage of original KFParticle" OFF)
+message(STATUS "Option LEGACY_KF -- ${LEGACY_KF}")
+
+# option: optimize #
+
+option(OPTIMIZE "Enable optimizations" ON)
+message(STATUS "Option OPTIMIZE -- ${OPTIMIZE}")
 
 # find dependencies #
 
@@ -65,7 +80,7 @@ FetchContent_Declare(
   cli11_proj
   QUIET
   GIT_REPOSITORY https://github.com/CLIUtils/CLI11.git
-  GIT_TAG v2.6.0)
+  GIT_TAG v2.6.1)
 FetchContent_MakeAvailable(cli11_proj)
 message(STATUS "Fetching https://github.com/CLIUtils/CLI11 -- fetched")
 

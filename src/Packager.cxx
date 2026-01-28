@@ -1,13 +1,18 @@
 #include <filesystem>
 
 #include "App/Logger.hxx"
-#include "Fit/FitTrack.hxx"
 #include "Math/Constants.hxx"
 #include "Packager/Packager.hxx"
 #include "Packager/PackagerCuts.hxx"
 #include "Truth/TruthParticle.hxx"
 #include "View/MC/ViewMcParticle.hxx"
+#ifdef T2S_LEGACY_KF
+#include "Fit/Legacy/FitTrack_Legacy.hxx"
+#include "View/Reconstructed/Legacy/ViewTrack_Legacy.hxx"
+#else
+#include "Fit/FitTrack.hxx"
 #include "View/Reconstructed/ViewTrack.hxx"
+#endif
 
 namespace Tree2Secondaries {
 
@@ -420,8 +425,8 @@ bool Packager::PassesCuts_Pion(const View::Rec::Track& track, TH1D* cut_flow_his
     cut_flow_hist->Fill(0.);
     if (std::abs(track.NSigmaPion()) > Cuts::Pion::AbsMax_NSigmaPion) return false;
     cut_flow_hist->Fill(1.);
-    // if (std::abs(track.DCAxy()) < Cuts::Pion::AbsMin_DCAxy) return false;  // TEMPORARY
-    // cut_flow_hist->Fill(2.);                                               // TEMPORARY
+    // if (std::abs(track.DCAxy()) < Cuts::Pion::AbsMin_DCAxy) return false;  // PENDING
+    // cut_flow_hist->Fill(2.);                                               // PENDING
 
     return true;
 }
@@ -473,21 +478,37 @@ void Packager::FindV0s(EParticle pid) {
             if (!PassesCuts(v0, pid)) continue;
 
 #ifdef T2S_DEBUG
-            Logger::Debug(__FUNCTION__, "idx,neg,pos={},{},{}", v0.View.Entry, esd_neg, esd_pos);
-            Logger::Debug(__FUNCTION__, ";x,y,z={},{},{}", v0.X(), v0.Y(), v0.Z());
-            Logger::Debug(__FUNCTION__, ";x,y,z(neg)={},{},{}", v0.Neg_PCA_XYZ()[0], v0.Neg_PCA_XYZ()[1], v0.Neg_PCA_XYZ()[2]);
-            Logger::Debug(__FUNCTION__, ";x,y,z(pos)={},{},{}", v0.Pos_PCA_XYZ()[0], v0.Pos_PCA_XYZ()[1], v0.Pos_PCA_XYZ()[2]);
-            Logger::Debug(__FUNCTION__, ";mass={}", v0.Mass());
-            Logger::Debug(__FUNCTION__, ";dca_dau={}", v0.DCA_Daughters());
-            Logger::Debug(__FUNCTION__, ";radius={}", v0.Radius2D());
-            Logger::Debug(__FUNCTION__, ";dca_neg={}", v0.DCA_Neg_V0());
-            Logger::Debug(__FUNCTION__, ";dca_pos={}", v0.DCA_Pos_V0());
-            Logger::Debug(__FUNCTION__, ";pt={}", v0.Pt());
-            Logger::Debug(__FUNCTION__, ";eta={}", v0.Eta());
-            Logger::Debug(__FUNCTION__, ";qt={}", v0.ArmenterosQt());
-            Logger::Debug(__FUNCTION__, ";alpha={}", v0.ArmenterosAlpha());
-            Logger::Debug(__FUNCTION__, ";cpa_pv={}", v0.CPA_Point(fInput_Event.PV.X, fInput_Event.PV.Y, fInput_Event.PV.Z));
-            Logger::Debug(__FUNCTION__, ";dca_pv={}", v0.DCA_Point(fInput_Event.PV.X, fInput_Event.PV.Y, fInput_Event.PV.Z));
+            Logger::Debug(__FUNCTION__, "neg,pos={},{}", esd_neg, esd_pos);
+            Logger::Debug(__FUNCTION__, "  x,y,z={},{},{}", v0.X(), v0.Y(), v0.Z());
+            Logger::Debug(__FUNCTION__, "  x,y,z(neg)={},{},{}", v0.Neg_PCA_XYZ()[0], v0.Neg_PCA_XYZ()[1], v0.Neg_PCA_XYZ()[2]);
+            Logger::Debug(__FUNCTION__, "  x,y,z(pos)={},{},{}", v0.Pos_PCA_XYZ()[0], v0.Pos_PCA_XYZ()[1], v0.Pos_PCA_XYZ()[2]);
+#ifdef T2S_LEGACY_KF
+            Logger::Debug(__FUNCTION__, "  mass={}", v0.GetMass());
+            Logger::Debug(__FUNCTION__, "  radius={}", std::sqrt(v0.X() * v0.X() + v0.Y() * v0.Y()));
+#else
+            Logger::Debug(__FUNCTION__, "  mass={}", v0.Mass());
+            Logger::Debug(__FUNCTION__, "  radius={}", v0.Radius2D());
+#endif
+            Logger::Debug(__FUNCTION__, "  dca_dau={}", v0.DCA_Daughters());
+            Logger::Debug(__FUNCTION__, "  dca_neg={}", v0.DCA_Neg_V0());
+            Logger::Debug(__FUNCTION__, "  dca_pos={}", v0.DCA_Pos_V0());
+#ifdef T2S_LEGACY_KF
+            Logger::Debug(__FUNCTION__, "  pt={}", v0.GetPt());
+            Logger::Debug(__FUNCTION__, "  eta={}", v0.GetEta());
+#else
+            Logger::Debug(__FUNCTION__, "  pt={}", v0.Pt());
+            Logger::Debug(__FUNCTION__, "  eta={}", v0.Eta());
+#endif
+            Logger::Debug(__FUNCTION__, "  qt={}", v0.ArmenterosQt());
+            Logger::Debug(__FUNCTION__, "  alpha={}", v0.ArmenterosAlpha());
+            Logger::Debug(__FUNCTION__, "  cpa_pv={}", v0.CPA_Point(fInput_Event.PV.X, fInput_Event.PV.Y, fInput_Event.PV.Z));
+            Logger::Debug(__FUNCTION__, "  dca_pv={}", v0.DCA_Point(fInput_Event.PV.X, fInput_Event.PV.Y, fInput_Event.PV.Z));
+#ifdef T2S_LEGACY_KF
+            Logger::Debug(__FUNCTION__, "  chi2/ndf={}/{}={}", v0.GetChi2(), v0.GetNDF(),
+                          static_cast<double>(v0.GetChi2()) / static_cast<double>(v0.GetNDF()));
+#else
+            Logger::Debug(__FUNCTION__, "  chi2/ndf={}/{}={}", v0.Chi2(), v0.NDF(), v0.Chi2NDF());
+#endif
             Logger::Debug(__FUNCTION__, "");
 #endif
             // store //
@@ -506,15 +527,19 @@ bool Packager::PassesCuts_Lambda(const Fit::V0& v0, TH1D* cut_flow_hist) const {
 
     cut_flow_hist->Fill(0.);
 
-    double mass{v0.Mass()};  // cache
+#ifdef T2S_LEGACY_KF
+    double mass{v0.GetMass()};
+#else
+    double mass{v0.Mass()};
+#endif
     if (mass < Cuts::Lambda::Min_Mass || mass > Cuts::Lambda::Max_Mass) return false;
     cut_flow_hist->Fill(1.);
 
     if (v0.DCA_Daughters() > Cuts::Lambda::Max_DCAbtwDau) return false;
     cut_flow_hist->Fill(2.);
 
-    if (v0.Radius2D() < Cuts::Lambda::Min_Radius2D) return false;
-    cut_flow_hist->Fill(3.);
+    // if (v0.Radius2D() < Cuts::Lambda::Min_Radius2D) return false;  // PENDING
+    // cut_flow_hist->Fill(3.);                                       // PENDING
 
     if (v0.DCA_Neg_V0() > Cuts::Lambda::Max_DCAnegV0) return false;
     cut_flow_hist->Fill(4.);
@@ -522,16 +547,21 @@ bool Packager::PassesCuts_Lambda(const Fit::V0& v0, TH1D* cut_flow_hist) const {
     if (v0.DCA_Pos_V0() > Cuts::Lambda::Max_DCAposV0) return false;
     cut_flow_hist->Fill(5.);
 
-    // if (v0.Pt() < Cuts::Lambda::Min_Pt) return false; // TEMP
-    // cut_flow_hist->Fill(6.); // TEMP
+    // if (v0.Pt() < Cuts::Lambda::Min_Pt) return false; // PENDING
+    // cut_flow_hist->Fill(6.); // PENDING
 
-    if (std::abs(v0.Rapidity()) > Cuts::Lambda::AbsMax_Rapidity) return false;
+#ifdef T2S_LEGACY_KF
+    double abs_rapidity{std::abs(v0.GetRapidity())};
+#else
+    double abs_rapidity{std::abs(v0.Rapidity())};
+#endif
+    if (abs_rapidity > Cuts::Lambda::AbsMax_Rapidity) return false;
     cut_flow_hist->Fill(7.);
 
-    if (v0.AbsArmQtOverAlpha() > Cuts::Lambda::AbsMax_ArmQtOverAlpha) return false;
-    cut_flow_hist->Fill(8.);
+    // if (v0.AbsArmQtOverAlpha() > Cuts::Lambda::AbsMax_ArmQtOverAlpha) return false; // PENDING
+    // cut_flow_hist->Fill(8.); // PENDING
 
-    double cpa_wrt_pv{v0.CPA_Point(fInput_Event.PV.X, fInput_Event.PV.Y, fInput_Event.PV.Z)};  // cache
+    double cpa_wrt_pv{v0.CPA_Point(fInput_Event.PV.X, fInput_Event.PV.Y, fInput_Event.PV.Z)};
     if (cpa_wrt_pv < Cuts::Lambda::Min_CPAwrtPV || cpa_wrt_pv > Cuts::Lambda::Max_CPAwrtPV) return false;
     cut_flow_hist->Fill(9.);
 
@@ -548,18 +578,27 @@ bool Packager::PassesCuts_KaonZeroShort(const Fit::V0& v0, TH1D* cut_flow_hist) 
     if (v0.DCA_Daughters() > Cuts::KaonZeroShort::Max_DCAbtwDau) return false;
     cut_flow_hist->Fill(1.);
 
-    // if (v0.Pt() < Cuts::KaonZeroShort::Min_Pt) return false; // TEMP
-    // cut_flow_hist->Fill(2.); // TEMP
+    // if (v0.Pt() < Cuts::KaonZeroShort::Min_Pt) return false; // PENDING
+    // cut_flow_hist->Fill(2.); // PENDING
 
-    double mass{v0.Mass()};  // cache
+#ifdef T2S_LEGACY_KF
+    double mass{v0.GetMass()};
+#else
+    double mass{v0.Mass()};
+#endif
     if (mass < Cuts::KaonZeroShort::Min_Mass || mass > Cuts::KaonZeroShort::Max_Mass) return false;
     cut_flow_hist->Fill(3.);
 
-    if (std::abs(v0.Rapidity()) > Cuts::KaonZeroShort::AbsMax_Rapidity) return false;
+#ifdef T2S_LEGACY_KF
+    double abs_rapidity{std::abs(v0.GetRapidity())};
+#else
+    double abs_rapidity{std::abs(v0.Rapidity())};
+#endif
+    if (abs_rapidity > Cuts::KaonZeroShort::AbsMax_Rapidity) return false;
     cut_flow_hist->Fill(4.);
 
-    if (v0.Radius2D() < Cuts::KaonZeroShort::Min_Radius2D) return false;
-    cut_flow_hist->Fill(5.);
+    // if (v0.Radius2D() < Cuts::KaonZeroShort::Min_Radius2D) return false; // PENDING
+    // cut_flow_hist->Fill(5.); // PENDING
 
     if (v0.DCA_Neg_V0() > Cuts::KaonZeroShort::Max_DCAnegV0) return false;
     cut_flow_hist->Fill(6.);
@@ -618,7 +657,11 @@ void Packager::Store(const Fit::V0& v0, Storage::Vector::V0s& df) {
     df.SigmaPzE->push_back(static_cast<float>(v0.GetCovariance(26)));
     df.SigmaE2->push_back(static_cast<float>(v0.GetCovariance(27)));
     // -- fit info
+#ifdef T2S_LEGACY_KF
+    df.Chi2NDF->push_back(static_cast<float>(double(v0.GetChi2()) / double(v0.GetNDF())));
+#else
     df.Chi2NDF->push_back(static_cast<float>(v0.Chi2NDF()));
+#endif
 
     // Neg Daughter (`Vector::Tracks`)
     // -- `States_NoE`

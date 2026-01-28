@@ -11,6 +11,9 @@ namespace Tree2Secondaries {
 
 struct Settings {
     void Print() const {
+#ifdef T2S_LEGACY_KF
+        Logger::Info("Settings", "[[ Using LEGACY KFParticle ]]");
+#endif
         Logger::Info("Settings", "Mode            = {}", (DoTheSearch ? "FINDER" : "PACKAGER"));
         Logger::Info("Settings", "ReactionChannel = {}", static_cast<char>(ReactionChannel));
         Logger::Info("Settings", "InputFiles      = ");

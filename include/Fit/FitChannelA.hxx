@@ -1,5 +1,7 @@
 #pragma once
 
+#include <optional>
+
 #include <KFParticle.hxx>
 #include <KFParticle_Math.hxx>
 
@@ -35,9 +37,9 @@ struct alignas(T2S_SIMD_ALIGN) ChannelA : Fit::Sexaquark {
     [[nodiscard]] double DecayLength_V0B() const {
         return KF::Math::Norm(KF::Vector<3>{V0B.X() - V0B_PCA_XYZ()[0], V0B.Y() - V0B_PCA_XYZ()[1], V0B.Z() - V0B_PCA_XYZ()[2]});
     }
-    [[nodiscard]] double DCA_btw_V0s() const { return GetDCA(0, 1); };
-    [[nodiscard]] double DCA_V0A_wrt_SV() const { return GetDCA(0); };
-    [[nodiscard]] double DCA_V0B_wrt_SV() const { return GetDCA(1); };
+    [[nodiscard]] std::optional<double> DCA_btw_V0s() const { return GetDCA(0, 1); }
+    [[nodiscard]] std::optional<double> DCA_V0A_wrt_SV() const { return GetDCA(0); }
+    [[nodiscard]] std::optional<double> DCA_V0B_wrt_SV() const { return GetDCA(1); }
     [[nodiscard]] double CPA_V0A_wrt_SV() const {
         return Tree2Secondaries::Math::CosinePointingAngle(V0A.GetPxPyPz_AsROOT(), V0A.GetXYZ_AsROOT(), GetXYZ_AsROOT());
     }

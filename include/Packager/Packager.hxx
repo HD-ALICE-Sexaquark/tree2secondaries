@@ -8,7 +8,6 @@
 #include <TTree.h>
 
 #include "App/Settings.hxx"
-#include "Fit/FitV0.hxx"
 #include "Math/Constants.hxx"
 #include "Storage/Flat/FlatEvent.hxx"
 #include "Storage/Vector/VectorInjected.hxx"
@@ -16,7 +15,13 @@
 #include "Storage/Vector/VectorTracks.hxx"
 #include "Storage/Vector/VectorV0s.hxx"
 #include "View/MC/ViewMcParticle.hxx"
+#ifdef T2S_LEGACY_KF
+#include "Fit/Legacy/FitV0_Legacy.hxx"
+#include "View/Reconstructed/Legacy/ViewTrack_Legacy.hxx"
+#else
+#include "Fit/FitV0.hxx"
 #include "View/Reconstructed/ViewTrack.hxx"
+#endif
 
 namespace Tree2Secondaries {
 
