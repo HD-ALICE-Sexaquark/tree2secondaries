@@ -9,8 +9,8 @@
 #include <TTree.h>
 
 #include "App/Settings.hxx"
-#include "Fit/FitChannelA.hxx"
-#include "Fit/FitChannelD.hxx"
+#include "KalmanFitter/KalmanFitterChannelA.hxx"
+#include "KalmanFitter/KalmanFitterChannelD.hxx"
 #include "Math/Constants.hxx"
 #include "Storage/Flat/FlatChannelA.hxx"
 #include "Storage/Flat/FlatChannelD.hxx"
@@ -49,11 +49,13 @@ class Finder {
     bool Injected_PrepareOutputTree();
     void ProcessInjected();
 
-    [[nodiscard]] int NumberEventsToRead() const {
-        return fSettings.LimitToNEvents ? fSettings.LimitToNEvents : static_cast<int>(fInputChain_PackedEvents->GetEntries());
+    [[nodiscard]] size_t NumberEventsToRead() const {
+        return fSettings.LimitToNEvents ? fSettings.LimitToNEvents : static_cast<size_t>(fInputChain_PackedEvents->GetEntries());
     }
     [[nodiscard]] bool IsMC() const { return fSettings.IsMC; }
-    void GetEvent(int i_event) { fInputChain_PackedEvents->GetEntry(i_event); }
+    void GetEvent(size_t i_event) { fInputChain_PackedEvents->GetEntry(static_cast<long long>(i_event)); }
+
+    [[nodiscard]] size_t NumberInjected() const { return fInput_Injected.ReactionID->size(); }
 
     void FindSexaquarks_ChannelA(bool anti_channel);
     void FindSexaquarks_ChannelD(bool anti_channel);
@@ -72,13 +74,19 @@ class Finder {
         }
     }
 
-    [[nodiscard]] bool PassesCuts(const Fit::ChannelA &sexa, TH1D *cut_flow_hist) const;
-    [[nodiscard]] bool PassesCuts(const Fit::ChannelD &sexa, TH1D *cut_flow_hist) const;
+    [[nodiscard]] bool FastCuts_ChannelA(const Seeder::Seed &seed_v0a, const Seeder::Seed &seed_v0b, TH1D *cut_flow_hist) const;
+    [[nodiscard]] bool FastCuts_ChannelD(const Seeder::Seed &seed_ka, const Seeder::Seed &seed_v0, TH1D *cut_flow_hist) const;
 
-    void Store(const Fit::ChannelA &sexa, bool anti_channel);
-    void Store(const Fit::ChannelD &sexa, bool anti_channel);
-    void StoreMC(const View::MC::ChannelA &view);
-    void StoreMC(const View::MC::ChannelD &view);
+    [[nodiscard]] bool SlowCuts(const KalmanFitter::ChannelA &sexa, TH1D *cut_flow_hist) const;
+    [[nodiscard]] bool SlowCuts(const KalmanFitter::ChannelD &sexa, TH1D *cut_flow_hist) const;
+
+    void Store(const KalmanFitter::ChannelA &sexa, bool anti_channel);
+    void StoreMC(const View::MC::ChannelA &sexa);
+    void StoreDummyMC_ChannelA();
+
+    void Store(const KalmanFitter::ChannelD &sexa, bool anti_channel);
+    void StoreMC(const View::MC::ChannelD &sexa);
+    void StoreDummyMC_ChannelD();
 
     void EndOfAnalysis();
 

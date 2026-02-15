@@ -1,6 +1,6 @@
 #pragma once
 
-#include <cctype>
+#include <cstdlib>
 #include <string>
 #include <vector>
 
@@ -12,7 +12,7 @@ namespace Tree2Secondaries {
 struct Settings {
     void Print() const {
         Logger::Info("Settings", "Mode            = {}", (DoTheSearch ? "FINDER" : "PACKAGER"));
-        Logger::Info("Settings", "ReactionChannel = {}", static_cast<char>(ReactionChannel));
+        Logger::Info("Settings", "ReactionChannel = {}", Const::ReactionChannel_Char[ReactionChannel]);
         Logger::Info("Settings", "InputFiles      = ");
         for (const auto& path : PathInputFiles) {
             Logger::Info("Settings", "- {}", path);
@@ -25,7 +25,7 @@ struct Settings {
 
     std::vector<std::string> PathInputFiles;
     std::string PathOutputFile;
-    int LimitToNEvents{0};
+    size_t LimitToNEvents{0};
     double SexaquarkMass{Const::StandardSexaquarkMass};
     EReactionChannel ReactionChannel{EReactionChannel::A};
     bool IsMC{false};

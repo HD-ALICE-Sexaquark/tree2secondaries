@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdlib>
 #include <format>
 #include <string_view>
 #include <vector>
@@ -7,7 +8,6 @@
 #include <TTree.h>
 
 #include "App/Utilities.hxx"
-#include "Math/Constants.hxx"
 #include "Storage/Vector/BaseVector.hxx"
 
 namespace Tree2Secondaries::Storage::Vector {
@@ -15,7 +15,7 @@ namespace Tree2Secondaries::Storage::Vector {
 // `Vector::States_NoE` + `Vector::CovMatrices_NoE` +
 // `Charge` + `DCAxy` + `DCAz` + `TPCSignal` + `NSigmaPion` + `NSigmaKaon` + `NSigmaProton` +
 // `McEntry`.
-struct alignas(T2S_SIMD_ALIGN) Tracks : Vector::States_NoE, Vector::CovMatrices_NoE {
+struct Tracks : Vector::States_NoE, Vector::CovMatrices_NoE {
     std::vector<int> *Charge{nullptr};
     std::vector<float> *DCAxy{nullptr};
     std::vector<float> *DCAz{nullptr};
@@ -27,7 +27,7 @@ struct alignas(T2S_SIMD_ALIGN) Tracks : Vector::States_NoE, Vector::CovMatrices_
     // mc info
     std::vector<int> *McEntry{nullptr};  // NOTE: only read when analyzing MC
     // esd index
-    std::vector<int> *Index{nullptr};  // NOTE: written by `Packager`, read by `Finder`
+    std::vector<size_t> *Index{nullptr};  // NOTE: written by `Packager`, read by `Finder`
 
     void Clear_VectorTracks(bool include_mc, bool include_esd) {
         Clear_VectorStates_NoE();
@@ -72,7 +72,7 @@ struct alignas(T2S_SIMD_ALIGN) Tracks : Vector::States_NoE, Vector::CovMatrices_
 
 // `Vector::MC` + `Vector::States` +
 // `Mother` + `GrandMother`.
-struct alignas(T2S_SIMD_ALIGN) MC_Tracks : Vector::MC, Vector::States {
+struct MC_Tracks : Vector::MC, Vector::States {
     Vector::MC_Id Mother{};
     Vector::MC_Id GrandMother{};
 
@@ -85,14 +85,14 @@ struct alignas(T2S_SIMD_ALIGN) MC_Tracks : Vector::MC, Vector::States {
     void CreateBranches_VectorMC_Tracks(TTree *tree, std::string_view acronym = "") {
         CreateBranches_VectorMC(tree, acronym);
         CreateBranches_VectorStates(tree, std::format("MC_{}", acronym));
-        Mother.CreateBranches_VectorMC_Id(tree, acronym);
-        GrandMother.CreateBranches_VectorMC_Id(tree, acronym);
+        Mother.CreateBranches_VectorMC_Id(tree, std::format("{}_Mother", acronym));
+        GrandMother.CreateBranches_VectorMC_Id(tree, std::format("{}_GrandMother", acronym));
     }
     void ReadBranches_VectorMC_Tracks(TTree *tree, std::string_view acronym = "") {
         ReadBranches_VectorMC(tree, acronym);
         ReadBranches_VectorStates(tree, std::format("MC_{}", acronym));
-        Mother.ReadBranches_VectorMC_Id(tree, acronym);
-        GrandMother.ReadBranches_VectorMC_Id(tree, acronym);
+        Mother.ReadBranches_VectorMC_Id(tree, std::format("{}_Mother", acronym));
+        GrandMother.ReadBranches_VectorMC_Id(tree, std::format("{}_GrandMother", acronym));
     }
 };
 

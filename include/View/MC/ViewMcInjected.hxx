@@ -1,6 +1,6 @@
 #pragma once
 
-#include <cmath>
+#include <cstdlib>
 
 #include "Math/Constants.hxx"
 #include "Storage/Vector/VectorInjected.hxx"
@@ -12,69 +12,58 @@
 
 namespace Tree2Secondaries::View::MC {
 
-struct Injected : View::Base<Storage::Vector::Injected> {
+// NOTE: need to be guarded with `View::IsValid()` after construction.
+struct Injected : View::Base<Storage::Vector::Injected, int> {
 
     Injected() = delete;
     Injected(const Storage::Vector::Injected* df, int entry)  //
-        : View::Base<Storage::Vector::Injected>{.Source = df, .Entry = entry} {}
+        : View::Base<Storage::Vector::Injected, int>{df, entry} {}
 
-    [[nodiscard]] float Px() const { return IsValid() ? Source->Px->at(Entry) : Const::DummyFloat; };
-    [[nodiscard]] float Py() const { return IsValid() ? Source->Py->at(Entry) : Const::DummyFloat; };
-    [[nodiscard]] float Pz() const { return IsValid() ? Source->Pz->at(Entry) : Const::DummyFloat; };
+    [[nodiscard]] float Px() const { return (*Source->Px)[EntryAsSize()]; }
+    [[nodiscard]] float Py() const { return (*Source->Py)[EntryAsSize()]; }
+    [[nodiscard]] float Pz() const { return (*Source->Pz)[EntryAsSize()]; }
 
-    [[nodiscard]] float Pt2() const {  //
-        return IsValid() ? Px() * Px() + Py() * Py() : Const::DummyFloat;
-    };
-    [[nodiscard]] float P2() const {  //
-        return IsValid() ? Pt2() + Pz() * Pz() : Const::DummyFloat;
-    };
+    [[nodiscard]] float SV_X() const { return (*Source->SV.X)[EntryAsSize()]; }
+    [[nodiscard]] float SV_Y() const { return (*Source->SV.Y)[EntryAsSize()]; }
+    [[nodiscard]] float SV_Z() const { return (*Source->SV.Z)[EntryAsSize()]; }
 
-    [[nodiscard]] float SV_X() const { return IsValid() ? Source->SV.X->at(Entry) : Const::DummyFloat; };
-    [[nodiscard]] float SV_Y() const { return IsValid() ? Source->SV.Y->at(Entry) : Const::DummyFloat; };
-    [[nodiscard]] float SV_Z() const { return IsValid() ? Source->SV.Z->at(Entry) : Const::DummyFloat; };
-
-    [[nodiscard]] float Nucleon_Px() const { return IsValid() ? Source->Nucleon.Px->at(Entry) : Const::DummyFloat; };
-    [[nodiscard]] float Nucleon_Py() const { return IsValid() ? Source->Nucleon.Py->at(Entry) : Const::DummyFloat; };
-    [[nodiscard]] float Nucleon_Pz() const { return IsValid() ? Source->Nucleon.Pz->at(Entry) : Const::DummyFloat; };
-
-    [[nodiscard]] float Nucleon_Pt2() const {  //
-        return IsValid() ? Nucleon_Px() * Nucleon_Px() + Nucleon_Py() * Nucleon_Py() : Const::DummyFloat;
-    };
-    [[nodiscard]] float Nucleon_P2() const {  //
-        return IsValid() ? Nucleon_Pt2() + Nucleon_Pz() * Nucleon_Pz() : Const::DummyFloat;
-    };
-
-    [[nodiscard]] int ReactionID() const { return IsValid() ? Entry + Const::ReactionID_Offset : Const::DummyInt; };
+    [[nodiscard]] float Nucleon_Px() const { return (*Source->Nucleon.Px)[EntryAsSize()]; }
+    [[nodiscard]] float Nucleon_Py() const { return (*Source->Nucleon.Py)[EntryAsSize()]; }
+    [[nodiscard]] float Nucleon_Pz() const { return (*Source->Nucleon.Pz)[EntryAsSize()]; }
 };
 
+// NOTE: need to be guarded with `View::IsValid()` after construction.
 struct ChannelA : View::MC::Injected {
+
+    ChannelA() = delete;
+    ChannelA(const Storage::Vector::Injected* df, const View::MC::PackedV0& v0a, const View::MC::PackedV0& v0b)
+        : View::MC::Injected{df, Const::DummyInt},  // overridden in definition
+          V0A{v0a},
+          V0B{v0b} {
+        if (V0A.ReactionID() != Const::DummyInt && V0A.ReactionID() == V0B.ReactionID()) {
+            Entry = V0A.ReactionID() - Const::ReactionID_Offset;
+        }
+    }
 
     View::MC::PackedV0 V0A;
     View::MC::PackedV0 V0B;
-
-    ChannelA() = delete;
-    ChannelA(const Storage::Vector::Injected* df, const Storage::Vector::MC_V0s* df_v0a, const Storage::Vector::MC_V0s* df_v0b, int v0a_entry,
-             int v0b_entry)
-        : View::MC::Injected{df, Const::DummyInt},  // overridden in definition
-          V0A{df_v0a, v0a_entry},
-          V0B{df_v0b, v0b_entry} {
-        if (V0A.ReactionID() == V0B.ReactionID()) Entry = V0A.ReactionID() - Const::ReactionID_Offset;
-    }
 };
 
+// NOTE: need to be guarded with `View::IsValid()` after construction.
 struct ChannelD : View::MC::Injected {
 
-    View::MC::PackedV0 V0;
-    View::MC::PackedTrack Kaon;
-
     ChannelD() = delete;
-    ChannelD(const Storage::Vector::Injected* df, const Storage::Vector::MC_V0s* df_v0, const Storage::Vector::MC_Tracks* df_track, int v0_entry,
-             int kaon_entry)
+    ChannelD(const Storage::Vector::Injected* df, const View::MC::PackedTrack& ka, const View::MC::PackedV0& v0)
         : View::MC::Injected{df, Const::DummyInt},  // overridden in definition
-          V0{df_v0, v0_entry},
-          Kaon{df_track, kaon_entry} {
-        if (V0.ReactionID() == Kaon.ReactionID()) Entry = V0.ReactionID() - Const::ReactionID_Offset;
+          Kaon{ka},
+          V0{v0} {
+        if (V0.ReactionID() != Const::DummyInt && V0.ReactionID() == Kaon.ReactionID()) {
+            Entry = V0.ReactionID() - Const::ReactionID_Offset;
+        }
     }
+
+    View::MC::PackedTrack Kaon;
+    View::MC::PackedV0 V0;
 };
 
 }  // namespace Tree2Secondaries::View::MC

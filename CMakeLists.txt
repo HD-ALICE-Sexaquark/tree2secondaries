@@ -1,5 +1,8 @@
 cmake_minimum_required(VERSION 3.25...3.31)
-project(Tree2Secondaries LANGUAGES CXX)
+project(
+  Tree2Secondaries
+  VERSION 26.02.15
+  LANGUAGES CXX)
 
 # support folders in IDEs #
 
@@ -22,8 +25,6 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS True)
 
 include(CheckIPOSupported)
 include(FetchContent)
-include(GNUInstallDirs) # GNU-like installation paths, e.g. lib/, include/, ...
-include(CMakePrintHelpers)
 
 # enable LTO #
 
@@ -35,7 +36,7 @@ else()
   message(STATUS "LTO/IPO is not supported")
 endif()
 
-# profiling #
+# option: profiling #
 
 option(ENABLE_PROFILING "Enable profiling with gprof" OFF)
 if(ENABLE_PROFILING)
@@ -44,31 +45,84 @@ if(ENABLE_PROFILING)
   set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -pg")
 endif()
 
+option(LEGACY_KF "Enable original KFParticle functions" OFF)
+
 # find dependencies #
-
-message(STATUS "Looking for ROOT")
-find_package(ROOT 6.36 CONFIG REQUIRED COMPONENTS Core RIO Tree EG)
-if(ROOT_FOUND)
-  message(STATUS "Looking for ROOT -- found")
-  message(STATUS "ROOT ${ROOT_VERSION} found at ${ROOT_BINDIR}")
-endif()
-
-message(STATUS "Looking for KFParticle")
-find_package(KFParticle)
-if(KFParticle_FOUND)
-  message(STATUS "Looking for KFParticle -- found")
-  message(STATUS "KFParticle found at ${KFParticle_LIB_DIR}")
-endif()
 
 message(STATUS "Fetching https://github.com/CLIUtils/CLI11")
 FetchContent_Declare(
   cli11_proj
   QUIET
   GIT_REPOSITORY https://github.com/CLIUtils/CLI11.git
-  GIT_TAG v2.6.0)
+  GIT_TAG v2.6.1)
 FetchContent_MakeAvailable(cli11_proj)
 message(STATUS "Fetching https://github.com/CLIUtils/CLI11 -- fetched")
 
-# main targets of the project in various subdirectories. order matters. #
+message(STATUS "Fetching https://gitlab.com/libeigen/eigen")
+FetchContent_Declare(
+  eigen
+  GIT_REPOSITORY https://gitlab.com/libeigen/eigen.git
+  GIT_TAG 5.0.1)
+FetchContent_MakeAvailable(eigen)
+message(STATUS "Fetching https://gitlab.com/libeigen/eigen -- fetched")
 
-add_subdirectory(src)
+message(STATUS "Looking for ROOT")
+find_package(ROOT 6.36 REQUIRED CONFIG COMPONENTS Core Hist RIO Tree EG)
+if(ROOT_FOUND)
+  message(STATUS "Found ROOT: ${ROOT_INCLUDE_DIRS}")
+endif()
+
+# main target #
+
+add_executable(
+  ${PROJECT_NAME}
+  $<$<BOOL:${LEGACY_KF}>:
+  src/Legacy/LegacyAddDaughter.cxx
+  src/Legacy/LegacyAddDaughterWithEnergyFit.cxx
+  src/Legacy/LegacyGetMeasurement.cxx
+  src/Legacy/LegacyHelixHelix.cxx
+  src/Legacy/LegacyHelixPoint.cxx
+  src/Legacy/LegacyInvertCholesky.cxx
+  src/Legacy/LegacyLineLine.cxx
+  src/Legacy/LegacyLinePoint.cxx
+  src/Legacy/LegacyMultQSQt.cxx
+  src/Legacy/LegacyParticle.cxx
+  src/Legacy/LegacyTransportBz.cxx
+  src/Legacy/LegacyTransportLine.cxx
+  >
+  src/Seeder/SeederHelixHelix.cxx
+  src/Seeder/SeederHelixLine.cxx
+  src/Seeder/SeederHelixVertex.cxx
+  src/Seeder/SeederLineLine.cxx
+  src/Seeder/SeederLineVertex.cxx
+  src/KalmanFitter/KalmanFitter.cxx
+  src/KalmanFitter/KalmanFitterParticle.cxx
+  src/Finder.cxx
+  src/Packager.cxx
+  src/App.cxx)
+
+target_link_libraries(
+  ${PROJECT_NAME} PRIVATE CLI11::CLI11 Eigen3::Eigen ROOT::Core ROOT::RIO
+                          ROOT::Tree ROOT::Hist)
+
+target_include_directories(
+  ${PROJECT_NAME} PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>)
+
+target_compile_options(
+  ${PROJECT_NAME}
+  PRIVATE -Wall
+          -Wextra
+          -Wshadow
+          -Wnon-virtual-dtor
+          -Wpedantic
+          -Wconversion
+          $<$<CONFIG:Release>:-mtune=native
+          -march=native
+          -ffp-contract=fast
+          -fno-math-errno
+          -mfma>)
+
+target_compile_definitions(
+  ${PROJECT_NAME}
+  PUBLIC EIGEN_DONT_PARALLELIZE $<$<BOOL:${LEGACY_KF}>:T2S_LEGACY_KF>
+         $<$<CONFIG:Debug>:T2S_DEBUG> $<$<CONFIG:Release>:EIGEN_NO_DEBUG>)

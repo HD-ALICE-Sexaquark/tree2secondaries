@@ -10,7 +10,7 @@ namespace Tree2Secondaries::Storage::Flat {
 // `Flat::State_NoE` +
 // `Index` + `DCAxy` + `DCAz` + `TPCSignal` + `NSigmaPion` + `NSigmaKaon` + `NSigmaProton`.
 struct alignas(T2S_SIMD_ALIGN) Track : Flat::State_NoE {
-    int Index{};
+    size_t Index{};
     float DCAxy{};
     float DCAz{};
     float TPCSignal{};
@@ -39,8 +39,8 @@ struct alignas(T2S_SIMD_ALIGN) MC_Track : Flat::MC, Flat::LorentzVector {
     void CreateBranches_FlatMC_Track(TTree* tree, std::string_view acronym = "") {
         CreateBranches_FlatMC(tree, acronym);
         CreateBranches_FlatLV(tree, std::format("MC_{}", acronym));
-        Mother.CreateBranches_FlatMC_Id(tree, acronym);
-        GrandMother.CreateBranches_FlatMC_Id(tree, acronym);
+        Mother.CreateBranches_FlatMC_Id(tree, std::format("{}_Mother", acronym));
+        GrandMother.CreateBranches_FlatMC_Id(tree, std::format("{}_GrandMother", acronym));
     }
 };
 

@@ -1,15 +1,22 @@
 #pragma once
 
+#include <cstdlib>
+
 #include "Math/Constants.hxx"
 
 namespace Tree2Secondaries::View {
 
-template <typename SourceType>
+template <typename SourceType, typename IndexType>
 struct Base {
-    const SourceType* Source{};
-    int Entry{};
+    [[nodiscard]] size_t EntryAsSize() const { return static_cast<size_t>(Entry); }
 
-    [[nodiscard]] bool IsValid() const { return Entry > Const::DummyInt; }
+    const SourceType* Source{};
+    IndexType Entry{};
 };
+
+template <typename SourceType>
+bool IsValid(const View::Base<SourceType, int>& view) {
+    return view.Entry > Const::DummyInt;
+}
 
 }  // namespace Tree2Secondaries::View

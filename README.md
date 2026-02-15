@@ -8,22 +8,21 @@
 
 - CMake (v3.25 or higher)
 - C++ compiler compatible with C++23
-- Internet connection to fetch **[CLIUtils/CLI11](https://github.com/CLIUtils/CLI11)**
+- Internet connection to fetch **[CLIUtils/CLI11](https://github.com/CLIUtils/CLI11)** and **[Eigen](https://gitlab.com/libeigen/eigen)**
 - **[ROOT](https://root.cern.ch)**
-- **[KFParticle](https://github.com/HD-ALICE-Sexaquark/KFParticle)**
 
 ## Building
 
 ```bash
 mkdir -p build && cd build
-cmake ../ -DKFParticle_DIR=<kfparticle-location> <options>
+cmake ../ <options> -DCMAKE_BUILD_TYPE= # Debug, Release, DebWithRelInfo
 cmake --build .
 ```
 
-Additional `<options>`:
+Additional `<option>`:
 
-* `-DT2S_DEBUG=ON` -- (default: OFF) enable debug messages
 * `-DENABLE_PROFILING=ON` -- (default: OFF) enable profiling (see below)
+* `-DLEGACY_KF=ON` -- (default: OFF) enable legacy KFParticle
 
 ## Usage
 

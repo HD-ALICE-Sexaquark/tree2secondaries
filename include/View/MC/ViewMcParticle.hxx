@@ -1,6 +1,6 @@
 #pragma once
 
-#include <cmath>
+#include <cstdlib>
 
 #include "Math/Constants.hxx"
 #include "Storage/Vector/VectorMcParticles.hxx"
@@ -8,40 +8,45 @@
 
 namespace Tree2Secondaries::View::MC {
 
-struct Particle : View::Base<Storage::Vector::MCParticles> {
+// NOTE: need to be guarded with `View::IsValid()` after construction.
+struct Particle : View::Base<Storage::Vector::MCParticles, int> {
 
     Particle() = delete;
     Particle(const Storage::Vector::MCParticles* df, int entry)  //
-        : View::Base<Storage::Vector::MCParticles>{.Source = df, .Entry = entry} {}
+        : View::Base<Storage::Vector::MCParticles, int>{df, entry} {}
 
-    [[nodiscard]] float X() const { return IsValid() ? Source->X->at(Entry) : Const::DummyFloat; };
-    [[nodiscard]] float Y() const { return IsValid() ? Source->Y->at(Entry) : Const::DummyFloat; };
-    [[nodiscard]] float Z() const { return IsValid() ? Source->Z->at(Entry) : Const::DummyFloat; };
-    [[nodiscard]] float Px() const { return IsValid() ? Source->Px->at(Entry) : Const::DummyFloat; };
-    [[nodiscard]] float Py() const { return IsValid() ? Source->Py->at(Entry) : Const::DummyFloat; };
-    [[nodiscard]] float Pz() const { return IsValid() ? Source->Pz->at(Entry) : Const::DummyFloat; };
-    [[nodiscard]] float Energy() const { return IsValid() ? Source->Energy->at(Entry) : Const::DummyFloat; };
+    [[nodiscard]] float X() const { return (*Source->X)[EntryAsSize()]; }
+    [[nodiscard]] float Y() const { return (*Source->Y)[EntryAsSize()]; }
+    [[nodiscard]] float Z() const { return (*Source->Z)[EntryAsSize()]; }
+    [[nodiscard]] float Px() const { return (*Source->Px)[EntryAsSize()]; }
+    [[nodiscard]] float Py() const { return (*Source->Py)[EntryAsSize()]; }
+    [[nodiscard]] float Pz() const { return (*Source->Pz)[EntryAsSize()]; }
+    [[nodiscard]] float Energy() const { return (*Source->Energy)[EntryAsSize()]; }
 
-    [[nodiscard]] int PdgCode() const { return IsValid() ? Source->PdgCode->at(Entry) : Const::DummyInt; };
-    [[nodiscard]] int MotherEntry() const { return IsValid() ? Source->MotherEntry->at(Entry) : Const::DummyInt; };
-    [[nodiscard]] int Generator() const { return IsValid() ? Source->Generator->at(Entry) : Const::DummyInt; };
-    [[nodiscard]] int Status() const { return IsValid() ? Source->Status->at(Entry) : Const::DummyInt; };
-    [[nodiscard]] int IsSecFromMat() const { return IsValid() ? Source->IsSecFromMat->at(Entry) : Const::DummyInt; };
-    [[nodiscard]] int IsSecFromWeak() const { return IsValid() ? Source->IsSecFromWeak->at(Entry) : Const::DummyInt; };
+    [[nodiscard]] int PdgCode() const { return (*Source->PdgCode)[EntryAsSize()]; }
+    [[nodiscard]] int MotherMcEntry() const { return (*Source->MotherMcEntry)[EntryAsSize()]; }
+    [[nodiscard]] int Status() const { return (*Source->Status)[EntryAsSize()]; }
+    [[nodiscard]] int Generator() const { return (*Source->Generator)[EntryAsSize()]; }
+    [[nodiscard]] bool IsPrimary() const { return (*Source->IsPrimary)[EntryAsSize()]; }
+    [[nodiscard]] bool IsSecFromMat() const { return (*Source->IsSecFromMat)[EntryAsSize()]; }
+    [[nodiscard]] bool IsSecFromWeak() const { return (*Source->IsSecFromWeak)[EntryAsSize()]; }
 };
 
+// NOTE: need to be guarded with `View::IsValid()` after construction.
 struct V0 : View::MC::Particle {
+
+    V0() = delete;
+    V0(const View::MC::Particle& neg, const View::MC::Particle& pos)
+        : View::MC::Particle{neg.Source, Const::DummyInt},  // overriden in definition
+          Neg{neg},
+          Pos{pos} {
+        if (View::IsValid(neg) && View::IsValid(pos)) {
+            if (Neg.MotherMcEntry() == Pos.MotherMcEntry()) Entry = Neg.MotherMcEntry();
+        }
+    }
 
     View::MC::Particle Neg;
     View::MC::Particle Pos;
-
-    V0() = delete;
-    V0(const Storage::Vector::MCParticles* df, int neg_entry, int pos_entry)
-        : View::MC::Particle{df, Const::DummyInt},  // overriden in definition
-          Neg{df, neg_entry},
-          Pos{df, pos_entry} {
-        if (Neg.MotherEntry() == Pos.MotherEntry()) Entry = Neg.MotherEntry();
-    }
 };
 
 }  // namespace Tree2Secondaries::View::MC

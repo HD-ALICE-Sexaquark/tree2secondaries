@@ -8,15 +8,16 @@
 #include <TTree.h>
 
 #include "App/Settings.hxx"
-#include "Fit/FitV0.hxx"
+#include "KalmanFitter/KalmanFitterV0.hxx"
 #include "Math/Constants.hxx"
+#include "Seeder/BaseSeeder.hxx"
 #include "Storage/Flat/FlatEvent.hxx"
 #include "Storage/Vector/VectorInjected.hxx"
 #include "Storage/Vector/VectorMcParticles.hxx"
 #include "Storage/Vector/VectorTracks.hxx"
 #include "Storage/Vector/VectorV0s.hxx"
 #include "View/MC/ViewMcParticle.hxx"
-#include "View/Reconstructed/ViewTrack.hxx"
+#include "View/Reconstructed/ViewRecTrack.hxx"
 
 namespace Tree2Secondaries {
 
@@ -41,15 +42,15 @@ class Packager {
     void CreateOutputBranches();
     void PrepareOutputHistograms();
 
-    [[nodiscard]] int NumberEventsToRead() const {
-        return fSettings.LimitToNEvents ? fSettings.LimitToNEvents : static_cast<int>(fInputChain_Events->GetEntries());
+    [[nodiscard]] size_t NumberEventsToRead() const {
+        return fSettings.LimitToNEvents ? fSettings.LimitToNEvents : static_cast<size_t>(fInputChain_Events->GetEntries());
     }
     [[nodiscard]] bool IsMC() const { return fSettings.IsMC; }
-    void GetEvent(int i_event) { fInputChain_Events->GetEntry(i_event); }
+    void GetEvent(size_t i_event) { fInputChain_Events->GetEntry(static_cast<long long>(i_event)); }
 
-    [[nodiscard]] int NumberMC() const { return static_cast<int>(fInput_MC.Px->size()); }
-    [[nodiscard]] int NumberInjected() const { return static_cast<int>(fInput_Injected.ReactionID->size()); }
-    [[nodiscard]] int NumberTracks() const { return static_cast<int>(fInput_Tracks.Px->size()); }
+    [[nodiscard]] size_t NumberMC() const { return fInput_MC.Px->size(); }
+    [[nodiscard]] size_t NumberInjected() const { return fInput_Injected.ReactionID->size(); }
+    [[nodiscard]] size_t NumberTracks() const { return fInput_Tracks.Px->size(); }
 
     void ProcessEvent();
 
@@ -62,17 +63,31 @@ class Packager {
 
     void ProcessTracks();
 
-    void PackTracks(EParticle pid);
+    void PackTracks(PID_StableParticle pid);
 
-    void FindV0s(EParticle pid);
-    [[nodiscard]] bool PassesCuts(const Fit::V0 &v0, EParticle pid) const {
+    void FindV0s(PID_V0 pid);
+
+    [[nodiscard]] bool FastCuts(const Seeder::Seed &pca_neg, const Seeder::Seed &pca_pos, PID_V0 pid) const {
         switch (pid) {
-            case EParticle::AntiLambda:
-                return PassesCuts_Lambda(v0, fHist_CutFlow_AntiLambda.get());
-            case EParticle::Lambda:
-                return PassesCuts_Lambda(v0, fHist_CutFlow_Lambda.get());
-            case EParticle::KaonZeroShort:
-                return PassesCuts_KaonZeroShort(v0, fHist_CutFlow_KaonZeroShort.get());
+            case PID_V0::AntiLambda:
+                return FastCuts_Lambda(pca_neg, pca_pos, fHist_CutFlow_AntiLambda.get());
+            case PID_V0::Lambda:
+                return FastCuts_Lambda(pca_neg, pca_pos, fHist_CutFlow_Lambda.get());
+            case PID_V0::KaonZeroShort:
+                return FastCuts_KaonZeroShort(pca_neg, pca_pos, fHist_CutFlow_KaonZeroShort.get());
+            default:
+                return false;
+        }
+    }
+
+    [[nodiscard]] bool SlowCuts(const KalmanFitter::V0 &v0, PID_V0 pid) const {
+        switch (pid) {
+            case PID_V0::AntiLambda:
+                return SlowCuts_Lambda(v0, fHist_CutFlow_AntiLambda.get());
+            case PID_V0::Lambda:
+                return SlowCuts_Lambda(v0, fHist_CutFlow_Lambda.get());
+            case PID_V0::KaonZeroShort:
+                return SlowCuts_KaonZeroShort(v0, fHist_CutFlow_KaonZeroShort.get());
             default:
                 return false;
         }
@@ -82,16 +97,23 @@ class Packager {
     void EndOfAnalysis();
 
    private:
-    void Store(const View::Rec::Track &view, Storage::Vector::Tracks &df);
-    void StoreMC(const View::MC::Particle &view, Storage::Vector::MC_Tracks &df, EParticle pid);
-    bool PassesCuts_Proton(const View::Rec::Track &track, TH1D *cut_flow_hist) const;
-    bool PassesCuts_Kaon(const View::Rec::Track &track, TH1D *cut_flow_hist) const;
-    bool PassesCuts_Pion(const View::Rec::Track &track, TH1D *cut_flow_hist) const;
+    void Store(const View::Rec::Track &track, Storage::Vector::Tracks &df);
+    void StoreMC(const View::MC::Particle &mc, Storage::Vector::MC_Tracks &df, PID_StableParticle pid);
+    void StoreDummyMC(Storage::Vector::MC_Tracks &df);
 
-    bool PassesCuts_Lambda(const Fit::V0 &v0, TH1D *cut_flow_hist) const;
-    bool PassesCuts_KaonZeroShort(const Fit::V0 &v0, TH1D *cut_flow_hist) const;
-    void Store(const Fit::V0 &v0, Storage::Vector::V0s &df);
-    void StoreMC(const View::MC::V0 &v0_view, Storage::Vector::MC_V0s &df, EParticle v0_pid);
+    bool Cuts_Proton(const View::Rec::Track &track, TH1D *cut_flow_hist) const;
+    bool Cuts_Kaon(const View::Rec::Track &track, TH1D *cut_flow_hist) const;
+    bool Cuts_Pion(const View::Rec::Track &track, TH1D *cut_flow_hist) const;
+
+    bool FastCuts_Lambda(const Seeder::Seed &seed_neg, const Seeder::Seed &seed_pos, TH1D *cut_flow_hist) const;
+    bool FastCuts_KaonZeroShort(const Seeder::Seed &seed_neg, const Seeder::Seed &seed_pos, TH1D *cut_flow_hist) const;
+
+    bool SlowCuts_Lambda(const KalmanFitter::V0 &v0, TH1D *cut_flow_hist) const;
+    bool SlowCuts_KaonZeroShort(const KalmanFitter::V0 &v0, TH1D *cut_flow_hist) const;
+
+    void Store(const KalmanFitter::V0 &v0, Storage::Vector::V0s &df);
+    void StoreMC(const View::MC::V0 &v0, Storage::Vector::MC_V0s &df, PID_V0 pid);
+    void StoreDummyMC(Storage::Vector::MC_V0s &df);
 
     Settings fSettings;
     std::unique_ptr<TChain> fInputChain_Events;
@@ -118,12 +140,12 @@ class Packager {
     std::vector<float> fVec_SV_Y;
     std::vector<float> fVec_SV_Z;
 
-    std::vector<Fit::Track> fVec_AntiProtons;
-    std::vector<Fit::Track> fVec_Protons;
-    std::vector<Fit::Track> fVec_NegKaons;
-    std::vector<Fit::Track> fVec_PosKaons;
-    std::vector<Fit::Track> fVec_PiMinus;
-    std::vector<Fit::Track> fVec_PiPlus;
+    std::vector<size_t> fIndices_AntiProtons;
+    std::vector<size_t> fIndices_Protons;
+    std::vector<size_t> fIndices_NegKaons;
+    std::vector<size_t> fIndices_PosKaons;
+    std::vector<size_t> fIndices_PiMinus;
+    std::vector<size_t> fIndices_PiPlus;
 
     // input //
 

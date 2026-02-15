@@ -51,9 +51,9 @@ struct alignas(T2S_SIMD_ALIGN) MC_Sexaquark {
         PV.CreateBranches_FlatCoordinates(tree, "MC_PV", "v");
         SV.CreateBranches_FlatCoordinates(tree, "MC_SV", "");
         // reaction id + flags
-        tree->Branch("ReactionID", &ReactionID);
-        tree->Branch("IsSignal", &IsSignal);
-        tree->Branch("IsHybrid", &IsHybrid);
+        tree->Branch("MC_ReactionID", &ReactionID);
+        tree->Branch("MC_IsSignal", &IsSignal);
+        tree->Branch("MC_IsHybrid", &IsHybrid);
     }
 };
 

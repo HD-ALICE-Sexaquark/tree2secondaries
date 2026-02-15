@@ -6,11 +6,10 @@
 #include <TTree.h>
 
 #include "App/Utilities.hxx"
-#include "Math/Constants.hxx"
 
 namespace Tree2Secondaries::Storage::Vector {
 
-struct alignas(T2S_SIMD_ALIGN) Coordinates {
+struct Coordinates {
     std::vector<float>* X{nullptr};
     std::vector<float>* Y{nullptr};
     std::vector<float>* Z{nullptr};
@@ -32,7 +31,7 @@ struct alignas(T2S_SIMD_ALIGN) Coordinates {
     }
 };
 
-struct alignas(T2S_SIMD_ALIGN) PxPyPz {
+struct PxPyPz {
     std::vector<float>* Px{nullptr};
     std::vector<float>* Py{nullptr};
     std::vector<float>* Pz{nullptr};
@@ -54,7 +53,7 @@ struct alignas(T2S_SIMD_ALIGN) PxPyPz {
     }
 };
 
-struct alignas(T2S_SIMD_ALIGN) LorentzVectors : Vector::PxPyPz {
+struct LorentzVectors : Vector::PxPyPz {
     std::vector<float>* Energy{nullptr};
 
     void Clear_VectorLV() {
@@ -71,7 +70,7 @@ struct alignas(T2S_SIMD_ALIGN) LorentzVectors : Vector::PxPyPz {
     }
 };
 
-struct alignas(T2S_SIMD_ALIGN) States_NoE : Vector::Coordinates, Vector::PxPyPz {
+struct States_NoE : Vector::Coordinates, Vector::PxPyPz {
     void Clear_VectorStates_NoE() {
         Clear_VectorCoordinates();
         Clear_VectorPxPyPz();
@@ -86,7 +85,7 @@ struct alignas(T2S_SIMD_ALIGN) States_NoE : Vector::Coordinates, Vector::PxPyPz 
     }
 };
 
-struct alignas(T2S_SIMD_ALIGN) States : Vector::Coordinates, Vector::LorentzVectors {
+struct States : Vector::Coordinates, Vector::LorentzVectors {
     void Clear_VectorStates() {
         Clear_VectorCoordinates();
         Clear_VectorLV();
@@ -101,7 +100,7 @@ struct alignas(T2S_SIMD_ALIGN) States : Vector::Coordinates, Vector::LorentzVect
     }
 };
 
-struct alignas(T2S_SIMD_ALIGN) CovMatrices_NoE {
+struct CovMatrices_NoE {
     std::vector<float>* SigmaX2{nullptr};
     std::vector<float>* SigmaXY{nullptr};
     std::vector<float>* SigmaY2{nullptr};
@@ -195,7 +194,7 @@ struct alignas(T2S_SIMD_ALIGN) CovMatrices_NoE {
     }
 };
 
-struct alignas(T2S_SIMD_ALIGN) CovMatrices : Vector::CovMatrices_NoE {
+struct CovMatrices : Vector::CovMatrices_NoE {
     std::vector<float>* SigmaXE{nullptr};
     std::vector<float>* SigmaYE{nullptr};
     std::vector<float>* SigmaZE{nullptr};
@@ -239,7 +238,7 @@ struct alignas(T2S_SIMD_ALIGN) CovMatrices : Vector::CovMatrices_NoE {
 // MC Information //
 
 // `McEntry` + `PdgCode`.
-struct alignas(T2S_SIMD_ALIGN) MC_Id {
+struct MC_Id {
     std::vector<int>* McEntry{nullptr};
     std::vector<int>* PdgCode{nullptr};
 
@@ -260,9 +259,9 @@ struct alignas(T2S_SIMD_ALIGN) MC_Id {
 };
 
 // `ReactionID` + `IsTrue` + `IsSignal` + `IsSecondary`.
-struct alignas(T2S_SIMD_ALIGN) MC_Flags {
+struct MC_Flags {
     std::vector<int>* ReactionID{nullptr};
-    std::vector<char>* IsTrue{nullptr};
+    std::vector<char>* IsTrue{nullptr};  // NOTE: `char` instead of `bool`, because ROOT
     std::vector<char>* IsSignal{nullptr};
     std::vector<char>* IsSecondary{nullptr};
 
@@ -289,7 +288,7 @@ struct alignas(T2S_SIMD_ALIGN) MC_Flags {
 };
 
 // `Vector::MC_Id` + `Vector::MC_Flags`
-struct alignas(T2S_SIMD_ALIGN) MC : Vector::MC_Id, Vector::MC_Flags {
+struct MC : Vector::MC_Id, Vector::MC_Flags {
     void Clear_VectorMC() {
         Clear_VectorMC_Id();
         Clear_VectorMC_Flags();

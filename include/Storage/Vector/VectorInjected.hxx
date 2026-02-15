@@ -5,14 +5,13 @@
 #include <TTree.h>
 
 #include "App/Utilities.hxx"
-#include "Math/Constants.hxx"
 #include "Storage/Vector/BaseVector.hxx"
 
 namespace Tree2Secondaries::Storage::Vector {
 
 // Read and written by `Packager`.
 // `Vector::Coordinates` + `Vector::PxPyPz` + `ReactionID` + `Nucleon` (`Vector::PxPyPz`).
-struct alignas(T2S_SIMD_ALIGN) Injected : Vector::PxPyPz {
+struct Injected : Vector::PxPyPz {
     Vector::Coordinates SV{};
     Vector::PxPyPz Nucleon{};
     std::vector<int> *ReactionID{nullptr};

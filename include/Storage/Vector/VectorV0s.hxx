@@ -1,6 +1,5 @@
 #pragma once
 
-#include "Math/Constants.hxx"
 #include "Storage/Vector/BaseVector.hxx"
 #include "Storage/Vector/VectorTracks.hxx"
 
@@ -9,7 +8,7 @@ namespace Tree2Secondaries::Storage::Vector {
 // `Vector::States` + `Vector::CovMatrices` +
 // `Neg` (`Vector::Tracks`) + `Pos` (`Vector::Tracks`) + `Neg_atPCA` (`States_NoE`) +
 // `Pos_atPCA` (`States_NoE`) + `Chi2NDF`.
-struct alignas(T2S_SIMD_ALIGN) V0s : Vector::States, Vector::CovMatrices {
+struct V0s : Vector::States, Vector::CovMatrices {
     Vector::Tracks Neg{};
     Vector::Tracks Pos{};
     Vector::States_NoE Neg_atPCA{};
@@ -26,8 +25,8 @@ struct alignas(T2S_SIMD_ALIGN) V0s : Vector::States, Vector::CovMatrices {
         Chi2NDF->clear();
     }
     void CreateBranches_VectorV0s(TTree* tree, std::string_view prefix) {
-        const std::string& neg_prefix{std::format("{}_Neg", prefix)};
-        const std::string& pos_prefix{std::format("{}_Pos", prefix)};
+        const std::string neg_prefix = std::format("{}_Neg", prefix);
+        const std::string pos_prefix = std::format("{}_Pos", prefix);
         CreateBranches_VectorStates(tree, prefix);
         CreateBranches_VectorCovMatrices(tree, prefix);
         Neg.CreateBranches_VectorTracks(tree, false, true, neg_prefix);
@@ -37,8 +36,8 @@ struct alignas(T2S_SIMD_ALIGN) V0s : Vector::States, Vector::CovMatrices {
         tree->Branch(std::format("{}_Chi2NDF", prefix).c_str(), &Chi2NDF);
     }
     void ReadBranches_VectorV0s(TTree* tree, std::string_view prefix) {
-        const std::string& neg_prefix{std::format("{}_Neg", prefix)};
-        const std::string& pos_prefix{std::format("{}_Pos", prefix)};
+        const std::string neg_prefix = std::format("{}_Neg", prefix);
+        const std::string pos_prefix = std::format("{}_Pos", prefix);
         ReadBranches_VectorStates(tree, prefix);
         ReadBranches_VectorCovMatrices(tree, prefix);
         Neg.ReadBranches_VectorTracks(tree, false, true, neg_prefix);
@@ -55,14 +54,14 @@ struct alignas(T2S_SIMD_ALIGN) V0s : Vector::States, Vector::CovMatrices {
 // `Neg_Momentum` (`Vector::PxPyPz`) + `Pos_Momentum` (`Vector::PxPyPz`) +
 // `AtDecay` (`Vector::Coordinates`) +
 // `IsHybrid`.
-struct alignas(T2S_SIMD_ALIGN) MC_V0s : Vector::MC, Vector::States {
+struct MC_V0s : Vector::MC, Vector::States {
     Vector::MC Neg{};
     Vector::MC Pos{};
     Vector::MC_Id Mother{};
     Vector::PxPyPz Neg_Momentum{};
     Vector::PxPyPz Pos_Momentum{};
     Vector::Coordinates AtDecay{};
-    std::vector<char>* IsHybrid{nullptr};
+    std::vector<char>* IsHybrid{nullptr};  // NOTE: `char` instead of `bool`, because ROOT
 
     void Clear_VectorMC_V0s() {
         Clear_VectorMC();

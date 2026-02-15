@@ -9,63 +9,72 @@
 
 namespace Tree2Secondaries::Truth::Sexaquark {
 
-[[nodiscard]] inline float AsInjected_Energy(const View::MC::Injected& view, double mass) {  //
-    return static_cast<float>(std::sqrt(view.P2() + mass * mass));
+[[nodiscard]] inline int ReactionID(const View::MC::Injected& sexa) { return Const::ReactionID_Offset + sexa.Entry; }
+
+[[nodiscard]] inline double Energy(const View::MC::Injected& sexa, double mass) {
+    auto px = static_cast<double>(sexa.Px());
+    auto py = static_cast<double>(sexa.Py());
+    auto pz = static_cast<double>(sexa.Pz());
+    double squared_energy = px * px + py * py + pz * pz + mass * mass;
+    return std::sqrt(squared_energy);
 }
 
-[[nodiscard]] inline float AsInjected_NucleonEnergy(const View::MC::Injected& view, EReactionChannel channel) {  //
-    double mass{Const::Particle_Mass[Const::ReactionNucleonPID[channel]]};
-    return static_cast<float>(std::sqrt(view.Nucleon_P2() + mass * mass));
+[[nodiscard]] inline double NucleonEnergy(const View::MC::Injected& sexa, double mass) {
+    auto px = static_cast<double>(sexa.Nucleon_Px());
+    auto py = static_cast<double>(sexa.Nucleon_Py());
+    auto pz = static_cast<double>(sexa.Nucleon_Pz());
+    double squared_energy = px * px + py * py + pz * pz + mass * mass;
+    return std::sqrt(squared_energy);
 }
 
 // Channel A //
 
-[[nodiscard]] inline double AsChannelA_AfterPx(const View::MC::ChannelA& a_view) {
-    return a_view.IsValid() ? a_view.V0A.Px() + a_view.V0B.Px() : Const::DummyDouble;
+[[nodiscard]] inline double AfterPx(const View::MC::ChannelA& sexa) {
+    return static_cast<double>(sexa.V0A.Px()) + static_cast<double>(sexa.V0B.Px());
 }
-[[nodiscard]] inline double AsChannelA_AfterPy(const View::MC::ChannelA& a_view) {
-    return a_view.IsValid() ? a_view.V0A.Py() + a_view.V0B.Py() : Const::DummyDouble;
+[[nodiscard]] inline double AfterPy(const View::MC::ChannelA& sexa) {
+    return static_cast<double>(sexa.V0A.Py()) + static_cast<double>(sexa.V0B.Py());
 }
-[[nodiscard]] inline double AsChannelA_AfterPz(const View::MC::ChannelA& a_view) {
-    return a_view.IsValid() ? a_view.V0A.Pz() + a_view.V0B.Pz() : Const::DummyDouble;
+[[nodiscard]] inline double AfterPz(const View::MC::ChannelA& sexa) {
+    return static_cast<double>(sexa.V0A.Pz()) + static_cast<double>(sexa.V0B.Pz());
 }
-[[nodiscard]] inline double AsChannelA_AfterE(const View::MC::ChannelA& a_view) {
-    return a_view.IsValid() ? a_view.V0A.Energy() + a_view.V0B.Energy() : Const::DummyDouble;
+[[nodiscard]] inline double AfterE(const View::MC::ChannelA& sexa) {
+    return static_cast<double>(sexa.V0A.Energy()) + static_cast<double>(sexa.V0B.Energy());
 }
 
-[[nodiscard]] inline bool AsChannelA_IsSignal(const View::MC::ChannelA& a_view) {
-    return a_view.IsValid() ? a_view.V0A.IsSignal() && a_view.V0B.IsSignal() : false;
+[[nodiscard]] inline bool IsSignal(const View::MC::ChannelA& sexa) {
+    return sexa.V0A.IsSignal() && sexa.V0B.IsSignal() && sexa.V0A.ReactionID() == sexa.V0B.ReactionID();
 }
-[[nodiscard]] inline bool AsChannelA_IsHybrid(const View::MC::ChannelA& a_view) {
-    // NOTE: don't check IsValid(), on purpose
-    return !AsChannelA_IsSignal(a_view) && (a_view.V0A.IsHybrid() || a_view.V0B.IsHybrid() || (a_view.V0A.IsSignal() && !a_view.V0B.IsSignal()) ||
-                                            (!a_view.V0A.IsSignal() && a_view.V0B.IsSignal()) ||
-                                            (a_view.V0A.IsSignal() && a_view.V0B.IsSignal() && a_view.V0A.ReactionID() != a_view.V0B.ReactionID()));
+[[nodiscard]] inline bool IsHybrid(const View::MC::ChannelA& sexa) {
+    return !IsSignal(sexa) && (sexa.V0A.IsHybrid() || sexa.V0B.IsHybrid() ||     //
+                               (sexa.V0A.IsSignal() && !sexa.V0B.IsSignal()) ||  //
+                               (!sexa.V0A.IsSignal() && sexa.V0B.IsSignal()) ||  //
+                               (sexa.V0A.IsSignal() && sexa.V0B.IsSignal() && sexa.V0A.ReactionID() != sexa.V0B.ReactionID()));
 }
 
 // Channel D //
 
-[[nodiscard]] inline double AsChannelD_AfterPx(const View::MC::ChannelD& d_view) {
-    return d_view.IsValid() ? d_view.V0.Px() + d_view.Kaon.Px() : Const::DummyDouble;
+[[nodiscard]] inline double AfterPx(const View::MC::ChannelD& sexa) {
+    return static_cast<double>(sexa.V0.Px()) + static_cast<double>(sexa.Kaon.Px());
 }
-[[nodiscard]] inline double AsChannelD_AfterPy(const View::MC::ChannelD& d_view) {
-    return d_view.IsValid() ? d_view.V0.Py() + d_view.Kaon.Py() : Const::DummyDouble;
+[[nodiscard]] inline double AfterPy(const View::MC::ChannelD& sexa) {
+    return static_cast<double>(sexa.V0.Py()) + static_cast<double>(sexa.Kaon.Py());
 }
-[[nodiscard]] inline double AsChannelD_AfterPz(const View::MC::ChannelD& d_view) {
-    return d_view.IsValid() ? d_view.V0.Pz() + d_view.Kaon.Pz() : Const::DummyDouble;
+[[nodiscard]] inline double AfterPz(const View::MC::ChannelD& sexa) {
+    return static_cast<double>(sexa.V0.Pz()) + static_cast<double>(sexa.Kaon.Pz());
 }
-[[nodiscard]] inline double AsChannelD_AfterE(const View::MC::ChannelD& d_view) {
-    return d_view.IsValid() ? d_view.V0.Energy() + d_view.Kaon.Energy() : Const::DummyDouble;
+[[nodiscard]] inline double AfterE(const View::MC::ChannelD& sexa) {
+    return static_cast<double>(sexa.V0.Energy()) + static_cast<double>(sexa.Kaon.Energy());
 }
 
-[[nodiscard]] inline bool AsChannelD_IsSignal(const View::MC::ChannelD& d_view) {
-    return d_view.IsValid() ? d_view.V0.IsSignal() && d_view.Kaon.IsSignal() : false;
+[[nodiscard]] inline bool IsSignal(const View::MC::ChannelD& sexa) {
+    return sexa.V0.IsSignal() && sexa.Kaon.IsSignal() && sexa.V0.ReactionID() == sexa.Kaon.ReactionID();
 }
-[[nodiscard]] inline bool AsChannelD_IsHybrid(const View::MC::ChannelD& d_view) {
-    // NOTE: don't check IsValid(), on purpose
-    return !AsChannelD_IsSignal(d_view) &&
-           (d_view.V0.IsHybrid() || (d_view.V0.IsSignal() && !d_view.Kaon.IsSignal()) || (!d_view.V0.IsSignal() && d_view.Kaon.IsSignal()) ||
-            (d_view.V0.IsSignal() && d_view.Kaon.IsSignal() && d_view.V0.ReactionID() != d_view.Kaon.ReactionID()));
+[[nodiscard]] inline bool IsHybrid(const View::MC::ChannelD& sexa) {
+    return !IsSignal(sexa) && (sexa.V0.IsHybrid() ||                             //
+                               (sexa.V0.IsSignal() && !sexa.Kaon.IsSignal()) ||  //
+                               (!sexa.V0.IsSignal() && sexa.Kaon.IsSignal()) ||  //
+                               (sexa.V0.IsSignal() && sexa.Kaon.IsSignal() && sexa.V0.ReactionID() != sexa.Kaon.ReactionID()));
 }
 
 }  // namespace Tree2Secondaries::Truth::Sexaquark
