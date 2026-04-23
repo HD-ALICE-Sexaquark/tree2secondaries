@@ -152,14 +152,14 @@ void Finder::PrepareOutputHistograms() {
     const int x_nbins{20};
     const float x_min{0.};
     const float x_max{20.};
-    std::string hist_title{";Cut N;N Passed Cut"};
+    std::string hist_title = ";Cut N;N Passed Cut";
     fHist_CutFlow = std::make_unique<TH1D>("CutFlow", hist_title.c_str(), x_nbins, x_min, x_max);
     fHist_CutFlow_AntiChannel = std::make_unique<TH1D>("CutFlow_Anti", hist_title.c_str(), x_nbins, x_min, x_max);
 }
 
 bool Finder::PrepareOutputTree() {
 
-    std::string tree_name{std::format("FoundChannel{}", Const::ReactionChannel_Char[fSettings.ReactionChannel])};
+    std::string tree_name = std::format("FoundChannel{}", Const::ReactionChannel_Char[fSettings.ReactionChannel]);
 
     fOutputTree = std::make_unique<TTree>(tree_name.c_str(), "");
     if (!fOutputTree) {
@@ -1112,8 +1112,8 @@ void Finder::StoreDummyMC_ChannelD() {
     fOutput_MC_ChannelD.Nucleon.Energy = Const::DummyFloat;
     // -- PV (`Flat::Coordinates`)
     fOutput_MC_ChannelD.PV.X = Const::DummyFloat;
-    fOutput_MC_ChannelD.PV.X = Const::DummyFloat;
-    fOutput_MC_ChannelD.PV.X = Const::DummyFloat;
+    fOutput_MC_ChannelD.PV.Y = Const::DummyFloat;
+    fOutput_MC_ChannelD.PV.Z = Const::DummyFloat;
     // -- SV (`Flat::Coordinates`)
     fOutput_MC_ChannelD.SV.X = Const::DummyFloat;
     fOutput_MC_ChannelD.SV.Y = Const::DummyFloat;

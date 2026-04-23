@@ -160,10 +160,10 @@ void Packager::PrepareOutputHistograms() {
     // event counter //
     fHist_EventCounter = std::make_unique<TH1D>("N_Events", ";;N_Events", 1, 0, 1);
 
-    const int x_nbins{20};
-    const float x_min{0.};
-    const float x_max{20.};
-    std::string hist_title{";Cut N;N Passed Cut"};
+    const int x_nbins = 20;
+    const float x_min = 0.;
+    const float x_max = 20.;
+    std::string hist_title = ";Cut N;N Passed Cut";
 
     fHist_CutFlow_AntiProton = std::make_unique<TH1D>(  //
         std::format("CutFlow_{}", Const::Particle_Acronym[PID_StableParticle::AntiProton]).c_str(), hist_title.c_str(), x_nbins, x_min, x_max);
@@ -317,9 +317,9 @@ void Packager::PackTracks(PID_StableParticle pid) {
 
     // determine rules based on particle species //
 
-    std::vector<size_t>* vec{nullptr};
-    Storage::Vector::Tracks* out{nullptr};
-    Storage::Vector::MC_Tracks* mc_out{nullptr};
+    std::vector<size_t>* vec = nullptr;
+    Storage::Vector::Tracks* out = nullptr;
+    Storage::Vector::MC_Tracks* mc_out = nullptr;
 
     switch (pid) {
         case PID_StableParticle::NegKaon:
@@ -510,10 +510,10 @@ void Packager::FindV0s(PID_V0 pid) {
 
     // determine rules based on V0 species //
 
-    Storage::Vector::V0s* out{nullptr};
-    Storage::Vector::MC_V0s* mc_out{nullptr};
-    const std::vector<size_t>* vec_neg{&fIndices_PiMinus};
-    const std::vector<size_t>* vec_pos{&fIndices_PiPlus};
+    Storage::Vector::V0s* out = nullptr;
+    Storage::Vector::MC_V0s* mc_out = nullptr;
+    const std::vector<size_t>* vec_neg = &fIndices_PiMinus;
+    const std::vector<size_t>* vec_pos = &fIndices_PiPlus;
     double mass_neg = Const::Particle_Mass[Const::V0_NegativePID[pid]];
     double mass_pos = Const::Particle_Mass[Const::V0_PositivePID[pid]];
 
@@ -638,7 +638,7 @@ bool Packager::FastCuts_KaonZeroShort(const Seeder::Seed& seed_neg, const Seeder
 
 bool Packager::SlowCuts_Lambda(const KF::V0& v0, TH1D* cut_flow_hist) const {
 
-    double mass{v0.Mass().value_or(Const::DummyDouble)};  // cached
+    double mass = v0.Mass().value_or(Const::DummyDouble);  // cached
     if (mass < Cuts::Lambda::Min_Mass || mass > Cuts::Lambda::Max_Mass) return false;
     cut_flow_hist->Fill(1.);
 
@@ -660,7 +660,7 @@ bool Packager::SlowCuts_Lambda(const KF::V0& v0, TH1D* cut_flow_hist) const {
     if (v0.AbsArmQtOverAlpha() > Cuts::Lambda::AbsMax_ArmQtOverAlpha) return false;
     cut_flow_hist->Fill(8.);
 
-    double cpa_wrt_pv{v0.CPA_Vertex(fInput_Event.PV.X, fInput_Event.PV.Y, fInput_Event.PV.Z)};  // cached
+    double cpa_wrt_pv = v0.CPA_Vertex(fInput_Event.PV.X, fInput_Event.PV.Y, fInput_Event.PV.Z);  // cached
     if (cpa_wrt_pv < Cuts::Lambda::Min_CPAwrtPV || cpa_wrt_pv > Cuts::Lambda::Max_CPAwrtPV) return false;
     cut_flow_hist->Fill(9.);
 
@@ -675,7 +675,7 @@ bool Packager::SlowCuts_KaonZeroShort(const KF::V0& v0, TH1D* cut_flow_hist) con
     // if (v0.Pt() < Cuts::KaonZeroShort::Min_Pt) return false; // PENDING
     // cut_flow_hist->Fill(2.); // PENDING
 
-    double mass{v0.Mass().value_or(Const::DummyDouble)};  // cached
+    double mass = v0.Mass().value_or(Const::DummyDouble);  // cached
     if (mass < Cuts::KaonZeroShort::Min_Mass || mass > Cuts::KaonZeroShort::Max_Mass) return false;
     cut_flow_hist->Fill(3.);
 
@@ -691,7 +691,7 @@ bool Packager::SlowCuts_KaonZeroShort(const KF::V0& v0, TH1D* cut_flow_hist) con
     if (v0.SquaredDCA_Pos_V0() > Cuts::KaonZeroShort::Max_DCAposV0 * Cuts::KaonZeroShort::Max_DCAposV0) return false;
     cut_flow_hist->Fill(7.);
 
-    double cpa_wrt_pv{v0.CPA_Vertex(fInput_Event.PV.X, fInput_Event.PV.Y, fInput_Event.PV.Z)};  // cached
+    double cpa_wrt_pv = v0.CPA_Vertex(fInput_Event.PV.X, fInput_Event.PV.Y, fInput_Event.PV.Z);  // cached
     if (cpa_wrt_pv < Cuts::KaonZeroShort::Min_CPAwrtPV || cpa_wrt_pv > Cuts::KaonZeroShort::Max_CPAwrtPV) return false;
     cut_flow_hist->Fill(8.);
 
