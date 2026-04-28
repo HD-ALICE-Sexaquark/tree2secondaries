@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <memory>
 
 #include <TChain.h>
@@ -11,11 +12,8 @@
 #include "KalmanFitter/KalmanFitterV0.hxx"
 #include "Math/Constants.hxx"
 #include "Seeder/BaseSeeder.hxx"
-#include "Storage/Flat/FlatEvent.hxx"
-#include "Storage/Vector/VectorInjected.hxx"
-#include "Storage/Vector/VectorMcParticles.hxx"
-#include "Storage/Vector/VectorTracks.hxx"
-#include "Storage/Vector/VectorV0s.hxx"
+#include "Storage/Schema/SchemaFlat.hxx"
+#include "Storage/Schema/SchemaVector.hxx"
 #include "View/MC/ViewMcParticle.hxx"
 #include "View/Reconstructed/ViewRecTrack.hxx"
 
@@ -48,9 +46,9 @@ class Packager {
     [[nodiscard]] bool IsMC() const { return fSettings.IsMC; }
     void GetEvent(size_t i_event) { fInputChain_Events->GetEntry(static_cast<long long>(i_event)); }
 
-    [[nodiscard]] size_t NumberMC() const { return fInput_MC.Px->size(); }
-    [[nodiscard]] size_t NumberInjected() const { return fInput_Injected.ReactionID->size(); }
-    [[nodiscard]] size_t NumberTracks() const { return fInput_Tracks.Px->size(); }
+    [[nodiscard]] std::size_t NumberMC() const { return fInput_MC.lv.px->size(); }
+    [[nodiscard]] std::size_t NumberInjected() const { return fInput_Injected.reaction_id->size(); }
+    [[nodiscard]] std::size_t NumberTracks() const { return fInput_Tracks.state.px->size(); }
 
     void ProcessEvent();
 
@@ -97,9 +95,9 @@ class Packager {
     void EndOfAnalysis();
 
    private:
-    void Store(const View::Rec::Track &track, Storage::Vector::Tracks &df);
-    void StoreMC(const View::MC::Particle &mc, Storage::Vector::MC_Tracks &df, PID_StableParticle pid);
-    void StoreDummyMC(Storage::Vector::MC_Tracks &df);
+    void Store(const View::Rec::Track &track, Schema::Vector::Tracks &df);
+    void StoreMC(const View::MC::Particle &mc, Schema::Vector::MC_Tracks &df, PID_StableParticle pid);
+    void StoreDummyMC(Schema::Vector::MC_Tracks &df);
 
     bool Cuts_Proton(const View::Rec::Track &track, TH1D *cut_flow_hist) const;
     bool Cuts_Kaon(const View::Rec::Track &track, TH1D *cut_flow_hist) const;
@@ -111,9 +109,9 @@ class Packager {
     bool SlowCuts_Lambda(const KalmanFitter::V0 &v0, TH1D *cut_flow_hist) const;
     bool SlowCuts_KaonZeroShort(const KalmanFitter::V0 &v0, TH1D *cut_flow_hist) const;
 
-    void Store(const KalmanFitter::V0 &v0, Storage::Vector::V0s &df);
-    void StoreMC(const View::MC::V0 &v0, Storage::Vector::MC_V0s &df, PID_V0 pid);
-    void StoreDummyMC(Storage::Vector::MC_V0s &df);
+    void Store(const KalmanFitter::V0 &v0, Schema::Vector::V0s &df);
+    void StoreMC(const View::MC::V0 &mc_v0, Schema::Vector::MC_V0s &df, PID_V0 pid);
+    void StoreDummyMC(Schema::Vector::MC_V0s &df);
 
     Settings fSettings;
     std::unique_ptr<TChain> fInputChain_Events;
@@ -140,45 +138,42 @@ class Packager {
     std::vector<float> fVec_SV_Y;
     std::vector<float> fVec_SV_Z;
 
-    std::vector<size_t> fIndices_AntiProtons;
-    std::vector<size_t> fIndices_Protons;
-    std::vector<size_t> fIndices_NegKaons;
-    std::vector<size_t> fIndices_PosKaons;
-    std::vector<size_t> fIndices_PiMinus;
-    std::vector<size_t> fIndices_PiPlus;
+    std::vector<unsigned int> fIndices_AntiProtons;
+    std::vector<unsigned int> fIndices_Protons;
+    std::vector<unsigned int> fIndices_NegKaons;
+    std::vector<unsigned int> fIndices_PosKaons;
+    std::vector<unsigned int> fIndices_PiMinus;
+    std::vector<unsigned int> fIndices_PiPlus;
 
     // input //
 
-    Storage::Flat::Event fInput_Event;
-    Storage::Flat::Coordinates fInput_MC_PV;
-    Storage::Vector::Injected fInput_Injected;
-
-    Storage::Vector::MCParticles fInput_MC;
-    Storage::Vector::Tracks fInput_Tracks;
+    Schema::Flat::Event fInput_Event;
+    Schema::Vector::Injected fInput_Injected;
+    Schema::Vector::MCParticles fInput_MC;
+    Schema::Vector::Tracks fInput_Tracks;
 
     // output //
 
-    Storage::Flat::Event fOutput_Event;
-    Storage::Flat::Coordinates fOutput_MC_PV;
-    Storage::Vector::Injected fOutput_Injected;
+    Schema::Flat::Event fOutput_Event;
+    Schema::Vector::Injected fOutput_Injected;
 
-    Storage::Vector::V0s fOutput_AntiLambdas;
-    Storage::Vector::V0s fOutput_Lambdas;
-    Storage::Vector::V0s fOutput_KaonsZeroShort;
+    Schema::Vector::V0s fOutput_AntiLambdas;
+    Schema::Vector::V0s fOutput_Lambdas;
+    Schema::Vector::V0s fOutput_KaonsZeroShort;
 
-    Storage::Vector::Tracks fOutput_NegKaons;
-    Storage::Vector::Tracks fOutput_PosKaons;
-    Storage::Vector::Tracks fOutput_PiMinus;
-    Storage::Vector::Tracks fOutput_PiPlus;
+    Schema::Vector::Tracks fOutput_NegKaons;
+    Schema::Vector::Tracks fOutput_PosKaons;
+    Schema::Vector::Tracks fOutput_PiMinus;
+    Schema::Vector::Tracks fOutput_PiPlus;
 
-    Storage::Vector::MC_V0s fOutput_MC_AntiLambdas;
-    Storage::Vector::MC_V0s fOutput_MC_Lambdas;
-    Storage::Vector::MC_V0s fOutput_MC_KaonsZeroShort;
+    Schema::Vector::MC_V0s fOutput_MC_AntiLambdas;
+    Schema::Vector::MC_V0s fOutput_MC_Lambdas;
+    Schema::Vector::MC_V0s fOutput_MC_KaonsZeroShort;
 
-    Storage::Vector::MC_Tracks fOutput_MC_NegKaons;
-    Storage::Vector::MC_Tracks fOutput_MC_PosKaons;
-    Storage::Vector::MC_Tracks fOutput_MC_PiMinus;
-    Storage::Vector::MC_Tracks fOutput_MC_PiPlus;
+    Schema::Vector::MC_Tracks fOutput_MC_NegKaons;
+    Schema::Vector::MC_Tracks fOutput_MC_PosKaons;
+    Schema::Vector::MC_Tracks fOutput_MC_PiMinus;
+    Schema::Vector::MC_Tracks fOutput_MC_PiPlus;
 };
 
 }  // namespace Tree2Secondaries

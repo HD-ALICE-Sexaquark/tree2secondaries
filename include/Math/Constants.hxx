@@ -1,7 +1,7 @@
 #pragma once
 
 #include <array>
-#include <string>
+#include <string_view>
 
 #if defined(__AVX512F__)
 #define T2S_SIMD_ALIGN 64
@@ -18,17 +18,17 @@ enum PID_V0 { KaonZeroShort, AntiLambda, Lambda, NV0s };
 enum EReactionChannel { A, D, E, H, NReactionChannels };
 
 namespace Const {
-inline constexpr std::string TreeName_Events = "Events";
-inline constexpr std::string TreeName_PackedEvents = "PackedEvents";
-inline constexpr std::string TreeName_Injected = "Injected";
+inline constexpr std::string_view TreeName_Events = "Events";
+inline constexpr std::string_view TreeName_PackedEvents = "PackedEvents";
+inline constexpr std::string_view TreeName_Injected = "Injected";
 
-inline constexpr std::array<std::string, NStableParticles> Particle_Acronym{"PM", "PP", "NK", "PK", "AP", "P", "AN", "N"};
+inline constexpr std::array<std::string_view, NStableParticles> Particle_Acronym{"PM", "PP", "NK", "PK", "AP", "P", "AN", "N"};
 inline constexpr std::array<int, NStableParticles> Particle_PdgCode{-211, 211, -321, 321, -2212, 2212, -2112, 2112};
 inline constexpr std::array<double, NStableParticles> Particle_Mass{0.13957040, 0.13957040, 0.49367700, 0.49367700,
                                                                     0.93827210, 0.93827210, 0.93956540, 0.93956540};
 inline constexpr std::array<int, NStableParticles> Particle_Charge{-1, +1, -1, +1, -1, +1, 0, 0};
 
-inline constexpr std::array<std::string, NV0s> V0_Acronym{"K0S", "AL", "L"};
+inline constexpr std::array<std::string_view, NV0s> V0_Acronym{"K0S", "AL", "L"};
 inline constexpr std::array<int, NV0s> V0_PdgCode{310, -3122, 3122};
 inline constexpr std::array<double, NV0s> V0_Mass{0.49761100, 1.1156830, 1.1156830};
 inline constexpr std::array<PID_StableParticle, NV0s> V0_NegativePID{PID_StableParticle::PiMinus, PID_StableParticle::AntiProton,

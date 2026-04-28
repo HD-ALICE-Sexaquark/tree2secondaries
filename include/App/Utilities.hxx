@@ -1,9 +1,9 @@
 #pragma once
 
 #include <array>
-#include <cstdlib>
+#include <cstddef>
 #include <format>
-#include <string>
+#include <string_view>
 
 #include <TTree.h>
 
@@ -13,13 +13,13 @@
 
 // For std::arrays //
 
-template <typename T, size_t N>
+template <typename T, std::size_t N>
 struct std::formatter<std::array<T, N>> {
     constexpr auto parse(std::format_parse_context& ctx) { return ctx.begin(); }
     auto format(const std::array<T, N>& arr, std::format_context& ctx) const {
         auto out = ctx.out();
         out = std::format_to(out, "(");
-        for (size_t i = 0; i < N; ++i) {
+        for (std::size_t i = 0; i < N; ++i) {
             out = std::format_to(out, "{:13.6e}", arr[i]);
             if (i < N - 1) out = std::format_to(out, ", ");
         }
@@ -67,9 +67,14 @@ struct std::formatter<Eigen::Matrix<T, NRows, NCols, Options, MaxRows, MaxCols>>
 namespace Tree2Secondaries::Utils {
 
 template <typename T>
-inline void ReadBranch(TTree* tree, const std::string& branch_name, T* address) {
-    tree->SetBranchStatus(branch_name.c_str(), true);
-    tree->SetBranchAddress(branch_name.c_str(), address);
+inline void ReadBranch(TTree* tree, std::string_view branch_name, T* address) {
+    tree->SetBranchStatus(std::string{branch_name}.c_str(), true);
+    tree->SetBranchAddress(std::string{branch_name}.c_str(), address);
+}
+
+template <typename T>
+inline void CreateBranch(TTree* tree, std::string_view branch_name, T* address) {
+    tree->Branch(std::string{branch_name}.c_str(), address);
 }
 
 }  // namespace Tree2Secondaries::Utils

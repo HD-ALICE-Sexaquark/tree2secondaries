@@ -16,22 +16,22 @@ struct alignas(T2S_SIMD_ALIGN) ChannelD : KalmanFitter::Particle {
 
     ChannelD() = delete;
     ChannelD(const Particle& fit, const Seeder::PCA& pca_ka, const Seeder::PCA& pca_v0, const View::Rec::Track& ka, const View::Rec::V0& v0)
-        : Particle{fit}, Kaon_at_PCA{pca_ka}, V0_at_PCA{pca_v0}, V0{v0}, Kaon{ka} {}
+        : Particle{fit}, Kaon_PCAwrtSV{pca_ka}, V0_PCAwrtSV{pca_v0}, V0{v0}, Kaon{ka} {}
 
     // Member functions //
 
     [[nodiscard]] double E_MinusNucleon() const { return E() - Const::Particle_Mass[PID_StableParticle::Proton]; }
 
-    [[nodiscard]] double SquaredDCA_Kaon_V0() const { return Math::SquaredDistance(Kaon_at_PCA.xyz, V0_at_PCA.xyz); }
-    [[nodiscard]] double SquaredDCA_V0_SV() const { return Math::SquaredDistance(V0_at_PCA.xyz, GetXYZ()); }
-    [[nodiscard]] double SquaredDCA_Kaon_SV() const { return Math::SquaredDistance(Kaon_at_PCA.xyz, GetXYZ()); }
+    [[nodiscard]] double SquaredDCA_Kaon_V0() const { return Math::SquaredDistance(Kaon_PCAwrtSV.xyz, V0_PCAwrtSV.xyz); }
+    [[nodiscard]] double SquaredDCA_V0_SV() const { return Math::SquaredDistance(V0_PCAwrtSV.xyz, GetXYZ()); }
+    [[nodiscard]] double SquaredDCA_Kaon_SV() const { return Math::SquaredDistance(Kaon_PCAwrtSV.xyz, GetXYZ()); }
 
     [[nodiscard]] double DCA_Kaon_V0() const { return std::sqrt(SquaredDCA_Kaon_V0()); }
     [[nodiscard]] double DCA_V0_SV() const { return std::sqrt(SquaredDCA_V0_SV()); }
     [[nodiscard]] double DCA_Kaon_SV() const { return std::sqrt(SquaredDCA_Kaon_SV()); }
 
     [[nodiscard]] double CPA_V0_SV() const {
-        return Math::CosinePointingAngle(V0_at_PCA.GetPxPyPz_AsROOT(), V0_at_PCA.GetXYZ_AsROOT(), GetXYZ_AsROOT());
+        return Math::CosinePointingAngle(V0_PCAwrtSV.GetPxPyPz_AsROOT(), V0_PCAwrtSV.GetXYZ_AsROOT(), GetXYZ_AsROOT());
     };
 
     [[nodiscard]] double DCA_Vertex(double x, double y, double z) const {
@@ -43,8 +43,8 @@ struct alignas(T2S_SIMD_ALIGN) ChannelD : KalmanFitter::Particle {
 
     // Member variables //
 
-    Seeder::PCA Kaon_at_PCA;
-    Seeder::PCA V0_at_PCA;
+    Seeder::PCA Kaon_PCAwrtSV;
+    Seeder::PCA V0_PCAwrtSV;
     View::Rec::V0 V0;
     View::Rec::Track Kaon;
 };

@@ -30,8 +30,8 @@ std::pair<Seed, Seed> FastPCAs_XY(const View::Rec::Track& q1, const View::Rec::T
     Cache local;
     Cache& c = cache != nullptr ? *cache : local;
 
-    c.bq1 = bz * q1.Charge() * Const::Kappa;
-    c.bq2 = bz * q2.Charge() * Const::Kappa;
+    c.bq1 = bz * q1.Charge<double>() * Const::Kappa;
+    c.bq2 = bz * q2.Charge<double>() * Const::Kappa;
 
     c.x01 = q1.X();
     c.y01 = q1.Y();

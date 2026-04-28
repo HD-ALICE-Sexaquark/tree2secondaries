@@ -1,4 +1,4 @@
-#include <cstdlib>
+#include <cstddef>
 
 #include "App/Parser.hxx"
 #include "App/Settings.hxx"
@@ -22,7 +22,7 @@ int main(int argc, char *argv[]) {
         T2S::Packager pkgr(settings);
         if (!pkgr.Initialize()) return 1;
 
-        for (size_t i_event = 0; i_event < pkgr.NumberEventsToRead(); ++i_event) {
+        for (std::size_t i_event = 0; i_event < pkgr.NumberEventsToRead(); ++i_event) {
             pkgr.GetEvent(i_event);
 
             pkgr.ProcessEvent();
@@ -66,7 +66,7 @@ int main(int argc, char *argv[]) {
         T2S::Finder finder(settings);
         if (!finder.Initialize()) return 1;
 
-        for (size_t i_event = 0; i_event < finder.NumberEventsToRead(); ++i_event) {
+        for (std::size_t i_event = 0; i_event < finder.NumberEventsToRead(); ++i_event) {
             finder.GetEvent(i_event);
 
             finder.ProcessEvent();

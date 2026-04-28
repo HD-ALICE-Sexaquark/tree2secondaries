@@ -1,39 +1,37 @@
 #pragma once
 
-#include <cstdlib>
-
-#include "Storage/Vector/VectorTracks.hxx"
+#include "Storage/Schema/SchemaVector.hxx"
 #include "View/BaseView.hxx"
 
 namespace Tree2Secondaries::View::MC {
 
 // Slight transformations to `View::MC::Particle`.
-struct PackedTrack : View::Base<Storage::Vector::MC_Tracks, size_t> {
+struct PackedTrack : View::Base<Schema::Vector::MC_Tracks, int> {
 
     PackedTrack() = delete;
-    PackedTrack(const Storage::Vector::MC_Tracks* df, size_t entry)  //
-        : View::Base<Storage::Vector::MC_Tracks, size_t>{df, entry} {}
+    PackedTrack(const Schema::Vector::MC_Tracks* df, int entry)  //
+        : View::Base<Schema::Vector::MC_Tracks, int>{df, entry} {}
 
-    [[nodiscard]] int McEntry() const { return (*Source->McEntry)[Entry]; }
-    [[nodiscard]] int PdgCode() const { return (*Source->PdgCode)[Entry]; }
-    [[nodiscard]] int ReactionID() const { return (*Source->ReactionID)[Entry]; }
-    [[nodiscard]] bool IsTrue() const { return static_cast<bool>((*Source->IsTrue)[Entry]); }
-    [[nodiscard]] bool IsSignal() const { return static_cast<bool>((*Source->IsSignal)[Entry]); }
-    [[nodiscard]] bool IsSecondary() const { return static_cast<bool>((*Source->IsSecondary)[Entry]); }
+    [[nodiscard]] int McEntry() const { return (*Source->mc_entry)[Entry]; }
+    [[nodiscard]] int PdgCode() const { return (*Source->pdg_code)[Entry]; }
+    [[nodiscard]] int ReactionID() const { return (*Source->reaction_id)[Entry]; }
+    [[nodiscard]] bool IsTrue() const { return static_cast<bool>((*Source->is_true)[Entry]); }
+    [[nodiscard]] bool IsSignal() const { return static_cast<bool>((*Source->is_signal)[Entry]); }
+    [[nodiscard]] bool IsSecondary() const { return static_cast<bool>((*Source->is_secondary)[Entry]); }
 
-    [[nodiscard]] float X() const { return (*Source->X)[Entry]; }
-    [[nodiscard]] float Y() const { return (*Source->Y)[Entry]; }
-    [[nodiscard]] float Z() const { return (*Source->Z)[Entry]; }
-    [[nodiscard]] float Px() const { return (*Source->Px)[Entry]; }
-    [[nodiscard]] float Py() const { return (*Source->Py)[Entry]; }
-    [[nodiscard]] float Pz() const { return (*Source->Pz)[Entry]; }
-    [[nodiscard]] float Energy() const { return (*Source->Energy)[Entry]; }
+    [[nodiscard]] float Origin_X() const { return (*Source->origin.x)[Entry]; }
+    [[nodiscard]] float Origin_Y() const { return (*Source->origin.y)[Entry]; }
+    [[nodiscard]] float Origin_Z() const { return (*Source->origin.z)[Entry]; }
+    [[nodiscard]] float Px() const { return (*Source->lv.px)[Entry]; }
+    [[nodiscard]] float Py() const { return (*Source->lv.py)[Entry]; }
+    [[nodiscard]] float Pz() const { return (*Source->lv.pz)[Entry]; }
+    [[nodiscard]] float Energy() const { return (*Source->lv.energy)[Entry]; }
 
-    [[nodiscard]] int Mother_McEntry() const { return (*Source->Mother.McEntry)[Entry]; }
-    [[nodiscard]] int Mother_PdgCode() const { return (*Source->Mother.PdgCode)[Entry]; }
+    [[nodiscard]] int Mother_McEntry() const { return (*Source->mother_mc_entry)[Entry]; }
+    [[nodiscard]] int Mother_PdgCode() const { return (*Source->mother_pdg_code)[Entry]; }
 
-    [[nodiscard]] int GrandMother_McEntry() const { return (*Source->GrandMother.McEntry)[Entry]; }
-    [[nodiscard]] int GrandMother_PdgCode() const { return (*Source->GrandMother.PdgCode)[Entry]; }
+    [[nodiscard]] int GrandMother_McEntry() const { return (*Source->gm_mc_entry)[Entry]; }
+    [[nodiscard]] int GrandMother_PdgCode() const { return (*Source->gm_pdg_code)[Entry]; }
 };
 
 }  // namespace Tree2Secondaries::View::MC

@@ -1,57 +1,51 @@
 #pragma once
 
-#include <cstdlib>
+#include <cstddef>
+#include <span>
 
-#include "Storage/Vector/VectorTracks.hxx"
+#include "Storage/BaseStorage.hxx"
+#include "Storage/Schema/SchemaVector.hxx"
 #include "View/BaseView.hxx"
 
 namespace Tree2Secondaries::View::Rec {
 
-struct Track : View::Base<Storage::Vector::Tracks, size_t> {
+struct Track : View::Base<Schema::Vector::Tracks, unsigned int> {
 
     Track() = delete;
-    Track(const Storage::Vector::Tracks* df, size_t entry)  //
-        : View::Base<Storage::Vector::Tracks, size_t>{df, entry} {}
+    Track(const Schema::Vector::Tracks* df, unsigned int entry)  //
+        : View::Base<Schema::Vector::Tracks, unsigned int>{df, entry} {}
 
-    [[nodiscard]] float X() const { return (*Source->X)[Entry]; }
-    [[nodiscard]] float Y() const { return (*Source->Y)[Entry]; }
-    [[nodiscard]] float Z() const { return (*Source->Z)[Entry]; }
-    [[nodiscard]] float Px() const { return (*Source->Px)[Entry]; }
-    [[nodiscard]] float Py() const { return (*Source->Py)[Entry]; }
-    [[nodiscard]] float Pz() const { return (*Source->Pz)[Entry]; }
+    [[nodiscard]] float X() const { return (*Source->state.x)[Entry]; }
+    [[nodiscard]] float Y() const { return (*Source->state.y)[Entry]; }
+    [[nodiscard]] float Z() const { return (*Source->state.z)[Entry]; }
+    [[nodiscard]] float Px() const { return (*Source->state.px)[Entry]; }
+    [[nodiscard]] float Py() const { return (*Source->state.py)[Entry]; }
+    [[nodiscard]] float Pz() const { return (*Source->state.pz)[Entry]; }
 
-    [[nodiscard]] float SigmaX2() const { return (*Source->SigmaX2)[Entry]; }
-    [[nodiscard]] float SigmaXY() const { return (*Source->SigmaXY)[Entry]; }
-    [[nodiscard]] float SigmaY2() const { return (*Source->SigmaY2)[Entry]; }
-    [[nodiscard]] float SigmaXZ() const { return (*Source->SigmaXZ)[Entry]; }
-    [[nodiscard]] float SigmaYZ() const { return (*Source->SigmaYZ)[Entry]; }
-    [[nodiscard]] float SigmaZ2() const { return (*Source->SigmaZ2)[Entry]; }
-    [[nodiscard]] float SigmaXPx() const { return (*Source->SigmaXPx)[Entry]; }
-    [[nodiscard]] float SigmaYPx() const { return (*Source->SigmaYPx)[Entry]; }
-    [[nodiscard]] float SigmaZPx() const { return (*Source->SigmaZPx)[Entry]; }
-    [[nodiscard]] float SigmaPx2() const { return (*Source->SigmaPx2)[Entry]; }
-    [[nodiscard]] float SigmaXPy() const { return (*Source->SigmaXPy)[Entry]; }
-    [[nodiscard]] float SigmaYPy() const { return (*Source->SigmaYPy)[Entry]; }
-    [[nodiscard]] float SigmaZPy() const { return (*Source->SigmaZPy)[Entry]; }
-    [[nodiscard]] float SigmaPxPy() const { return (*Source->SigmaPxPy)[Entry]; }
-    [[nodiscard]] float SigmaPy2() const { return (*Source->SigmaPy2)[Entry]; }
-    [[nodiscard]] float SigmaXPz() const { return (*Source->SigmaXPz)[Entry]; }
-    [[nodiscard]] float SigmaYPz() const { return (*Source->SigmaYPz)[Entry]; }
-    [[nodiscard]] float SigmaZPz() const { return (*Source->SigmaZPz)[Entry]; }
-    [[nodiscard]] float SigmaPxPz() const { return (*Source->SigmaPxPz)[Entry]; }
-    [[nodiscard]] float SigmaPyPz() const { return (*Source->SigmaPyPz)[Entry]; }
-    [[nodiscard]] float SigmaPz2() const { return (*Source->SigmaPz2)[Entry]; }
+    [[nodiscard]] std::span<const float, Storage::VecCovMatrix<6>::n_elements> Cov() const {
+        constexpr std::size_t N = Storage::VecCovMatrix<6>::n_elements;
+        return std::span<const float, N>{Source->cov.mat->data() + N * Entry, N};
+    }
 
-    [[nodiscard]] int Charge() const { return (*Source->Charge)[Entry]; }
-    [[nodiscard]] float DCAxy() const { return (*Source->DCAxy)[Entry]; }
-    [[nodiscard]] float DCAz() const { return (*Source->DCAz)[Entry]; }
-    [[nodiscard]] float TPCSignal() const { return (*Source->TPCSignal)[Entry]; }
-    [[nodiscard]] float NSigmaPion() const { return (*Source->NSigmaPion)[Entry]; }
-    [[nodiscard]] float NSigmaKaon() const { return (*Source->NSigmaKaon)[Entry]; }
-    [[nodiscard]] float NSigmaProton() const { return (*Source->NSigmaProton)[Entry]; }
+    void AppendCov(std::vector<float>& out) const {
+        const auto cov = Cov();
+        out.insert(out.end(), cov.begin(), cov.end());
+    }
 
-    [[nodiscard]] int McEntry() const { return (*Source->McEntry)[Entry]; }  // NOTE: only valid when analyzing MC
-    [[nodiscard]] size_t Index() const { return (*Source->Index)[Entry]; }   // NOTE: only valid when reading Packed Tracks
+    template <typename T>
+    [[nodiscard]] T Charge() const {
+        return static_cast<T>((*Source->charge)[Entry]);
+    }
+
+    [[nodiscard]] float PreDCAxy() const { return (*Source->pre_dca_xy)[Entry]; }
+    [[nodiscard]] float PreDCAz() const { return (*Source->pre_dca_z)[Entry]; }
+    [[nodiscard]] float TPC_Signal() const { return (*Source->tpc_signal)[Entry]; }
+    [[nodiscard]] float NSigmaPion() const { return (*Source->n_sigma_pion)[Entry]; }
+    [[nodiscard]] float NSigmaKaon() const { return (*Source->n_sigma_kaon)[Entry]; }
+    [[nodiscard]] float NSigmaProton() const { return (*Source->n_sigma_proton)[Entry]; }
+
+    [[nodiscard]] unsigned int EsdEntry() const { return (*Source->esd_entry)[Entry]; }
+    [[nodiscard]] int McEntry() const { return (*Source->mc_entry)[Entry]; }  // NOTE: only valid when analyzing MC
 };
 
 }  // namespace Tree2Secondaries::View::Rec

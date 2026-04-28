@@ -44,7 +44,7 @@ Seed FastPCA_XY(const View::Rec::Track& q, const std::array<double, 3>& v, doubl
 
     c.a = c.dx * c.px0 + c.dy * c.py0;
 
-    c.bq = bz * q.Charge() * Const::Kappa;
+    c.bq = bz * q.Charge<double>() * Const::Kappa;
     c.abq = c.a * c.bq;
 
     // prepare seed //

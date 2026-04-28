@@ -1,6 +1,5 @@
 #pragma once
 
-#include <cstdlib>
 #include <string>
 #include <vector>
 
@@ -25,8 +24,8 @@ struct Settings {
 
     std::vector<std::string> PathInputFiles;
     std::string PathOutputFile;
-    size_t LimitToNEvents{0};
     double SexaquarkMass{Const::StandardSexaquarkMass};
+    unsigned int LimitToNEvents{0};
     EReactionChannel ReactionChannel{EReactionChannel::A};
     bool IsMC{false};
     bool DoTheSearch{false};

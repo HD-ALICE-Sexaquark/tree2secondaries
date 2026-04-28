@@ -89,6 +89,26 @@ struct alignas(T2S_SIMD_ALIGN) Particle {
     [[nodiscard]] double VarE() const noexcept { return CovE2(); }
     [[nodiscard]] double VarS() const noexcept { return CovS2(); }
 
+    template <unsigned int N>
+    [[nodiscard]] std::array<float, (N * (N + 1)) / 2> Cov() const {
+        std::array<float, (N * (N + 1)) / 2> out{};
+        for (unsigned int i = 0, k = 0; i < N; ++i) {
+            for (unsigned int j = 0; j <= i; ++j, ++k) {
+                out[k] = static_cast<float>(fC(i, j));
+            }
+        }
+        return out;
+    }
+
+    template <unsigned int N>
+    void AppendCov(std::vector<float> &out) const {
+        for (unsigned int i = 0; i < N; ++i) {
+            for (unsigned int j = 0; j <= i; ++j) {
+                out.push_back(static_cast<float>(fC(i, j)));
+            }
+        }
+    }
+
     [[nodiscard]] double Chi2() const noexcept { return fChi2; }
     [[nodiscard]] int NDF() const noexcept { return fNDF; }
     [[nodiscard]] int Charge() const noexcept { return fQ; }
@@ -151,7 +171,7 @@ struct std::formatter<Tree2Secondaries::KalmanFitter::Particle> {
         out = std::format_to(out, "Mass         = {:13.6e}\n", p.Mass().value_or(Tree2Secondaries::Const::DummyInt));
         out = std::format_to(out, "Radius2D     = {:13.6e}\n", p.Radius2D());
         out = std::format_to(out, "Chi2/NDF     = {:13.6e} / {} = {:13.6e}\n", p.Chi2(), p.NDF(), p.Chi2NDF());
-        out = std::format_to(out, "fC           = {}\n", p.fC);
+        // out = std::format_to(out, "fC           = {}\n", p.fC); // PENDING
         out = std::format_to(out, "\n");
         return out;
     }

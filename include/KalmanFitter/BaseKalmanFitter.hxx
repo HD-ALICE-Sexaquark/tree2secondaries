@@ -1,7 +1,5 @@
 #pragma once
 
-#include <utility>
-
 #include <Math/Point3D.h>
 #include <Math/Vector3D.h>
 

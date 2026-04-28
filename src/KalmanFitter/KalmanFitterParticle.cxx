@@ -1,6 +1,9 @@
+#include "KalmanFitter/KalmanFitterParticle.hxx"
+
+#include <cmath>
+
 #include <Eigen/Eigen>
 
-#include "KalmanFitter/KalmanFitterParticle.hxx"
 #include "Math/Constants.hxx"
 #if T2S_LEGACY_KF
 #include "Legacy/LegacyParticle.hxx"
@@ -24,27 +27,12 @@ Particle Particle::FromTrack(const View::Rec::Track& track, double mass) {
     out.fP(6) = std::sqrt(mass * mass + out.SquaredMomentum());
     out.fP(7) = 0.;
 
-    out.fC(0, 0) = track.SigmaX2();
-    out.fC(1, 0) = track.SigmaXY();
-    out.fC(1, 1) = track.SigmaY2();
-    out.fC(2, 0) = track.SigmaXZ();
-    out.fC(2, 1) = track.SigmaYZ();
-    out.fC(2, 2) = track.SigmaZ2();
-    out.fC(3, 0) = track.SigmaXPx();
-    out.fC(3, 1) = track.SigmaYPx();
-    out.fC(3, 2) = track.SigmaZPx();
-    out.fC(3, 3) = track.SigmaPx2();
-    out.fC(4, 0) = track.SigmaXPy();
-    out.fC(4, 1) = track.SigmaYPy();
-    out.fC(4, 2) = track.SigmaZPy();
-    out.fC(4, 3) = track.SigmaPxPy();
-    out.fC(4, 4) = track.SigmaPy2();
-    out.fC(5, 0) = track.SigmaXPz();
-    out.fC(5, 1) = track.SigmaYPz();
-    out.fC(5, 2) = track.SigmaZPz();
-    out.fC(5, 3) = track.SigmaPxPz();
-    out.fC(5, 4) = track.SigmaPyPz();
-    out.fC(5, 5) = track.SigmaPz2();
+    const auto c = track.Cov();
+    for (unsigned int i = 0, k = 0; i < 6; ++i) {
+        for (unsigned int j = 0; j <= i; ++j, ++k) {
+            out.fC(i, j) = static_cast<double>(c[k]);
+        }
+    }
 
     // dE/dp_i = p_i/E linear propagation //
 
@@ -64,7 +52,7 @@ Particle Particle::FromTrack(const View::Rec::Track& track, double mass) {
                     2 * (h0 * h1 * out.fC(4, 3) + h0 * h2 * out.fC(5, 3) + h1 * h2 * out.fC(5, 4)));
     out.fC(7, 7) = Const::Initial_Css;
 
-    out.fQ = track.Charge();
+    out.fQ = track.Charge<int>();
 
     return out;
 }
@@ -83,36 +71,12 @@ Particle Particle::FromV0(const View::Rec::V0& v0) {
     out.fP(6) = v0.Energy();
     out.fP(7) = 0.;
 
-    out.fC(0, 0) = v0.SigmaX2();
-    out.fC(1, 0) = v0.SigmaXY();
-    out.fC(1, 1) = v0.SigmaY2();
-    out.fC(2, 0) = v0.SigmaXZ();
-    out.fC(2, 1) = v0.SigmaYZ();
-    out.fC(2, 2) = v0.SigmaZ2();
-    out.fC(3, 0) = v0.SigmaXPx();
-    out.fC(3, 1) = v0.SigmaYPx();
-    out.fC(3, 2) = v0.SigmaZPx();
-    out.fC(3, 3) = v0.SigmaPx2();
-    out.fC(4, 0) = v0.SigmaXPy();
-    out.fC(4, 1) = v0.SigmaYPy();
-    out.fC(4, 2) = v0.SigmaZPy();
-    out.fC(4, 3) = v0.SigmaPxPy();
-    out.fC(4, 4) = v0.SigmaPy2();
-    out.fC(5, 0) = v0.SigmaXPz();
-    out.fC(5, 1) = v0.SigmaYPz();
-    out.fC(5, 2) = v0.SigmaZPz();
-    out.fC(5, 3) = v0.SigmaPxPz();
-    out.fC(5, 4) = v0.SigmaPyPz();
-    out.fC(5, 5) = v0.SigmaPz2();
-
-    out.fC(6, 0) = v0.SigmaXE();
-    out.fC(6, 1) = v0.SigmaYE();
-    out.fC(6, 2) = v0.SigmaZE();
-    out.fC(6, 3) = v0.SigmaPxE();
-    out.fC(6, 4) = v0.SigmaPyE();
-    out.fC(6, 5) = v0.SigmaPzE();
-    out.fC(6, 6) = v0.SigmaE2();
-
+    const auto c = v0.Cov();
+    for (unsigned int i = 0, k = 0; i < 7; ++i) {
+        for (unsigned int j = 0; j <= i; ++j, ++k) {
+            out.fC(i, j) = static_cast<double>(c[k]);
+        }
+    }
     out.fC(7, 7) = Const::Initial_Css;
 
     out.fQ = 0;

@@ -1,8 +1,7 @@
-#include <utility>
+#include "KalmanFitter/BaseKalmanFitter.hxx"
 
 #include <Eigen/Eigen>
 
-#include "KalmanFitter/BaseKalmanFitter.hxx"
 #include "Math/Constants.hxx"
 #include "Seeder/BaseSeeder.hxx"
 #if T2S_DEBUG

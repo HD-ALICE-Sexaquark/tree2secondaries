@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <memory>
 #include <utility>
 
@@ -12,13 +13,8 @@
 #include "KalmanFitter/KalmanFitterChannelA.hxx"
 #include "KalmanFitter/KalmanFitterChannelD.hxx"
 #include "Math/Constants.hxx"
-#include "Storage/Flat/FlatChannelA.hxx"
-#include "Storage/Flat/FlatChannelD.hxx"
-#include "Storage/Flat/FlatEvent.hxx"
-#include "Storage/Flat/FlatInjected.hxx"
-#include "Storage/Vector/VectorInjected.hxx"
-#include "Storage/Vector/VectorTracks.hxx"
-#include "Storage/Vector/VectorV0s.hxx"
+#include "Storage/Schema/SchemaFlat.hxx"
+#include "Storage/Schema/SchemaVector.hxx"
 #include "View/MC/ViewMcInjected.hxx"
 
 namespace Tree2Secondaries {
@@ -48,14 +44,15 @@ class Finder {
 
     bool Injected_PrepareOutputTree();
     void ProcessInjected();
+    void StoreInjected(const View::MC::Injected &sexa);
 
-    [[nodiscard]] size_t NumberEventsToRead() const {
-        return fSettings.LimitToNEvents ? fSettings.LimitToNEvents : static_cast<size_t>(fInputChain_PackedEvents->GetEntries());
+    [[nodiscard]] std::size_t NumberEventsToRead() const {
+        return fSettings.LimitToNEvents ? fSettings.LimitToNEvents : static_cast<std::size_t>(fInputChain_PackedEvents->GetEntries());
     }
     [[nodiscard]] bool IsMC() const { return fSettings.IsMC; }
-    void GetEvent(size_t i_event) { fInputChain_PackedEvents->GetEntry(static_cast<long long>(i_event)); }
+    void GetEvent(std::size_t i_event) { fInputChain_PackedEvents->GetEntry(static_cast<long long>(i_event)); }
 
-    [[nodiscard]] size_t NumberInjected() const { return fInput_Injected.ReactionID->size(); }
+    [[nodiscard]] std::size_t NumberInjected() const { return fInput_Injected.reaction_id->size(); }
 
     void FindSexaquarks_ChannelA(bool anti_channel);
     void FindSexaquarks_ChannelD(bool anti_channel);
@@ -82,15 +79,18 @@ class Finder {
 
     void Store(const KalmanFitter::ChannelA &sexa, bool anti_channel);
     void StoreMC(const View::MC::ChannelA &sexa);
-    void StoreDummyMC_ChannelA();
 
     void Store(const KalmanFitter::ChannelD &sexa, bool anti_channel);
     void StoreMC(const View::MC::ChannelD &sexa);
-    void StoreDummyMC_ChannelD();
 
     void EndOfAnalysis();
 
    private:
+    void Assign(Schema::Flat::Track &out, const View::Rec::Track &t);
+    void Assign(Schema::Flat::V0 &out, const View::Rec::V0 &v);
+    void Assign(Schema::Flat::MC_Track &out, const View::MC::PackedTrack &t, bool ascendants_info);
+    void Assign(Schema::Flat::MC_V0 &out, const View::MC::PackedV0 &t);
+
     Settings fSettings;
     std::unique_ptr<TChain> fInputChain_PackedEvents;
 
@@ -105,37 +105,36 @@ class Finder {
 
     // input //
 
-    Storage::Flat::Event fInput_Event;
-    Storage::Flat::Coordinates fInput_MC_PV;
-    Storage::Vector::Injected fInput_Injected;
+    Schema::Flat::Event fInput_Event;
+    Schema::Vector::Injected fInput_Injected;
 
-    Storage::Vector::V0s fInput_AntiLambdas;
-    Storage::Vector::V0s fInput_Lambdas;
-    Storage::Vector::V0s fInput_KaonsZeroShort;
+    Schema::Vector::V0s fInput_AntiLambdas;
+    Schema::Vector::V0s fInput_Lambdas;
+    Schema::Vector::V0s fInput_KaonsZeroShort;
 
-    Storage::Vector::Tracks fInput_NegKaons;
-    Storage::Vector::Tracks fInput_PosKaons;
-    Storage::Vector::Tracks fInput_PiMinus;
-    Storage::Vector::Tracks fInput_PiPlus;
+    Schema::Vector::Tracks fInput_NegKaons;
+    Schema::Vector::Tracks fInput_PosKaons;
+    Schema::Vector::Tracks fInput_PiMinus;
+    Schema::Vector::Tracks fInput_PiPlus;
 
-    Storage::Vector::MC_V0s fInput_MC_AntiLambdas;
-    Storage::Vector::MC_V0s fInput_MC_Lambdas;
-    Storage::Vector::MC_V0s fInput_MC_KaonsZeroShort;
+    Schema::Vector::MC_V0s fInput_MC_AntiLambdas;
+    Schema::Vector::MC_V0s fInput_MC_Lambdas;
+    Schema::Vector::MC_V0s fInput_MC_KaonsZeroShort;
 
-    Storage::Vector::MC_Tracks fInput_MC_NegKaons;
-    Storage::Vector::MC_Tracks fInput_MC_PosKaons;
-    Storage::Vector::MC_Tracks fInput_MC_PiMinus;
-    Storage::Vector::MC_Tracks fInput_MC_PiPlus;
+    Schema::Vector::MC_Tracks fInput_MC_NegKaons;
+    Schema::Vector::MC_Tracks fInput_MC_PosKaons;
+    Schema::Vector::MC_Tracks fInput_MC_PiMinus;
+    Schema::Vector::MC_Tracks fInput_MC_PiPlus;
 
     // output //
 
-    Storage::Flat::Injected fOutput_Injected;
+    Schema::Flat::Injected fOutput_Injected;
 
-    Storage::Flat::ChannelA fOutput_ChannelA;
-    Storage::Flat::ChannelD fOutput_ChannelD;
+    Schema::Flat::ChannelA fOutput_ChannelA;
+    Schema::Flat::ChannelD fOutput_ChannelD;
 
-    Storage::Flat::MC_ChannelA fOutput_MC_ChannelA;
-    Storage::Flat::MC_ChannelD fOutput_MC_ChannelD;
+    Schema::Flat::MC_ChannelA fOutput_MC_ChannelA;
+    Schema::Flat::MC_ChannelD fOutput_MC_ChannelD;
 };
 
 }  // namespace Tree2Secondaries

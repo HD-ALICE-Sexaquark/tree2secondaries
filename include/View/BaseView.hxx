@@ -1,14 +1,12 @@
 #pragma once
 
-#include <cstdlib>
-
 #include "Math/Constants.hxx"
 
 namespace Tree2Secondaries::View {
 
 template <typename SourceType, typename IndexType>
 struct Base {
-    [[nodiscard]] size_t EntryAsSize() const { return static_cast<size_t>(Entry); }
+    [[nodiscard]] unsigned int EntryAsSize() const { return static_cast<unsigned int>(Entry); }
 
     const SourceType* Source{};
     IndexType Entry{};

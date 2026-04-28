@@ -1,8 +1,11 @@
+#include "Finder/Finder.hxx"
+
+#include <cstddef>
 #include <filesystem>
 #include <memory>
+#include <string_view>
 
 #include "App/Logger.hxx"
-#include "Finder/Finder.hxx"
 #include "Finder/FinderCuts.hxx"
 #include "KalmanFitter/BaseKalmanFitter.hxx"
 #include "KalmanFitter/KalmanFitterChannelA.hxx"
@@ -11,8 +14,8 @@
 #include "Math/Constants.hxx"
 #include "Seeder/SeederHelixLine.hxx"
 #include "Seeder/SeederLineLine.hxx"
-#include "Storage/Vector/VectorTracks.hxx"
-#include "Storage/Vector/VectorV0s.hxx"
+#include "Storage/ReadWrite/ReadWriteSchemaFlat.hxx"
+#include "Storage/ReadWrite/ReadWriteSchemaVector.hxx"
 #include "Truth/TruthSexaquark.hxx"
 #include "View/MC/ViewMcInjected.hxx"
 #include "View/MC/ViewMcPackedTrack.hxx"
@@ -25,7 +28,7 @@ namespace KF = KalmanFitter;
 
 bool Finder::Initialize() {
 
-    fInputChain_PackedEvents = std::make_unique<TChain>(Const::TreeName_PackedEvents.c_str());
+    fInputChain_PackedEvents = std::make_unique<TChain>(Const::TreeName_PackedEvents.data());
     for (const auto& path : fSettings.PathInputFiles) {
         if (fInputChain_PackedEvents->Add(path.c_str()) == 0) {
             Logger::Error(__FUNCTION__, "Couldn't add TFile {}", path);
@@ -49,7 +52,7 @@ bool Finder::Initialize() {
 
     if (IsMC()) {
         if (!Injected_PrepareOutputTree()) return false;
-        fOutput_Injected.CreateBranches_FlatInjected(fOutputTree_Injected.get());
+        IO::CreateBranches(fOutputTree_Injected.get(), fOutput_Injected);
     }
 
     Logger::Info(__FUNCTION__, "Finder initialized successfully.");
@@ -63,65 +66,54 @@ void Finder::ReadInputBranches() {
     // by default, turn off all branches
     fInputChain_PackedEvents->SetBranchStatus("*", false);
     // connect input branches to memory
-    fInput_Event.ReadBranches_FlatEvent(fInputChain_PackedEvents.get(), IsMC());
-    if (IsMC()) {
-        fInput_MC_PV.ReadBranches_FlatCoordinates(fInputChain_PackedEvents.get(), "MC_PV", "v");
-        fInput_Injected.ReadBranches_VectorInjected(fInputChain_PackedEvents.get(), true);
-    }
+    IO::ReadBranches(fInputChain_PackedEvents.get(), fInput_Event, IsMC());
+    if (IsMC()) IO::ReadBranches(fInputChain_PackedEvents.get(), fInput_Injected, true);
     // -- depending on reaction channels
     switch (GetReactionChannel()) {
         case EReactionChannel::A:
-            fInput_AntiLambdas.ReadBranches_VectorV0s(fInputChain_PackedEvents.get(), Const::V0_Acronym[PID_V0::AntiLambda]);
-            fInput_Lambdas.ReadBranches_VectorV0s(fInputChain_PackedEvents.get(), Const::V0_Acronym[PID_V0::Lambda]);
-            fInput_KaonsZeroShort.ReadBranches_VectorV0s(fInputChain_PackedEvents.get(), Const::V0_Acronym[PID_V0::KaonZeroShort]);
+            IO::ReadBranches(fInputChain_PackedEvents.get(), fInput_AntiLambdas, Const::V0_Acronym[PID_V0::AntiLambda]);
+            IO::ReadBranches(fInputChain_PackedEvents.get(), fInput_Lambdas, Const::V0_Acronym[PID_V0::Lambda]);
+            IO::ReadBranches(fInputChain_PackedEvents.get(), fInput_KaonsZeroShort, Const::V0_Acronym[PID_V0::KaonZeroShort]);
             if (IsMC()) {
-                fInput_MC_AntiLambdas.ReadBranches_VectorMC_V0s(fInputChain_PackedEvents.get(), Const::V0_Acronym[PID_V0::AntiLambda]);
-                fInput_MC_Lambdas.ReadBranches_VectorMC_V0s(fInputChain_PackedEvents.get(), Const::V0_Acronym[PID_V0::Lambda]);
-                fInput_MC_KaonsZeroShort.ReadBranches_VectorMC_V0s(fInputChain_PackedEvents.get(), Const::V0_Acronym[PID_V0::KaonZeroShort]);
+                IO::ReadBranches(fInputChain_PackedEvents.get(), fInput_MC_AntiLambdas, Const::V0_Acronym[PID_V0::AntiLambda]);
+                IO::ReadBranches(fInputChain_PackedEvents.get(), fInput_MC_Lambdas, Const::V0_Acronym[PID_V0::Lambda]);
+                IO::ReadBranches(fInputChain_PackedEvents.get(), fInput_MC_KaonsZeroShort, Const::V0_Acronym[PID_V0::KaonZeroShort]);
             }
             break;
         case EReactionChannel::D:
-            fInput_AntiLambdas.ReadBranches_VectorV0s(fInputChain_PackedEvents.get(), Const::V0_Acronym[PID_V0::AntiLambda]);
-            fInput_Lambdas.ReadBranches_VectorV0s(fInputChain_PackedEvents.get(), Const::V0_Acronym[PID_V0::Lambda]);
-            fInput_NegKaons.ReadBranches_VectorTracks(fInputChain_PackedEvents.get(), IsMC(), true,
-                                                      Const::Particle_Acronym[PID_StableParticle::NegKaon]);
-            fInput_PosKaons.ReadBranches_VectorTracks(fInputChain_PackedEvents.get(), IsMC(), true,
-                                                      Const::Particle_Acronym[PID_StableParticle::PosKaon]);
+            IO::ReadBranches(fInputChain_PackedEvents.get(), fInput_AntiLambdas, Const::V0_Acronym[PID_V0::AntiLambda]);
+            IO::ReadBranches(fInputChain_PackedEvents.get(), fInput_Lambdas, Const::V0_Acronym[PID_V0::Lambda]);
+            IO::ReadBranches(fInputChain_PackedEvents.get(), fInput_NegKaons, false, Const::Particle_Acronym[PID_StableParticle::NegKaon]);
+            IO::ReadBranches(fInputChain_PackedEvents.get(), fInput_PosKaons, false, Const::Particle_Acronym[PID_StableParticle::PosKaon]);
             if (IsMC()) {
-                fInput_MC_AntiLambdas.ReadBranches_VectorMC_V0s(fInputChain_PackedEvents.get(), Const::V0_Acronym[PID_V0::AntiLambda]);
-                fInput_MC_Lambdas.ReadBranches_VectorMC_V0s(fInputChain_PackedEvents.get(), Const::V0_Acronym[PID_V0::Lambda]);
-                fInput_MC_NegKaons.ReadBranches_VectorMC_Tracks(fInputChain_PackedEvents.get(), Const::Particle_Acronym[PID_StableParticle::NegKaon]);
-                fInput_MC_PosKaons.ReadBranches_VectorMC_Tracks(fInputChain_PackedEvents.get(), Const::Particle_Acronym[PID_StableParticle::PosKaon]);
+                IO::ReadBranches(fInputChain_PackedEvents.get(), fInput_MC_AntiLambdas, Const::V0_Acronym[PID_V0::AntiLambda]);
+                IO::ReadBranches(fInputChain_PackedEvents.get(), fInput_MC_Lambdas, Const::V0_Acronym[PID_V0::Lambda]);
+                IO::ReadBranches(fInputChain_PackedEvents.get(), fInput_MC_NegKaons, true, Const::Particle_Acronym[PID_StableParticle::NegKaon]);
+                IO::ReadBranches(fInputChain_PackedEvents.get(), fInput_MC_PosKaons, true, Const::Particle_Acronym[PID_StableParticle::PosKaon]);
             }
             break;
         case EReactionChannel::E:
-            fInput_AntiLambdas.ReadBranches_VectorV0s(fInputChain_PackedEvents.get(), Const::V0_Acronym[PID_V0::AntiLambda]);
-            fInput_Lambdas.ReadBranches_VectorV0s(fInputChain_PackedEvents.get(), Const::V0_Acronym[PID_V0::Lambda]);
-            fInput_NegKaons.ReadBranches_VectorTracks(fInputChain_PackedEvents.get(), IsMC(), true,
-                                                      Const::Particle_Acronym[PID_StableParticle::NegKaon]);
-            fInput_PosKaons.ReadBranches_VectorTracks(fInputChain_PackedEvents.get(), IsMC(), true,
-                                                      Const::Particle_Acronym[PID_StableParticle::PosKaon]);
-            fInput_PiMinus.ReadBranches_VectorTracks(fInputChain_PackedEvents.get(), IsMC(), true,
-                                                     Const::Particle_Acronym[PID_StableParticle::PiMinus]);
-            fInput_PiPlus.ReadBranches_VectorTracks(fInputChain_PackedEvents.get(), IsMC(), true,
-                                                    Const::Particle_Acronym[PID_StableParticle::PiPlus]);
+            IO::ReadBranches(fInputChain_PackedEvents.get(), fInput_AntiLambdas, Const::V0_Acronym[PID_V0::AntiLambda]);
+            IO::ReadBranches(fInputChain_PackedEvents.get(), fInput_Lambdas, Const::V0_Acronym[PID_V0::Lambda]);
+            IO::ReadBranches(fInputChain_PackedEvents.get(), fInput_NegKaons, false, Const::Particle_Acronym[PID_StableParticle::NegKaon]);
+            IO::ReadBranches(fInputChain_PackedEvents.get(), fInput_PosKaons, false, Const::Particle_Acronym[PID_StableParticle::PosKaon]);
+            IO::ReadBranches(fInputChain_PackedEvents.get(), fInput_PiMinus, false, Const::Particle_Acronym[PID_StableParticle::PiMinus]);
+            IO::ReadBranches(fInputChain_PackedEvents.get(), fInput_PiPlus, false, Const::Particle_Acronym[PID_StableParticle::PiPlus]);
             if (IsMC()) {
-                fInput_MC_AntiLambdas.ReadBranches_VectorMC_V0s(fInputChain_PackedEvents.get(), Const::V0_Acronym[PID_V0::AntiLambda]);
-                fInput_MC_Lambdas.ReadBranches_VectorMC_V0s(fInputChain_PackedEvents.get(), Const::V0_Acronym[PID_V0::Lambda]);
-                fInput_MC_NegKaons.ReadBranches_VectorMC_Tracks(fInputChain_PackedEvents.get(), Const::Particle_Acronym[PID_StableParticle::NegKaon]);
-                fInput_MC_PosKaons.ReadBranches_VectorMC_Tracks(fInputChain_PackedEvents.get(), Const::Particle_Acronym[PID_StableParticle::PosKaon]);
-                fInput_MC_PiMinus.ReadBranches_VectorMC_Tracks(fInputChain_PackedEvents.get(), Const::Particle_Acronym[PID_StableParticle::PiMinus]);
-                fInput_MC_PiPlus.ReadBranches_VectorMC_Tracks(fInputChain_PackedEvents.get(), Const::Particle_Acronym[PID_StableParticle::PiPlus]);
+                IO::ReadBranches(fInputChain_PackedEvents.get(), fInput_MC_AntiLambdas, Const::V0_Acronym[PID_V0::AntiLambda]);
+                IO::ReadBranches(fInputChain_PackedEvents.get(), fInput_MC_Lambdas, Const::V0_Acronym[PID_V0::Lambda]);
+                IO::ReadBranches(fInputChain_PackedEvents.get(), fInput_MC_NegKaons, true, Const::Particle_Acronym[PID_StableParticle::NegKaon]);
+                IO::ReadBranches(fInputChain_PackedEvents.get(), fInput_MC_PosKaons, true, Const::Particle_Acronym[PID_StableParticle::PosKaon]);
+                IO::ReadBranches(fInputChain_PackedEvents.get(), fInput_MC_PiMinus, true, Const::Particle_Acronym[PID_StableParticle::PiMinus]);
+                IO::ReadBranches(fInputChain_PackedEvents.get(), fInput_MC_PiPlus, true, Const::Particle_Acronym[PID_StableParticle::PiPlus]);
             }
             break;
         case EReactionChannel::H:
-            fInput_NegKaons.ReadBranches_VectorTracks(fInputChain_PackedEvents.get(), IsMC(), true,
-                                                      Const::Particle_Acronym[PID_StableParticle::NegKaon]);
-            fInput_PosKaons.ReadBranches_VectorTracks(fInputChain_PackedEvents.get(), IsMC(), true,
-                                                      Const::Particle_Acronym[PID_StableParticle::PosKaon]);
+            IO::ReadBranches(fInputChain_PackedEvents.get(), fInput_NegKaons, false, Const::Particle_Acronym[PID_StableParticle::NegKaon]);
+            IO::ReadBranches(fInputChain_PackedEvents.get(), fInput_PosKaons, false, Const::Particle_Acronym[PID_StableParticle::PosKaon]);
             if (IsMC()) {
-                fInput_MC_NegKaons.ReadBranches_VectorMC_Tracks(fInputChain_PackedEvents.get(), Const::Particle_Acronym[PID_StableParticle::NegKaon]);
-                fInput_MC_PosKaons.ReadBranches_VectorMC_Tracks(fInputChain_PackedEvents.get(), Const::Particle_Acronym[PID_StableParticle::PosKaon]);
+                IO::ReadBranches(fInputChain_PackedEvents.get(), fInput_MC_NegKaons, true, Const::Particle_Acronym[PID_StableParticle::NegKaon]);
+                IO::ReadBranches(fInputChain_PackedEvents.get(), fInput_MC_PosKaons, true, Const::Particle_Acronym[PID_StableParticle::PosKaon]);
             }
             break;
         default:
@@ -149,19 +141,19 @@ void Finder::PrepareOutputHistograms() {
     // event counter //
     fHist_EventCounter = std::make_unique<TH1D>("N_Events", ";;N_Events", 1, 0, 1);
     // cut flows //
-    const int x_nbins{20};
-    const float x_min{0.};
-    const float x_max{20.};
-    std::string hist_title = ";Cut N;N Passed Cut";
-    fHist_CutFlow = std::make_unique<TH1D>("CutFlow", hist_title.c_str(), x_nbins, x_min, x_max);
-    fHist_CutFlow_AntiChannel = std::make_unique<TH1D>("CutFlow_Anti", hist_title.c_str(), x_nbins, x_min, x_max);
+    constexpr int x_nbins = 20;
+    constexpr float x_min = 0.;
+    constexpr float x_max = 20.;
+    std::string_view hist_title = ";Cut N;N Passed Cut";
+    fHist_CutFlow = std::make_unique<TH1D>("CutFlow", hist_title.data(), x_nbins, x_min, x_max);
+    fHist_CutFlow_AntiChannel = std::make_unique<TH1D>("CutFlow_Anti", hist_title.data(), x_nbins, x_min, x_max);
 }
 
 bool Finder::PrepareOutputTree() {
 
-    std::string tree_name = std::format("FoundChannel{}", Const::ReactionChannel_Char[fSettings.ReactionChannel]);
+    auto tree_name = std::format("FoundChannel{}", Const::ReactionChannel_Char[fSettings.ReactionChannel]);
 
-    fOutputTree = std::make_unique<TTree>(tree_name.c_str(), "");
+    fOutputTree = std::make_unique<TTree>(tree_name.data(), "");
     if (!fOutputTree) {
         Logger::Error(__FUNCTION__, "Couldn't create TTree \"{}\"", tree_name);
         return false;
@@ -173,12 +165,12 @@ bool Finder::PrepareOutputTree() {
 void Finder::CreateOutputBranches() {
     switch (GetReactionChannel()) {
         case EReactionChannel::A:
-            fOutput_ChannelA.CreateBranches_FlatChannelA(fOutputTree.get(), IsMC());
-            if (IsMC()) fOutput_MC_ChannelA.CreateBranches_FlatMC_ChannelA(fOutputTree.get());
+            IO::CreateBranches(fOutputTree.get(), fOutput_ChannelA, IsMC());
+            if (IsMC()) IO::CreateBranches(fOutputTree.get(), fOutput_MC_ChannelA);
             break;
         case EReactionChannel::D:
-            fOutput_ChannelD.CreateBranches_FlatChannelD(fOutputTree.get(), IsMC());
-            if (IsMC()) fOutput_MC_ChannelD.CreateBranches_FlatMC_ChannelD(fOutputTree.get());
+            IO::CreateBranches(fOutputTree.get(), fOutput_ChannelD, IsMC());
+            if (IsMC()) IO::CreateBranches(fOutputTree.get(), fOutput_MC_ChannelD);
             break;
         default:
             break;
@@ -195,7 +187,7 @@ void Finder::ProcessEvent() {  //
 
 bool Finder::Injected_PrepareOutputTree() {
 
-    fOutputTree_Injected = std::make_unique<TTree>(Const::TreeName_Injected.c_str(), "");
+    fOutputTree_Injected = std::make_unique<TTree>(Const::TreeName_Injected.data(), "");
     if (fOutputTree_Injected == nullptr) {
         Logger::Error(__FUNCTION__, "Couldn't create TTree \"{}\"", Const::TreeName_Injected);
         return false;
@@ -205,41 +197,94 @@ bool Finder::Injected_PrepareOutputTree() {
 }
 
 void Finder::ProcessInjected() {
-
-    double nucleon_mass = Const::Particle_Mass[Const::ReactionChannel_NucleonPID[fSettings.ReactionChannel]];
-
     auto n_injected = static_cast<int>(NumberInjected());
     for (int entry = 0; entry < n_injected; ++entry) {
 
         View::MC::Injected sexa{&fInput_Injected, entry};  // NOTE: unguarded because contiguous access
 
-        // `Flat::Injected` //
-
-        // -- `Flat::LV`
-        fOutput_Injected.Px = sexa.Px();
-        fOutput_Injected.Py = sexa.Py();
-        fOutput_Injected.Pz = sexa.Pz();
-        fOutput_Injected.Energy = static_cast<float>(Truth::Sexaquark::Energy(sexa, fSettings.SexaquarkMass));
-        // -- SV (`Flat::Coordinates`)
-        fOutput_Injected.SV.X = sexa.SV_X();
-        fOutput_Injected.SV.Y = sexa.SV_Y();
-        fOutput_Injected.SV.Z = sexa.SV_Z();
-        // -- Nucleon (`Flat::LV`)
-        fOutput_Injected.Nucleon.Px = sexa.Nucleon_Px();
-        fOutput_Injected.Nucleon.Py = sexa.Nucleon_Py();
-        fOutput_Injected.Nucleon.Pz = sexa.Nucleon_Pz();
-        fOutput_Injected.Nucleon.Energy = static_cast<float>(Truth::Sexaquark::NucleonEnergy(sexa, nucleon_mass));
-        // -- event properties
-        fOutput_Injected.RunNumber = fInput_Event.RunNumber;
-        fOutput_Injected.DirNumber = fInput_Event.DirNumber;
-        fOutput_Injected.EventNumber = fInput_Event.EventNumber;
-        // -- reaction id
-        fOutput_Injected.ReactionID = Truth::Sexaquark::ReactionID(sexa);
-
-        // fill tree //
+        StoreInjected(sexa);
 
         fOutputTree_Injected->Fill();
     }
+}
+
+void Finder::StoreInjected(const View::MC::Injected& sexa) {
+    double nucleon_mass = Const::Particle_Mass[Const::ReactionChannel_NucleonPID[fSettings.ReactionChannel]];  // PENDING: can prettify?
+
+    fOutput_Injected.lv.px = sexa.Px();
+    fOutput_Injected.lv.py = sexa.Py();
+    fOutput_Injected.lv.pz = sexa.Pz();
+    fOutput_Injected.lv.energy = static_cast<float>(Truth::Sexaquark::Energy(sexa, fSettings.SexaquarkMass));  // PENDING: can prettify?
+
+    fOutput_Injected.sv.x = sexa.SV_X();
+    fOutput_Injected.sv.y = sexa.SV_Y();
+    fOutput_Injected.sv.z = sexa.SV_Z();
+
+    fOutput_Injected.lv_nucleon.px = sexa.Nucleon_Px();
+    fOutput_Injected.lv_nucleon.py = sexa.Nucleon_Py();
+    fOutput_Injected.lv_nucleon.pz = sexa.Nucleon_Pz();
+    fOutput_Injected.lv_nucleon.energy = static_cast<float>(Truth::Sexaquark::NucleonEnergy(sexa, nucleon_mass));  // PENDING: can prettify?
+
+    fOutput_Injected.run_number = fInput_Event.run_number;
+    fOutput_Injected.dir_number = fInput_Event.dir_number;
+    fOutput_Injected.event_number = fInput_Event.event_number;
+    fOutput_Injected.reaction_id = static_cast<unsigned int>(Truth::Sexaquark::ReactionID(sexa));  // PENDING: can prettify?
+}
+
+// ## Helpers ## //
+
+void Finder::Assign(Schema::Flat::Track& out, const View::Rec::Track& t) {
+    out.esd_entry = t.EsdEntry();
+    out.charge = t.Charge<char>();
+    out.state = {t.X(), t.Y(), t.Z(), t.Px(), t.Py(), t.Pz()};
+    out.pre_dca_xy = t.PreDCAxy();
+    out.pre_dca_z = t.PreDCAz();
+    out.tpc_signal = t.TPC_Signal();
+    out.n_sigma_pion = t.NSigmaPion();
+    out.n_sigma_kaon = t.NSigmaKaon();
+    out.n_sigma_proton = t.NSigmaProton();
+}
+
+void Finder::Assign(Schema::Flat::V0& out, const View::Rec::V0& v) {
+    out.decay = {v.X(), v.Y(), v.Z()};
+    out.lv = {v.Px(), v.Py(), v.Pz(), v.Energy()};
+    out.chi2ndf = v.Chi2NDF();
+    Assign(out.neg, v.Neg);
+    out.neg_pca_v0 = {v.Neg_PCAwrtV0_X(), v.Neg_PCAwrtV0_Y(), v.Neg_PCAwrtV0_Z(), v.Neg_PCAwrtV0_Px(), v.Neg_PCAwrtV0_Py(), v.Neg_PCAwrtV0_Pz()};
+    Assign(out.pos, v.Pos);
+    out.pos_pca_v0 = {v.Pos_PCAwrtV0_X(), v.Pos_PCAwrtV0_Y(), v.Pos_PCAwrtV0_Z(), v.Pos_PCAwrtV0_Px(), v.Pos_PCAwrtV0_Py(), v.Pos_PCAwrtV0_Pz()};
+}
+
+void Finder::Assign(Schema::Flat::MC_Track& out, const View::MC::PackedTrack& t, bool ascendants_info) {
+    out.mc_entry = t.McEntry();
+    out.pdg_code = t.PdgCode();
+    out.lv = {t.Px(), t.Py(), t.Pz(), t.Energy()};
+    out.is_true = t.IsTrue();
+    out.is_secondary = t.IsSecondary();
+    out.is_signal = t.IsSignal();
+    out.reaction_id = t.ReactionID();
+    if (!ascendants_info) return;
+    out.mother_mc_entry = t.Mother_McEntry();
+    out.mother_pdg_code = t.Mother_PdgCode();
+    out.gm_mc_entry = t.GrandMother_McEntry();
+    out.gm_pdg_code = t.GrandMother_PdgCode();
+}
+
+void Finder::Assign(Schema::Flat::MC_V0& out, const View::MC::PackedV0& v) {
+    out.lv = {v.Px(), v.Py(), v.Pz(), v.Energy()};
+    out.origin = {v.Origin_X(), v.Origin_Y(), v.Origin_Z()};
+    out.decay = {v.Decay_X(), v.Decay_Y(), v.Decay_Z()};
+    out.mc_entry = v.McEntry();
+    out.pdg_code = v.PdgCode();
+    out.reaction_id = v.ReactionID();
+    out.is_true = v.IsTrue();
+    out.is_signal = v.IsSignal();
+    out.is_secondary = v.IsSecondary();
+    out.is_hybrid = v.IsHybrid();
+    out.mother_mc_entry = v.Mother_McEntry();
+    out.mother_pdg_code = v.Mother_PdgCode();
+    // Assign(out.neg, v.Neg); // PENDING
+    // Assign(out.pos, v.Pos); // PENDING
 }
 
 // ## Channel A ZONE ## //
@@ -248,31 +293,31 @@ void Finder::FindSexaquarks_ChannelA(bool anti_channel) {
 
     // determine properties based on anti-channel or not
     // -- v0a
-    const Storage::Vector::V0s* Packed_V0A{&fInput_AntiLambdas};
-    const Storage::Vector::MC_V0s* MC_V0A{&fInput_MC_AntiLambdas};
+    const Schema::Vector::V0s* Packed_V0A = &fInput_AntiLambdas;
+    const Schema::Vector::MC_V0s* MC_V0A = &fInput_MC_AntiLambdas;
     if (anti_channel) {
         Packed_V0A = &fInput_Lambdas;
         MC_V0A = &fInput_MC_Lambdas;
     }
     // -- v0b
-    const Storage::Vector::V0s* Packed_V0B = &fInput_KaonsZeroShort;
-    const Storage::Vector::MC_V0s* MC_V0B = &fInput_MC_KaonsZeroShort;
+    const Schema::Vector::V0s* Packed_V0B = &fInput_KaonsZeroShort;
+    const Schema::Vector::MC_V0s* MC_V0B = &fInput_MC_KaonsZeroShort;
     // -- cut flow hist
     TH1D* hist = anti_channel ? fHist_CutFlow_AntiChannel.get() : fHist_CutFlow.get();
 
     // loop over all possible pairs of (anti)lambda + K0S //
-    size_t n_v0a = Packed_V0A->X->size();
-    size_t n_v0b = Packed_V0B->X->size();
-    for (size_t v0a_entry = 0; v0a_entry < n_v0a; ++v0a_entry) {
-        for (size_t v0b_entry = 0; v0b_entry < n_v0b; ++v0b_entry) {
+    std::size_t n_v0a = Packed_V0A->decay.x->size();
+    std::size_t n_v0b = Packed_V0B->decay.x->size();
+    for (unsigned int v0a_entry = 0; v0a_entry < n_v0a; ++v0a_entry) {
+        for (unsigned int v0b_entry = 0; v0b_entry < n_v0b; ++v0b_entry) {
 
             // get views //
             View::Rec::V0 v0a{Packed_V0A, v0a_entry};
             View::Rec::V0 v0b{Packed_V0B, v0b_entry};
 
             // sanity check //
-            if (v0a.Neg.Index() == v0b.Neg.Index() || v0a.Neg.Index() == v0b.Pos.Index() || v0a.Pos.Index() == v0b.Neg.Index() ||
-                v0a.Pos.Index() == v0b.Pos.Index()) {
+            if (v0a.Neg.EsdEntry() == v0b.Neg.EsdEntry() || v0a.Neg.EsdEntry() == v0b.Pos.EsdEntry() || v0a.Pos.EsdEntry() == v0b.Neg.EsdEntry() ||
+                v0a.Pos.EsdEntry() == v0b.Pos.EsdEntry()) {
                 continue;
             }
 
@@ -303,7 +348,7 @@ void Finder::FindSexaquarks_ChannelA(bool anti_channel) {
                 if (View::IsValid(mc_sexa)) {
                     StoreMC(mc_sexa);
                 } else {
-                    StoreDummyMC_ChannelA();
+                    fOutput_MC_ChannelA = {};  // NOTE: dummify
                 }
             }
 
@@ -340,425 +385,75 @@ bool Finder::SlowCuts(const KF::ChannelA& sexa, TH1D* cut_flow_hist) const {
     // if (sexa.DCA_wrt(fInput_Event.PV.X, fInput_Event.PV.Y, fInput_Event.PV.Z) > Cuts::ChannelA::Max_DCAwrtPV) return false;
     // cut_flow_hist->Fill(6.);
 
-    if (sexa.CPA_V0A_SV() < Cuts::ChannelA::Min_La_CPAwrtSV) return false;
-    cut_flow_hist->Fill(7.);
+    // if (sexa.CPA_V0A_SV() < Cuts::ChannelA::Min_La_CPAwrtSV) return false;
+    // cut_flow_hist->Fill(7.);
 
-    if (sexa.CPA_V0B_SV() < Cuts::ChannelA::Min_K0S_CPAwrtSV) return false;
-    cut_flow_hist->Fill(8.);
+    // if (sexa.CPA_V0B_SV() < Cuts::ChannelA::Min_K0S_CPAwrtSV) return false;
+    // cut_flow_hist->Fill(8.);
 
     return true;
 }
 
 void Finder::Store(const KF::ChannelA& sexa, bool anti_channel) {
-    // `Flat::ChannelA` //
+    fOutput_ChannelA.event = fInput_Event;
 
-    // `Flat::Sexaquark`
-    // -- `Flat::State`
-    fOutput_ChannelA.X = static_cast<float>(sexa.X());
-    fOutput_ChannelA.Y = static_cast<float>(sexa.Y());
-    fOutput_ChannelA.Z = static_cast<float>(sexa.Z());
-    fOutput_ChannelA.Px = static_cast<float>(sexa.Px());
-    fOutput_ChannelA.Py = static_cast<float>(sexa.Py());
-    fOutput_ChannelA.Pz = static_cast<float>(sexa.Pz());
-    fOutput_ChannelA.Energy = static_cast<float>(sexa.E());
-    // -- event properties
-    fOutput_ChannelA.Event = fInput_Event;
-    // -- fit info
-    fOutput_ChannelA.Chi2NDF = static_cast<float>(sexa.Chi2NDF());
-    // -- extra info
-    fOutput_ChannelA.E_MinusNucleon = static_cast<float>(sexa.E_MinusNucleon());
-    fOutput_ChannelA.AntiChannel = anti_channel;
+    fOutput_ChannelA.sv.x = static_cast<float>(sexa.X());
+    fOutput_ChannelA.sv.y = static_cast<float>(sexa.Y());
+    fOutput_ChannelA.sv.z = static_cast<float>(sexa.Z());
+    fOutput_ChannelA.lv.px = static_cast<float>(sexa.Px());
+    fOutput_ChannelA.lv.py = static_cast<float>(sexa.Py());
+    fOutput_ChannelA.lv.pz = static_cast<float>(sexa.Pz());
+    fOutput_ChannelA.lv.energy = static_cast<float>(sexa.E());
+    fOutput_ChannelA.chi2ndf = static_cast<float>(sexa.Chi2NDF());
+    fOutput_ChannelA.e_minus_nucleon = static_cast<float>(sexa.E_MinusNucleon());
+    fOutput_ChannelA.is_anti = anti_channel;
 
-    // V0A (`Flat::V0`)
-    // -- `Flat::State`
-    fOutput_ChannelA.V0A.X = sexa.V0A.X();
-    fOutput_ChannelA.V0A.Y = sexa.V0A.Y();
-    fOutput_ChannelA.V0A.Z = sexa.V0A.Z();
-    fOutput_ChannelA.V0A.Px = sexa.V0A.Px();
-    fOutput_ChannelA.V0A.Py = sexa.V0A.Py();
-    fOutput_ChannelA.V0A.Pz = sexa.V0A.Pz();
-    fOutput_ChannelA.V0A.Energy = sexa.V0A.Energy();
-    // -- FitVertex info
-    fOutput_ChannelA.V0A.Chi2NDF = sexa.V0A.Chi2NDF();
-    // -- @ PCA (`Flat::State_NoE`)
-    fOutput_ChannelA.V0A_atPCA.X = static_cast<float>(sexa.V0A_at_PCA.X());
-    fOutput_ChannelA.V0A_atPCA.Y = static_cast<float>(sexa.V0A_at_PCA.Y());
-    fOutput_ChannelA.V0A_atPCA.Z = static_cast<float>(sexa.V0A_at_PCA.Z());
-    fOutput_ChannelA.V0A_atPCA.Px = static_cast<float>(sexa.V0A_at_PCA.Px());
-    fOutput_ChannelA.V0A_atPCA.Py = static_cast<float>(sexa.V0A_at_PCA.Py());
-    fOutput_ChannelA.V0A_atPCA.Pz = static_cast<float>(sexa.V0A_at_PCA.Pz());
+    Assign(fOutput_ChannelA.v0a, sexa.V0A);
+    Assign(fOutput_ChannelA.v0b, sexa.V0B);
 
-    // V0A Neg
-    // -- `Flat::Track`
-    fOutput_ChannelA.V0A.Neg.X = sexa.V0A.Neg.X();
-    fOutput_ChannelA.V0A.Neg.Y = sexa.V0A.Neg.Y();
-    fOutput_ChannelA.V0A.Neg.Z = sexa.V0A.Neg.Z();
-    fOutput_ChannelA.V0A.Neg.Px = sexa.V0A.Neg.Px();
-    fOutput_ChannelA.V0A.Neg.Py = sexa.V0A.Neg.Py();
-    fOutput_ChannelA.V0A.Neg.Pz = sexa.V0A.Neg.Pz();
-    fOutput_ChannelA.V0A.Neg.Index = sexa.V0A.Neg.Index();
-    fOutput_ChannelA.V0A.Neg.DCAxy = sexa.V0A.Neg.DCAxy();
-    fOutput_ChannelA.V0A.Neg.DCAz = sexa.V0A.Neg.DCAz();
-    fOutput_ChannelA.V0A.Neg.TPCSignal = sexa.V0A.Neg.TPCSignal();
-    fOutput_ChannelA.V0A.Neg.NSigmaPion = sexa.V0A.Neg.NSigmaPion();
-    fOutput_ChannelA.V0A.Neg.NSigmaKaon = sexa.V0A.Neg.NSigmaKaon();
-    fOutput_ChannelA.V0A.Neg.NSigmaProton = sexa.V0A.Neg.NSigmaProton();
-    // -- @ V0 `Flat::State_NoE`
-    fOutput_ChannelA.V0A.Neg_atV0.X = sexa.V0A.Neg_atPCA_X();
-    fOutput_ChannelA.V0A.Neg_atV0.Y = sexa.V0A.Neg_atPCA_Y();
-    fOutput_ChannelA.V0A.Neg_atV0.Z = sexa.V0A.Neg_atPCA_Z();
-    fOutput_ChannelA.V0A.Neg_atV0.Px = sexa.V0A.Neg_atPCA_Px();
-    fOutput_ChannelA.V0A.Neg_atV0.Py = sexa.V0A.Neg_atPCA_Py();
-    fOutput_ChannelA.V0A.Neg_atV0.Pz = sexa.V0A.Neg_atPCA_Pz();
+    fOutput_ChannelA.v0a_pca_sv.x = static_cast<float>(sexa.V0A_PCAwrtSV.X());
+    fOutput_ChannelA.v0a_pca_sv.y = static_cast<float>(sexa.V0A_PCAwrtSV.Y());
+    fOutput_ChannelA.v0a_pca_sv.z = static_cast<float>(sexa.V0A_PCAwrtSV.Z());
+    fOutput_ChannelA.v0a_pca_sv.px = static_cast<float>(sexa.V0A_PCAwrtSV.Px());
+    fOutput_ChannelA.v0a_pca_sv.py = static_cast<float>(sexa.V0A_PCAwrtSV.Py());
+    fOutput_ChannelA.v0a_pca_sv.pz = static_cast<float>(sexa.V0A_PCAwrtSV.Pz());
 
-    // V0A Pos
-    // -- `Flat::Track`
-    fOutput_ChannelA.V0A.Pos.X = sexa.V0A.Pos.X();
-    fOutput_ChannelA.V0A.Pos.Y = sexa.V0A.Pos.Y();
-    fOutput_ChannelA.V0A.Pos.Z = sexa.V0A.Pos.Z();
-    fOutput_ChannelA.V0A.Pos.Px = sexa.V0A.Pos.Px();
-    fOutput_ChannelA.V0A.Pos.Py = sexa.V0A.Pos.Py();
-    fOutput_ChannelA.V0A.Pos.Pz = sexa.V0A.Pos.Pz();
-    fOutput_ChannelA.V0A.Pos.Index = sexa.V0A.Pos.Index();
-    fOutput_ChannelA.V0A.Pos.DCAxy = sexa.V0A.Pos.DCAxy();
-    fOutput_ChannelA.V0A.Pos.DCAz = sexa.V0A.Pos.DCAz();
-    fOutput_ChannelA.V0A.Pos.TPCSignal = sexa.V0A.Pos.TPCSignal();
-    fOutput_ChannelA.V0A.Pos.NSigmaPion = sexa.V0A.Pos.NSigmaPion();
-    fOutput_ChannelA.V0A.Pos.NSigmaKaon = sexa.V0A.Pos.NSigmaKaon();
-    fOutput_ChannelA.V0A.Pos.NSigmaProton = sexa.V0A.Pos.NSigmaProton();
-    // -- @ V0 (`Flat::State_NoE`)
-    fOutput_ChannelA.V0A.Pos_atV0.X = sexa.V0A.Pos_atPCA_X();
-    fOutput_ChannelA.V0A.Pos_atV0.Y = sexa.V0A.Pos_atPCA_Y();
-    fOutput_ChannelA.V0A.Pos_atV0.Z = sexa.V0A.Pos_atPCA_Z();
-    fOutput_ChannelA.V0A.Pos_atV0.Px = sexa.V0A.Pos_atPCA_Px();
-    fOutput_ChannelA.V0A.Pos_atV0.Py = sexa.V0A.Pos_atPCA_Py();
-    fOutput_ChannelA.V0A.Pos_atV0.Pz = sexa.V0A.Pos_atPCA_Pz();
-
-    // V0B
-    // -- `Flat::State`
-    fOutput_ChannelA.V0B.X = sexa.V0B.X();
-    fOutput_ChannelA.V0B.Y = sexa.V0B.Y();
-    fOutput_ChannelA.V0B.Z = sexa.V0B.Z();
-    fOutput_ChannelA.V0B.Px = sexa.V0B.Px();
-    fOutput_ChannelA.V0B.Py = sexa.V0B.Py();
-    fOutput_ChannelA.V0B.Pz = sexa.V0B.Pz();
-    fOutput_ChannelA.V0B.Energy = sexa.V0B.Energy();
-    // -- FitVertex info
-    fOutput_ChannelA.V0B.Chi2NDF = sexa.V0B.Chi2NDF();
-    // -- @ PCA (`Flat::State_NoE`)
-    fOutput_ChannelA.V0B_atPCA.X = static_cast<float>(sexa.V0B_at_PCA.X());
-    fOutput_ChannelA.V0B_atPCA.Y = static_cast<float>(sexa.V0B_at_PCA.Y());
-    fOutput_ChannelA.V0B_atPCA.Z = static_cast<float>(sexa.V0B_at_PCA.Z());
-    fOutput_ChannelA.V0B_atPCA.Px = static_cast<float>(sexa.V0B_at_PCA.Px());
-    fOutput_ChannelA.V0B_atPCA.Py = static_cast<float>(sexa.V0B_at_PCA.Py());
-    fOutput_ChannelA.V0B_atPCA.Pz = static_cast<float>(sexa.V0B_at_PCA.Pz());
-
-    // V0B Neg
-    // -- `Flat::Track`
-    fOutput_ChannelA.V0B.Neg.X = sexa.V0B.Neg.X();
-    fOutput_ChannelA.V0B.Neg.Y = sexa.V0B.Neg.Y();
-    fOutput_ChannelA.V0B.Neg.Z = sexa.V0B.Neg.Z();
-    fOutput_ChannelA.V0B.Neg.Px = sexa.V0B.Neg.Px();
-    fOutput_ChannelA.V0B.Neg.Py = sexa.V0B.Neg.Py();
-    fOutput_ChannelA.V0B.Neg.Pz = sexa.V0B.Neg.Pz();
-    fOutput_ChannelA.V0B.Neg.Index = sexa.V0B.Neg.Index();
-    fOutput_ChannelA.V0B.Neg.DCAxy = sexa.V0B.Neg.DCAxy();
-    fOutput_ChannelA.V0B.Neg.DCAz = sexa.V0B.Neg.DCAz();
-    fOutput_ChannelA.V0B.Neg.TPCSignal = sexa.V0B.Neg.TPCSignal();
-    fOutput_ChannelA.V0B.Neg.NSigmaPion = sexa.V0B.Neg.NSigmaPion();
-    fOutput_ChannelA.V0B.Neg.NSigmaKaon = sexa.V0B.Neg.NSigmaKaon();
-    fOutput_ChannelA.V0B.Neg.NSigmaProton = sexa.V0B.Neg.NSigmaProton();
-    // -- @ V0 (`Flat::State_NoE`)
-    fOutput_ChannelA.V0B.Neg_atV0.X = sexa.V0B.Neg_atPCA_X();
-    fOutput_ChannelA.V0B.Neg_atV0.Y = sexa.V0B.Neg_atPCA_Y();
-    fOutput_ChannelA.V0B.Neg_atV0.Z = sexa.V0B.Neg_atPCA_Z();
-    fOutput_ChannelA.V0B.Neg_atV0.Px = sexa.V0B.Neg_atPCA_Px();
-    fOutput_ChannelA.V0B.Neg_atV0.Py = sexa.V0B.Neg_atPCA_Py();
-    fOutput_ChannelA.V0B.Neg_atV0.Pz = sexa.V0B.Neg_atPCA_Pz();
-
-    // V0B Pos
-    // -- `Flat::Track`
-    fOutput_ChannelA.V0B.Pos.X = sexa.V0B.Pos.X();
-    fOutput_ChannelA.V0B.Pos.Y = sexa.V0B.Pos.Y();
-    fOutput_ChannelA.V0B.Pos.Z = sexa.V0B.Pos.Z();
-    fOutput_ChannelA.V0B.Pos.Px = sexa.V0B.Pos.Px();
-    fOutput_ChannelA.V0B.Pos.Py = sexa.V0B.Pos.Py();
-    fOutput_ChannelA.V0B.Pos.Pz = sexa.V0B.Pos.Pz();
-    fOutput_ChannelA.V0B.Pos.Index = sexa.V0B.Pos.Index();
-    fOutput_ChannelA.V0B.Pos.DCAxy = sexa.V0B.Pos.DCAxy();
-    fOutput_ChannelA.V0B.Pos.DCAz = sexa.V0B.Pos.DCAz();
-    fOutput_ChannelA.V0B.Pos.TPCSignal = sexa.V0B.Pos.TPCSignal();
-    fOutput_ChannelA.V0B.Pos.NSigmaPion = sexa.V0B.Pos.NSigmaPion();
-    fOutput_ChannelA.V0B.Pos.NSigmaKaon = sexa.V0B.Pos.NSigmaKaon();
-    fOutput_ChannelA.V0B.Pos.NSigmaProton = sexa.V0B.Pos.NSigmaProton();
-    // -- @ V0 (`Flat::State_NoE`)
-    fOutput_ChannelA.V0B.Pos_atV0.X = sexa.V0B.Pos_atPCA_X();
-    fOutput_ChannelA.V0B.Pos_atV0.Y = sexa.V0B.Pos_atPCA_Y();
-    fOutput_ChannelA.V0B.Pos_atV0.Z = sexa.V0B.Pos_atPCA_Z();
-    fOutput_ChannelA.V0B.Pos_atV0.Px = sexa.V0B.Pos_atPCA_Px();
-    fOutput_ChannelA.V0B.Pos_atV0.Py = sexa.V0B.Pos_atPCA_Py();
-    fOutput_ChannelA.V0B.Pos_atV0.Pz = sexa.V0B.Pos_atPCA_Pz();
+    fOutput_ChannelA.v0b_pca_sv.x = static_cast<float>(sexa.V0B_PCAwrtSV.X());
+    fOutput_ChannelA.v0b_pca_sv.y = static_cast<float>(sexa.V0B_PCAwrtSV.Y());
+    fOutput_ChannelA.v0b_pca_sv.z = static_cast<float>(sexa.V0B_PCAwrtSV.Z());
+    fOutput_ChannelA.v0b_pca_sv.px = static_cast<float>(sexa.V0B_PCAwrtSV.Px());
+    fOutput_ChannelA.v0b_pca_sv.py = static_cast<float>(sexa.V0B_PCAwrtSV.Py());
+    fOutput_ChannelA.v0b_pca_sv.pz = static_cast<float>(sexa.V0B_PCAwrtSV.Pz());
 }
 
-void Finder::StoreMC(const View::MC::ChannelA& sexa) {
-    // `Flat::MC_ChannelA` //
+void Finder::StoreMC(const View::MC::ChannelA& mc_sexa) {
 
-    // `Flat::MC_Sexaquark`
-    // -- Before (`Flat::LV`)
-    fOutput_MC_ChannelA.Before.Px = sexa.Px();
-    fOutput_MC_ChannelA.Before.Py = sexa.Py();
-    fOutput_MC_ChannelA.Before.Pz = sexa.Pz();
-    fOutput_MC_ChannelA.Before.Energy = static_cast<float>(Truth::Sexaquark::Energy(sexa, fSettings.SexaquarkMass));
-    // -- After (`Flat::LV`)
-    fOutput_MC_ChannelA.After.Px = static_cast<float>(Truth::Sexaquark::AfterPx(sexa));
-    fOutput_MC_ChannelA.After.Py = static_cast<float>(Truth::Sexaquark::AfterPy(sexa));
-    fOutput_MC_ChannelA.After.Pz = static_cast<float>(Truth::Sexaquark::AfterPz(sexa));
-    fOutput_MC_ChannelA.After.Energy = static_cast<float>(Truth::Sexaquark::AfterE(sexa));
-    // -- Nucleon (`Flat::LV`)
-    fOutput_MC_ChannelA.Nucleon.Px = sexa.Nucleon_Px();
-    fOutput_MC_ChannelA.Nucleon.Py = sexa.Nucleon_Py();
-    fOutput_MC_ChannelA.Nucleon.Pz = sexa.Nucleon_Pz();
-    fOutput_MC_ChannelA.Nucleon.Energy =
-        static_cast<float>(Truth::Sexaquark::NucleonEnergy(sexa, Const::Particle_Mass[Const::ReactionChannel_NucleonPID[fSettings.ReactionChannel]]));
-    // -- PV (`Flat::Coordinates`)
-    fOutput_MC_ChannelA.PV = fInput_MC_PV;
-    // -- SV (`Flat::Coordinates`)
-    fOutput_MC_ChannelA.SV.X = sexa.SV_X();
-    fOutput_MC_ChannelA.SV.Y = sexa.SV_Y();
-    fOutput_MC_ChannelA.SV.Z = sexa.SV_Z();
-    // -- reaction id + flags
-    fOutput_MC_ChannelA.ReactionID = Truth::Sexaquark::ReactionID(sexa);
-    fOutput_MC_ChannelA.IsSignal = Truth::Sexaquark::IsSignal(sexa);
-    fOutput_MC_ChannelA.IsHybrid = Truth::Sexaquark::IsHybrid(sexa);
+    fOutput_MC_ChannelA.before.px = mc_sexa.Px();
+    fOutput_MC_ChannelA.before.py = mc_sexa.Py();
+    fOutput_MC_ChannelA.before.pz = mc_sexa.Pz();
+    fOutput_MC_ChannelA.before.energy = static_cast<float>(Truth::Sexaquark::Energy(mc_sexa, fSettings.SexaquarkMass));
 
-    // V0A (`Flat::MC_V0`)
-    // -- `Flat::MC`
-    fOutput_MC_ChannelA.V0A.McEntry = static_cast<int>(sexa.V0A.Entry);
-    fOutput_MC_ChannelA.V0A.PdgCode = sexa.V0A.PdgCode();
-    fOutput_MC_ChannelA.V0A.ReactionID = sexa.V0A.ReactionID();
-    fOutput_MC_ChannelA.V0A.IsTrue = sexa.V0A.IsTrue();
-    fOutput_MC_ChannelA.V0A.IsSignal = sexa.V0A.IsSignal();
-    fOutput_MC_ChannelA.V0A.IsSecondary = sexa.V0A.IsSecondary();
-    // -- `Flat::LV`
-    fOutput_MC_ChannelA.V0A.Px = sexa.V0A.Px();
-    fOutput_MC_ChannelA.V0A.Py = sexa.V0A.Py();
-    fOutput_MC_ChannelA.V0A.Pz = sexa.V0A.Pz();
-    fOutput_MC_ChannelA.V0A.Energy = sexa.V0A.Energy();
-    // -- mother info (`Flat::MC_Id`)
-    fOutput_MC_ChannelA.V0A.Mother.McEntry = sexa.V0A.Mother_Entry();
-    fOutput_MC_ChannelA.V0A.Mother.PdgCode = sexa.V0A.Mother_PdgCode();
-    // -- @ decay (`Flat::Coordinates`)
-    fOutput_MC_ChannelA.V0A.AtDecay.X = sexa.V0A.Decay_X();
-    fOutput_MC_ChannelA.V0A.AtDecay.Y = sexa.V0A.Decay_Y();
-    fOutput_MC_ChannelA.V0A.AtDecay.Z = sexa.V0A.Decay_Z();
-    // -- hybrid flag
-    fOutput_MC_ChannelA.V0A.IsHybrid = sexa.V0A.IsHybrid();
+    fOutput_MC_ChannelA.after.px = static_cast<float>(Truth::Sexaquark::AfterPx(mc_sexa));
+    fOutput_MC_ChannelA.after.py = static_cast<float>(Truth::Sexaquark::AfterPy(mc_sexa));
+    fOutput_MC_ChannelA.after.pz = static_cast<float>(Truth::Sexaquark::AfterPz(mc_sexa));
+    fOutput_MC_ChannelA.after.energy = static_cast<float>(Truth::Sexaquark::AfterE(mc_sexa));
 
-    // V0A neg
-    // -- `Flat::MC`
-    fOutput_MC_ChannelA.V0A.Neg.McEntry = sexa.V0A.Neg_Entry();
-    fOutput_MC_ChannelA.V0A.Neg.PdgCode = sexa.V0A.Neg_PdgCode();
-    fOutput_MC_ChannelA.V0A.Neg.ReactionID = sexa.V0A.Neg_ReactionID();
-    fOutput_MC_ChannelA.V0A.Neg.IsTrue = sexa.V0A.Neg_IsTrue();
-    fOutput_MC_ChannelA.V0A.Neg.IsSignal = sexa.V0A.Neg_IsSignal();
-    fOutput_MC_ChannelA.V0A.Neg.IsSecondary = sexa.V0A.Neg_IsSecondary();
-    // -- `Flat::PxPyPz`
-    fOutput_MC_ChannelA.V0A.Neg_Momentum.Px = sexa.V0A.Neg_Px();
-    fOutput_MC_ChannelA.V0A.Neg_Momentum.Py = sexa.V0A.Neg_Py();
-    fOutput_MC_ChannelA.V0A.Neg_Momentum.Pz = sexa.V0A.Neg_Pz();
+    fOutput_MC_ChannelA.nucleon.px = mc_sexa.Nucleon_Px();
+    fOutput_MC_ChannelA.nucleon.py = mc_sexa.Nucleon_Py();
+    fOutput_MC_ChannelA.nucleon.pz = mc_sexa.Nucleon_Pz();
+    fOutput_MC_ChannelA.nucleon.energy = static_cast<float>(
+        Truth::Sexaquark::NucleonEnergy(mc_sexa, Const::Particle_Mass[Const::ReactionChannel_NucleonPID[fSettings.ReactionChannel]]));
 
-    // V0A pos
-    // -- `Flat::MC`
-    fOutput_MC_ChannelA.V0A.Pos.McEntry = sexa.V0A.Pos_Entry();
-    fOutput_MC_ChannelA.V0A.Pos.PdgCode = sexa.V0A.Pos_PdgCode();
-    fOutput_MC_ChannelA.V0A.Pos.ReactionID = sexa.V0A.Pos_ReactionID();
-    fOutput_MC_ChannelA.V0A.Pos.IsTrue = sexa.V0A.Pos_IsTrue();
-    fOutput_MC_ChannelA.V0A.Pos.IsSignal = sexa.V0A.Pos_IsSignal();
-    fOutput_MC_ChannelA.V0A.Pos.IsSecondary = sexa.V0A.Pos_IsSecondary();
-    // -- `Flat::PxPyPz`
-    fOutput_MC_ChannelA.V0A.Pos_Momentum.Px = sexa.V0A.Pos_Px();
-    fOutput_MC_ChannelA.V0A.Pos_Momentum.Py = sexa.V0A.Pos_Py();
-    fOutput_MC_ChannelA.V0A.Pos_Momentum.Pz = sexa.V0A.Pos_Pz();
+    fOutput_MC_ChannelA.sv.x = mc_sexa.SV_X();
+    fOutput_MC_ChannelA.sv.y = mc_sexa.SV_Y();
+    fOutput_MC_ChannelA.sv.z = mc_sexa.SV_Z();
 
-    // V0B (`Flat::MC_V0`)
-    // -- `Flat::MC`
-    fOutput_MC_ChannelA.V0B.McEntry = static_cast<int>(sexa.V0B.Entry);
-    fOutput_MC_ChannelA.V0B.PdgCode = sexa.V0B.PdgCode();
-    fOutput_MC_ChannelA.V0B.ReactionID = sexa.V0B.ReactionID();
-    fOutput_MC_ChannelA.V0B.IsTrue = sexa.V0B.IsTrue();
-    fOutput_MC_ChannelA.V0B.IsSignal = sexa.V0B.IsSignal();
-    fOutput_MC_ChannelA.V0B.IsSecondary = sexa.V0B.IsSecondary();
-    // -- `Flat::LV`
-    fOutput_MC_ChannelA.V0B.Px = sexa.V0B.Px();
-    fOutput_MC_ChannelA.V0B.Py = sexa.V0B.Py();
-    fOutput_MC_ChannelA.V0B.Pz = sexa.V0B.Pz();
-    fOutput_MC_ChannelA.V0B.Energy = sexa.V0B.Energy();
-    // -- mother info (`Flat::MC_Id`)
-    fOutput_MC_ChannelA.V0B.Mother.McEntry = sexa.V0B.Mother_Entry();
-    fOutput_MC_ChannelA.V0B.Mother.PdgCode = sexa.V0B.Mother_PdgCode();
-    // -- @ decay (`Flat::Coordinates`)
-    fOutput_MC_ChannelA.V0B.AtDecay.X = sexa.V0B.Decay_X();
-    fOutput_MC_ChannelA.V0B.AtDecay.Y = sexa.V0B.Decay_Y();
-    fOutput_MC_ChannelA.V0B.AtDecay.Z = sexa.V0B.Decay_Z();
-    // -- hybrid flag
-    fOutput_MC_ChannelA.V0B.IsHybrid = sexa.V0B.IsHybrid();
+    fOutput_MC_ChannelA.reaction_id = Truth::Sexaquark::ReactionID(mc_sexa);
+    fOutput_MC_ChannelA.is_signal = Truth::Sexaquark::IsSignal(mc_sexa);
+    fOutput_MC_ChannelA.is_hybrid = Truth::Sexaquark::IsHybrid(mc_sexa);
 
-    // V0B neg
-    // -- `Flat::MC`
-    fOutput_MC_ChannelA.V0B.Neg.McEntry = sexa.V0B.Neg_Entry();
-    fOutput_MC_ChannelA.V0B.Neg.PdgCode = sexa.V0B.Neg_PdgCode();
-    fOutput_MC_ChannelA.V0B.Neg.ReactionID = sexa.V0B.Neg_ReactionID();
-    fOutput_MC_ChannelA.V0B.Neg.IsTrue = sexa.V0B.Neg_IsTrue();
-    fOutput_MC_ChannelA.V0B.Neg.IsSignal = sexa.V0B.Neg_IsSignal();
-    fOutput_MC_ChannelA.V0B.Neg.IsSecondary = sexa.V0B.Neg_IsSecondary();
-    // -- `Flat::PxPyPz`
-    fOutput_MC_ChannelA.V0B.Neg_Momentum.Px = sexa.V0B.Neg_Px();
-    fOutput_MC_ChannelA.V0B.Neg_Momentum.Py = sexa.V0B.Neg_Py();
-    fOutput_MC_ChannelA.V0B.Neg_Momentum.Pz = sexa.V0B.Neg_Pz();
-
-    // V0B pos
-    // -- `Flat::MC`
-    fOutput_MC_ChannelA.V0B.Pos.McEntry = sexa.V0B.Pos_Entry();
-    fOutput_MC_ChannelA.V0B.Pos.PdgCode = sexa.V0B.Pos_PdgCode();
-    fOutput_MC_ChannelA.V0B.Pos.ReactionID = sexa.V0B.Pos_ReactionID();
-    fOutput_MC_ChannelA.V0B.Pos.IsTrue = sexa.V0B.Pos_IsTrue();
-    fOutput_MC_ChannelA.V0B.Pos.IsSignal = sexa.V0B.Pos_IsSignal();
-    fOutput_MC_ChannelA.V0B.Pos.IsSecondary = sexa.V0B.Pos_IsSecondary();
-    // -- `Flat::PxPyPz`
-    fOutput_MC_ChannelA.V0B.Pos_Momentum.Px = sexa.V0B.Pos_Px();
-    fOutput_MC_ChannelA.V0B.Pos_Momentum.Py = sexa.V0B.Pos_Py();
-    fOutput_MC_ChannelA.V0B.Pos_Momentum.Pz = sexa.V0B.Pos_Pz();
-}
-
-void Finder::StoreDummyMC_ChannelA() {
-    // `Flat::MC_ChannelA` //
-
-    // `Flat::MC_Sexaquark`
-    // -- Before (`Flat::LV`)
-    fOutput_MC_ChannelA.Before.Px = Const::DummyFloat;
-    fOutput_MC_ChannelA.Before.Py = Const::DummyFloat;
-    fOutput_MC_ChannelA.Before.Pz = Const::DummyFloat;
-    fOutput_MC_ChannelA.Before.Energy = Const::DummyFloat;
-    // -- After (`Flat::LV`)
-    fOutput_MC_ChannelA.After.Px = Const::DummyFloat;
-    fOutput_MC_ChannelA.After.Py = Const::DummyFloat;
-    fOutput_MC_ChannelA.After.Pz = Const::DummyFloat;
-    fOutput_MC_ChannelA.After.Energy = Const::DummyFloat;
-    // -- Nucleon (`Flat::LV`)
-    fOutput_MC_ChannelA.Nucleon.Px = Const::DummyFloat;
-    fOutput_MC_ChannelA.Nucleon.Py = Const::DummyFloat;
-    fOutput_MC_ChannelA.Nucleon.Pz = Const::DummyFloat;
-    fOutput_MC_ChannelA.Nucleon.Energy = Const::DummyFloat;
-    // -- PV (`Flat::Coordinates`)
-    fOutput_MC_ChannelA.PV.X = Const::DummyFloat;
-    fOutput_MC_ChannelA.PV.Y = Const::DummyFloat;
-    fOutput_MC_ChannelA.PV.Z = Const::DummyFloat;
-    // -- SV (`Flat::Coordinates`)
-    fOutput_MC_ChannelA.SV.X = Const::DummyFloat;
-    fOutput_MC_ChannelA.SV.Y = Const::DummyFloat;
-    fOutput_MC_ChannelA.SV.Z = Const::DummyFloat;
-    // -- reaction id + flags
-    fOutput_MC_ChannelA.ReactionID = Const::DummyInt;
-    fOutput_MC_ChannelA.IsSignal = false;
-    fOutput_MC_ChannelA.IsHybrid = false;
-
-    // V0A (`Flat::MC_V0`)
-    // -- `Flat::MC`
-    fOutput_MC_ChannelA.V0A.McEntry = Const::DummyInt;
-    fOutput_MC_ChannelA.V0A.PdgCode = Const::DummyInt;
-    fOutput_MC_ChannelA.V0A.ReactionID = Const::DummyInt;
-    fOutput_MC_ChannelA.V0A.IsTrue = false;
-    fOutput_MC_ChannelA.V0A.IsSignal = false;
-    fOutput_MC_ChannelA.V0A.IsSecondary = false;
-    // -- `Flat::LV`
-    fOutput_MC_ChannelA.V0A.Px = Const::DummyFloat;
-    fOutput_MC_ChannelA.V0A.Py = Const::DummyFloat;
-    fOutput_MC_ChannelA.V0A.Pz = Const::DummyFloat;
-    fOutput_MC_ChannelA.V0A.Energy = Const::DummyFloat;
-    // -- mother info (`Flat::MC_Id`)
-    fOutput_MC_ChannelA.V0A.Mother.McEntry = Const::DummyInt;
-    fOutput_MC_ChannelA.V0A.Mother.PdgCode = Const::DummyInt;
-    // -- @ decay (`Flat::Coordinates`)
-    fOutput_MC_ChannelA.V0A.AtDecay.X = Const::DummyFloat;
-    fOutput_MC_ChannelA.V0A.AtDecay.Y = Const::DummyFloat;
-    fOutput_MC_ChannelA.V0A.AtDecay.Z = Const::DummyFloat;
-    // -- hybrid flag
-    fOutput_MC_ChannelA.V0A.IsHybrid = false;
-
-    // V0A neg
-    // -- `Flat::MC`
-    fOutput_MC_ChannelA.V0A.Neg.McEntry = Const::DummyInt;
-    fOutput_MC_ChannelA.V0A.Neg.PdgCode = Const::DummyInt;
-    fOutput_MC_ChannelA.V0A.Neg.ReactionID = Const::DummyInt;
-    fOutput_MC_ChannelA.V0A.Neg.IsTrue = false;
-    fOutput_MC_ChannelA.V0A.Neg.IsSignal = false;
-    fOutput_MC_ChannelA.V0A.Neg.IsSecondary = false;
-    // -- `Flat::PxPyPz`
-    fOutput_MC_ChannelA.V0A.Neg_Momentum.Px = Const::DummyFloat;
-    fOutput_MC_ChannelA.V0A.Neg_Momentum.Py = Const::DummyFloat;
-    fOutput_MC_ChannelA.V0A.Neg_Momentum.Pz = Const::DummyFloat;
-
-    // V0A pos
-    // -- `Flat::MC`
-    fOutput_MC_ChannelA.V0A.Pos.McEntry = Const::DummyInt;
-    fOutput_MC_ChannelA.V0A.Pos.PdgCode = Const::DummyInt;
-    fOutput_MC_ChannelA.V0A.Pos.ReactionID = Const::DummyInt;
-    fOutput_MC_ChannelA.V0A.Pos.IsTrue = false;
-    fOutput_MC_ChannelA.V0A.Pos.IsSignal = false;
-    fOutput_MC_ChannelA.V0A.Pos.IsSecondary = false;
-    // -- `Flat::PxPyPz`
-    fOutput_MC_ChannelA.V0A.Pos_Momentum.Px = Const::DummyFloat;
-    fOutput_MC_ChannelA.V0A.Pos_Momentum.Py = Const::DummyFloat;
-    fOutput_MC_ChannelA.V0A.Pos_Momentum.Pz = Const::DummyFloat;
-
-    // V0B (`Flat::MC_V0`)
-    // -- `Flat::MC`
-    fOutput_MC_ChannelA.V0B.McEntry = Const::DummyInt;
-    fOutput_MC_ChannelA.V0B.PdgCode = Const::DummyInt;
-    fOutput_MC_ChannelA.V0B.ReactionID = Const::DummyInt;
-    fOutput_MC_ChannelA.V0B.IsTrue = false;
-    fOutput_MC_ChannelA.V0B.IsSignal = false;
-    fOutput_MC_ChannelA.V0B.IsSecondary = false;
-    // -- `Flat::LV`
-    fOutput_MC_ChannelA.V0B.Px = Const::DummyFloat;
-    fOutput_MC_ChannelA.V0B.Py = Const::DummyFloat;
-    fOutput_MC_ChannelA.V0B.Pz = Const::DummyFloat;
-    fOutput_MC_ChannelA.V0B.Energy = Const::DummyFloat;
-    // -- mother info (`Flat::MC_Id`)
-    fOutput_MC_ChannelA.V0B.Mother.McEntry = Const::DummyInt;
-    fOutput_MC_ChannelA.V0B.Mother.PdgCode = Const::DummyInt;
-    // -- @ decay (`Flat::Coordinates`)
-    fOutput_MC_ChannelA.V0B.AtDecay.X = Const::DummyFloat;
-    fOutput_MC_ChannelA.V0B.AtDecay.Y = Const::DummyFloat;
-    fOutput_MC_ChannelA.V0B.AtDecay.Z = Const::DummyFloat;
-    // -- hybrid flag
-    fOutput_MC_ChannelA.V0B.IsHybrid = false;
-
-    // V0B neg
-    // -- `Flat::MC`
-    fOutput_MC_ChannelA.V0B.Neg.McEntry = Const::DummyInt;
-    fOutput_MC_ChannelA.V0B.Neg.PdgCode = Const::DummyInt;
-    fOutput_MC_ChannelA.V0B.Neg.ReactionID = Const::DummyInt;
-    fOutput_MC_ChannelA.V0B.Neg.IsTrue = false;
-    fOutput_MC_ChannelA.V0B.Neg.IsSignal = false;
-    fOutput_MC_ChannelA.V0B.Neg.IsSecondary = false;
-    // -- `Flat::PxPyPz`
-    fOutput_MC_ChannelA.V0B.Neg_Momentum.Px = Const::DummyFloat;
-    fOutput_MC_ChannelA.V0B.Neg_Momentum.Py = Const::DummyFloat;
-    fOutput_MC_ChannelA.V0B.Neg_Momentum.Pz = Const::DummyFloat;
-
-    // V0B pos
-    // -- `Flat::MC`
-    fOutput_MC_ChannelA.V0B.Pos.McEntry = Const::DummyInt;
-    fOutput_MC_ChannelA.V0B.Pos.PdgCode = Const::DummyInt;
-    fOutput_MC_ChannelA.V0B.Pos.ReactionID = Const::DummyInt;
-    fOutput_MC_ChannelA.V0B.Pos.IsTrue = false;
-    fOutput_MC_ChannelA.V0B.Pos.IsSignal = false;
-    fOutput_MC_ChannelA.V0B.Pos.IsSecondary = false;
-    // -- `Flat::PxPyPz`
-    fOutput_MC_ChannelA.V0B.Pos_Momentum.Px = Const::DummyFloat;
-    fOutput_MC_ChannelA.V0B.Pos_Momentum.Py = Const::DummyFloat;
-    fOutput_MC_ChannelA.V0B.Pos_Momentum.Pz = Const::DummyFloat;
+    Assign(fOutput_MC_ChannelA.v0a, mc_sexa.V0A);
+    Assign(fOutput_MC_ChannelA.v0b, mc_sexa.V0B);
 }
 
 // ## Channel D ZONE ## //
@@ -767,16 +462,16 @@ void Finder::FindSexaquarks_ChannelD(bool anti_channel) {
 
     // determine properties based on anti-channel or not
     // -- kaon
-    const Storage::Vector::Tracks* Packed_Kaons{&fInput_PosKaons};
-    const Storage::Vector::MC_Tracks* MC_Kaons{&fInput_MC_PosKaons};
+    const Schema::Vector::Tracks* Packed_Kaons = &fInput_PosKaons;
+    const Schema::Vector::MC_Tracks* MC_Kaons = &fInput_MC_PosKaons;
     const double ka_mass = Const::Particle_Mass[PID_StableParticle::NegKaon];  // NOTE: same as mass of pos. kaon
     if (anti_channel) {
         Packed_Kaons = &fInput_NegKaons;
         MC_Kaons = &fInput_MC_NegKaons;
     }
     // -- v0
-    const Storage::Vector::V0s* Packed_V0s{&fInput_AntiLambdas};
-    const Storage::Vector::MC_V0s* MC_V0s{&fInput_MC_AntiLambdas};
+    const Schema::Vector::V0s* Packed_V0s = &fInput_AntiLambdas;
+    const Schema::Vector::MC_V0s* MC_V0s = &fInput_MC_AntiLambdas;
     if (anti_channel) {
         Packed_V0s = &fInput_Lambdas;
         MC_V0s = &fInput_MC_Lambdas;
@@ -785,20 +480,20 @@ void Finder::FindSexaquarks_ChannelD(bool anti_channel) {
     TH1D* hist{anti_channel ? fHist_CutFlow_AntiChannel.get() : fHist_CutFlow.get()};
 
     // loop over all possible pairs of (anti)lambda + (pos/neg)kaon //
-    size_t n_kaons{Packed_Kaons->X->size()};
-    size_t n_v0{Packed_V0s->X->size()};
-    for (size_t ka_entry = 0; ka_entry < n_kaons; ++ka_entry) {
-        for (size_t v0_entry = 0; v0_entry < n_v0; ++v0_entry) {
+    std::size_t n_kaons = Packed_Kaons->state.x->size();
+    std::size_t n_v0 = Packed_V0s->decay.x->size();
+    for (unsigned int ka_entry = 0; ka_entry < n_kaons; ++ka_entry) {
+        for (unsigned int v0_entry = 0; v0_entry < n_v0; ++v0_entry) {
 
             // get views //
             View::Rec::Track ka{Packed_Kaons, ka_entry};
             View::Rec::V0 v0{Packed_V0s, v0_entry};
 
             // sanity check //
-            if (v0.Neg.Index() == ka.Index() || v0.Pos.Index() == ka.Index()) continue;
+            if (v0.Neg.EsdEntry() == ka.EsdEntry() || v0.Pos.EsdEntry() == ka.EsdEntry()) continue;
 
             // PCAs (1) //
-            auto [seed_ka, seed_v0, pca_cache] = Seeder::HelixLine::FastCorrectPCAs(ka, v0, fInput_Event.MagneticField);
+            auto [seed_ka, seed_v0, pca_cache] = Seeder::HelixLine::FastCorrectPCAs(ka, v0, fInput_Event.magnetic_field);
 
             // apply cuts (1) //
             if (!FastCuts_ChannelD(seed_ka, seed_v0, hist)) continue;
@@ -809,7 +504,7 @@ void Finder::FindSexaquarks_ChannelD(bool anti_channel) {
             // fit vertex //
             auto fit = KF::FitVertex(ka, v0, ka_mass,                           //
                                      {seed_ka, deriv_ka}, {seed_v0, deriv_v0},  //
-                                     fInput_Event.MagneticField);
+                                     fInput_Event.magnetic_field);
             KF::ChannelD sexa(fit, seed_ka.pca, seed_v0.pca, ka, v0);
 
             // apply cuts (2) //
@@ -819,13 +514,13 @@ void Finder::FindSexaquarks_ChannelD(bool anti_channel) {
             Store(sexa, anti_channel);
 
             if (IsMC()) {
-                View::MC::PackedTrack mc_ka(MC_Kaons, ka_entry);
+                View::MC::PackedTrack mc_kaon(MC_Kaons, ka_entry);
                 View::MC::PackedV0 mc_v0(MC_V0s, v0_entry);
-                View::MC::ChannelD mc_sexa(&fInput_Injected, mc_ka, mc_v0);
+                View::MC::ChannelD mc_sexa(&fInput_Injected, mc_kaon, mc_v0);
                 if (View::IsValid(mc_sexa)) {
                     StoreMC(mc_sexa);
                 } else {
-                    StoreDummyMC_ChannelD();
+                    fOutput_MC_ChannelD = {};  // NOTE: dummify
                 }
             }
 
@@ -879,318 +574,59 @@ bool Finder::SlowCuts(const KF::ChannelD& sexa, TH1D* cut_flow_hist) const {
 }
 
 void Finder::Store(const KF::ChannelD& sexa, bool anti_channel) {
-    // `Flat::ChannelD` //
+    fOutput_ChannelD.event = fInput_Event;
+    fOutput_ChannelD.sv.x = static_cast<float>(sexa.X());
+    fOutput_ChannelD.sv.y = static_cast<float>(sexa.Y());
+    fOutput_ChannelD.sv.z = static_cast<float>(sexa.Z());
+    fOutput_ChannelD.lv.px = static_cast<float>(sexa.Px());
+    fOutput_ChannelD.lv.py = static_cast<float>(sexa.Py());
+    fOutput_ChannelD.lv.pz = static_cast<float>(sexa.Pz());
+    fOutput_ChannelD.lv.energy = static_cast<float>(sexa.E());
+    fOutput_ChannelD.chi2ndf = static_cast<float>(sexa.Chi2NDF());
+    fOutput_ChannelD.e_minus_nucleon = static_cast<float>(sexa.E_MinusNucleon());
+    fOutput_ChannelD.is_anti = anti_channel;
 
-    // `Flat::Sexaquark`
-    // -- `Flat::State`
-    fOutput_ChannelD.X = static_cast<float>(sexa.X());
-    fOutput_ChannelD.Y = static_cast<float>(sexa.Y());
-    fOutput_ChannelD.Z = static_cast<float>(sexa.Z());
-    fOutput_ChannelD.Px = static_cast<float>(sexa.Px());
-    fOutput_ChannelD.Py = static_cast<float>(sexa.Py());
-    fOutput_ChannelD.Pz = static_cast<float>(sexa.Pz());
-    fOutput_ChannelD.Energy = static_cast<float>(sexa.E());
-    // -- `Flat::Event`
-    fOutput_ChannelD.Event = fInput_Event;
-    // -- Fit info
-    fOutput_ChannelD.Chi2NDF = static_cast<float>(sexa.Chi2NDF());
-    // -- Extra info
-    fOutput_ChannelD.E_MinusNucleon = static_cast<float>(sexa.E_MinusNucleon());
-    fOutput_ChannelD.AntiChannel = anti_channel;
+    Assign(fOutput_ChannelD.kaon, sexa.Kaon);
+    fOutput_ChannelD.kaon_pca_sv.x = static_cast<float>(sexa.Kaon_PCAwrtSV.X());
+    fOutput_ChannelD.kaon_pca_sv.y = static_cast<float>(sexa.Kaon_PCAwrtSV.Y());
+    fOutput_ChannelD.kaon_pca_sv.z = static_cast<float>(sexa.Kaon_PCAwrtSV.Z());
+    fOutput_ChannelD.kaon_pca_sv.px = static_cast<float>(sexa.Kaon_PCAwrtSV.Px());
+    fOutput_ChannelD.kaon_pca_sv.py = static_cast<float>(sexa.Kaon_PCAwrtSV.Py());
+    fOutput_ChannelD.kaon_pca_sv.pz = static_cast<float>(sexa.Kaon_PCAwrtSV.Pz());
 
-    // Kaon (`Flat::Track`)
-    // -- `Flat::State_NoE`
-    fOutput_ChannelD.Kaon.X = sexa.Kaon.X();
-    fOutput_ChannelD.Kaon.Y = sexa.Kaon.Y();
-    fOutput_ChannelD.Kaon.Z = sexa.Kaon.Z();
-    fOutput_ChannelD.Kaon.Px = sexa.Kaon.Px();
-    fOutput_ChannelD.Kaon.Py = sexa.Kaon.Py();
-    fOutput_ChannelD.Kaon.Pz = sexa.Kaon.Pz();
-    // -- Rest of info
-    fOutput_ChannelD.Kaon.Index = sexa.Kaon.Index();
-    fOutput_ChannelD.Kaon.DCAxy = sexa.Kaon.DCAxy();
-    fOutput_ChannelD.Kaon.DCAz = sexa.Kaon.DCAz();
-    fOutput_ChannelD.Kaon.TPCSignal = sexa.Kaon.TPCSignal();
-    fOutput_ChannelD.Kaon.NSigmaPion = sexa.Kaon.NSigmaPion();
-    fOutput_ChannelD.Kaon.NSigmaKaon = sexa.Kaon.NSigmaKaon();
-    fOutput_ChannelD.Kaon.NSigmaProton = sexa.Kaon.NSigmaProton();
-    // -- @ PCA (`Flat::State_NoE`)
-    fOutput_ChannelD.Kaon_atPCA.X = static_cast<float>(sexa.Kaon_at_PCA.X());
-    fOutput_ChannelD.Kaon_atPCA.Y = static_cast<float>(sexa.Kaon_at_PCA.Y());
-    fOutput_ChannelD.Kaon_atPCA.Z = static_cast<float>(sexa.Kaon_at_PCA.Z());
-    fOutput_ChannelD.Kaon_atPCA.Px = static_cast<float>(sexa.Kaon_at_PCA.Px());
-    fOutput_ChannelD.Kaon_atPCA.Py = static_cast<float>(sexa.Kaon_at_PCA.Py());
-    fOutput_ChannelD.Kaon_atPCA.Pz = static_cast<float>(sexa.Kaon_at_PCA.Pz());
-
-    // V0 (`Flat::V0`)
-    // -- `Flat::State`
-    fOutput_ChannelD.V0.X = sexa.V0.X();
-    fOutput_ChannelD.V0.Y = sexa.V0.Y();
-    fOutput_ChannelD.V0.Z = sexa.V0.Z();
-    fOutput_ChannelD.V0.Px = sexa.V0.Px();
-    fOutput_ChannelD.V0.Py = sexa.V0.Py();
-    fOutput_ChannelD.V0.Pz = sexa.V0.Pz();
-    fOutput_ChannelD.V0.Energy = sexa.V0.Energy();
-    // -- Fit info
-    fOutput_ChannelD.V0.Chi2NDF = sexa.V0.Chi2NDF();
-    // -- @ PCA (`Flat::State_NoE`)
-    fOutput_ChannelD.V0_atPCA.X = static_cast<float>(sexa.V0_at_PCA.X());
-    fOutput_ChannelD.V0_atPCA.Y = static_cast<float>(sexa.V0_at_PCA.Y());
-    fOutput_ChannelD.V0_atPCA.Z = static_cast<float>(sexa.V0_at_PCA.Z());
-    fOutput_ChannelD.V0_atPCA.Px = static_cast<float>(sexa.V0_at_PCA.Px());
-    fOutput_ChannelD.V0_atPCA.Py = static_cast<float>(sexa.V0_at_PCA.Py());
-    fOutput_ChannelD.V0_atPCA.Pz = static_cast<float>(sexa.V0_at_PCA.Pz());
-
-    // V0 Neg (`Flat::Track`)
-    // -- `Flat::State_NoE`
-    fOutput_ChannelD.V0.Neg.X = sexa.V0.Neg.X();
-    fOutput_ChannelD.V0.Neg.Y = sexa.V0.Neg.Y();
-    fOutput_ChannelD.V0.Neg.Z = sexa.V0.Neg.Z();
-    fOutput_ChannelD.V0.Neg.Px = sexa.V0.Neg.Px();
-    fOutput_ChannelD.V0.Neg.Py = sexa.V0.Neg.Py();
-    fOutput_ChannelD.V0.Neg.Pz = sexa.V0.Neg.Pz();
-    // -- Rest of info
-    fOutput_ChannelD.V0.Neg.Index = sexa.V0.Neg.Index();
-    fOutput_ChannelD.V0.Neg.DCAxy = sexa.V0.Neg.DCAxy();
-    fOutput_ChannelD.V0.Neg.DCAz = sexa.V0.Neg.DCAz();
-    fOutput_ChannelD.V0.Neg.TPCSignal = sexa.V0.Neg.TPCSignal();
-    fOutput_ChannelD.V0.Neg.NSigmaPion = sexa.V0.Neg.NSigmaPion();
-    fOutput_ChannelD.V0.Neg.NSigmaKaon = sexa.V0.Neg.NSigmaKaon();
-    fOutput_ChannelD.V0.Neg.NSigmaProton = sexa.V0.Neg.NSigmaProton();
-    // -- V0 Neg @ V0 (`Flat::State_NoE`)
-    fOutput_ChannelD.V0.Neg_atV0.X = sexa.V0.Neg_atPCA_X();
-    fOutput_ChannelD.V0.Neg_atV0.Y = sexa.V0.Neg_atPCA_Y();
-    fOutput_ChannelD.V0.Neg_atV0.Z = sexa.V0.Neg_atPCA_Z();
-    fOutput_ChannelD.V0.Neg_atV0.Px = sexa.V0.Neg_atPCA_Px();
-    fOutput_ChannelD.V0.Neg_atV0.Py = sexa.V0.Neg_atPCA_Py();
-    fOutput_ChannelD.V0.Neg_atV0.Pz = sexa.V0.Neg_atPCA_Pz();
-
-    // V0 Pos (`Flat::Track`)
-    // -- `Flat::State_NoE`
-    fOutput_ChannelD.V0.Pos.X = sexa.V0.Pos.X();
-    fOutput_ChannelD.V0.Pos.Y = sexa.V0.Pos.Y();
-    fOutput_ChannelD.V0.Pos.Z = sexa.V0.Pos.Z();
-    fOutput_ChannelD.V0.Pos.Px = sexa.V0.Pos.Px();
-    fOutput_ChannelD.V0.Pos.Py = sexa.V0.Pos.Py();
-    fOutput_ChannelD.V0.Pos.Pz = sexa.V0.Pos.Pz();
-    // -- Rest of info
-    fOutput_ChannelD.V0.Pos.Index = sexa.V0.Pos.Index();
-    fOutput_ChannelD.V0.Pos.DCAxy = sexa.V0.Pos.DCAxy();
-    fOutput_ChannelD.V0.Pos.DCAz = sexa.V0.Pos.DCAz();
-    fOutput_ChannelD.V0.Pos.TPCSignal = sexa.V0.Pos.TPCSignal();
-    fOutput_ChannelD.V0.Pos.NSigmaPion = sexa.V0.Pos.NSigmaPion();
-    fOutput_ChannelD.V0.Pos.NSigmaKaon = sexa.V0.Pos.NSigmaKaon();
-    fOutput_ChannelD.V0.Pos.NSigmaProton = sexa.V0.Pos.NSigmaProton();
-    // -- V0 Pos @ V0 (`Flat::State_NoE`)
-    fOutput_ChannelD.V0.Pos_atV0.X = sexa.V0.Pos_atPCA_X();
-    fOutput_ChannelD.V0.Pos_atV0.Y = sexa.V0.Pos_atPCA_Y();
-    fOutput_ChannelD.V0.Pos_atV0.Z = sexa.V0.Pos_atPCA_Z();
-    fOutput_ChannelD.V0.Pos_atV0.Px = sexa.V0.Pos_atPCA_Px();
-    fOutput_ChannelD.V0.Pos_atV0.Py = sexa.V0.Pos_atPCA_Py();
-    fOutput_ChannelD.V0.Pos_atV0.Pz = sexa.V0.Pos_atPCA_Pz();
+    // V0
+    Assign(fOutput_ChannelD.v0, sexa.V0);
+    fOutput_ChannelD.v0_pca_sv.x = static_cast<float>(sexa.V0_PCAwrtSV.X());
+    fOutput_ChannelD.v0_pca_sv.y = static_cast<float>(sexa.V0_PCAwrtSV.Y());
+    fOutput_ChannelD.v0_pca_sv.z = static_cast<float>(sexa.V0_PCAwrtSV.Z());
+    fOutput_ChannelD.v0_pca_sv.px = static_cast<float>(sexa.V0_PCAwrtSV.Px());
+    fOutput_ChannelD.v0_pca_sv.py = static_cast<float>(sexa.V0_PCAwrtSV.Py());
+    fOutput_ChannelD.v0_pca_sv.pz = static_cast<float>(sexa.V0_PCAwrtSV.Pz());
 }
 
 void Finder::StoreMC(const View::MC::ChannelD& sexa) {
-    // `Flat::MC_ChannelD` //
-
-    // `Flat::MC_Sexaquark`
-    // -- Before (`Flat::LV`)
-    fOutput_MC_ChannelD.Before.Px = sexa.Px();
-    fOutput_MC_ChannelD.Before.Py = sexa.Py();
-    fOutput_MC_ChannelD.Before.Pz = sexa.Pz();
-    fOutput_MC_ChannelD.Before.Energy = static_cast<float>(Truth::Sexaquark::Energy(sexa, fSettings.SexaquarkMass));
-    // -- After (`Flat::LV`)
-    fOutput_MC_ChannelD.After.Px = static_cast<float>(Truth::Sexaquark::AfterPx(sexa));
-    fOutput_MC_ChannelD.After.Py = static_cast<float>(Truth::Sexaquark::AfterPy(sexa));
-    fOutput_MC_ChannelD.After.Pz = static_cast<float>(Truth::Sexaquark::AfterPz(sexa));
-    fOutput_MC_ChannelD.After.Energy = static_cast<float>(Truth::Sexaquark::AfterE(sexa));
-    // -- Nucleon (`Flat::LV`)
-    fOutput_MC_ChannelD.Nucleon.Px = sexa.Nucleon_Px();
-    fOutput_MC_ChannelD.Nucleon.Py = sexa.Nucleon_Py();
-    fOutput_MC_ChannelD.Nucleon.Pz = sexa.Nucleon_Pz();
-    fOutput_MC_ChannelD.Nucleon.Energy =
+    fOutput_MC_ChannelD.before.px = sexa.Px();
+    fOutput_MC_ChannelD.before.py = sexa.Py();
+    fOutput_MC_ChannelD.before.pz = sexa.Pz();
+    fOutput_MC_ChannelD.before.energy = static_cast<float>(Truth::Sexaquark::Energy(sexa, fSettings.SexaquarkMass));
+    fOutput_MC_ChannelD.after.px = static_cast<float>(Truth::Sexaquark::AfterPx(sexa));
+    fOutput_MC_ChannelD.after.py = static_cast<float>(Truth::Sexaquark::AfterPy(sexa));
+    fOutput_MC_ChannelD.after.pz = static_cast<float>(Truth::Sexaquark::AfterPz(sexa));
+    fOutput_MC_ChannelD.after.energy = static_cast<float>(Truth::Sexaquark::AfterE(sexa));
+    fOutput_MC_ChannelD.nucleon.px = sexa.Nucleon_Px();
+    fOutput_MC_ChannelD.nucleon.py = sexa.Nucleon_Py();
+    fOutput_MC_ChannelD.nucleon.pz = sexa.Nucleon_Pz();
+    fOutput_MC_ChannelD.nucleon.energy =
         static_cast<float>(Truth::Sexaquark::NucleonEnergy(sexa, Const::Particle_Mass[Const::ReactionChannel_NucleonPID[fSettings.ReactionChannel]]));
-    // -- PV (`Flat::Coordinates`)
-    fOutput_MC_ChannelD.PV = fInput_MC_PV;
-    // -- SV (`Flat::Coordinates`)
-    fOutput_MC_ChannelD.SV.X = sexa.SV_X();
-    fOutput_MC_ChannelD.SV.Y = sexa.SV_Y();
-    fOutput_MC_ChannelD.SV.Z = sexa.SV_Z();
-    // -- Reaction ID + Flags
-    fOutput_MC_ChannelD.ReactionID = Truth::Sexaquark::ReactionID(sexa);
-    fOutput_MC_ChannelD.IsSignal = Truth::Sexaquark::IsSignal(sexa);
-    fOutput_MC_ChannelD.IsHybrid = Truth::Sexaquark::IsHybrid(sexa);
+    fOutput_MC_ChannelD.sv.x = sexa.SV_X();
+    fOutput_MC_ChannelD.sv.y = sexa.SV_Y();
+    fOutput_MC_ChannelD.sv.z = sexa.SV_Z();
+    fOutput_MC_ChannelD.reaction_id = Truth::Sexaquark::ReactionID(sexa);
+    fOutput_MC_ChannelD.is_signal = Truth::Sexaquark::IsSignal(sexa);
+    fOutput_MC_ChannelD.is_hybrid = Truth::Sexaquark::IsHybrid(sexa);
 
-    // V0 (`Flat::MC_V0`)
-    // -- `Flat::MC`
-    fOutput_MC_ChannelD.V0.McEntry = static_cast<int>(sexa.V0.Entry);
-    fOutput_MC_ChannelD.V0.PdgCode = sexa.V0.PdgCode();
-    fOutput_MC_ChannelD.V0.ReactionID = sexa.V0.ReactionID();
-    fOutput_MC_ChannelD.V0.IsTrue = sexa.V0.IsTrue();
-    fOutput_MC_ChannelD.V0.IsSignal = sexa.V0.IsSignal();
-    fOutput_MC_ChannelD.V0.IsSecondary = sexa.V0.IsSecondary();
-    // -- `Flat::LV`
-    fOutput_MC_ChannelD.V0.Px = sexa.V0.Px();
-    fOutput_MC_ChannelD.V0.Py = sexa.V0.Py();
-    fOutput_MC_ChannelD.V0.Pz = sexa.V0.Pz();
-    fOutput_MC_ChannelD.V0.Energy = sexa.V0.Energy();
-    // -- Mother (`Flat::MC_Id`)
-    fOutput_MC_ChannelD.V0.Mother.McEntry = sexa.V0.Mother_Entry();
-    fOutput_MC_ChannelD.V0.Mother.PdgCode = sexa.V0.Mother_PdgCode();
-    // -- @ decay (`Flat::Coordinates`)
-    fOutput_MC_ChannelD.V0.AtDecay.X = sexa.V0.Decay_X();
-    fOutput_MC_ChannelD.V0.AtDecay.Y = sexa.V0.Decay_Y();
-    fOutput_MC_ChannelD.V0.AtDecay.Z = sexa.V0.Decay_Z();
-    // -- hybrid flag
-    fOutput_MC_ChannelD.V0.IsHybrid = sexa.V0.IsHybrid();
-
-    // V0 Neg
-    // -- `Flat::MC`
-    fOutput_MC_ChannelD.V0.Neg.McEntry = sexa.V0.Neg_Entry();
-    fOutput_MC_ChannelD.V0.Neg.PdgCode = sexa.V0.Neg_PdgCode();
-    fOutput_MC_ChannelD.V0.Neg.ReactionID = sexa.V0.Neg_ReactionID();
-    fOutput_MC_ChannelD.V0.Neg.IsTrue = sexa.V0.Neg_IsTrue();
-    fOutput_MC_ChannelD.V0.Neg.IsSignal = sexa.V0.Neg_IsSignal();
-    fOutput_MC_ChannelD.V0.Neg.IsSecondary = sexa.V0.Neg_IsSecondary();
-    // -- `Flat::PxPyPz`
-    fOutput_MC_ChannelD.V0.Neg_Momentum.Px = sexa.V0.Neg_Px();
-    fOutput_MC_ChannelD.V0.Neg_Momentum.Py = sexa.V0.Neg_Py();
-    fOutput_MC_ChannelD.V0.Neg_Momentum.Pz = sexa.V0.Neg_Pz();
-
-    // V0 Pos
-    // -- `Flat::MC`
-    fOutput_MC_ChannelD.V0.Pos.McEntry = sexa.V0.Pos_Entry();
-    fOutput_MC_ChannelD.V0.Pos.PdgCode = sexa.V0.Pos_PdgCode();
-    fOutput_MC_ChannelD.V0.Pos.ReactionID = sexa.V0.Pos_ReactionID();
-    fOutput_MC_ChannelD.V0.Pos.IsTrue = sexa.V0.Pos_IsTrue();
-    fOutput_MC_ChannelD.V0.Pos.IsSignal = sexa.V0.Pos_IsSignal();
-    fOutput_MC_ChannelD.V0.Pos.IsSecondary = sexa.V0.Pos_IsSecondary();
-    // -- `Flat::PxPyPz`
-    fOutput_MC_ChannelD.V0.Pos_Momentum.Px = sexa.V0.Pos_Px();
-    fOutput_MC_ChannelD.V0.Pos_Momentum.Py = sexa.V0.Pos_Py();
-    fOutput_MC_ChannelD.V0.Pos_Momentum.Pz = sexa.V0.Pos_Pz();
-
-    // Kaon (`Flat::MC_Track`)
-    // -- `Flat::LV`
-    fOutput_MC_ChannelD.Kaon.Px = sexa.Kaon.Px();
-    fOutput_MC_ChannelD.Kaon.Py = sexa.Kaon.Py();
-    fOutput_MC_ChannelD.Kaon.Pz = sexa.Kaon.Pz();
-    fOutput_MC_ChannelD.Kaon.Energy = sexa.Kaon.Energy();
-    // -- `Flat::MC`
-    fOutput_MC_ChannelD.Kaon.McEntry = static_cast<int>(sexa.Kaon.Entry);
-    fOutput_MC_ChannelD.Kaon.PdgCode = sexa.Kaon.PdgCode();
-    fOutput_MC_ChannelD.Kaon.ReactionID = sexa.Kaon.ReactionID();
-    fOutput_MC_ChannelD.Kaon.IsTrue = sexa.Kaon.IsTrue();
-    fOutput_MC_ChannelD.Kaon.IsSignal = sexa.Kaon.IsSignal();
-    fOutput_MC_ChannelD.Kaon.IsSecondary = sexa.Kaon.IsSecondary();
-    // -- Mother (`Flat::MC_Id`)
-    fOutput_MC_ChannelD.Kaon.Mother.McEntry = sexa.Kaon.Mother_McEntry();
-    fOutput_MC_ChannelD.Kaon.Mother.PdgCode = sexa.Kaon.Mother_PdgCode();
-    // -- GrandMother (`Flat::MC_Id`)
-    fOutput_MC_ChannelD.Kaon.GrandMother.McEntry = sexa.Kaon.GrandMother_McEntry();
-    fOutput_MC_ChannelD.Kaon.GrandMother.PdgCode = sexa.Kaon.GrandMother_PdgCode();
-}
-
-void Finder::StoreDummyMC_ChannelD() {
-    // `Flat::MC_ChannelD` //
-
-    // `Flat::MC_Sexaquark`
-    // -- Before (`Flat::LV`)
-    fOutput_MC_ChannelD.Before.Px = Const::DummyFloat;
-    fOutput_MC_ChannelD.Before.Py = Const::DummyFloat;
-    fOutput_MC_ChannelD.Before.Pz = Const::DummyFloat;
-    fOutput_MC_ChannelD.Before.Energy = Const::DummyFloat;
-    // -- After (`Flat::LV`)
-    fOutput_MC_ChannelD.After.Px = Const::DummyFloat;
-    fOutput_MC_ChannelD.After.Py = Const::DummyFloat;
-    fOutput_MC_ChannelD.After.Pz = Const::DummyFloat;
-    fOutput_MC_ChannelD.After.Energy = Const::DummyFloat;
-    // -- Nucleon (`Flat::LV`)
-    fOutput_MC_ChannelD.Nucleon.Px = Const::DummyFloat;
-    fOutput_MC_ChannelD.Nucleon.Py = Const::DummyFloat;
-    fOutput_MC_ChannelD.Nucleon.Pz = Const::DummyFloat;
-    fOutput_MC_ChannelD.Nucleon.Energy = Const::DummyFloat;
-    // -- PV (`Flat::Coordinates`)
-    fOutput_MC_ChannelD.PV.X = Const::DummyFloat;
-    fOutput_MC_ChannelD.PV.Y = Const::DummyFloat;
-    fOutput_MC_ChannelD.PV.Z = Const::DummyFloat;
-    // -- SV (`Flat::Coordinates`)
-    fOutput_MC_ChannelD.SV.X = Const::DummyFloat;
-    fOutput_MC_ChannelD.SV.Y = Const::DummyFloat;
-    fOutput_MC_ChannelD.SV.Z = Const::DummyFloat;
-    // -- Reaction ID + Flags
-    fOutput_MC_ChannelD.ReactionID = Const::DummyInt;
-    fOutput_MC_ChannelD.IsSignal = false;
-    fOutput_MC_ChannelD.IsHybrid = false;
-
-    // V0 (`Flat::MC_V0`)
-    // -- `Flat::MC`
-    fOutput_MC_ChannelD.V0.McEntry = Const::DummyInt;
-    fOutput_MC_ChannelD.V0.PdgCode = Const::DummyInt;
-    fOutput_MC_ChannelD.V0.ReactionID = Const::DummyInt;
-    fOutput_MC_ChannelD.V0.IsTrue = false;
-    fOutput_MC_ChannelD.V0.IsSignal = false;
-    fOutput_MC_ChannelD.V0.IsSecondary = false;
-    // -- `Flat::LV`
-    fOutput_MC_ChannelD.V0.Px = Const::DummyFloat;
-    fOutput_MC_ChannelD.V0.Py = Const::DummyFloat;
-    fOutput_MC_ChannelD.V0.Pz = Const::DummyFloat;
-    fOutput_MC_ChannelD.V0.Energy = Const::DummyFloat;
-    // -- Mother (`Flat::MC_Id`)
-    fOutput_MC_ChannelD.V0.Mother.McEntry = Const::DummyInt;
-    fOutput_MC_ChannelD.V0.Mother.PdgCode = Const::DummyInt;
-    // -- @ decay (`Flat::Coordinates`)
-    fOutput_MC_ChannelD.V0.AtDecay.X = Const::DummyFloat;
-    fOutput_MC_ChannelD.V0.AtDecay.Y = Const::DummyFloat;
-    fOutput_MC_ChannelD.V0.AtDecay.Z = Const::DummyFloat;
-    // -- hybrid flag
-    fOutput_MC_ChannelD.V0.IsHybrid = false;
-
-    // V0 Neg
-    // -- `Flat::MC`
-    fOutput_MC_ChannelD.V0.Neg.McEntry = Const::DummyInt;
-    fOutput_MC_ChannelD.V0.Neg.PdgCode = Const::DummyInt;
-    fOutput_MC_ChannelD.V0.Neg.ReactionID = Const::DummyInt;
-    fOutput_MC_ChannelD.V0.Neg.IsTrue = false;
-    fOutput_MC_ChannelD.V0.Neg.IsSignal = false;
-    fOutput_MC_ChannelD.V0.Neg.IsSecondary = false;
-    // -- `Flat::PxPyPz`
-    fOutput_MC_ChannelD.V0.Neg_Momentum.Px = Const::DummyFloat;
-    fOutput_MC_ChannelD.V0.Neg_Momentum.Py = Const::DummyFloat;
-    fOutput_MC_ChannelD.V0.Neg_Momentum.Pz = Const::DummyFloat;
-
-    // V0 Pos
-    // -- `Flat::MC`
-    fOutput_MC_ChannelD.V0.Pos.McEntry = Const::DummyInt;
-    fOutput_MC_ChannelD.V0.Pos.PdgCode = Const::DummyInt;
-    fOutput_MC_ChannelD.V0.Pos.ReactionID = Const::DummyInt;
-    fOutput_MC_ChannelD.V0.Pos.IsTrue = false;
-    fOutput_MC_ChannelD.V0.Pos.IsSignal = false;
-    fOutput_MC_ChannelD.V0.Pos.IsSecondary = false;
-    // -- `Flat::PxPyPz`
-    fOutput_MC_ChannelD.V0.Pos_Momentum.Px = Const::DummyFloat;
-    fOutput_MC_ChannelD.V0.Pos_Momentum.Py = Const::DummyFloat;
-    fOutput_MC_ChannelD.V0.Pos_Momentum.Pz = Const::DummyFloat;
-
-    // Kaon (`Flat::MC_Track`)
-    // -- `Flat::LV`
-    fOutput_MC_ChannelD.Kaon.Px = Const::DummyFloat;
-    fOutput_MC_ChannelD.Kaon.Py = Const::DummyFloat;
-    fOutput_MC_ChannelD.Kaon.Pz = Const::DummyFloat;
-    fOutput_MC_ChannelD.Kaon.Energy = Const::DummyFloat;
-    // -- `Flat::MC`
-    fOutput_MC_ChannelD.Kaon.McEntry = Const::DummyInt;
-    fOutput_MC_ChannelD.Kaon.PdgCode = Const::DummyInt;
-    fOutput_MC_ChannelD.Kaon.ReactionID = Const::DummyInt;
-    fOutput_MC_ChannelD.Kaon.IsTrue = false;
-    fOutput_MC_ChannelD.Kaon.IsSignal = false;
-    fOutput_MC_ChannelD.Kaon.IsSecondary = false;
-    // -- Mother (`Flat::MC_Id`)
-    fOutput_MC_ChannelD.Kaon.Mother.McEntry = Const::DummyInt;
-    fOutput_MC_ChannelD.Kaon.Mother.PdgCode = Const::DummyInt;
-    // -- GrandMother (`Flat::MC_Id`)
-    fOutput_MC_ChannelD.Kaon.GrandMother.McEntry = Const::DummyInt;
-    fOutput_MC_ChannelD.Kaon.GrandMother.PdgCode = Const::DummyInt;
+    Assign(fOutput_MC_ChannelD.v0, sexa.V0);
+    Assign(fOutput_MC_ChannelD.kaon, sexa.Kaon, true);
 }
 
 // ## END OF CYCLES ## //

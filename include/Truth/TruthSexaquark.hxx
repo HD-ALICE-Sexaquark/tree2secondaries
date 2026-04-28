@@ -2,14 +2,13 @@
 
 #include <cmath>
 
-#include "Math/Constants.hxx"
 #include "View/MC/ViewMcInjected.hxx"
 #include "View/MC/ViewMcPackedTrack.hxx"
 #include "View/MC/ViewMcPackedV0.hxx"
 
 namespace Tree2Secondaries::Truth::Sexaquark {
 
-[[nodiscard]] inline int ReactionID(const View::MC::Injected& sexa) { return Const::ReactionID_Offset + sexa.Entry; }
+[[nodiscard]] inline int ReactionID(const View::MC::Injected& sexa) { return sexa.ReactionID(); }
 
 [[nodiscard]] inline double Energy(const View::MC::Injected& sexa, double mass) {
     auto px = static_cast<double>(sexa.Px());

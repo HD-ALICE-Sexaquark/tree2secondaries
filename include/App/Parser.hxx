@@ -1,7 +1,6 @@
 #pragma once
 
 #include <array>
-#include <cstdlib>
 #include <string>
 #include <vector>
 
@@ -51,7 +50,7 @@ class Parser {
         // -- input path
         settings.PathInputFiles = InputFiles;
         // -- n events limit
-        settings.LimitToNEvents = CLI_APP.get_option("-n")->as<size_t>();
+        settings.LimitToNEvents = CLI_APP.get_option("-n")->as<unsigned int>();
         // -- output path
         settings.PathOutputFile = CLI_APP.get_option("-o")->as<std::string>();
         if (settings.PathOutputFile.empty()) {

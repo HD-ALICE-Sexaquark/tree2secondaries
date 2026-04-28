@@ -26,8 +26,8 @@ namespace Tree2Secondaries::Truth::V0 {
                                   (!Track::IsSignal(v0.Neg, Const::V0_NegativePID[pid]) && Track::IsSignal(v0.Pos, Const::V0_PositivePID[pid])));
 }
 
-[[nodiscard]] inline float DecayX(const View::MC::V0& v0) { return v0.Neg.X(); }
-[[nodiscard]] inline float DecayY(const View::MC::V0& v0) { return v0.Neg.Y(); }
-[[nodiscard]] inline float DecayZ(const View::MC::V0& v0) { return v0.Neg.Z(); }
+[[nodiscard]] inline float Decay_X(const View::MC::V0& v0) { return v0.Neg.Origin_X(); }
+[[nodiscard]] inline float Decay_Y(const View::MC::V0& v0) { return v0.Neg.Origin_Y(); }
+[[nodiscard]] inline float Decay_Z(const View::MC::V0& v0) { return v0.Neg.Origin_Z(); }
 
 }  // namespace Tree2Secondaries::Truth::V0
