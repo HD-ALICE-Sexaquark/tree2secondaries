@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.25...3.31)
 project(
   Tree2Secondaries
-  VERSION 26.04.27
+  VERSION 26.04.29
   LANGUAGES CXX)
 
 # support folders in IDEs #

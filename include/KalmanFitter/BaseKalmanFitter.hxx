@@ -7,8 +7,8 @@
 
 #include "KalmanFitter/KalmanFitterParticle.hxx"
 #include "Seeder/BaseSeeder.hxx"
-#include "View/Reconstructed/ViewRecTrack.hxx"
-#include "View/Reconstructed/ViewRecV0.hxx"
+#include "View/ViewVectorTracks.hxx"
+#include "View/ViewVectorV0s.hxx"
 
 namespace Tree2Secondaries::KalmanFitter {
 
@@ -34,17 +34,17 @@ Particle FitVertex(const KalmanFitter::Particle& part_1, const KalmanFitter::Par
 
 // Inline Methods //
 
-inline Particle FitVertex(const View::Rec::Track& track_1, const View::Rec::Track& track_2, double mass_1, double mass_2, const Seeder::Result& s_1,
+inline Particle FitVertex(const View::VecTracks& track_1, const View::VecTracks& track_2, double mass_1, double mass_2, const Seeder::Result& s_1,
                           const Seeder::Result& s_2, double bz) {
     return FitVertex(Particle::FromTrack(track_1, mass_1), Particle::FromTrack(track_2, mass_2), s_1, s_2, bz);
 }
 
-inline Particle FitVertex(const View::Rec::Track& track, const View::Rec::V0& v0, double mass_track, const Seeder::Result& s_track,
+inline Particle FitVertex(const View::VecTracks& track, const View::VecV0s& v0, double mass_track, const Seeder::Result& s_track,
                           const Seeder::Result& s_v0, double bz) {
     return FitVertex(Particle::FromTrack(track, mass_track), Particle::FromV0(v0), s_track, s_v0, bz);
 }
 
-inline Particle FitVertex(const View::Rec::V0& v0_1, const View::Rec::V0& v0_2, const Seeder::Result& s_1, const Seeder::Result& s_2) {
+inline Particle FitVertex(const View::VecV0s& v0_1, const View::VecV0s& v0_2, const Seeder::Result& s_1, const Seeder::Result& s_2) {
     return FitVertex(Particle::FromV0(v0_1), Particle::FromV0(v0_2), s_1, s_2);
 }
 

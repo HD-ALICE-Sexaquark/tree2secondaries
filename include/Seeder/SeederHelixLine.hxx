@@ -2,8 +2,8 @@
 
 #include "Math/Constants.hxx"
 #include "Seeder/BaseSeeder.hxx"
-#include "View/Reconstructed/ViewRecTrack.hxx"
-#include "View/Reconstructed/ViewRecV0.hxx"
+#include "View/ViewVectorTracks.hxx"
+#include "View/ViewVectorV0s.hxx"
 
 namespace Tree2Secondaries::Seeder::HelixLine {
 
@@ -42,7 +42,7 @@ struct alignas(T2S_SIMD_ALIGN) Cache {
 
 // Main Methods //
 
-std::pair<Seed, Seed> FastPCAs_XY(const View::Rec::Track& q1, const View::Rec::V0& n2, double bz, Cache* cache = nullptr);
+std::pair<Seed, Seed> FastPCAs_XY(const View::VecTracks& q1, const View::VecV0s& n2, double bz, Cache* cache = nullptr);
 std::pair<Seed, Seed> CorrectPCAs_Z(const Seed& s1_xy, const Seed& s2_xy, Cache& c);
 
 std::pair<Deriv, Deriv> ComputeDerivatives_XY(Cache& c);
@@ -50,7 +50,7 @@ std::pair<Deriv, Deriv> UpdateDerivatives_Z(const Seed& s1_xy, const Seed& s2_xy
 
 // Inline Methods //
 
-inline std::tuple<Seed, Seed, Cache> FastCorrectPCAs(const View::Rec::Track& q1, const View::Rec::V0& n2, double bz) {
+inline std::tuple<Seed, Seed, Cache> FastCorrectPCAs(const View::VecTracks& q1, const View::VecV0s& n2, double bz) {
     Cache cache;
     auto [seed1_xy, seed2_xy] = FastPCAs_XY(q1, n2, bz, &cache);
     auto [seed1, seed2] = CorrectPCAs_Z(seed1_xy, seed2_xy, cache);

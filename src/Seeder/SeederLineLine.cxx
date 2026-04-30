@@ -1,11 +1,13 @@
+#include "Seeder/SeederLineLine.hxx"
+
 #include <array>
 #include <cmath>
 #include <utility>
 
 #include "Math/Constants.hxx"
 #include "Seeder/BaseSeeder.hxx"
-#include "Seeder/SeederLineLine.hxx"
 #include "Seeder/SeederLineVertex.hxx"
+#include "View/ViewVectorV0s.hxx"
 #if T2S_DEBUG
 #include "App/Logger.hxx"
 #endif
@@ -23,7 +25,7 @@ namespace Tree2Secondaries::Seeder::LineLine {
 // - `ds`                              -- transport parameters needed to reach their PCAs
 // - `theta`, `sin`, `cos`, `sB`, `cB` -- cached quantities
 // NOTE: when tracks are parallel, return anything. For now, the PCA to the origin {0, 0, 0}.
-std::pair<Seed, Seed> FastPCAs(const View::Rec::V0& n1, const View::Rec::V0& n2, Cache* cache) {
+std::pair<Seed, Seed> FastPCAs(const View::VecV0s& n1, const View::VecV0s& n2, Cache* cache) {
 
     double x01 = n1.X();
     double y01 = n1.Y();

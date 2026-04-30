@@ -11,26 +11,23 @@
 
 namespace Tree2Secondaries::KalmanFitter {
 
-// # Static Functions # //
-
-// Create a `KF::Particle`, by setting `fP`, `fC` and `fQ` from a track view.
-Particle Particle::FromTrack(const View::Rec::Track& track, double mass) {
+// Create a `KF::Particle`, by setting `fP`, `fC` and `fQ` by hard-copying from a track.
+Particle Particle::FromTrack(const View::VecTracks& v, double mass) {
 
     Particle out;
 
-    out.fP(0) = track.X();
-    out.fP(1) = track.Y();
-    out.fP(2) = track.Z();
-    out.fP(3) = track.Px();
-    out.fP(4) = track.Py();
-    out.fP(5) = track.Pz();
+    out.fP(0) = v.X();
+    out.fP(1) = v.Y();
+    out.fP(2) = v.Z();
+    out.fP(3) = v.Px();
+    out.fP(4) = v.Py();
+    out.fP(5) = v.Pz();
     out.fP(6) = std::sqrt(mass * mass + out.SquaredMomentum());
     out.fP(7) = 0.;
 
-    const auto c = track.Cov();
-    for (unsigned int i = 0, k = 0; i < 6; ++i) {
-        for (unsigned int j = 0; j <= i; ++j, ++k) {
-            out.fC(i, j) = static_cast<double>(c[k]);
+    for (unsigned int i = 0; i < 6; ++i) {
+        for (unsigned int j = 0; j <= i; ++j) {
+            out.fC(i, j) = v.Cov(i, j);
         }
     }
 
@@ -52,29 +49,28 @@ Particle Particle::FromTrack(const View::Rec::Track& track, double mass) {
                     2 * (h0 * h1 * out.fC(4, 3) + h0 * h2 * out.fC(5, 3) + h1 * h2 * out.fC(5, 4)));
     out.fC(7, 7) = Const::Initial_Css;
 
-    out.fQ = track.Charge<int>();
+    out.fQ = v.Charge<int>();
 
     return out;
 }
 
 // Create a `KF::Particle`, by setting `fP`, `fC` and `fQ` from a V0 view.
-Particle Particle::FromV0(const View::Rec::V0& v0) {
+Particle Particle::FromV0(const View::VecV0s& v) {
 
     Particle out;
 
-    out.fP(0) = v0.X();
-    out.fP(1) = v0.Y();
-    out.fP(2) = v0.Z();
-    out.fP(3) = v0.Px();
-    out.fP(4) = v0.Py();
-    out.fP(5) = v0.Pz();
-    out.fP(6) = v0.Energy();
+    out.fP(0) = v.X();
+    out.fP(1) = v.Y();
+    out.fP(2) = v.Z();
+    out.fP(3) = v.Px();
+    out.fP(4) = v.Py();
+    out.fP(5) = v.Pz();
+    out.fP(6) = v.Energy();
     out.fP(7) = 0.;
 
-    const auto c = v0.Cov();
-    for (unsigned int i = 0, k = 0; i < 7; ++i) {
-        for (unsigned int j = 0; j <= i; ++j, ++k) {
-            out.fC(i, j) = static_cast<double>(c[k]);
+    for (unsigned int i = 0; i < 7; ++i) {
+        for (unsigned int j = 0; j <= i; ++j) {
+            out.fC(i, j) = v.Cov(i, j);
         }
     }
     out.fC(7, 7) = Const::Initial_Css;

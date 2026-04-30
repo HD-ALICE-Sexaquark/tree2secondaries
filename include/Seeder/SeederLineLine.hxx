@@ -2,7 +2,7 @@
 
 #include "Math/Constants.hxx"
 #include "Seeder/BaseSeeder.hxx"
-#include "View/Reconstructed/ViewRecV0.hxx"
+#include "View/ViewVectorV0s.hxx"
 
 namespace Tree2Secondaries::Seeder::LineLine {
 
@@ -21,12 +21,12 @@ struct alignas(T2S_SIMD_ALIGN) Cache {
 
 // Main Methods //
 
-std::pair<Seed, Seed> FastPCAs(const View::Rec::V0& n1, const View::Rec::V0& n2, Cache* cache = nullptr);
+std::pair<Seed, Seed> FastPCAs(const View::VecV0s& n1, const View::VecV0s& n2, Cache* cache = nullptr);
 std::pair<Deriv, Deriv> ComputeDerivatives(const Cache& c);
 
 // Inline Method //
 
-inline std::tuple<Result, Result> FullPCAs(const View::Rec::V0& n1, const View::Rec::V0& n2) {
+inline std::tuple<Result, Result> FullPCAs(const View::VecV0s& n1, const View::VecV0s& n2) {
     Cache cache;
     auto [seed1, seed2] = FastPCAs(n1, n2, &cache);
     auto [deriv1, deriv2] = ComputeDerivatives(cache);

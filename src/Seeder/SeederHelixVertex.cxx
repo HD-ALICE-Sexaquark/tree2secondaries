@@ -1,10 +1,12 @@
+#include "Seeder/SeederHelixVertex.hxx"
+
 #include <array>
 #include <cmath>
 
 #include "Math/BaseMath.hxx"
 #include "Math/Constants.hxx"
 #include "Seeder/BaseSeeder.hxx"
-#include "Seeder/SeederHelixVertex.hxx"
+#include "View/ViewVectorTracks.hxx"
 #if T2S_DEBUG
 #include "App/Logger.hxx"
 #endif
@@ -21,7 +23,7 @@ namespace Tree2Secondaries::Seeder::HelixVertex {
 // - `pca.xyz`, `pca.mom`              -- position and momentum at their PCAs
 // - `ds`                              -- transport parameters needed to reach their PCAs
 // - `theta`, `sin`, `cos`, `sB`, `cB` -- cache related-quantities
-Seed FastPCA_XY(const View::Rec::Track& q, const std::array<double, 3>& v, double bz, Cache* cache) {
+Seed FastPCA_XY(const View::VecTracks& q, const std::array<double, 3>& v, double bz, Cache* cache) {
 
     // cache //
 

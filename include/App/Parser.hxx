@@ -6,8 +6,8 @@
 
 #include <CLI/CLI.hpp>
 
+#include "App/DB_ReactionChannels.hxx"
 #include "App/Settings.hxx"
-#include "Math/Constants.hxx"
 
 namespace Tree2Secondaries {
 
@@ -42,7 +42,7 @@ class Parser {
         auto* type_cmd = settings.IsMC ? mode_cmd->get_subcommand("mc") : mode_cmd->get_subcommand("data");
         // -- reaction channels
         auto* opt_channel = type_cmd->get_option("-c");
-        settings.ReactionChannel = Const::ReactionChannelFromChar(opt_channel->as<char>());
+        settings.ReactionChannel = ReactionChannels::Find(opt_channel->as<char>()).value();
         // -- sexaquark mass
         if (settings.IsMC) {
             settings.SexaquarkMass = type_cmd->get_option("-m")->as<double>();
@@ -57,9 +57,9 @@ class Parser {
             std::string filename_prefix{settings.DoTheSearch ? "Found" : "Packed"};
             std::string filename_suffix{};
             if (settings.IsMC) {
-                filename_suffix = std::format("MC_{}{:.2f}", Const::ReactionChannel_Char[settings.ReactionChannel], settings.SexaquarkMass);
+                filename_suffix = std::format("MC_{}{:.2f}", settings.ReactionChannel.name, settings.SexaquarkMass);
             } else {
-                filename_suffix = std::format("Data_Channel{}", Const::ReactionChannel_Char[settings.ReactionChannel]);
+                filename_suffix = std::format("Data_Channel{}", settings.ReactionChannel.name);
             }
             settings.PathOutputFile = std::format("{}_{}.root", filename_prefix, filename_suffix);
         }
@@ -73,7 +73,7 @@ class Parser {
    protected:
     void AddOptions() {
 
-        constexpr std::array<char, 4> allowed_channels{'A', 'D', 'E', 'H'};
+        constexpr std::array<char, 3> allowed_channels{'A', 'D', 'H'};
         constexpr std::array<double, 5> allowed_masses{1.73, 1.8, 1.87, 1.94, 2.01};
 
         auto add_channels_opt = [allowed_channels](CLI::App* subcmd) {

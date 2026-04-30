@@ -1,10 +1,11 @@
+#include "Seeder/SeederLineVertex.hxx"
+
 #include <array>
 #include <cmath>
 
 #include "Math/Constants.hxx"
 #include "Seeder/BaseSeeder.hxx"
-#include "Seeder/SeederLineVertex.hxx"
-#include "View/Reconstructed/ViewRecV0.hxx"
+#include "View/ViewVectorV0s.hxx"
 #if T2S_DEBUG
 #include "App/Logger.hxx"
 #endif
@@ -20,7 +21,7 @@ namespace Tree2Secondaries::Seeder::LineVertex {
 // - `pca.xyz`, `pca.mom`              -- position and momentum at the PCA
 // - `ds`                              -- transport parameter needed to reach PCA
 // - `theta`, `sin`, `cos`, `sB`, `cB` -- cached quantities
-Seed FastPCA(const View::Rec::V0& n, const std::array<double, 3>& v, Cache* cache) {
+Seed FastPCA(const View::VecV0s& n, const std::array<double, 3>& v, Cache* cache) {
 
     double x0 = n.X();
     double y0 = n.Y();

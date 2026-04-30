@@ -1,3 +1,5 @@
+#include "Seeder/SeederHelixLine.hxx"
+
 #include <array>
 #include <cmath>
 #include <utility>
@@ -5,9 +7,8 @@
 #include "Math/BaseMath.hxx"
 #include "Math/Constants.hxx"
 #include "Seeder/BaseSeeder.hxx"
-#include "Seeder/SeederHelixLine.hxx"
-#include "View/Reconstructed/ViewRecTrack.hxx"
-#include "View/Reconstructed/ViewRecV0.hxx"
+#include "View/ViewVectorTracks.hxx"
+#include "View/ViewVectorV0s.hxx"
 #if T2S_DEBUG
 #include "App/Logger.hxx"
 #endif
@@ -26,7 +27,7 @@ namespace Tree2Secondaries::Seeder::HelixLine {
 // - `ds`  -- transport parameters
 // - `pca` -- points of closest approach (position and momentum)
 // - `theta`, `sin`, `cos`, `sB`, `cB` -- cached ds computation variables
-std::pair<Seed, Seed> FastPCAs_XY(const View::Rec::Track& q1, const View::Rec::V0& n2, double bz, Cache* cache) {
+std::pair<Seed, Seed> FastPCAs_XY(const View::VecTracks& q1, const View::VecV0s& n2, double bz, Cache* cache) {
 
     // cache //
 

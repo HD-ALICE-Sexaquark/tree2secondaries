@@ -9,16 +9,20 @@
 #include "Math/BaseMath.hxx"
 #include "Math/Constants.hxx"
 #include "Seeder/BaseSeeder.hxx"
-#include "View/Reconstructed/ViewRecTrack.hxx"
+#include "View/ViewVectorTracks.hxx"
 
 namespace Tree2Secondaries::KalmanFitter {
 
 struct alignas(T2S_SIMD_ALIGN) V0 : Particle {
 
     V0() = delete;
-    V0(const Particle& fit, const Seeder::PCA& pca_neg, const Seeder::PCA& pca_pos, const View::Rec::Track& track_neg,
-       const View::Rec::Track& track_pos)
-        : Particle{fit}, Neg_PCAwrtV0{pca_neg}, Pos_PCAwrtV0{pca_pos}, Neg{track_neg}, Pos{track_pos} {}
+    V0(const Particle& fit, const Seeder::PCA& pca_neg, const Seeder::PCA& pca_pos, const View::VecTracks& track_neg,
+       const View::VecTracks& track_pos)
+        : Particle{fit},  //
+          Neg_PCAwrtV0{pca_neg},
+          Pos_PCAwrtV0{pca_pos},
+          Neg{track_neg},
+          Pos{track_pos} {}
 
     // Member functions //
 
@@ -56,8 +60,8 @@ struct alignas(T2S_SIMD_ALIGN) V0 : Particle {
 
     Seeder::PCA Neg_PCAwrtV0;
     Seeder::PCA Pos_PCAwrtV0;
-    View::Rec::Track Neg;
-    View::Rec::Track Pos;
+    View::VecTracks Neg;
+    View::VecTracks Pos;
 };
 
 }  // namespace Tree2Secondaries::KalmanFitter
