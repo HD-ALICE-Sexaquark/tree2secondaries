@@ -2,14 +2,15 @@
 
 #include <Eigen/Eigen>
 
-#include "Math/Constants.hxx"
+#include "common/Constants.hpp"
+
 #include "Seeder/BaseSeeder.hxx"
-#if T2S_DEBUG
+#if R2DS_DEBUG
 #include "App/Logger.hxx"
 #include "App/Utilities.hxx"
 #endif
 
-namespace Tree2Secondaries::KalmanFitter {
+namespace R2DS::KalmanFitter {
 
 // Daughter Struct //
 
@@ -32,7 +33,7 @@ void Daughter::PrepareJacobAndCorr(const Seeder::Result& s, double bz) {
 
     // get initial values //
 
-    double bq = bz * Charge() * Const::Kappa;
+    double bq = bz * static_cast<double>(Charge()) * Common::Kappa;
     double px0 = Px();
     double py0 = Py();
     double pz0 = Pz();
@@ -79,7 +80,7 @@ void Daughter::PrepareJacobAndCorr(const Seeder::Result& s, double bz) {
 
     corr = df_ds * ds_dr1;
 
-#if T2S_DEBUG
+#if R2DS_DEBUG
     Logger::Debug(__FUNCTION__, "jacob  = {}", jacob);
     Logger::Debug(__FUNCTION__, "corr   = {}", corr);
 #endif
@@ -110,7 +111,7 @@ void Daughter::Transport(const Seeder::PCA& pca, const Eigen::Ref<const Eigen::M
     // -- with corr. matrix + other particle's cov matrix
     fC.block<6, 6>(0, 0).noalias() += corr * other_bt_cov.block<6, 6>(0, 0).selfadjointView<Eigen::Lower>() * corr.transpose();
 
-#if T2S_DEBUG
+#if R2DS_DEBUG
     Logger::Debug(__FUNCTION__, "fP = {}", fP);
     Logger::Debug(__FUNCTION__, "fC = {}", fC);
 #endif
@@ -120,7 +121,7 @@ void Daughter::Transport(const Seeder::PCA& pca, const Eigen::Ref<const Eigen::M
 
 Particle GetUpdated(const Daughter& kf_1, const Daughter& kf_2) {
 
-    Particle out = kf_1;
+    Particle out = kf_1;  // PENDING: discarded data?
 
     // sum of position covariances //
 
@@ -177,7 +178,7 @@ Particle GetUpdated(const Daughter& kf_1, const Daughter& kf_2) {
     out.fQ = kf_1.Charge() + kf_2.Charge();
     out.fNDF += 2;
 
-#if T2S_DEBUG
+#if R2DS_DEBUG
     Logger::Debug(__FUNCTION__, "mS     = {}", mS);
     Logger::Debug(__FUNCTION__, "zeta   = {}", zeta);
     Logger::Debug(__FUNCTION__, "mCHt   = {}", mCHt);
@@ -209,4 +210,4 @@ Particle FitVertex(const KalmanFitter::Particle& part_1, const KalmanFitter::Par
     return GetUpdated(kf_1, kf_2);
 }
 
-}  // namespace Tree2Secondaries::KalmanFitter
+}  // namespace R2DS::KalmanFitter

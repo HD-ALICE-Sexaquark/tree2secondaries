@@ -4,15 +4,16 @@
 #include <cmath>
 #include <utility>
 
-#include "Math/BaseMath.hxx"
-#include "Math/Constants.hxx"
+#include "common/Constants.hpp"
+#include "common/Math.hpp"
+#include "common/VC_TrackView.hpp"
+
 #include "Seeder/BaseSeeder.hxx"
-#include "View/ViewVectorTracks.hxx"
-#if T2S_DEBUG
+#if R2DS_DEBUG
 #include "App/Logger.hxx"
 #endif
 
-namespace Tree2Secondaries::Seeder::HelixHelix {
+namespace R2DS::Seeder::HelixHelix {
 
 // First phase. Find the points of closest approach (PCA) of two particles in the XY plane.
 // Both particles are charged and under a constant magnetic field. Assume helical trajectories.
@@ -25,15 +26,15 @@ namespace Tree2Secondaries::Seeder::HelixHelix {
 // - `ds`  -- transport parameters
 // - `pca` -- points of closest approach (position and momentum)
 // - `theta`, `sin`, `cos`, `sB`, `cB` -- cached ds computation variables
-std::pair<Seed, Seed> FastPCAs_XY(const View::VecTracks& q1, const View::VecTracks& q2, double bz, Cache* cache) {
+std::pair<Seed, Seed> FastPCAs_XY(const Vector::TrackView& q1, const Vector::TrackView& q2, double bz, Cache* cache) {
 
     // cache //
 
     Cache local;
     Cache& c = cache != nullptr ? *cache : local;
 
-    c.bq1 = bz * q1.Charge<double>() * Const::Kappa;
-    c.bq2 = bz * q2.Charge<double>() * Const::Kappa;
+    c.bq1 = bz * static_cast<double>(q1.Charge()) * Common::Kappa;
+    c.bq2 = bz * static_cast<double>(q2.Charge()) * Common::Kappa;
 
     c.x01 = q1.X();
     c.y01 = q1.Y();
@@ -86,7 +87,7 @@ std::pair<Seed, Seed> FastPCAs_XY(const View::VecTracks& q1, const View::VecTrac
         // particle 1 //
         Seed tmp1;
         tmp1.theta = std::atan2(c.bq1 * (c.k11 * c.c1 + sign * c.k21 * c.d1), sign * c.bq1 * c.k11 * c.d1 * c.bq1 - c.k21 * c.c1);
-        std::tie(tmp1.sin, tmp1.cos) = Math::sincos(tmp1.theta);
+        std::tie(tmp1.sin, tmp1.cos) = Common::Math::sincos(tmp1.theta);
         tmp1.sB = tmp1.sin / c.bq1;
         tmp1.cB = (1. - tmp1.cos) / c.bq1;
         tmp1.ds = tmp1.theta / c.bq1;
@@ -97,7 +98,7 @@ std::pair<Seed, Seed> FastPCAs_XY(const View::VecTracks& q1, const View::VecTrac
         // particle 2 //
         Seed tmp2;
         tmp2.theta = std::atan2(c.bq2 * (c.k12 * c.c2 + sign * c.k22 * c.d1), sign * c.bq2 * c.k12 * c.d1 * c.bq2 - c.k22 * c.c2);
-        std::tie(tmp2.sin, tmp2.cos) = Math::sincos(tmp2.theta);
+        std::tie(tmp2.sin, tmp2.cos) = Common::Math::sincos(tmp2.theta);
         tmp2.sB = tmp2.sin / c.bq2;
         tmp2.cB = (1. - tmp2.cos) / c.bq2;
         tmp2.ds = tmp2.theta / c.bq2;
@@ -124,7 +125,7 @@ std::pair<Seed, Seed> FastPCAs_XY(const View::VecTracks& q1, const View::VecTrac
         }
     }
 
-#if T2S_DEBUG
+#if R2DS_DEBUG
     Logger::Debug(__FUNCTION__, "seed1_xy.ds = {:13.6e}", seed1_xy.ds);
     Logger::Debug(__FUNCTION__, "seed1_xy.(x,y,z) = {}", seed1_xy.pca.xyz);
     Logger::Debug(__FUNCTION__, "seed1_xy.(px,py,pz) = {}", seed1_xy.pca.mom);
@@ -162,7 +163,7 @@ std::pair<Seed, Seed> CorrectPCAs_Z(const Seed& s1_xy, const Seed& s2_xy, Cache&
 
     // protection //
 
-    if (std::abs(c.detp) < Const::AbsAlmostZero) return {s1_xy, s2_xy};
+    if (std::abs(c.detp) < Common::AbsAlmostZero) return {s1_xy, s2_xy};
 
     // cache (2) //
 
@@ -175,7 +176,7 @@ std::pair<Seed, Seed> CorrectPCAs_Z(const Seed& s1_xy, const Seed& s2_xy, Cache&
     Seed s1;
     s1.ds = s1_xy.ds + c.a1 / c.detp;
     s1.theta = c.bq1 * s1.ds;
-    std::tie(s1.sin, s1.cos) = Math::sincos(s1.theta);
+    std::tie(s1.sin, s1.cos) = Common::Math::sincos(s1.theta);
     s1.sB = s1.sin / c.bq1;
     s1.cB = (1. - s1.cos) / c.bq1;
 
@@ -186,7 +187,7 @@ std::pair<Seed, Seed> CorrectPCAs_Z(const Seed& s1_xy, const Seed& s2_xy, Cache&
     Seed s2;
     s2.ds = s2_xy.ds + c.a2 / c.detp;
     s2.theta = c.bq2 * s2.ds;
-    std::tie(s2.sin, s2.cos) = Math::sincos(s2.theta);
+    std::tie(s2.sin, s2.cos) = Common::Math::sincos(s2.theta);
     s2.sB = s2.sin / c.bq2;
     s2.cB = (1. - s2.cos) / c.bq2;
 
@@ -197,7 +198,7 @@ std::pair<Seed, Seed> CorrectPCAs_Z(const Seed& s1_xy, const Seed& s2_xy, Cache&
 
     c.pca_dz_worked = 1;
 
-#if T2S_DEBUG
+#if R2DS_DEBUG
     Logger::Debug(__FUNCTION__, "seed1.ds = {:13.6e}", s1.ds);
     Logger::Debug(__FUNCTION__, "seed1.(x,y,z) = {}", s1.pca.xyz);
     Logger::Debug(__FUNCTION__, "seed1.(px,py,pz) = {}", s1.pca.mom);
@@ -295,7 +296,7 @@ std::pair<Deriv, Deriv> ComputeDerivatives_XY(Cache& c) {
         dd1dr2[4] += c.py02 * c.pt12 / c.d1;
     }
 
-#if T2S_DEBUG
+#if R2DS_DEBUG
     Logger::Debug(__FUNCTION__, "dk11dr2 = {}", dk11dr2);
     Logger::Debug(__FUNCTION__, "dk12dr1 = {}", dk12dr1);
     Logger::Debug(__FUNCTION__, "dk12dr2 = {}", dk12dr2);
@@ -320,7 +321,7 @@ std::pair<Deriv, Deriv> ComputeDerivatives_XY(Cache& c) {
     c.cc1 = c.bb1 * c.bb1 + c.aa1 * c.aa1;
     c.dd1 = c.cc1 > 0. ? (1. / c.bq1 * 1. / c.cc1) : 0.;
 
-#if T2S_DEBUG
+#if R2DS_DEBUG
     Logger::Debug(__FUNCTION__, "(end) c.aa1 = {:13.6e}", c.aa1);
     Logger::Debug(__FUNCTION__, "(end) c.bb1 = {:13.6e}", c.bb1);
     Logger::Debug(__FUNCTION__, "(end) c.cc1 = {:13.6e}", c.cc1);
@@ -344,7 +345,7 @@ std::pair<Deriv, Deriv> ComputeDerivatives_XY(Cache& c) {
     c.cc2 = c.bb2 * c.bb2 + c.aa2 * c.aa2;
     c.dd2 = c.cc2 > 0. ? (1. / c.bq2 * 1. / c.cc2) : 0.;
 
-#if T2S_DEBUG
+#if R2DS_DEBUG
     Logger::Debug(__FUNCTION__, "(end) c.aa2 = {:13.6e}", c.aa2);
     Logger::Debug(__FUNCTION__, "(end) c.bb2 = {:13.6e}", c.bb2);
     Logger::Debug(__FUNCTION__, "(end) c.cc2 = {:13.6e}", c.cc2);
@@ -361,7 +362,7 @@ std::pair<Deriv, Deriv> ComputeDerivatives_XY(Cache& c) {
         deriv2.ds_dr[i] = c.dd2 * (daa2_dr2 * c.bb2 - dbb2_dr2 * c.aa2);
     }
 
-#if T2S_DEBUG
+#if R2DS_DEBUG
     Logger::Debug(__FUNCTION__, "(end) deriv1.ds_dr = {}", deriv1.ds_dr);
     Logger::Debug(__FUNCTION__, "(end) deriv1.ds_dr1 = {}", deriv1.ds_dr1);
     Logger::Debug(__FUNCTION__, "(end) deriv2.ds_dr = {}", deriv2.ds_dr);
@@ -387,7 +388,7 @@ std::pair<Deriv, Deriv> UpdateDerivatives_Z(const Seed& s1_xy, const Seed& s2_xy
 
     if (c.pca_dz_worked == 0) return {d1_xy, d2_xy};
 
-#if T2S_DEBUG
+#if R2DS_DEBUG
     Logger::Debug(__FUNCTION__, "s1_xy.sin = {}", s1_xy.sin);
     Logger::Debug(__FUNCTION__, "s1_xy.cos = {}", s1_xy.cos);
     Logger::Debug(__FUNCTION__, "s1_xy.sB  = {}", s1_xy.sB);
@@ -421,7 +422,7 @@ std::pair<Deriv, Deriv> UpdateDerivatives_Z(const Seed& s1_xy, const Seed& s2_xy
     double dsl2ds0 = a2_ds0 / c.detp - c.a2 * detp_ds0 / detp2;
     double dsl2ds1 = a2_ds1 / c.detp - c.a2 * detp_ds1 / detp2;
 
-#if T2S_DEBUG
+#if R2DS_DEBUG
     Logger::Debug(__FUNCTION__, "lp1p2_ds0 = {:13.6e}", lp1p2_ds0);
     Logger::Debug(__FUNCTION__, "lp1p2_ds1 = {:13.6e}", lp1p2_ds1);
     Logger::Debug(__FUNCTION__, "ldrp1_ds0 = {:13.6e}", ldrp1_ds0);
@@ -458,7 +459,7 @@ std::pair<Deriv, Deriv> UpdateDerivatives_Z(const Seed& s1_xy, const Seed& s2_xy
         d2.ds_dr[i] += dsldr3[i];
     }
 
-#if T2S_DEBUG
+#if R2DS_DEBUG
     Logger::Debug(__FUNCTION__, "(intermediate) deriv1.ds_dr  = {}", d1.ds_dr);
     Logger::Debug(__FUNCTION__, "(intermediate) deriv1.ds_dr1 = {}", d1.ds_dr1);
     Logger::Debug(__FUNCTION__, "(intermediate) deriv2.ds_dr  = {}", d2.ds_dr);
@@ -504,7 +505,7 @@ std::pair<Deriv, Deriv> UpdateDerivatives_Z(const Seed& s1_xy, const Seed& s2_xy
     std::array<double, 6> p12_dr0{0., 0., 0., 2. * c.px01, 2. * c.py01, 2. * c.pz01};
     std::array<double, 6> p22_dr1{0., 0., 0., 2. * c.px02, 2. * c.py02, 2. * c.pz02};
 
-#if T2S_DEBUG
+#if R2DS_DEBUG
     Logger::Debug(__FUNCTION__, "lp1p2_dr0 = {}", lp1p2_dr0);
     Logger::Debug(__FUNCTION__, "lp1p2_dr1 = {}", lp1p2_dr1);
     Logger::Debug(__FUNCTION__, "ldrp1_dr0 = {}", ldrp1_dr0);
@@ -529,7 +530,7 @@ std::pair<Deriv, Deriv> UpdateDerivatives_Z(const Seed& s1_xy, const Seed& s2_xy
         d2.ds_dr[i] += a2_dr1 / c.detp - c.a2 * detp_dr1 / detp2;
     }
 
-#if T2S_DEBUG
+#if R2DS_DEBUG
     Logger::Debug(__FUNCTION__, "(end) deriv1.ds_dr  = {}", d1.ds_dr);
     Logger::Debug(__FUNCTION__, "(end) deriv1.ds_dr1 = {}", d1.ds_dr1);
     Logger::Debug(__FUNCTION__, "(end) deriv2.ds_dr  = {}", d2.ds_dr);
@@ -539,4 +540,4 @@ std::pair<Deriv, Deriv> UpdateDerivatives_Z(const Seed& s1_xy, const Seed& s2_xy
     return {d1, d2};
 }
 
-}  // namespace Tree2Secondaries::Seeder::HelixHelix
+}  // namespace R2DS::Seeder::HelixHelix

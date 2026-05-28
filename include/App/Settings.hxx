@@ -3,15 +3,19 @@
 #include <string>
 #include <vector>
 
-#include "App/DB_ReactionChannels.hxx"
-#include "App/Logger.hxx"
-#include "Math/Constants.hxx"
+#include "common/Constants.hpp"
+#include "common/DB_ReactionChannels.hpp"
 
-namespace Tree2Secondaries {
+#include "App/Logger.hxx"
+
+namespace R2DS {
+
+enum class EProgramMode { FINDER, PACKAGER, VERIFIER };
 
 struct Settings {
     void Print() const {
-        Logger::Info("Settings", "Mode            = {}", DoTheSearch ? "FINDER" : "PACKAGER");
+        Logger::Info("Settings", "Mode            = {}",
+                     Mode == EProgramMode::FINDER ? "FINDER" : (Mode == EProgramMode::PACKAGER ? "PACKAGER" : "VERIFIER"));
         Logger::Info("Settings", "ReactionChannel = {}", ReactionChannel.name);
         Logger::Info("Settings", "InputFiles      = ");
         for (const auto& path : PathInputFiles) {
@@ -25,11 +29,11 @@ struct Settings {
 
     std::vector<std::string> PathInputFiles;
     std::string PathOutputFile;
-    double SexaquarkMass{Const::StandardSexaquarkMass};
+    DB::ReactionChannels::Definition ReactionChannel;
+    double SexaquarkMass{Common::DummyDouble};
     long long LimitToNEvents{0};
-    ReactionChannels::Definition ReactionChannel;
+    EProgramMode Mode{EProgramMode::PACKAGER};
     bool IsMC{false};
-    bool DoTheSearch{false};
 };
 
-}  // namespace Tree2Secondaries
+}  // namespace R2DS

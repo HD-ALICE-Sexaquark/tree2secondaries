@@ -7,7 +7,7 @@
 #include "Seeder/BaseSeeder.hxx"
 #include "View/Reconstructed/ViewRecTrack.hxx"
 
-namespace Tree2Secondaries::Legacy::HelixHelix {
+namespace R2DS::Legacy::HelixHelix {
 
 // Formatted function with minimal changes.
 void GetDStoParticleBz(double Bz, const Particle& p1, const Particle& p2, double dS[2], double dsdr[4][6]);
@@ -29,7 +29,7 @@ inline std::tuple<Seeder::Seed, Seeder::Seed, Seeder::Deriv, Seeder::Deriv> Full
     s1.ds = dS[0];
     s2.ds = dS[1];
 
-#if T2S_DEBUG
+#if R2DS_DEBUG
     Logger::Debug(__FUNCTION__, "seed1.ds = {:13.6e}", s1.ds);
     Logger::Debug(__FUNCTION__, "seed2.ds = {:13.6e}", s2.ds);
 #endif
@@ -42,7 +42,7 @@ inline std::tuple<Seeder::Seed, Seeder::Seed, Seeder::Deriv, Seeder::Deriv> Full
     d2.ds_dr1 = std::to_array(dsdr[2]);
     d2.ds_dr = std::to_array(dsdr[3]);
 
-#if T2S_DEBUG
+#if R2DS_DEBUG
     Logger::Debug(__FUNCTION__, "deriv1.ds_dr = {}", d1.ds_dr);
     Logger::Debug(__FUNCTION__, "deriv1.ds_dr1 = {}", d1.ds_dr1);
     Logger::Debug(__FUNCTION__, "deriv2.ds_dr = {}", d2.ds_dr);
@@ -52,4 +52,4 @@ inline std::tuple<Seeder::Seed, Seeder::Seed, Seeder::Deriv, Seeder::Deriv> Full
     return {s1, s2, d1, d2};
 }
 
-}  // namespace Tree2Secondaries::Legacy::HelixHelix
+}  // namespace R2DS::Legacy::HelixHelix

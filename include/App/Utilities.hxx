@@ -3,9 +3,6 @@
 #include <array>
 #include <cstddef>
 #include <format>
-#include <string_view>
-
-#include <TTree.h>
 
 #include <Eigen/Core>
 
@@ -61,20 +58,3 @@ struct std::formatter<Eigen::Matrix<T, NRows, NCols, Options, MaxRows, MaxCols>>
         return out;
     }
 };
-
-// Utilities //
-
-namespace Tree2Secondaries::Utils {
-
-template <typename T>
-inline void ReadBranch(TTree* tree, std::string_view branch_name, T* address) {
-    tree->SetBranchStatus(std::string{branch_name}.c_str(), true);
-    tree->SetBranchAddress(std::string{branch_name}.c_str(), address);
-}
-
-template <typename T>
-inline void CreateBranch(TTree* tree, std::string_view branch_name, T* address) {
-    tree->Branch(std::string{branch_name}.c_str(), address);
-}
-
-}  // namespace Tree2Secondaries::Utils

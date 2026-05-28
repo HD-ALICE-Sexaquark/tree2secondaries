@@ -7,7 +7,7 @@
 #include "Seeder/BaseSeeder.hxx"
 #include "View/Reconstructed/ViewRecV0.hxx"
 
-namespace Tree2Secondaries::Legacy::LinePoint {
+namespace R2DS::Legacy::LinePoint {
 
 // Formatted function with minimal changes.
 double GetDStoPointLine(const Particle& n, const double xyz[3], double dsdr[6]);
@@ -22,7 +22,7 @@ inline std::tuple<Seeder::Seed, Seeder::Deriv> FullPCAs(const View::Rec::V0& n, 
     Seeder::Seed seed;
     seed.ds = GetDStoPointLine(p, xyz, dsdr);
 
-#if T2S_DEBUG
+#if R2DS_DEBUG
     Logger::Debug(__FUNCTION__, "seed.ds = {:13.6e}", seed.ds);
 #endif
 
@@ -30,11 +30,11 @@ inline std::tuple<Seeder::Seed, Seeder::Deriv> FullPCAs(const View::Rec::V0& n, 
 
     deriv.ds_dr = std::to_array(dsdr);
 
-#if T2S_DEBUG
+#if R2DS_DEBUG
     Logger::Debug(__FUNCTION__, "deriv.ds_dr = {}", deriv.ds_dr);
 #endif
 
     return {seed, deriv};
 }
 
-}  // namespace Tree2Secondaries::Legacy::LinePoint
+}  // namespace R2DS::Legacy::LinePoint

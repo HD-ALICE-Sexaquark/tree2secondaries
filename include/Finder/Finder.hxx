@@ -1,35 +1,36 @@
 #pragma once
 
-#include <cstddef>
 #include <memory>
 
-#include <TChain.h>
 #include <TFile.h>
 #include <TH1.h>
+
+#include <ROOT/RNTupleModel.hxx>
+#include <ROOT/RNTupleReader.hxx>
+#include <ROOT/RNTupleWriter.hxx>
+
+#include "common/FL_ChannelA.hpp"
+#include "common/FL_ChannelD.hpp"
+#include "common/FL_ChannelH.hpp"
+#include "common/FL_Event.hpp"
+#include "common/FL_InjectedSexa.hpp"
+#include "common/FL_Track.hpp"
+#include "common/FL_V0.hpp"
+#include "common/VC_InjectedSexa.hpp"
+#include "common/VC_InjectedSexaView.hpp"
+#include "common/VC_Track.hpp"
+#include "common/VC_TrackView.hpp"
+#include "common/VC_V0.hpp"
+#include "common/VC_V0View.hpp"
 
 #include "App/Settings.hxx"
 #include "KalmanFitter/KalmanFitterChannelA.hxx"
 #include "KalmanFitter/KalmanFitterChannelD.hxx"
-#include "MonteCarlo/MonteCarloChannelA.hxx"
-#include "MonteCarlo/MonteCarloChannelD.hxx"
-#include "Schema/SchemaFlatChannelA.hxx"
-#include "Schema/SchemaFlatChannelD.hxx"
-#include "Schema/SchemaFlatInjected.hxx"
-#include "Schema/SchemaFlatTrack.hxx"
-#include "Schema/SchemaFlatV0.hxx"
-#include "Schema/SchemaVectorInjected.hxx"
-#include "Schema/SchemaVectorMcTracks.hxx"
-#include "Schema/SchemaVectorMcV0s.hxx"
-#include "Schema/SchemaVectorTracks.hxx"
-#include "Schema/SchemaVectorV0s.hxx"
-#include "View/ViewVectorMcTracks.hxx"
-#include "View/ViewVectorMcV0s.hxx"
-#include "View/ViewVectorTracks.hxx"
-#include "View/ViewVectorV0s.hxx"
+#include "KalmanFitter/KalmanFitterChannelH.hxx"
 
 class TTree;
 
-namespace Tree2Secondaries {
+namespace R2DS {
 
 // Read Vector events and find anti-sexaquarks reactions.
 class Finder {
@@ -47,24 +48,17 @@ class Finder {
 
     bool PrepareOutputFile();
     void PrepareOutputHistograms();
-    bool PrepareOutputTree();
-    void CreateOutputBranches();
 
     void ProcessEvent();
 
     bool Injected_PrepareOutputTree();
     void ProcessInjected();
 
-    [[nodiscard]] long long NumberEventsToRead() const {
-        long long total_entries = fInputChain_PackedEvents->GetEntries();
+    [[nodiscard]] unsigned long NumberEventsToRead() const {
+        unsigned long total_entries = fReader->GetNEntries();
         return 0 < fSettings.LimitToNEvents && fSettings.LimitToNEvents < total_entries ? fSettings.LimitToNEvents : total_entries;
     }
-    void GetEvent(long long i_event) { fInputChain_PackedEvents->GetEntry(i_event); }
 
-    [[nodiscard]] std::size_t NumberInjected() const { return fInput_Injected.reaction_id->size(); }
-
-    void FindSexaquarks_ChannelA(bool anti_channel);
-    void FindSexaquarks_ChannelD(bool anti_channel);
     void Find() {
         switch (fSettings.ReactionChannel.name) {
             case 'A': {
@@ -77,6 +71,11 @@ class Finder {
                 FindSexaquarks_ChannelD(true);
                 break;
             }
+            case 'H': {
+                FindSexaquarks_ChannelH(false);
+                FindSexaquarks_ChannelH(true);
+                break;
+            }
             default:
                 return;
         }
@@ -84,30 +83,46 @@ class Finder {
 
     [[nodiscard]] bool FastCuts_ChannelA(const Seeder::Seed &seed_v0a, const Seeder::Seed &seed_v0b, TH1D *cut_flow_hist) const;
     [[nodiscard]] bool FastCuts_ChannelD(const Seeder::Seed &seed_ka, const Seeder::Seed &seed_v0, TH1D *cut_flow_hist) const;
+    [[nodiscard]] bool FastCuts_ChannelH(const Seeder::Seed &seed_kaon1, const Seeder::Seed &seed_kaon2, TH1D *cut_flow_hist) const;
 
     [[nodiscard]] bool SlowCuts(const KalmanFitter::ChannelA &sexa, TH1D *cut_flow_hist) const;
     [[nodiscard]] bool SlowCuts(const KalmanFitter::ChannelD &sexa, TH1D *cut_flow_hist) const;
+    [[nodiscard]] bool SlowCuts(const KalmanFitter::ChannelH &sexa, TH1D *cut_flow_hist) const;
 
     void EndOfAnalysis();
 
+    std::unique_ptr<ROOT::RNTupleModel> fInput_Model;
+    std::unique_ptr<ROOT::RNTupleReader> fReader;
+
+    std::unique_ptr<ROOT::RNTupleModel> fOutput_Model;
+    std::unique_ptr<ROOT::RNTupleWriter> fWriter;
+
+    std::unique_ptr<ROOT::RNTupleModel> fOutput_Model_InjectedSexa;
+    std::unique_ptr<ROOT::RNTupleWriter> fWriter_InjectedSexa;
+
    private:
-    void Assign(const View::VecTracks &v, Schema::FlatTrack &out);
-    void Assign(const View::VecV0s &v, Schema::FlatV0 &out);
-    void Assign(const View::VecMcTracks &v, Schema::FlatMcTrack &out, bool ascendants_info);
-    void Assign(const View::VecMcV0s &v, Schema::FlatMcV0 &out);
+    void Assign_Event(Flat::Sexaquark &out);
+    void Assign_Candidate(const KalmanFitter::Particle &sexa, Flat::Sexaquark &out, bool anti_channel);
+    void Assign(const Vector::V0View &v0, Flat::V0 &out);
+    void Assign(const Vector::TrackView &track, Flat::Track &out, bool include_gm);
+    void Assign_InjectedSexa(const std::optional<Vector::InjectedSexaView> &injected, Flat::InjectedSexa &out, bool embedded_to_rec);
 
+    void FindSexaquarks_ChannelA(bool anti_channel);
+    std::optional<Vector::InjectedSexaView> LinkInjectedSignal(const KalmanFitter::ChannelA &sexa);
     void Assign(const KalmanFitter::ChannelA &sexa, bool anti_channel);
-    void Assign(const std::optional<MonteCarlo::ChannelA> &mc_sexa);
 
+    void FindSexaquarks_ChannelD(bool anti_channel);
+    std::optional<Vector::InjectedSexaView> LinkInjectedSignal(const KalmanFitter::ChannelD &sexa);
     void Assign(const KalmanFitter::ChannelD &sexa, bool anti_channel);
-    void Assign(const std::optional<MonteCarlo::ChannelD> &mc_sexa);
+
+    void FindSexaquarks_ChannelH(bool anti_channel);
+    std::optional<Vector::InjectedSexaView> LinkInjectedSignal(const KalmanFitter::ChannelH &sexa);
+    void Assign(const KalmanFitter::ChannelH &sexa, bool anti_channel);
 
     const Settings &fSettings;
-    std::unique_ptr<TChain> fInputChain_PackedEvents;
+    std::string fName_FoundRNT;
 
-    std::unique_ptr<TFile> fOutputFile;
-    std::unique_ptr<TTree> fOutputTree;
-    std::unique_ptr<TTree> fOutputTree_Injected;
+    std::unique_ptr<TFile> fOutput_File;
 
     std::unique_ptr<TH1D> fHist_EventCounter;
 
@@ -116,51 +131,25 @@ class Finder {
 
     // input //
 
-    Schema::FlatEvent fInput_Event;
-    Schema::VecInjected fInput_Injected;
+    Flat::Event fInput_Event;
+    ROOT::Math::XYZPoint fPrimaryVertex;
 
-    Schema::VecV0s fInput_AntiLambdas;
-    Schema::VecV0s fInput_Lambdas;
-    Schema::VecV0s fInput_KaonsZeroShort;
+    Vector::InjectedSexa fInput_InjectedSexa;
 
-    Schema::VecTracks fInput_NegKaons;
-    Schema::VecTracks fInput_PosKaons;
+    Vector::V0 fInput_AntiLambda;
+    Vector::V0 fInput_Lambda;
+    Vector::V0 fInput_KaonZeroShort;
 
-    Schema::VecMcV0s fInput_MC_AntiLambdas;
-    Schema::VecMcTracks fInput_MC_AntiLambdas_Neg;
-    Schema::VecMcTracks fInput_MC_AntiLambdas_Pos;
-    Schema::VecMcV0s fInput_MC_Lambdas;
-    Schema::VecMcTracks fInput_MC_Lambdas_Neg;
-    Schema::VecMcTracks fInput_MC_Lambdas_Pos;
-    Schema::VecMcV0s fInput_MC_KaonsZeroShort;
-    Schema::VecMcTracks fInput_MC_KaonsZeroShort_Neg;
-    Schema::VecMcTracks fInput_MC_KaonsZeroShort_Pos;
-
-    Schema::VecMcTracks fInput_MC_NegKaons;
-    Schema::VecMcTracks fInput_MC_PosKaons;
-    Schema::VecMcTracks fInput_MC_PiMinus;
-    Schema::VecMcTracks fInput_MC_PiPlus;
+    Vector::Track fInput_NegKaon;
+    Vector::Track fInput_PosKaon;
 
     // output //
 
-    Schema::FlatInjected fOutput_Injected;
+    Flat::InjectedSexa fOutput_InjectedSexa;
 
-    Schema::FlatChannelA fOutput_ChannelA;
-    Schema::FlatChannelD fOutput_ChannelD;
-
-    Schema::FlatMcChannelA fOutput_MC_ChannelA;
-    Schema::FlatMcV0 fOutput_MC_ChannelA_V0A;
-    Schema::FlatMcTrack fOutput_MC_ChannelA_V0A_Neg;
-    Schema::FlatMcTrack fOutput_MC_ChannelA_V0A_Pos;
-    Schema::FlatMcV0 fOutput_MC_ChannelA_V0B;
-    Schema::FlatMcTrack fOutput_MC_ChannelA_V0B_Neg;
-    Schema::FlatMcTrack fOutput_MC_ChannelA_V0B_Pos;
-
-    Schema::FlatMcChannelD fOutput_MC_ChannelD;
-    Schema::FlatMcV0 fOutput_MC_ChannelD_V0;
-    Schema::FlatMcTrack fOutput_MC_ChannelD_V0_Neg;
-    Schema::FlatMcTrack fOutput_MC_ChannelD_V0_Pos;
-    Schema::FlatMcTrack fOutput_MC_ChannelD_Kaon;
+    Flat::ChannelA fOutput_ChannelA;
+    Flat::ChannelD fOutput_ChannelD;
+    Flat::ChannelH fOutput_ChannelH;
 };
 
-}  // namespace Tree2Secondaries
+}  // namespace R2DS

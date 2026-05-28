@@ -1,12 +1,15 @@
 #pragma once
 
-#include "Math/Constants.hxx"
+#include <array>
+
+#include "common/VC_OnTheFlyLambdaView.hpp"
+#include "common/VC_V0View.hpp"
+
 #include "Seeder/BaseSeeder.hxx"
-#include "View/ViewVectorV0s.hxx"
 
-namespace Tree2Secondaries::Seeder::LineVertex {
+namespace R2DS::Seeder::LineVertex {
 
-struct alignas(T2S_SIMD_ALIGN) Cache {
+struct Cache {
     // filled @ `FastPCA` //
     double px0{}, py0{}, pz0{};
     double dx{}, dy{}, dz{};
@@ -16,16 +19,20 @@ struct alignas(T2S_SIMD_ALIGN) Cache {
 
 // Main Method //
 
-Seed FastPCA(const View::VecV0s& n, const std::array<double, 3>& v, Cache* cache = nullptr);
+Seed FastPCA(const Vector::V0View& n, const std::array<double, 3>& v, Cache* cache = nullptr);
 Deriv ComputeDerivatives(const Cache& c);
 
 // Inline Method //
 
-inline Result FullPCA(const View::VecV0s& n, const std::array<double, 3>& v) {
+inline Result FullPCA(const Vector::V0View& n, const std::array<double, 3>& v) {
     Cache cache;
     Seed seed = FastPCA(n, v, &cache);
     Deriv deriv = ComputeDerivatives(cache);
     return {seed, deriv};
 }
 
-}  // namespace Tree2Secondaries::Seeder::LineVertex
+// Alternative Method //
+
+Seed FullPCA(const Vector::OnTheFlyLambdaView& l, const std::array<double, 3>& v);
+
+}  // namespace R2DS::Seeder::LineVertex

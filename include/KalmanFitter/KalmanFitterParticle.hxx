@@ -9,26 +9,27 @@
 
 #include <Eigen/Eigen>
 
+#include "common/Constants.hpp"
+#include "common/VC_TrackView.hpp"
+#include "common/VC_V0View.hpp"
+
 #include "App/Utilities.hxx"  // NOTE: don't remove! print formatter below needs it
-#include "Math/Constants.hxx"
-#include "View/ViewVectorTracks.hxx"
-#include "View/ViewVectorV0s.hxx"
-#if T2S_LEGACY_KF
+#if R2DS_LEGACY_KF
 #include "Legacy/LegacyParticle.hxx"
 #endif
 
-namespace Tree2Secondaries::KalmanFitter {
+namespace R2DS::KalmanFitter {
 
 // ## KF::Particle ## //
 
-struct alignas(T2S_SIMD_ALIGN) Particle {
+struct Particle {
 
     // Constructors //
 
     Particle() = default;
-    static Particle FromTrack(const View::VecTracks &v, double mass);
-    static Particle FromV0(const View::VecV0s &v);
-#if T2S_LEGACY_KF
+    static Particle FromTrack(const Vector::TrackView &v, double mass);
+    static Particle FromV0(const Vector::V0View &v);
+#if R2DS_LEGACY_KF
     static Particle FromLegacy(const Legacy::Particle &part);
 #endif
 
@@ -153,26 +154,26 @@ struct alignas(T2S_SIMD_ALIGN) Particle {
     Eigen::Matrix<double, 8, 8> fC{Eigen::Matrix<double, 8, 8>::Zero()};  // symmetric, only lower triangle is used
     Eigen::Vector<double, 8> fP{Eigen::Vector<double, 8>::Zero()};
     double fChi2{};
-    int fNDF{Const::DummyInt};
+    int fNDF{Common::DummyInt};
     int fQ{};
 };
 
-}  // namespace Tree2Secondaries::KalmanFitter
+}  // namespace R2DS::KalmanFitter
 
 // # KF::Particle Print Formatter # //
 
 template <>
-struct std::formatter<Tree2Secondaries::KalmanFitter::Particle> {
+struct std::formatter<R2DS::KalmanFitter::Particle> {
     constexpr auto parse(std::format_parse_context &ctx) { return ctx.begin(); }
-    auto format(const Tree2Secondaries::KalmanFitter::Particle &p, std::format_context &ctx) const {
+    auto format(const R2DS::KalmanFitter::Particle &p, std::format_context &ctx) const {
         auto out = ctx.out();
         out = std::format_to(out, "\n");
         out = std::format_to(out, "(X,Y,Z,S)    = ({:13.6e}, {:13.6e}, {:13.6e}, {:13.6e})\n", p.X(), p.Y(), p.Z(), p.S());
         out = std::format_to(out, "(Px,Py,Pz,E) = ({:13.6e}, {:13.6e}, {:13.6e}, {:13.6e})\n", p.Px(), p.Py(), p.Pz(), p.E());
-        out = std::format_to(out, "Mass         = {:13.6e}\n", p.Mass().value_or(Tree2Secondaries::Const::DummyInt));
+        out = std::format_to(out, "Mass         = {:13.6e}\n", p.Mass().value_or(Common::DummyInt));
         out = std::format_to(out, "Radius2D     = {:13.6e}\n", p.Radius2D());
         out = std::format_to(out, "Chi2/NDF     = {:13.6e} / {} = {:13.6e}\n", p.Chi2(), p.NDF(), p.Chi2NDF());
-        out = std::format_to(out, "fC           = {}\n", p.fC);
+        // out = std::format_to(out, "fC           = {}\n", p.fC); // PENDING
         out = std::format_to(out, "\n");
         return out;
     }

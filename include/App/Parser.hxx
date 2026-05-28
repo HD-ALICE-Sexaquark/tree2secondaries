@@ -6,10 +6,11 @@
 
 #include <CLI/CLI.hpp>
 
-#include "App/DB_ReactionChannels.hxx"
+#include "common/DB_ReactionChannels.hpp"
+
 #include "App/Settings.hxx"
 
-namespace Tree2Secondaries {
+namespace R2DS {
 
 class Parser {
    public:
@@ -35,14 +36,23 @@ class Parser {
 
     void Assign(Settings& settings) {
         // -- mode
-        settings.DoTheSearch = CLI_APP.got_subcommand("search");
-        auto* mode_cmd = settings.DoTheSearch ? CLI_APP.get_subcommand("search") : CLI_APP.get_subcommand("pack");
+        CLI::App* mode_cmd = nullptr;
+        if (CLI_APP.get_subcommand("search")) {
+            settings.mode = EProgramMode::FINDER;
+            mode_cmd = CLI_APP.get_subcommand("search");
+        } else if (CLI_APP.get_subcommand("pack")) {
+            settings.mode = EProgramMode::PACKAGER;
+            mode_cmd = CLI_APP.get_subcommand("pack");
+        } else if (CLI_APP.get_subcommand("verify")) {
+            settings.mode = EProgramMode::VERIFIER;
+            mode_cmd = CLI_APP.get_subcommand("verify");
+        }
         // -- mc vs data
         settings.IsMC = mode_cmd->got_subcommand("mc");
         auto* type_cmd = settings.IsMC ? mode_cmd->get_subcommand("mc") : mode_cmd->get_subcommand("data");
         // -- reaction channels
         auto* opt_channel = type_cmd->get_option("-c");
-        settings.ReactionChannel = ReactionChannels::Find(opt_channel->as<char>()).value();
+        settings.ReactionChannel = DB::ReactionChannels::FindReactionChannel(opt_channel->as<char>()).value();
         // -- sexaquark mass
         if (settings.IsMC) {
             settings.SexaquarkMass = type_cmd->get_option("-m")->as<double>();
@@ -54,8 +64,8 @@ class Parser {
         // -- output path
         settings.PathOutputFile = CLI_APP.get_option("-o")->as<std::string>();
         if (settings.PathOutputFile.empty()) {
-            std::string filename_prefix{settings.DoTheSearch ? "Found" : "Packed"};
-            std::string filename_suffix{};
+            std::string filename_prefix = settings.mode == EProgramMode::FINDER || settings.mode == EProgramMode::VERIFIER ? "Found" : "Packed";
+            std::string filename_suffix;
             if (settings.IsMC) {
                 filename_suffix = std::format("MC_{}{:.2f}", settings.ReactionChannel.name, settings.SexaquarkMass);
             } else {
@@ -120,6 +130,12 @@ class Parser {
         add_channels_opt(search_data_cmd);
         search_cmd->require_subcommand(1);
 
+        // -- verify mode
+        auto* verify_cmd = CLI_APP.add_subcommand("verify", "Verify the existence of h-dibaryons");
+        verify_cmd->add_subcommand("mc", "Process MC");
+        verify_cmd->add_subcommand("data", "Process data");
+        verify_cmd->require_subcommand(1);
+
         CLI_APP.require_subcommand(1);
     }
 
@@ -129,4 +145,4 @@ class Parser {
     std::vector<std::string> InputFiles;
 };
 
-}  // namespace Tree2Secondaries
+}  // namespace R2DS

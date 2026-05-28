@@ -2,31 +2,29 @@
 
 #include <cstddef>
 #include <memory>
-#include <optional>
 #include <vector>
 
-#include <TChain.h>
 #include <TFile.h>
 #include <TH1.h>
 
-#include "App/DB_Particles.hxx"
+#include <ROOT/RNTupleModel.hxx>
+#include <ROOT/RNTupleReader.hxx>
+#include <ROOT/RNTupleWriter.hxx>
+
+#include "common/DB_Particles.hpp"
+#include "common/FL_Event.hpp"
+#include "common/VC_InjectedSexa.hpp"
+#include "common/VC_McParticle.hpp"
+#include "common/VC_McParticleView.hpp"
+#include "common/VC_Track.hpp"
+#include "common/VC_TrackView.hpp"
+#include "common/VC_V0.hpp"
+
 #include "App/Settings.hxx"
 #include "KalmanFitter/KalmanFitterV0.hxx"
-#include "MonteCarlo/MonteCarloParticle.hxx"
-#include "MonteCarlo/MonteCarloV0.hxx"
-#include "Schema/SchemaFlatEvent.hxx"
-#include "Schema/SchemaVectorInjected.hxx"
-#include "Schema/SchemaVectorMcParticles.hxx"
-#include "Schema/SchemaVectorMcTracks.hxx"
-#include "Schema/SchemaVectorMcV0s.hxx"
-#include "Schema/SchemaVectorTracks.hxx"
-#include "Schema/SchemaVectorV0s.hxx"
 #include "Seeder/BaseSeeder.hxx"
-#include "View/ViewVectorTracks.hxx"
 
-class TTree;
-
-namespace Tree2Secondaries {
+namespace R2DS {
 
 // Pack secondary V0s and tracks.
 class Packager {
@@ -40,60 +38,54 @@ class Packager {
     explicit Packager(const Settings &settings) : fSettings{settings} {}
 
     bool Initialize();
-    void ReadInputBranches();
 
     bool PrepareOutputFile();
-    bool PrepareOutputTree();
-    void CreateOutputBranches();
     void PrepareOutputHistograms();
 
-    [[nodiscard]] long long NumberEventsToRead() const {
-        long long total_entries = fInputChain_Events->GetEntries();
+    [[nodiscard]] unsigned long NumberEventsToRead() const {
+        unsigned long total_entries = fReader->GetNEntries();
         return 0 < fSettings.LimitToNEvents && fSettings.LimitToNEvents < total_entries ? fSettings.LimitToNEvents : total_entries;
     }
-    void GetEvent(long long i_event) { fInputChain_Events->GetEntry(i_event); }
-
-    [[nodiscard]] std::size_t NumberMC() const { return fInput_MC.lv.px->size(); }
-    [[nodiscard]] std::size_t NumberInjected() const { return fInput_Injected.reaction_id->size(); }
-    [[nodiscard]] std::size_t NumberTracks() const { return fInput_Tracks.state.px->size(); }
 
     void ProcessEvent();
-
     void ProcessInjected();
-
     void ProcessTracks();
-    void PackTracks(const Particles::Definition &pid);
-    void FindV0s(const Particles::Definition &pid);
 
     void Pack() {
-        FindV0s(Particles::Particle("AntiLambda"));
-        FindV0s(Particles::Particle("Lambda"));
-        FindV0s(Particles::Particle("KaonZeroShort"));
-        PackTracks(Particles::Particle("NegKaon"));
-        PackTracks(Particles::Particle("PosKaon"));
+        FindV0s(DB::Particles::Particle("AntiLambda"));
+        FindV0s(DB::Particles::Particle("Lambda"));
+        FindV0s(DB::Particles::Particle("KaonZeroShort"));
+        PackTracks(DB::Particles::Particle("NegKaon"));
+        PackTracks(DB::Particles::Particle("PosKaon"));
     }
 
-    [[nodiscard]] bool FastCuts(const Seeder::Seed &pca_neg, const Seeder::Seed &pca_pos, const Particles::Definition &pid) const {
+    [[nodiscard]] bool FastCuts(const Seeder::Seed &pca_neg, const Seeder::Seed &pca_pos, const DB::Particles::Definition &pid) const {
         switch (pid.pdg_code) {
-            case Particles::Particle("AntiLambda").pdg_code:
-                return FastCuts_SecondaryLambdas(pca_neg, pca_pos, fHist_CutFlow_AntiLambda.get());
-            case Particles::Particle("Lambda").pdg_code:
-                return FastCuts_SecondaryLambdas(pca_neg, pca_pos, fHist_CutFlow_Lambda.get());
-            case Particles::Particle("KaonZeroShort").pdg_code:
+            case DB::Particles::Particle("AntiLambda").pdg_code: {
+                return FastCuts_Lambda(pca_neg, pca_pos, fHist_CutFlow_AntiLambda.get());
+            }
+            case DB::Particles::Particle("Lambda").pdg_code: {
+                return FastCuts_Lambda(pca_neg, pca_pos, fHist_CutFlow_Lambda.get());
+            }
+            case DB::Particles::Particle("KaonZeroShort").pdg_code: {
                 return FastCuts_KaonZeroShort(pca_neg, pca_pos, fHist_CutFlow_KaonZeroShort.get());
+            }
             default:
                 return false;
         }
     }
 
-    [[nodiscard]] bool SlowCuts(const KalmanFitter::V0 &v0, const Particles::Definition &pid) const {
+    [[nodiscard]] bool SlowCuts(const KalmanFitter::V0 &v0, const DB::Particles::Definition &pid) const {
         switch (pid.pdg_code) {
-            case Particles::Particle("AntiLambda").pdg_code:
-                return SlowCuts_SecondaryLambdas(v0, fHist_CutFlow_AntiLambda.get());
-            case Particles::Particle("Lambda").pdg_code:
-                return SlowCuts_SecondaryLambdas(v0, fHist_CutFlow_Lambda.get());
-            case Particles::Particle("KaonZeroShort").pdg_code:
+            case DB::Particles::Particle("AntiLambda").pdg_code: {
+                return SlowCuts_Lambda(v0, fHist_CutFlow_AntiLambda.get());
+            }
+            case DB::Particles::Particle("Lambda").pdg_code: {
+                return SlowCuts_Lambda(v0, fHist_CutFlow_Lambda.get());
+            }
+            case DB::Particles::Particle("KaonZeroShort").pdg_code: {
                 return SlowCuts_KaonZeroShort(v0, fHist_CutFlow_KaonZeroShort.get());
+            }
             default:
                 return false;
         }
@@ -102,28 +94,34 @@ class Packager {
     void EndOfEvent();
     void EndOfAnalysis();
 
+    std::unique_ptr<ROOT::RNTupleModel> fInput_Model;
+    std::unique_ptr<ROOT::RNTupleReader> fReader;
+
+    std::unique_ptr<ROOT::RNTupleModel> fOutput_Model;
+    std::unique_ptr<ROOT::RNTupleWriter> fWriter;
+
    private:
-    void Store(const View::VecTracks &v, Schema::VecTracks &df);
-    void Store(const std::optional<MonteCarlo::Particle> &mc, Schema::VecMcTracks &df, bool ascendants_info);
+    void PackTracks(const DB::Particles::Definition &pid);
+    void FindV0s(const DB::Particles::Definition &pid);
 
-    bool PassesProtonCuts(const View::VecTracks &v, TH1D *cut_flow_hist) const;
-    bool PassesKaonCuts(const View::VecTracks &v, TH1D *cut_flow_hist) const;
-    bool PassesPionCuts(const View::VecTracks &v, TH1D *cut_flow_hist) const;
+    void Store(const Vector::TrackView *track, const Vector::McParticleView *linked_mc, Vector::Track &df);
 
-    bool FastCuts_SecondaryLambdas(const Seeder::Seed &seed_neg, const Seeder::Seed &seed_pos, TH1D *cut_flow_hist) const;
+    bool PassesProtonCuts(const Vector::TrackView &track, TH1D *cut_flow_hist) const;
+    bool PassesKaonCuts(const Vector::TrackView &track, TH1D *cut_flow_hist) const;
+    bool PassesPionCuts(const Vector::TrackView &track, TH1D *cut_flow_hist) const;
+
+    bool FastCuts_Lambda(const Seeder::Seed &seed_neg, const Seeder::Seed &seed_pos, TH1D *cut_flow_hist) const;
     bool FastCuts_KaonZeroShort(const Seeder::Seed &seed_neg, const Seeder::Seed &seed_pos, TH1D *cut_flow_hist) const;
 
-    bool SlowCuts_SecondaryLambdas(const KalmanFitter::V0 &v0, TH1D *cut_flow_hist) const;
+    bool SlowCuts_Lambda(const KalmanFitter::V0 &v0, TH1D *cut_flow_hist) const;
     bool SlowCuts_KaonZeroShort(const KalmanFitter::V0 &v0, TH1D *cut_flow_hist) const;
 
-    void Store(const KalmanFitter::V0 &v0, Schema::VecV0s &df);
-    void Store(const std::optional<MonteCarlo::V0> &mc_v0, Schema::VecMcV0s &df);
+    void Store(const KalmanFitter::V0 *v0, const Vector::McParticleView *mc_neg, const Vector::McParticleView *mc_pos,
+               const Vector::McParticleView *mc_v0, Vector::V0 &df);
 
     const Settings &fSettings;
-    std::unique_ptr<TChain> fInputChain_Events;
 
-    std::unique_ptr<TFile> fOutputFile;
-    std::unique_ptr<TTree> fOutputTree;
+    std::unique_ptr<TFile> fOutput_File;
 
     std::unique_ptr<TH1D> fHist_EventCounter;
 
@@ -138,46 +136,36 @@ class Packager {
     std::unique_ptr<TH1D> fHist_CutFlow_Lambda;
     std::unique_ptr<TH1D> fHist_CutFlow_KaonZeroShort;
 
-    // temporary indices containers, cleaned after event loop //
+    // temporary entries containers, cleaned after event loop //
 
-    std::vector<std::size_t> fIndices_AntiProtons;
-    std::vector<std::size_t> fIndices_Protons;
-    std::vector<std::size_t> fIndices_NegKaons;
-    std::vector<std::size_t> fIndices_PosKaons;
-    std::vector<std::size_t> fIndices_PiMinus;
-    std::vector<std::size_t> fIndices_PiPlus;
+    std::vector<std::size_t> fEntries_AntiProton;
+    std::vector<std::size_t> fEntries_Proton;
+    std::vector<std::size_t> fEntries_NegKaon;
+    std::vector<std::size_t> fEntries_PosKaon;
+    std::vector<std::size_t> fEntries_PiMinus;
+    std::vector<std::size_t> fEntries_PiPlus;
 
     // input //
 
-    Schema::FlatEvent fInput_Event;
-    Schema::VecInjected fInput_Injected;
-    Schema::VecMcParticles fInput_MC;
-    Schema::VecTracks fInput_Tracks;
+    Flat::Event fInput_Event;
+    ROOT::Math::XYZPoint fPrimaryVertex;
+
+    Vector::InjectedSexa fInput_InjectedSexa;
+    Vector::McParticle fInput_McParticle;
+    Vector::Track fInput_Track;
 
     // output //
 
-    Schema::FlatEvent fOutput_Event;
-    Schema::VecInjected fOutput_Injected;
+    Flat::Event fOutput_Event;
 
-    Schema::VecV0s fOutput_AntiLambdas;
-    Schema::VecV0s fOutput_Lambdas;
-    Schema::VecV0s fOutput_KaonsZeroShort;
+    Vector::InjectedSexa fOutput_InjectedSexa;
 
-    Schema::VecTracks fOutput_NegKaons;
-    Schema::VecTracks fOutput_PosKaons;
+    Vector::V0 fOutput_AntiLambda;
+    Vector::V0 fOutput_Lambda;
+    Vector::V0 fOutput_KaonZeroShort;
 
-    Schema::VecMcV0s fOutput_MC_AntiLambdas;
-    Schema::VecMcTracks fOutput_MC_AntiLambdas_Neg;
-    Schema::VecMcTracks fOutput_MC_AntiLambdas_Pos;
-    Schema::VecMcV0s fOutput_MC_Lambdas;
-    Schema::VecMcTracks fOutput_MC_Lambdas_Neg;
-    Schema::VecMcTracks fOutput_MC_Lambdas_Pos;
-    Schema::VecMcV0s fOutput_MC_KaonsZeroShort;
-    Schema::VecMcTracks fOutput_MC_KaonsZeroShort_Neg;
-    Schema::VecMcTracks fOutput_MC_KaonsZeroShort_Pos;
-
-    Schema::VecMcTracks fOutput_MC_NegKaons;
-    Schema::VecMcTracks fOutput_MC_PosKaons;
+    Vector::Track fOutput_NegKaon;
+    Vector::Track fOutput_PosKaon;
 };
 
-}  // namespace Tree2Secondaries
+}  // namespace R2DS

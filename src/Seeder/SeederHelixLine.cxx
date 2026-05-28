@@ -4,16 +4,17 @@
 #include <cmath>
 #include <utility>
 
-#include "Math/BaseMath.hxx"
-#include "Math/Constants.hxx"
+#include "common/Constants.hpp"
+#include "common/Math.hpp"
+#include "common/VC_TrackView.hpp"
+#include "common/VC_V0View.hpp"
+
 #include "Seeder/BaseSeeder.hxx"
-#include "View/ViewVectorTracks.hxx"
-#include "View/ViewVectorV0s.hxx"
-#if T2S_DEBUG
+#if R2DS_DEBUG
 #include "App/Logger.hxx"
 #endif
 
-namespace Tree2Secondaries::Seeder::HelixLine {
+namespace R2DS::Seeder::HelixLine {
 
 // First phase. Find the points of closest approach (PCA) between two particles in the XY plane.
 // One particle is charged under a constant magnetic field and the other one is neutral.
@@ -27,14 +28,14 @@ namespace Tree2Secondaries::Seeder::HelixLine {
 // - `ds`  -- transport parameters
 // - `pca` -- points of closest approach (position and momentum)
 // - `theta`, `sin`, `cos`, `sB`, `cB` -- cached ds computation variables
-std::pair<Seed, Seed> FastPCAs_XY(const View::VecTracks& q1, const View::VecV0s& n2, double bz, Cache* cache) {
+std::pair<Seed, Seed> FastPCAs_XY(const Vector::TrackView& q1, const Vector::V0View& n2, double bz, Cache* cache) {
 
     // cache //
 
     Cache local;
     Cache& c = cache != nullptr ? *cache : local;
 
-    c.bq1 = bz * q1.Charge<double>() * Const::Kappa;
+    c.bq1 = bz * static_cast<double>(q1.Charge()) * Common::Kappa;
 
     c.x01 = q1.X();
     c.y01 = q1.Y();
@@ -44,9 +45,9 @@ std::pair<Seed, Seed> FastPCAs_XY(const View::VecTracks& q1, const View::VecV0s&
     c.pz01 = q1.Pz();
     c.pt12 = c.px01 * c.px01 + c.py01 * c.py01;
 
-    c.x02 = n2.X();
-    c.y02 = n2.Y();
-    c.z02 = n2.Z();
+    c.x02 = n2.Decay_X();
+    c.y02 = n2.Decay_Y();
+    c.z02 = n2.Decay_Z();
     c.px02 = n2.Px();
     c.py02 = n2.Py();
     c.pz02 = n2.Pz();
@@ -86,7 +87,7 @@ std::pair<Seed, Seed> FastPCAs_XY(const View::VecTracks& q1, const View::VecV0s&
 
         Seed tmp1;
         tmp1.theta = std::atan2(c.bq1 * (c.k11 * c.c1 + sign * c.k21 * c.d1), sign * c.bq1 * c.k11 * c.d1 * c.bq1 - c.k21 * c.c1);
-        std::tie(tmp1.sin, tmp1.cos) = Math::sincos(tmp1.theta);
+        std::tie(tmp1.sin, tmp1.cos) = Common::Math::sincos(tmp1.theta);
         tmp1.sB = tmp1.sin / c.bq1;
         tmp1.cB = (1. - tmp1.cos) / c.bq1;
 
@@ -99,7 +100,7 @@ std::pair<Seed, Seed> FastPCAs_XY(const View::VecTracks& q1, const View::VecV0s&
 
         Seed tmp2;
         double denom = -c.k22 * c.c2;
-        if (std::abs(denom) < Const::AbsAlmostZero) continue;  // skip this sign
+        if (std::abs(denom) < Common::AbsAlmostZero) continue;  // skip this sign
         tmp2.ds = (c.k12 * c.c2 + sign * c.k22 * c.d1) / denom;
 
         tmp2.theta = 0.;
@@ -130,7 +131,7 @@ std::pair<Seed, Seed> FastPCAs_XY(const View::VecTracks& q1, const View::VecV0s&
         }
     }
 
-#if T2S_DEBUG
+#if R2DS_DEBUG
     Logger::Debug(__FUNCTION__, "seed1_xy.ds = {:13.6e}", seed1_xy.ds);
     Logger::Debug(__FUNCTION__, "seed1_xy.(x,y,z) = {}", seed1_xy.pca.xyz);
     Logger::Debug(__FUNCTION__, "seed1_xy.(px,py,pz) = {}", seed1_xy.pca.mom);
@@ -166,7 +167,7 @@ std::pair<Seed, Seed> CorrectPCAs_Z(const Seed& s1_xy, const Seed& s2_xy, Cache&
 
     // protection //
 
-    if (std::abs(c.detp) < Const::AbsAlmostZero) return {s1_xy, s2_xy};
+    if (std::abs(c.detp) < Common::AbsAlmostZero) return {s1_xy, s2_xy};
 
     // cache (2) //
 
@@ -179,7 +180,7 @@ std::pair<Seed, Seed> CorrectPCAs_Z(const Seed& s1_xy, const Seed& s2_xy, Cache&
     Seed s1;
     s1.ds = s1_xy.ds + c.a1 / c.detp;
     s1.theta = c.bq1 * s1.ds;
-    std::tie(s1.sin, s1.cos) = Math::sincos(s1.theta);
+    std::tie(s1.sin, s1.cos) = Common::Math::sincos(s1.theta);
     s1.sB = s1.sin / c.bq1;
     s1.cB = (1. - s1.cos) / c.bq1;
 
@@ -202,7 +203,7 @@ std::pair<Seed, Seed> CorrectPCAs_Z(const Seed& s1_xy, const Seed& s2_xy, Cache&
 
     c.pca_dz_worked = 1;
 
-#if T2S_DEBUG
+#if R2DS_DEBUG
     Logger::Debug(__FUNCTION__, "seed1.ds = {:13.6e}", s1.ds);
     Logger::Debug(__FUNCTION__, "seed1.(x,y,z) = {}", s1.pca.xyz);
     Logger::Debug(__FUNCTION__, "seed1.(px,py,pz) = {}", s1.pca.mom);
@@ -281,7 +282,7 @@ std::pair<Deriv, Deriv> ComputeDerivatives_XY(Cache& c) {
     c.nb = -c.k22 * c.c2;
     c.nb2 = c.nb * c.nb;
 
-    if (std::abs(c.nb) < Const::AbsAlmostZero) return {deriv1, deriv2};  // protection
+    if (std::abs(c.nb) < Common::AbsAlmostZero) return {deriv1, deriv2};  // protection
 
     for (size_t i = 0; i < 6; ++i) {
         double dna_dr1 = dk12dr1[i] * c.c2 + c.w_sign * c.k22 * dd1dr1[i];  // + c.k12 * dc2dr1[i] + c.w_sign * dk22dr1[i] * c.d1 = 0
@@ -293,7 +294,7 @@ std::pair<Deriv, Deriv> ComputeDerivatives_XY(Cache& c) {
         deriv2.ds_dr[i] = dna_dr2 / c.nb - dnb2_dr2 * c.na / c.nb2;
     }
 
-#if T2S_DEBUG
+#if R2DS_DEBUG
     Logger::Debug(__FUNCTION__, "deriv1.ds_dr = {}", deriv1.ds_dr);
     Logger::Debug(__FUNCTION__, "deriv1.ds_dr1 = {}", deriv1.ds_dr1);
     Logger::Debug(__FUNCTION__, "deriv2.ds_dr = {}", deriv2.ds_dr);
@@ -391,7 +392,7 @@ std::pair<Deriv, Deriv> UpdateDerivatives_Z(const Seed& s1_xy, const Seed& s2_xy
         d2.ds_dr[i] += a2_dr1 / c.detp - c.a2 * detp_dr1 / detp2;
     }
 
-#if T2S_DEBUG
+#if R2DS_DEBUG
     Logger::Debug(__FUNCTION__, "deriv1.ds_dr  = {}", d1.ds_dr);
     Logger::Debug(__FUNCTION__, "deriv1.ds_dr1 = {}", d1.ds_dr1);
     Logger::Debug(__FUNCTION__, "deriv2.ds_dr  = {}", d2.ds_dr);
@@ -401,4 +402,4 @@ std::pair<Deriv, Deriv> UpdateDerivatives_Z(const Seed& s1_xy, const Seed& s2_xy
     return {d1, d2};
 }
 
-}  // namespace Tree2Secondaries::Seeder::HelixLine
+}  // namespace R2DS::Seeder::HelixLine

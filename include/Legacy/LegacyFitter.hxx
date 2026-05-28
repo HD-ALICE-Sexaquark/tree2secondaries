@@ -8,7 +8,7 @@
 #include "Legacy/LegacyParticle.hxx"
 #include "View/Reconstructed/ViewRecTrack.hxx"
 
-namespace Tree2Secondaries::Legacy {
+namespace R2DS::Legacy {
 
 // Main Methods //
 
@@ -44,4 +44,4 @@ inline Particle Fit(const View::Rec::Track& track_1, const View::Rec::Track& tra
     return out;
 }
 
-}  // namespace Tree2Secondaries::Legacy
+}  // namespace R2DS::Legacy

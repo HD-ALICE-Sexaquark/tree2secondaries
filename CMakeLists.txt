@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.25...3.31)
 project(
-  Tree2Secondaries
-  VERSION 26.04.29
+  RNTuple2DoubleStrangeness
+  VERSION 26.05.24
   LANGUAGES CXX)
 
 # support folders in IDEs #
@@ -97,8 +97,9 @@ add_executable(
   src/Seeder/SeederLineVertex.cxx
   src/KalmanFitter/KalmanFitter.cxx
   src/KalmanFitter/KalmanFitterParticle.cxx
-  src/Finder.cxx
   src/Packager.cxx
+  src/Finder.cxx
+  src/Verifier.cxx
   src/App.cxx)
 
 target_link_libraries(
@@ -106,7 +107,8 @@ target_link_libraries(
                           ROOT::Tree ROOT::Hist)
 
 target_include_directories(
-  ${PROJECT_NAME} PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>)
+  ${PROJECT_NAME} PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+                         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>)
 
 target_compile_options(
   ${PROJECT_NAME}
@@ -124,5 +126,5 @@ target_compile_options(
 
 target_compile_definitions(
   ${PROJECT_NAME}
-  PUBLIC EIGEN_DONT_PARALLELIZE $<$<BOOL:${LEGACY_KF}>:T2S_LEGACY_KF>
-         $<$<CONFIG:Debug>:T2S_DEBUG> $<$<CONFIG:Release>:EIGEN_NO_DEBUG>)
+  PUBLIC EIGEN_DONT_PARALLELIZE $<$<BOOL:${LEGACY_KF}>:R2DS_LEGACY_KF>
+         $<$<CONFIG:Debug>:R2DS_DEBUG> $<$<CONFIG:Release>:EIGEN_NO_DEBUG>)

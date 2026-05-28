@@ -1,12 +1,13 @@
 #pragma once
 
-#include "Math/Constants.hxx"
+#include "common/VC_OnTheFlyLambdaView.hpp"
+#include "common/VC_V0View.hpp"
+
 #include "Seeder/BaseSeeder.hxx"
-#include "View/ViewVectorV0s.hxx"
 
-namespace Tree2Secondaries::Seeder::LineLine {
+namespace R2DS::Seeder::LineLine {
 
-struct alignas(T2S_SIMD_ALIGN) Cache {
+struct Cache {
     // filled @ `FastPCAs` //
     double px01{}, py01{}, pz01{};
     double px02{}, py02{}, pz02{};
@@ -21,16 +22,20 @@ struct alignas(T2S_SIMD_ALIGN) Cache {
 
 // Main Methods //
 
-std::pair<Seed, Seed> FastPCAs(const View::VecV0s& n1, const View::VecV0s& n2, Cache* cache = nullptr);
+std::pair<Seed, Seed> FastPCAs(const Vector::V0View& n1, const Vector::V0View& n2, Cache* cache = nullptr);
 std::pair<Deriv, Deriv> ComputeDerivatives(const Cache& c);
 
 // Inline Method //
 
-inline std::tuple<Result, Result> FullPCAs(const View::VecV0s& n1, const View::VecV0s& n2) {
+inline std::pair<Result, Result> FullPCAs(const Vector::V0View& n1, const Vector::V0View& n2) {
     Cache cache;
     auto [seed1, seed2] = FastPCAs(n1, n2, &cache);
     auto [deriv1, deriv2] = ComputeDerivatives(cache);
     return {{seed1, deriv1}, {seed2, deriv2}};
 }
 
-}  // namespace Tree2Secondaries::Seeder::LineLine
+// Alternative Method //
+
+std::pair<Seed, Seed> FullPCAs(const Vector::OnTheFlyLambdaView& l1, const Vector::OnTheFlyLambdaView& l2);
+
+}  // namespace R2DS::Seeder::LineLine

@@ -1,18 +1,21 @@
 #include "Packager/Packager.hxx"
 
 #include <cstddef>
-#include <filesystem>
 
-#include "App/DB_Particles.hxx"
+#include "common/Constants.hpp"
+#include "common/DB_Particles.hpp"
+#include "common/FL_Event.hpp"
+#include "common/R2DS_Cuts.hpp"
+#include "common/VC_InjectedSexa.hpp"
+#include "common/VC_McParticle.hpp"
+#include "common/VC_McParticleView.hpp"
+#include "common/VC_Track.hpp"
+#include "common/VC_TrackView.hpp"
+#include "common/VC_V0.hpp"
+
 #include "App/Logger.hxx"
 #include "KalmanFitter/KalmanFitterV0.hxx"
-#include "Math/Constants.hxx"
-#include "MonteCarlo/MonteCarloParticle.hxx"
-#include "MonteCarlo/MonteCarloV0.hxx"
-#include "Packager/PackagerCuts.hxx"
-#include "Schema/SchemaVectorMcTracks.hxx"
-#include "View/ViewVectorTracks.hxx"
-#if !T2S_LEGACY_KF
+#if !R2DS_LEGACY_KF
 #include "KalmanFitter/BaseKalmanFitter.hxx"
 #include "Seeder/SeederHelixHelix.hxx"
 #else
@@ -20,114 +23,63 @@
 #include "Legacy/LegacyHelixHelix.hxx"
 #endif
 
-namespace Tree2Secondaries {
+namespace R2DS {
 
 namespace KF = KalmanFitter;
-namespace MC = MonteCarlo;
 
 bool Packager::Initialize() {
 
-    fInputChain_Events = std::make_unique<TChain>(Const::TreeName_Events.data());
-    for (const auto& path : fSettings.PathInputFiles) {
-        if (fInputChain_Events->Add(path.c_str()) == 0) {
-            Logger::Error(__FUNCTION__, "Couldn't add TFile {}", path);
-        }
+    // Prepare Input Reader //
+    // PENDING: could refactor into a function
+
+    fInput_Model = ROOT::RNTupleModel::Create();
+
+    fInput_Event.AddFieldsTo(fInput_Model.get(), fSettings.IsMC);
+
+    if (fSettings.IsMC) {
+        fInput_InjectedSexa.AddFieldsTo(fInput_Model.get(), false);
+        fInput_McParticle.AddFieldsTo(fInput_Model.get());
     }
-    if (!fInputChain_Events->GetEntries()) {
-        Logger::Error(__FUNCTION__, "Couldn't read any entry.");
+
+    fInput_Track.AddFieldsTo(fInput_Model.get(), fSettings.IsMC, false, "Track");
+
+    fReader =
+        ROOT::RNTupleReader::Open(std::move(fInput_Model), E2R::Name_OutputRNT, fSettings.PathInputFiles.front());  // PENDING: handle multiple files?
+
+    // Prepare Output File //
+
+    fOutput_File = std::make_unique<TFile>(fSettings.PathOutputFile.c_str(), "RECREATE");
+    if (!fOutput_File || fOutput_File->IsZombie()) {
+        Logger::Error(__FUNCTION__, "Couldn't create TFile {}.", fSettings.PathOutputFile.c_str());
         return false;
     }
-    Logger::Info(__FUNCTION__, "TChain \"{}\" loaded successfully with {} trees and {} total entries.", fInputChain_Events->GetName(),
-                 fInputChain_Events->GetNtrees(), fInputChain_Events->GetEntries());
-
-    ReadInputBranches();
-
-    if (!PrepareOutputFile()) return false;
 
     PrepareOutputHistograms();
 
-    if (!PrepareOutputTree()) return false;
-    CreateOutputBranches();
+    // Prepare Output Writer //
+    // PENDING: could refactor into a function
+
+    fOutput_Model = ROOT::RNTupleModel::Create();
+
+    fOutput_Event.AddFieldsTo(fOutput_Model.get(), fSettings.IsMC);
+
+    fOutput_InjectedSexa.AddFieldsTo(fOutput_Model.get(), true);
+
+    fOutput_NegKaon.AddFieldsTo(fOutput_Model.get(), fSettings.IsMC, fSettings.IsMC, "NK");
+    fOutput_PosKaon.AddFieldsTo(fOutput_Model.get(), fSettings.IsMC, fSettings.IsMC, "PK");
+
+    fOutput_AntiLambda.AddFieldsTo(fOutput_Model.get(), fSettings.IsMC, "AL");
+    fOutput_Lambda.AddFieldsTo(fOutput_Model.get(), fSettings.IsMC, "L");
+    fOutput_KaonZeroShort.AddFieldsTo(fOutput_Model.get(), fSettings.IsMC, "K0S");
+
+    fWriter = ROOT::RNTupleWriter::Append(std::move(fOutput_Model), R2DS::Name_PackedRNT, *fOutput_File);
 
     Logger::Info(__FUNCTION__, "Packager initialized successfully.");
 
     return true;
 }
 
-// ## INPUT ZONE ## //
-
-void Packager::ReadInputBranches() {
-    // by default, turn off all branches
-    fInputChain_Events->SetBranchStatus("*", false);
-    // connect input branches to memory
-    fInput_Event.ReadBranches(fInputChain_Events.get(), fSettings.IsMC);
-    if (fSettings.IsMC) {
-        fInput_Injected.ReadBranches(fInputChain_Events.get(), false);
-        fInput_MC.ReadBranches(fInputChain_Events.get());
-    }
-    fInput_Tracks.ReadBranches(fInputChain_Events.get(), fSettings.IsMC);
-}
-
 // ## OUTPUT ZONE ## //
-
-bool Packager::PrepareOutputFile() {
-
-    const std::filesystem::path output_path(fSettings.PathOutputFile);
-    if (output_path.has_parent_path()) std::filesystem::create_directories(output_path.parent_path());
-
-    fOutputFile = std::unique_ptr<TFile>(TFile::Open(fSettings.PathOutputFile.c_str(), "RECREATE"));
-    if (!fOutputFile) {
-        Logger::Error(__FUNCTION__, "Couldn't create TFile {}", fSettings.PathOutputFile);
-        return false;
-    }
-
-    return true;
-}
-
-bool Packager::PrepareOutputTree() {
-
-    fOutputTree = std::make_unique<TTree>(Const::TreeName_PackedEvents.data(), "Packed Events");
-    if (fOutputTree == nullptr) {
-        Logger::Error(__FUNCTION__, "Couldn't create TTree \"{}\"", Const::TreeName_PackedEvents);
-        return false;
-    }
-
-    return true;
-}
-
-void Packager::CreateOutputBranches() {
-    // event info //
-    fOutput_Event.CreateBranches(fOutputTree.get(), fSettings.IsMC);
-    // injected anti-sexaquark reaction info //
-    if (fSettings.IsMC) fOutput_Injected.CreateBranches(fOutputTree.get(), true);
-    // anti-lambdas //
-    fOutput_AntiLambdas.CreateBranches(fOutputTree.get(), Particles::Particle("AntiLambda").acronym);
-    if (fSettings.IsMC) {
-        fOutput_MC_AntiLambdas.CreateBranches(fOutputTree.get(), Particles::Particle("AntiLambda").acronym);
-        fOutput_MC_AntiLambdas_Neg.CreateBranches(fOutputTree.get(), false, std::format("{}_Neg", Particles::Particle("AntiLambda").acronym));
-        fOutput_MC_AntiLambdas_Pos.CreateBranches(fOutputTree.get(), false, std::format("{}_Pos", Particles::Particle("AntiLambda").acronym));
-    }
-    // lambdas //
-    fOutput_Lambdas.CreateBranches(fOutputTree.get(), Particles::Particle("Lambda").acronym);
-    if (fSettings.IsMC) {
-        fOutput_MC_Lambdas.CreateBranches(fOutputTree.get(), Particles::Particle("Lambda").acronym);
-        fOutput_MC_Lambdas_Neg.CreateBranches(fOutputTree.get(), false, std::format("{}_Neg", Particles::Particle("Lambda").acronym));
-        fOutput_MC_Lambdas_Pos.CreateBranches(fOutputTree.get(), false, std::format("{}_Pos", Particles::Particle("Lambda").acronym));
-    }
-    // K0S //
-    fOutput_KaonsZeroShort.CreateBranches(fOutputTree.get(), Particles::Particle("KaonZeroShort").acronym);
-    if (fSettings.IsMC) {
-        fOutput_MC_KaonsZeroShort.CreateBranches(fOutputTree.get(), Particles::Particle("KaonZeroShort").acronym);
-        fOutput_MC_KaonsZeroShort_Neg.CreateBranches(fOutputTree.get(), false, std::format("{}_Neg", Particles::Particle("KaonZeroShort").acronym));
-        fOutput_MC_KaonsZeroShort_Pos.CreateBranches(fOutputTree.get(), false, std::format("{}_Pos", Particles::Particle("KaonZeroShort").acronym));
-    }
-    // neg kaons //
-    fOutput_NegKaons.CreateBranches(fOutputTree.get(), false, Particles::Particle("NegKaon").acronym);
-    if (fSettings.IsMC) fOutput_MC_NegKaons.CreateBranches(fOutputTree.get(), true, Particles::Particle("NegKaon").acronym);
-    // pos kaons //
-    fOutput_PosKaons.CreateBranches(fOutputTree.get(), false, Particles::Particle("PosKaon").acronym);
-    if (fSettings.IsMC) fOutput_MC_PosKaons.CreateBranches(fOutputTree.get(), true, Particles::Particle("PosKaon").acronym);
-}
 
 void Packager::PrepareOutputHistograms() {
 
@@ -137,27 +89,27 @@ void Packager::PrepareOutputHistograms() {
     constexpr int x_nbins = 20;
     constexpr float x_min = 0.;
     constexpr float x_max = 20.;
-    std::string_view hist_title = ";Cut N;N Passed Cut";
+    constexpr const char* hist_title = ";Cut N;N Passed Cut";
 
     fHist_CutFlow_AntiProton = std::make_unique<TH1D>(  //
-        std::format("CutFlow_{}", Particles::Particle("AntiProton").acronym).c_str(), hist_title.data(), x_nbins, x_min, x_max);
+        std::format("CutFlow_{}", DB::Particles::Particle("AntiProton").acronym).c_str(), hist_title, x_nbins, x_min, x_max);
     fHist_CutFlow_Proton = std::make_unique<TH1D>(  //
-        std::format("CutFlow_{}", Particles::Particle("Proton").acronym).c_str(), hist_title.data(), x_nbins, x_min, x_max);
+        std::format("CutFlow_{}", DB::Particles::Particle("Proton").acronym).c_str(), hist_title, x_nbins, x_min, x_max);
     fHist_CutFlow_NegKaon = std::make_unique<TH1D>(  //
-        std::format("CutFlow_{}", Particles::Particle("NegKaon").acronym).c_str(), hist_title.data(), x_nbins, x_min, x_max);
+        std::format("CutFlow_{}", DB::Particles::Particle("NegKaon").acronym).c_str(), hist_title, x_nbins, x_min, x_max);
     fHist_CutFlow_PosKaon = std::make_unique<TH1D>(  //
-        std::format("CutFlow_{}", Particles::Particle("PosKaon").acronym).c_str(), hist_title.data(), x_nbins, x_min, x_max);
+        std::format("CutFlow_{}", DB::Particles::Particle("PosKaon").acronym).c_str(), hist_title, x_nbins, x_min, x_max);
     fHist_CutFlow_PiMinus = std::make_unique<TH1D>(  //
-        std::format("CutFlow_{}", Particles::Particle("PiMinus").acronym).c_str(), hist_title.data(), x_nbins, x_min, x_max);
+        std::format("CutFlow_{}", DB::Particles::Particle("PiMinus").acronym).c_str(), hist_title, x_nbins, x_min, x_max);
     fHist_CutFlow_PiPlus = std::make_unique<TH1D>(  //
-        std::format("CutFlow_{}", Particles::Particle("PiPlus").acronym).c_str(), hist_title.data(), x_nbins, x_min, x_max);
+        std::format("CutFlow_{}", DB::Particles::Particle("PiPlus").acronym).c_str(), hist_title, x_nbins, x_min, x_max);
 
     fHist_CutFlow_AntiLambda = std::make_unique<TH1D>(  //
-        std::format("CutFlow_{}", Particles::Particle("AntiLambda").acronym).c_str(), hist_title.data(), x_nbins, x_min, x_max);
+        std::format("CutFlow_{}", DB::Particles::Particle("AntiLambda").acronym).c_str(), hist_title, x_nbins, x_min, x_max);
     fHist_CutFlow_Lambda = std::make_unique<TH1D>(  //
-        std::format("CutFlow_{}", Particles::Particle("Lambda").acronym).c_str(), hist_title.data(), x_nbins, x_min, x_max);
+        std::format("CutFlow_{}", DB::Particles::Particle("Lambda").acronym).c_str(), hist_title, x_nbins, x_min, x_max);
     fHist_CutFlow_KaonZeroShort = std::make_unique<TH1D>(  //
-        std::format("CutFlow_{}", Particles::Particle("KaonZeroShort").acronym).c_str(), hist_title.data(), x_nbins, x_min, x_max);
+        std::format("CutFlow_{}", DB::Particles::Particle("KaonZeroShort").acronym).c_str(), hist_title, x_nbins, x_min, x_max);
 }
 
 // ## Event ZONE ## //
@@ -165,6 +117,8 @@ void Packager::PrepareOutputHistograms() {
 void Packager::ProcessEvent() {
     fOutput_Event = fInput_Event;
     fHist_EventCounter->Fill(0.);
+    // cache pv
+    fPrimaryVertex.SetCoordinates(*fInput_Event.PV_X, *fInput_Event.PV_Y, *fInput_Event.PV_Z);
 }
 
 // ## MC/Injected ZONE ## //
@@ -174,185 +128,205 @@ void Packager::ProcessEvent() {
 // and store their origin vertex as the coordinates for this particular secondary vertex.
 void Packager::ProcessInjected() {
 
-    std::vector<float> sv_x(Const::NInjectedPerEvent, Const::DummyFloat);
-    std::vector<float> sv_y(Const::NInjectedPerEvent, Const::DummyFloat);
-    std::vector<float> sv_z(Const::NInjectedPerEvent, Const::DummyFloat);
-    std::vector<char> sv_found(Const::NInjectedPerEvent, 0);
+    // clang-format off
+    std::array<float, E2R::NReactionsPerEvent> sv_x; sv_x.fill(Common::DummyFloat);
+    std::array<float, E2R::NReactionsPerEvent> sv_y; sv_y.fill(Common::DummyFloat);
+    std::array<float, E2R::NReactionsPerEvent> sv_z; sv_z.fill(Common::DummyFloat);
+    std::array<char, E2R::NReactionsPerEvent> sv_found{};
+    // clang-format on
 
-    for (std::size_t mc_idx = 0; mc_idx < NumberMC(); ++mc_idx) {
+    Vector::McParticleView mc_view(&fInput_McParticle);
+    for (std::size_t entry_mc = 0; entry_mc < mc_view.Size(); ++entry_mc) {
+        mc_view.Entry = entry_mc;  // NOTE: avoid calling the full `CacheCalculations()` machinery
+        mc_view.CacheAscendantsInfo();
+        mc_view.Classify_AsInSexaquarkSimulations(fSettings.ReactionChannel, Common::DummyInt);  // NOTE: no hypothesis
 
-        auto mc = MC::Particle::Create(&fInput_MC, mc_idx, fSettings.ReactionChannel, Const::DummyInt);
-        if (!mc || !mc->IsFirstGenSignal()) continue;
+        if (!mc_view.IsFirstGenSignal()) continue;
 
-        auto reaction_idx = static_cast<std::size_t>(mc->ReactionID() - Const::ReactionID_Offset);
+        auto reaction_idx = static_cast<std::size_t>(mc_view.ReactionID() - E2R::ReactionID_Offset);
         if (sv_found[reaction_idx] == 1) continue;
 
-        sv_x[reaction_idx] = mc->Origin_X();
-        sv_y[reaction_idx] = mc->Origin_Y();
-        sv_z[reaction_idx] = mc->Origin_Z();
+        sv_x[reaction_idx] = mc_view.Origin_X();
+        sv_y[reaction_idx] = mc_view.Origin_Y();
+        sv_z[reaction_idx] = mc_view.Origin_Z();
         sv_found[reaction_idx] = 1;
     }
 
     // store //
 
-    fOutput_Injected.mom = fInput_Injected.mom;
-    fOutput_Injected.mom_nucleon = fInput_Injected.mom_nucleon;
-    for (std::size_t i = 0; i < Const::NInjectedPerEvent; ++i) {
-        fOutput_Injected.sv.x->push_back(sv_x[i]);
-        fOutput_Injected.sv.y->push_back(sv_y[i]);
-        fOutput_Injected.sv.z->push_back(sv_z[i]);
+    fOutput_InjectedSexa = fInput_InjectedSexa;
+    for (std::size_t i = 0; i < E2R::NReactionsPerEvent; ++i) {
+        fOutput_InjectedSexa.SV_X->push_back(sv_x[i]);
+        fOutput_InjectedSexa.SV_Y->push_back(sv_y[i]);
+        fOutput_InjectedSexa.SV_Z->push_back(sv_z[i]);
     }
-    fOutput_Injected.reaction_id = fInput_Injected.reaction_id;
 }
 
 // ## Tracks ZONE ## //
 
 // Filter and group tracks into indices vectors, according to their respective species.
 void Packager::ProcessTracks() {
-    for (std::size_t t_idx = 0; t_idx < NumberTracks(); ++t_idx) {
-        // create track view //
-        View::VecTracks track(&fInput_Tracks, t_idx);
+    Vector::TrackView track_view(&fInput_Track);
+    for (std::size_t entry_track = 0; entry_track < track_view.Size(); ++entry_track) {
+        track_view.CacheCalculations(entry_track, fPrimaryVertex, *fInput_Event.MagneticField);
         // PID and pre-selection //
-        if (track.Charge<char>() < 0) {
-            if (PassesProtonCuts(track, fHist_CutFlow_AntiProton.get())) {
-                fIndices_AntiProtons.push_back(t_idx);
+        if (track_view.Charge() < 0) {
+            if (PassesProtonCuts(track_view, fHist_CutFlow_AntiProton.get())) {
+                fEntries_AntiProton.push_back(entry_track);
             }
-            if (PassesKaonCuts(track, fHist_CutFlow_NegKaon.get())) {
-                fIndices_NegKaons.push_back(t_idx);
+            if (PassesKaonCuts(track_view, fHist_CutFlow_NegKaon.get())) {
+                fEntries_NegKaon.push_back(entry_track);
             }
-            if (PassesPionCuts(track, fHist_CutFlow_PiMinus.get())) {
-                fIndices_PiMinus.push_back(t_idx);
+            if (PassesPionCuts(track_view, fHist_CutFlow_PiMinus.get())) {
+                fEntries_PiMinus.push_back(entry_track);
             }
         }
-        if (track.Charge<char>() > 0) {
-            if (PassesProtonCuts(track, fHist_CutFlow_Proton.get())) {
-                fIndices_Protons.push_back(t_idx);
+        if (track_view.Charge() > 0) {
+            if (PassesProtonCuts(track_view, fHist_CutFlow_Proton.get())) {
+                fEntries_Proton.push_back(entry_track);
             }
-            if (PassesKaonCuts(track, fHist_CutFlow_PosKaon.get())) {
-                fIndices_PosKaons.push_back(t_idx);
+            if (PassesKaonCuts(track_view, fHist_CutFlow_PosKaon.get())) {
+                fEntries_PosKaon.push_back(entry_track);
             }
-            if (PassesPionCuts(track, fHist_CutFlow_PiPlus.get())) {
-                fIndices_PiPlus.push_back(t_idx);
+            if (PassesPionCuts(track_view, fHist_CutFlow_PiPlus.get())) {
+                fEntries_PiPlus.push_back(entry_track);
             }
         }
     }  // end of loop over tracks
 
-#if T2S_DEBUG
-    Logger::Debug(__FUNCTION__, "n_antiprotons = {}", fIndices_AntiProtons.size());
-    Logger::Debug(__FUNCTION__, "n_protons     = {}", fIndices_Protons.size());
-    Logger::Debug(__FUNCTION__, "n_negkaons    = {}", fIndices_NegKaons.size());
-    Logger::Debug(__FUNCTION__, "n_poskaons    = {}", fIndices_PosKaons.size());
-    Logger::Debug(__FUNCTION__, "n_piminus     = {}", fIndices_PiMinus.size());
-    Logger::Debug(__FUNCTION__, "n_piplus      = {}", fIndices_PiPlus.size());
-    Logger::Debug(__FUNCTION__, "Finished.");
+#if R2DS_DEBUG
+    Logger::Debug(__FUNCTION__, "n_antiprotons = {}", fEntries_AntiProton.size());
+    Logger::Debug(__FUNCTION__, "n_protons     = {}", fEntries_Proton.size());
+    Logger::Debug(__FUNCTION__, "n_negkaons    = {}", fEntries_NegKaon.size());
+    Logger::Debug(__FUNCTION__, "n_poskaons    = {}", fEntries_PosKaon.size());
+    Logger::Debug(__FUNCTION__, "n_piminus     = {}", fEntries_PiMinus.size());
+    Logger::Debug(__FUNCTION__, "n_piplus      = {}", fEntries_PiPlus.size());
 #endif
 }
 
 // NOTE: exclusive to secondary charged kaons.
-void Packager::PackTracks(const Particles::Definition& pid) {
+void Packager::PackTracks(const DB::Particles::Definition& pid) {
 
     // determine rules based on particle species //
-    std::vector<std::size_t>* vec = nullptr;
-    Schema::VecTracks* out = nullptr;
-    Schema::VecMcTracks* mc_out = nullptr;
+    std::vector<std::size_t>* vec_entries = nullptr;
+    Vector::Track* out = nullptr;
     switch (pid.pdg_code) {
-        case Particles::Particle("NegKaon").pdg_code: {
-            vec = &fIndices_NegKaons;
-            out = &fOutput_NegKaons;
-            if (fSettings.IsMC) mc_out = &fOutput_MC_NegKaons;
+        case DB::Particles::Particle("NegKaon").pdg_code: {
+            vec_entries = &fEntries_NegKaon;
+            out = &fOutput_NegKaon;
             break;
         }
-        case Particles::Particle("PosKaon").pdg_code: {
-            vec = &fIndices_PosKaons;
-            out = &fOutput_PosKaons;
-            if (fSettings.IsMC) mc_out = &fOutput_MC_PosKaons;
+        case DB::Particles::Particle("PosKaon").pdg_code: {
+            vec_entries = &fEntries_PosKaon;
+            out = &fOutput_PosKaon;
             break;
         }
         default:
             return;
     }
 
-    // loop over selected tracks //
-    for (const std::size_t& t_idx : *vec) {
-        View::VecTracks track(&fInput_Tracks, t_idx);
+    // prepare views //
+    auto track = std::make_unique<Vector::TrackView>(&fInput_Track);
+    std::unique_ptr<Vector::McParticleView> linked_mc = nullptr;
+    if (fSettings.IsMC) linked_mc = std::make_unique<Vector::McParticleView>(&fInput_McParticle);
 
-        Store(track, *out);
+    // loop over selected tracks //
+    for (const std::size_t& entry_track : *vec_entries) {
+        track->CacheCalculations(entry_track, fPrimaryVertex, *fInput_Event.MagneticField);
 
         if (fSettings.IsMC) {
-            auto mc = MC::Particle::Create(&fInput_MC, track.McEntry(), fSettings.ReactionChannel, pid.pdg_code);
-            Store(mc, *mc_out, true);
+            auto mc_entry = track->McEntry();  // NOTE: cannot be invalid, by construction
+            linked_mc->Entry = mc_entry;       // NOTE: prevent full `CacheCalculations()` machinery
+            linked_mc->CacheAscendantsInfo();
+            linked_mc->CacheDescendantsInfo();
+            linked_mc->Classify_AsInSexaquarkSimulations(fSettings.ReactionChannel, pid.pdg_code);
         }
+
+        Store(track.get(), linked_mc.get(), *out);
     }  // end of loop over selected tracks
 }
 
-void Packager::Store(const View::VecTracks& v, Schema::VecTracks& df) {
-    df.esd_entry->push_back(v.EsdEntry());
-    df.state.x->push_back(v.X());
-    df.state.y->push_back(v.Y());
-    df.state.z->push_back(v.Z());
-    df.state.px->push_back(v.Px());
-    df.state.py->push_back(v.Py());
-    df.state.pz->push_back(v.Pz());
-    df.charge->push_back(v.Charge<char>());
-    df.pre_dca_xy->push_back(v.PreDCAxy());
-    df.pre_dca_z->push_back(v.PreDCAz());
-    df.tpc_signal->push_back(v.TPC_Signal());
-    df.n_sigma_pion->push_back(v.NSigmaPion());
-    df.n_sigma_kaon->push_back(v.NSigmaKaon());
-    df.n_sigma_proton->push_back(v.NSigmaProton());
-    df.cov.Push(v.Cov());
+void Packager::Store(const Vector::TrackView* track, const Vector::McParticleView* linked_mc, Vector::Track& df) {
+    df.EsdEntry->push_back(track->EsdEntry());
+    df.X->push_back(track->X());
+    df.Y->push_back(track->Y());
+    df.Z->push_back(track->Z());
+    df.Px->push_back(track->Px());
+    df.Py->push_back(track->Py());
+    df.Pz->push_back(track->Pz());
+    df.Charge->push_back(track->Charge());
+    df.PreDCAxy->push_back(track->PreDCAxy());
+    df.PreDCAz->push_back(track->PreDCAz());
+    df.TPC_Signal->push_back(track->TPC_Signal());
+    df.NSigmaPion->push_back(track->NSigmaPion());
+    df.NSigmaKaon->push_back(track->NSigmaKaon());
+    df.NSigmaProton->push_back(track->NSigmaProton());
+    df.CovMatrix->push_back(track->CovMatrix());
+    // PENDING E2R_EXTRA_INFO
+    if (fSettings.IsMC) df.McEntry->push_back(track->McEntry());
+    if (linked_mc == nullptr) {
+        df.PdgCode->push_back(Common::DummyInt);
+        df.Origin_X->push_back(Common::DummyFloat);
+        df.Origin_Y->push_back(Common::DummyFloat);
+        df.Origin_Z->push_back(Common::DummyFloat);
+        df.MC_Px->push_back(Common::DummyFloat);
+        df.MC_Py->push_back(Common::DummyFloat);
+        df.MC_Pz->push_back(Common::DummyFloat);
+        df.MC_Energy->push_back(Common::DummyFloat);
+        df.IsTrue->push_back(Common::DummyChar);
+        df.IsSecondary->push_back(Common::DummyChar);
+        df.IsSignal->push_back(Common::DummyChar);
+        df.ReactionID->push_back(Common::DummyInt);
+        // mother
+        df.Mother_McEntry->push_back(Common::DummyInt);
+        df.Mother_PdgCode->push_back(Common::DummyInt);
+        // grandmother
+        df.GM_McEntry->push_back(Common::DummyInt);
+        df.GM_PdgCode->push_back(Common::DummyInt);
+    } else {
+        df.PdgCode->push_back(linked_mc->PdgCode());
+        df.Origin_X->push_back(linked_mc->Origin_X());
+        df.Origin_Y->push_back(linked_mc->Origin_Y());
+        df.Origin_Z->push_back(linked_mc->Origin_Z());
+        df.MC_Px->push_back(linked_mc->Px());
+        df.MC_Py->push_back(linked_mc->Py());
+        df.MC_Pz->push_back(linked_mc->Pz());
+        df.MC_Energy->push_back(linked_mc->Energy());
+        df.IsTrue->push_back(static_cast<char>(linked_mc->IsTrue()));
+        df.IsSecondary->push_back(static_cast<char>(linked_mc->IsSecondary()));
+        df.IsSignal->push_back(static_cast<char>(linked_mc->IsSignal()));
+        df.ReactionID->push_back(linked_mc->ReactionID());
+        // mother
+        df.Mother_McEntry->push_back(linked_mc->Mother_McEntry());
+        df.Mother_PdgCode->push_back(linked_mc->Mother_PdgCode());
+        // grandmother
+        df.GM_McEntry->push_back(linked_mc->GrandMother_McEntry());
+        df.GM_PdgCode->push_back(linked_mc->GrandMother_PdgCode());
+    }
 }
 
-void Packager::Store(const std::optional<MC::Particle>& mc, Schema::VecMcTracks& df, bool ascendants_info) {
-    if (!mc) {
-        df.PushDummy(ascendants_info);
-        return;
-    }
-    df.mc_entry->push_back(mc->McEntry());
-    df.pdg_code->push_back(mc->PdgCode());
-    if (ascendants_info) {
-        df.origin.x->push_back(mc->Origin_X());
-        df.origin.y->push_back(mc->Origin_Y());
-        df.origin.z->push_back(mc->Origin_Z());
-    }
-    df.lv.px->push_back(mc->Px());
-    df.lv.py->push_back(mc->Py());
-    df.lv.pz->push_back(mc->Pz());
-    df.lv.energy->push_back(mc->Energy());
-    df.is_true->push_back(static_cast<char>(mc->IsTrue()));
-    df.is_secondary->push_back(static_cast<char>(mc->IsSecondary()));
-    df.is_signal->push_back(static_cast<char>(mc->IsSignal()));
-    df.reaction_id->push_back(mc->ReactionID());
-    if (ascendants_info) {
-        df.mother_mc_entry->push_back(mc->Mother_McEntry());
-        df.mother_pdg_code->push_back(mc->Mother_PdgCode());
-        df.gm_mc_entry->push_back(mc->GrandMother_McEntry());
-        df.gm_pdg_code->push_back(mc->GrandMother_PdgCode());
-    }
-}
-
-bool Packager::PassesProtonCuts(const View::VecTracks& v, TH1D* cut_flow_hist) const {
+bool Packager::PassesProtonCuts(const Vector::TrackView& track, TH1D* cut_flow_hist) const {
 
     cut_flow_hist->Fill(0.);
-    if (std::abs(v.NSigmaProton()) > Cuts::Proton::AbsMax_NSigmaProton) return false;
+    if (std::abs(track.NSigmaProton()) > R2DS::Cuts::Proton::AbsMax_NSigmaProton) return false;
     cut_flow_hist->Fill(1.);
 
     return true;
 }
 
-bool Packager::PassesKaonCuts(const View::VecTracks& v, TH1D* cut_flow_hist) const {
+bool Packager::PassesKaonCuts(const Vector::TrackView& track, TH1D* cut_flow_hist) const {
 
     cut_flow_hist->Fill(0.);
-    if (std::abs(v.NSigmaKaon()) > Cuts::Kaon::AbsMax_NSigmaKaon) return false;
+    if (std::abs(track.NSigmaKaon()) > R2DS::Cuts::Kaon::AbsMax_NSigmaKaon) return false;
     cut_flow_hist->Fill(1.);
 
     return true;
 }
 
-bool Packager::PassesPionCuts(const View::VecTracks& v, TH1D* cut_flow_hist) const {
+bool Packager::PassesPionCuts(const Vector::TrackView& track, TH1D* cut_flow_hist) const {
 
     cut_flow_hist->Fill(0.);
-    if (std::abs(v.NSigmaPion()) > Cuts::Pion::AbsMax_NSigmaPion) return false;
+    if (std::abs(track.NSigmaPion()) > R2DS::Cuts::Pion::AbsMax_NSigmaPion) return false;
     cut_flow_hist->Fill(1.);
 
     return true;
@@ -360,43 +334,25 @@ bool Packager::PassesPionCuts(const View::VecTracks& v, TH1D* cut_flow_hist) con
 
 // ## V0s ZONE ## //
 
-void Packager::FindV0s(const Particles::Definition& pid) {
+void Packager::FindV0s(const DB::Particles::Definition& pid) {
 
     // determine rules based on V0 species //
-    Schema::VecV0s* out = nullptr;
-    Schema::VecMcV0s* mc_out = nullptr;
-    Schema::VecMcTracks* mc_neg_out = nullptr;
-    Schema::VecMcTracks* mc_pos_out = nullptr;
-    const std::vector<std::size_t>* vec_neg = &fIndices_PiMinus;
-    const std::vector<std::size_t>* vec_pos = &fIndices_PiPlus;
+    Vector::V0* out = nullptr;
+    const std::vector<std::size_t>* vec_neg = &fEntries_PiMinus;
+    const std::vector<std::size_t>* vec_pos = &fEntries_PiPlus;
     switch (pid.pdg_code) {
-        case Particles::Particle("AntiLambda").pdg_code: {
-            out = &fOutput_AntiLambdas;
-            if (fSettings.IsMC) {
-                mc_out = &fOutput_MC_AntiLambdas;
-                mc_neg_out = &fOutput_MC_AntiLambdas_Neg;
-                mc_pos_out = &fOutput_MC_AntiLambdas_Pos;
-            }
-            vec_neg = &fIndices_AntiProtons;
+        case DB::Particles::Particle("AntiLambda").pdg_code: {
+            out = &fOutput_AntiLambda;
+            vec_neg = &fEntries_AntiProton;
             break;
         }
-        case Particles::Particle("Lambda").pdg_code: {
-            out = &fOutput_Lambdas;
-            if (fSettings.IsMC) {
-                mc_out = &fOutput_MC_Lambdas;
-                mc_neg_out = &fOutput_MC_Lambdas_Neg;
-                mc_pos_out = &fOutput_MC_Lambdas_Pos;
-            }
-            vec_pos = &fIndices_Protons;
+        case DB::Particles::Particle("Lambda").pdg_code: {
+            out = &fOutput_Lambda;
+            vec_pos = &fEntries_Proton;
             break;
         }
-        case Particles::Particle("KaonZeroShort").pdg_code: {
-            out = &fOutput_KaonsZeroShort;
-            if (fSettings.IsMC) {
-                mc_out = &fOutput_MC_KaonsZeroShort;
-                mc_neg_out = &fOutput_MC_KaonsZeroShort_Neg;
-                mc_pos_out = &fOutput_MC_KaonsZeroShort_Pos;
-            }
+        case DB::Particles::Particle("KaonZeroShort").pdg_code: {
+            out = &fOutput_KaonZeroShort;
             break;
         }
         default: {
@@ -404,27 +360,46 @@ void Packager::FindV0s(const Particles::Definition& pid) {
             return;
         }
     }
-    auto neg_pid = Particles::FindParticle(pid.daughters_pdg[0]);
-    auto pos_pid = Particles::FindParticle(pid.daughters_pdg[1]);
+    auto pid_neg = DB::Particles::FindParticle(pid.daughters_pdg[0]);  // PENDING: needs helper, not well done...
+    auto pid_pos = DB::Particles::FindParticle(pid.daughters_pdg[1]);
+
+    // prepare views //
+    auto neg = std::make_unique<Vector::TrackView>(&fInput_Track);
+    auto pos = std::make_unique<Vector::TrackView>(&fInput_Track);
+    std::unique_ptr<Vector::McParticleView> mc_neg;
+    std::unique_ptr<Vector::McParticleView> mc_pos;
+    std::unique_ptr<Vector::McParticleView> mc_v0;
+    if (fSettings.IsMC) {
+        mc_neg = std::make_unique<Vector::McParticleView>(&fInput_McParticle);
+        mc_pos = std::make_unique<Vector::McParticleView>(&fInput_McParticle);
+        mc_v0 = std::make_unique<Vector::McParticleView>(&fInput_McParticle);
+    }
 
     // loop over all possible pairs of tracks //
-    for (const auto& neg_idx : *vec_neg) {
-        for (const auto& pos_idx : *vec_pos) {
+    for (const auto& entry_neg : *vec_neg) {
+        neg->CacheCalculations(entry_neg, fPrimaryVertex, *fInput_Event.MagneticField);
 
-            // sanity check //
-            if (neg_idx == pos_idx) continue;
+        if (fSettings.IsMC) {
+            auto mc_entry_neg = neg->McEntry();  // NOTE: cannot be invalid, by construction
+            mc_neg->Entry = mc_entry_neg;        // NOTE: prevent full `CacheCalculations()` machinery
+            mc_neg->CacheAscendantsInfo();
+            mc_neg->CacheDescendantsInfo();
+            mc_neg->Classify_AsInSexaquarkSimulations(fSettings.ReactionChannel, pid_neg->pdg_code);
+        }
 
-#if T2S_DEBUG
-            if (pid == PID_V0::AntiLambda && (esd_neg != 725 || esd_pos != 739)) continue;
-            if (pid == PID_V0::Lambda) continue;
-            if (pid == PID_V0::KaonZeroShort && (esd_neg != 129 || esd_pos != 425)) continue;
-#endif
+        for (const auto& entry_pos : *vec_pos) {
+            if (entry_neg == entry_pos) continue;
+            pos->CacheCalculations(entry_pos, fPrimaryVertex, *fInput_Event.MagneticField);
 
-            // get views //
-            View::VecTracks neg(&fInput_Tracks, neg_idx);
-            View::VecTracks pos(&fInput_Tracks, pos_idx);
+            if (fSettings.IsMC) {
+                auto mc_entry_pos = pos->McEntry();  // NOTE: cannot be invalid, by construction
+                mc_pos->Entry = mc_entry_pos;        // NOTE: prevent full `CacheCalculations()` machinery
+                mc_pos->CacheAscendantsInfo();
+                mc_pos->CacheDescendantsInfo();
+                mc_pos->Classify_AsInSexaquarkSimulations(fSettings.ReactionChannel, pid_pos->pdg_code);
+            }
 
-#if T2S_LEGACY_KF
+#if R2DS_LEGACY_KF
             // PCAs //
             auto [seed_neg, seed_pos, deriv_neg, deriv_pos] = Legacy::HelixHelix::FullPCAs(neg, pos, mass_neg, mass_pos, fInput_Event.magnetic_field);
 
@@ -433,7 +408,7 @@ void Packager::FindV0s(const Particles::Definition& pid) {
             auto fit = KF::Particle::FromLegacy(l_fit);
 #else
             // PCAs //
-            auto [seed_neg, seed_pos, pca_cache] = Seeder::HelixHelix::FastCorrectPCAs(neg, pos, fInput_Event.magnetic_field);
+            auto [seed_neg, seed_pos, pca_cache] = Seeder::HelixHelix::FastCorrectPCAs(*neg, *pos, *fInput_Event.MagneticField);
 
             // apply cuts (1) //
             if (!FastCuts(seed_neg, seed_pos, pid)) continue;
@@ -443,33 +418,24 @@ void Packager::FindV0s(const Particles::Definition& pid) {
 
             // fit vertex //
             auto fit =
-                KF::FitVertex(neg, pos, neg_pid->mass, pos_pid->mass, {seed_neg, deriv_neg}, {seed_pos, deriv_pos}, fInput_Event.magnetic_field);
+                KF::FitVertex(*neg, *pos, pid_neg->mass, pid_pos->mass, {seed_neg, deriv_neg}, {seed_pos, deriv_pos}, *fInput_Event.MagneticField);
 
             // create composite particle //
-            KF::V0 v0(fit, seed_neg.pca, seed_pos.pca, neg, pos);
+            KF::V0 v0(fit, seed_neg.pca, seed_pos.pca, *neg, *pos);
 
             // apply cuts (2) //
             if (!SlowCuts(v0, pid)) continue;
-
-            Store(v0, *out);
 #endif
-            // store mc //
-            if (fSettings.IsMC) {
-                auto mc_neg = MC::Particle::Create(&fInput_MC, neg.McEntry(), fSettings.ReactionChannel, neg_pid->pdg_code);
-                Store(mc_neg, *mc_neg_out, false);
-                auto mc_pos = MC::Particle::Create(&fInput_MC, pos.McEntry(), fSettings.ReactionChannel, pos_pid->pdg_code);
-                Store(mc_pos, *mc_pos_out, false);
-                auto mc_v0 = MC::V0::Create(mc_neg, mc_pos, fSettings.ReactionChannel, pid.pdg_code);
-                Store(mc_v0, *mc_out);
-            }
+            // store //
+            Store(&v0, mc_neg.get(), mc_pos.get(), mc_v0.get(), *out);
         }  // end of loop over pos
     }  // end of loop over neg
 }
 
-bool Packager::FastCuts_SecondaryLambdas(const Seeder::Seed& seed_neg, const Seeder::Seed& seed_pos, TH1D* cut_flow_hist) const {
+bool Packager::FastCuts_Lambda(const Seeder::Seed& seed_neg, const Seeder::Seed& seed_pos, TH1D* cut_flow_hist) const {
     cut_flow_hist->Fill(0.);
 
-    if (Math::SquaredDistance(seed_neg.pca.GetXYZ_AsROOT(), seed_pos.pca.GetXYZ_AsROOT()) > Cuts::Lambda::Max_DCAbtwDau * Cuts::Lambda::Max_DCAbtwDau)
+    if ((seed_neg.pca.GetXYZ_AsROOT() - seed_pos.pca.GetXYZ_AsROOT()).Mag2() > Cuts::Lambda::Max_DCAbtwDau * Cuts::Lambda::Max_DCAbtwDau)
         return false;
     cut_flow_hist->Fill(1.);
 
@@ -479,19 +445,19 @@ bool Packager::FastCuts_SecondaryLambdas(const Seeder::Seed& seed_neg, const See
 bool Packager::FastCuts_KaonZeroShort(const Seeder::Seed& seed_neg, const Seeder::Seed& seed_pos, TH1D* cut_flow_hist) const {
     cut_flow_hist->Fill(0.);
 
-    if (Math::SquaredDistance(seed_neg.pca.GetXYZ_AsROOT(), seed_pos.pca.GetXYZ_AsROOT()) >
-        Cuts::KaonZeroShort::Max_DCAbtwDau * Cuts::KaonZeroShort::Max_DCAbtwDau)
+    if ((seed_neg.pca.GetXYZ_AsROOT() - seed_pos.pca.GetXYZ_AsROOT()).Mag2() >
+        R2DS::Cuts::KaonZeroShort::Max_DCAbtwDau * R2DS::Cuts::KaonZeroShort::Max_DCAbtwDau)
         return false;
     cut_flow_hist->Fill(1.);
 
     return true;
 }
 
-bool Packager::SlowCuts_SecondaryLambdas(const KF::V0& v0, TH1D* cut_flow_hist) const {
+bool Packager::SlowCuts_Lambda(const KF::V0& v0, TH1D* cut_flow_hist) const {
 
-    double mass = v0.Mass().value_or(Const::DummyDouble);  // cached
+    double mass = v0.Mass().value_or(Common::DummyDouble);  // cached
     if (mass < Cuts::Lambda::Min_Mass || mass > Cuts::Lambda::Max_Mass) return false;
-    cut_flow_hist->Fill(1.);
+    cut_flow_hist->Fill(2.);
 
     if (v0.SquaredRadius2D() < Cuts::Lambda::Min_Radius2D * Cuts::Lambda::Min_Radius2D) return false;
     cut_flow_hist->Fill(3.);
@@ -511,11 +477,11 @@ bool Packager::SlowCuts_SecondaryLambdas(const KF::V0& v0, TH1D* cut_flow_hist) 
     if (v0.AbsArmQtOverAlpha() > Cuts::Lambda::AbsMax_ArmQtOverAlpha) return false;
     cut_flow_hist->Fill(8.);
 
-    double cpa_wrt_pv = v0.CPA_Vertex(fInput_Event.pv.x, fInput_Event.pv.y, fInput_Event.pv.z);  // cached
+    double cpa_wrt_pv = v0.CPA_Vertex(*fInput_Event.PV_X, *fInput_Event.PV_Y, *fInput_Event.PV_Z);  // cached
     if (cpa_wrt_pv < Cuts::Lambda::Min_CPAwrtPV || cpa_wrt_pv > Cuts::Lambda::Max_CPAwrtPV) return false;
     cut_flow_hist->Fill(9.);
 
-    if (v0.DCA_Vertex(fInput_Event.pv.x, fInput_Event.pv.y, fInput_Event.pv.z) < Cuts::Lambda::Min_DCAwrtPV) return false;
+    if (v0.DCA_Vertex(*fInput_Event.PV_X, *fInput_Event.PV_Y, *fInput_Event.PV_Z) < Cuts::Lambda::Min_DCAwrtPV) return false;
     cut_flow_hist->Fill(10.);
 
     return true;
@@ -526,7 +492,7 @@ bool Packager::SlowCuts_KaonZeroShort(const KF::V0& v0, TH1D* cut_flow_hist) con
     // if (v0.Pt() < Cuts::KaonZeroShort::Min_Pt) return false; // PENDING
     // cut_flow_hist->Fill(2.); // PENDING
 
-    double mass = v0.Mass().value_or(Const::DummyDouble);  // cached
+    double mass = v0.Mass().value_or(Common::DummyDouble);  // cached
     if (mass < Cuts::KaonZeroShort::Min_Mass || mass > Cuts::KaonZeroShort::Max_Mass) return false;
     cut_flow_hist->Fill(3.);
 
@@ -542,124 +508,121 @@ bool Packager::SlowCuts_KaonZeroShort(const KF::V0& v0, TH1D* cut_flow_hist) con
     if (v0.SquaredDCA_Pos_V0() > Cuts::KaonZeroShort::Max_DCAposV0 * Cuts::KaonZeroShort::Max_DCAposV0) return false;
     cut_flow_hist->Fill(7.);
 
-    double cpa_wrt_pv = v0.CPA_Vertex(fInput_Event.pv.x, fInput_Event.pv.y, fInput_Event.pv.z);  // cached
+    double cpa_wrt_pv = v0.CPA_Vertex(*fInput_Event.PV_X, *fInput_Event.PV_Y, *fInput_Event.PV_Z);  // cached
     if (cpa_wrt_pv < Cuts::KaonZeroShort::Min_CPAwrtPV || cpa_wrt_pv > Cuts::KaonZeroShort::Max_CPAwrtPV) return false;
     cut_flow_hist->Fill(8.);
 
-    if (v0.DCA_Vertex(fInput_Event.pv.x, fInput_Event.pv.y, fInput_Event.pv.z) < Cuts::KaonZeroShort::Min_DCAwrtPV) return false;
+    if (v0.DCA_Vertex(*fInput_Event.PV_X, *fInput_Event.PV_Y, *fInput_Event.PV_Z) < Cuts::KaonZeroShort::Min_DCAwrtPV) return false;
     cut_flow_hist->Fill(9.);
 
     return true;
 }
 
-void Packager::Store(const KF::V0& v0, Schema::VecV0s& df) {
-    df.decay.x->push_back(static_cast<float>(v0.X()));
-    df.decay.y->push_back(static_cast<float>(v0.Y()));
-    df.decay.z->push_back(static_cast<float>(v0.Z()));
-    df.lv.px->push_back(static_cast<float>(v0.Px()));
-    df.lv.py->push_back(static_cast<float>(v0.Py()));
-    df.lv.pz->push_back(static_cast<float>(v0.Pz()));
-    df.lv.energy->push_back(static_cast<float>(v0.E()));
-    df.chi2ndf->push_back(static_cast<float>(v0.Chi2NDF()));
-    df.cov.Push(v0.Cov<7>());
+void Packager::Store(const KF::V0* v0, const Vector::McParticleView* mc_neg, const Vector::McParticleView* mc_pos,
+                     const Vector::McParticleView* mc_v0, Vector::V0& df) {
+    df.Decay_X->push_back(static_cast<float>(v0->X()));
+    df.Decay_Y->push_back(static_cast<float>(v0->Y()));
+    df.Decay_Z->push_back(static_cast<float>(v0->Z()));
+    df.Px->push_back(static_cast<float>(v0->Px()));
+    df.Py->push_back(static_cast<float>(v0->Py()));
+    df.Pz->push_back(static_cast<float>(v0->Pz()));
+    df.Energy->push_back(static_cast<float>(v0->E()));
+    // df.CovMatrix.Push(v0->Cov<7>()); // PENDING
+    df.Chi2NDF->push_back(static_cast<float>(v0->Chi2NDF()));
     // -- neg daughter
-    Store(v0.Neg, df.neg);
-    df.neg_pca_v0.x->push_back(static_cast<float>(v0.Neg_PCAwrtV0.X()));
-    df.neg_pca_v0.y->push_back(static_cast<float>(v0.Neg_PCAwrtV0.Y()));
-    df.neg_pca_v0.z->push_back(static_cast<float>(v0.Neg_PCAwrtV0.Z()));
-    df.neg_pca_v0.px->push_back(static_cast<float>(v0.Neg_PCAwrtV0.Px()));
-    df.neg_pca_v0.py->push_back(static_cast<float>(v0.Neg_PCAwrtV0.Py()));
-    df.neg_pca_v0.pz->push_back(static_cast<float>(v0.Neg_PCAwrtV0.Pz()));
+    Store(&v0->Neg, mc_neg, df.Neg);
+    df.Neg_PCAwrtV0_X->push_back(static_cast<float>(v0->Neg_PCAwrtV0.X()));
+    df.Neg_PCAwrtV0_Y->push_back(static_cast<float>(v0->Neg_PCAwrtV0.Y()));
+    df.Neg_PCAwrtV0_Z->push_back(static_cast<float>(v0->Neg_PCAwrtV0.Z()));
+    df.Neg_PCAwrtV0_Px->push_back(static_cast<float>(v0->Neg_PCAwrtV0.Px()));
+    df.Neg_PCAwrtV0_Py->push_back(static_cast<float>(v0->Neg_PCAwrtV0.Py()));
+    df.Neg_PCAwrtV0_Pz->push_back(static_cast<float>(v0->Neg_PCAwrtV0.Pz()));
     // -- pos daughter
-    Store(v0.Pos, df.pos);
-    df.pos_pca_v0.x->push_back(static_cast<float>(v0.Pos_PCAwrtV0.X()));
-    df.pos_pca_v0.y->push_back(static_cast<float>(v0.Pos_PCAwrtV0.Y()));
-    df.pos_pca_v0.z->push_back(static_cast<float>(v0.Pos_PCAwrtV0.Z()));
-    df.pos_pca_v0.px->push_back(static_cast<float>(v0.Pos_PCAwrtV0.Px()));
-    df.pos_pca_v0.py->push_back(static_cast<float>(v0.Pos_PCAwrtV0.Py()));
-    df.pos_pca_v0.pz->push_back(static_cast<float>(v0.Pos_PCAwrtV0.Pz()));
-}
-
-void Packager::Store(const std::optional<MC::V0>& mc_v0, Schema::VecMcV0s& df) {
-    if (!mc_v0) {
-        df.PushDummy();
-        return;
+    Store(&v0->Pos, mc_pos, df.Pos);
+    df.Pos_PCAwrtV0_X->push_back(static_cast<float>(v0->Pos_PCAwrtV0.X()));
+    df.Pos_PCAwrtV0_Y->push_back(static_cast<float>(v0->Pos_PCAwrtV0.Y()));
+    df.Pos_PCAwrtV0_Z->push_back(static_cast<float>(v0->Pos_PCAwrtV0.Z()));
+    df.Pos_PCAwrtV0_Px->push_back(static_cast<float>(v0->Pos_PCAwrtV0.Px()));
+    df.Pos_PCAwrtV0_Py->push_back(static_cast<float>(v0->Pos_PCAwrtV0.Py()));
+    df.Pos_PCAwrtV0_Pz->push_back(static_cast<float>(v0->Pos_PCAwrtV0.Pz()));
+    // -- linked mc info
+    if (mc_v0 == nullptr) {
+        df.McEntry->push_back(Common::DummyInt);
+        df.PdgCode->push_back(Common::DummyInt);
+        df.MC_Px->push_back(Common::DummyFloat);
+        df.MC_Py->push_back(Common::DummyFloat);
+        df.MC_Pz->push_back(Common::DummyFloat);
+        df.MC_Energy->push_back(Common::DummyFloat);
+        df.Origin_X->push_back(Common::DummyFloat);
+        df.Origin_Y->push_back(Common::DummyFloat);
+        df.Origin_Z->push_back(Common::DummyFloat);
+        df.MC_Decay_X->push_back(Common::DummyFloat);
+        df.MC_Decay_Y->push_back(Common::DummyFloat);
+        df.MC_Decay_Z->push_back(Common::DummyFloat);
+        df.IsTrue->push_back(Common::DummyChar);
+        df.IsSignal->push_back(Common::DummyChar);
+        df.IsSecondary->push_back(Common::DummyChar);
+        df.IsHybrid->push_back(Common::DummyChar);
+        df.ReactionID->push_back(Common::DummyInt);
+        df.Mother_McEntry->push_back(Common::DummyInt);
+        df.Mother_PdgCode->push_back(Common::DummyInt);
+    } else {
+        df.McEntry->push_back(static_cast<int>(mc_v0->Entry));
+        df.PdgCode->push_back(mc_v0->PdgCode());
+        df.MC_Px->push_back(mc_v0->Px());
+        df.MC_Py->push_back(mc_v0->Py());
+        df.MC_Pz->push_back(mc_v0->Pz());
+        df.MC_Energy->push_back(mc_v0->Energy());
+        df.Origin_X->push_back(mc_v0->Origin_X());
+        df.Origin_Y->push_back(mc_v0->Origin_Y());
+        df.Origin_Z->push_back(mc_v0->Origin_Z());
+        df.MC_Decay_X->push_back(static_cast<float>(mc_v0->Decay_X()));
+        df.MC_Decay_Y->push_back(static_cast<float>(mc_v0->Decay_Y()));
+        df.MC_Decay_Z->push_back(static_cast<float>(mc_v0->Decay_Z()));
+        df.IsTrue->push_back(static_cast<char>(mc_v0->IsTrue()));
+        df.IsSignal->push_back(static_cast<char>(mc_v0->IsSignal()));
+        df.IsSecondary->push_back(static_cast<char>(mc_v0->IsSecondary()));
+        // df.IsHybrid->push_back(static_cast<char>(mc_v0->IsHybrid())); // PENDING: not so easy, huh
+        df.ReactionID->push_back(mc_v0->ReactionID());
+        df.Mother_McEntry->push_back(mc_v0->Mother_McEntry());
+        df.Mother_PdgCode->push_back(mc_v0->Mother_PdgCode());
     }
-    df.mc_entry->push_back(mc_v0->McEntry());
-    df.pdg_code->push_back(mc_v0->PdgCode());
-    df.origin.x->push_back(mc_v0->Origin_X());
-    df.origin.y->push_back(mc_v0->Origin_Y());
-    df.origin.z->push_back(mc_v0->Origin_Z());
-    df.decay.x->push_back(mc_v0->Decay_X());
-    df.decay.y->push_back(mc_v0->Decay_Y());
-    df.decay.z->push_back(mc_v0->Decay_Z());
-    df.lv.px->push_back(mc_v0->Px());
-    df.lv.py->push_back(mc_v0->Py());
-    df.lv.pz->push_back(mc_v0->Pz());
-    df.lv.energy->push_back(mc_v0->Energy());
-    df.is_true->push_back(static_cast<char>(mc_v0->IsTrue()));
-    df.is_secondary->push_back(static_cast<char>(mc_v0->IsSecondary()));
-    df.is_signal->push_back(static_cast<char>(mc_v0->IsSignal()));
-    df.is_hybrid->push_back(static_cast<char>(mc_v0->IsHybrid()));
-    df.reaction_id->push_back(mc_v0->ReactionID());
-    df.mother_mc_entry->push_back(mc_v0->Mother_McEntry());
-    df.mother_pdg_code->push_back(mc_v0->Mother_PdgCode());
 }
 
 // ## END OF CYCLES ## //
 
 void Packager::EndOfEvent() {
 
-    // fill tree//
+    // fill RNTuple //
 
-    fOutputTree->Fill();
+    fWriter->Fill();
 
-    // clear temporary indices containers //
+    // clear temporary entries containers //
 
-    fIndices_AntiProtons.clear();
-    fIndices_Protons.clear();
-    fIndices_NegKaons.clear();
-    fIndices_PosKaons.clear();
-    fIndices_PiMinus.clear();
-    fIndices_PiPlus.clear();
+    fEntries_AntiProton.clear();
+    fEntries_Proton.clear();
+    fEntries_NegKaon.clear();
+    fEntries_PosKaon.clear();
+    fEntries_PiMinus.clear();
+    fEntries_PiPlus.clear();
 
     // clear output vector branches //
 
-    if (fSettings.IsMC) fOutput_Injected.ClearBranches(true);
+    if (fSettings.IsMC) fOutput_InjectedSexa.Clear(true);
 
-    fOutput_AntiLambdas.ClearBranches();
-    fOutput_Lambdas.ClearBranches();
-    fOutput_KaonsZeroShort.ClearBranches();
+    fOutput_AntiLambda.Clear(fSettings.IsMC);
+    fOutput_Lambda.Clear(fSettings.IsMC);
+    fOutput_KaonZeroShort.Clear(fSettings.IsMC);
 
-    fOutput_NegKaons.ClearBranches(false);
-    fOutput_PosKaons.ClearBranches(false);
-
-    if (fSettings.IsMC) {
-        fOutput_MC_AntiLambdas.ClearBranches();
-        fOutput_MC_AntiLambdas_Neg.ClearBranches(false);
-        fOutput_MC_AntiLambdas_Pos.ClearBranches(false);
-
-        fOutput_MC_Lambdas.ClearBranches();
-        fOutput_MC_Lambdas_Neg.ClearBranches(false);
-        fOutput_MC_Lambdas_Pos.ClearBranches(false);
-
-        fOutput_MC_KaonsZeroShort.ClearBranches();
-        fOutput_MC_KaonsZeroShort_Neg.ClearBranches(false);
-        fOutput_MC_KaonsZeroShort_Pos.ClearBranches(false);
-
-        fOutput_MC_NegKaons.ClearBranches(true);
-        fOutput_MC_PosKaons.ClearBranches(true);
-    }
+    fOutput_NegKaon.Clear(fSettings.IsMC, fSettings.IsMC);
+    fOutput_PosKaon.Clear(fSettings.IsMC, fSettings.IsMC);
 }
 
 void Packager::EndOfAnalysis() {
 
     Logger::Info(__FUNCTION__, "The following objects have been written into TFile {}:", fSettings.PathOutputFile);
 
-    // write tree //
-
-    fOutputTree->Write();
-    Logger::Info(__FUNCTION__, "- TTree \"{}\"", fOutputTree->GetName());
+    Logger::Info(__FUNCTION__, "- RNTuple \"{}\"", R2DS::Name_PackedRNT);
 
     // write histograms //
 
@@ -689,10 +652,7 @@ void Packager::EndOfAnalysis() {
     fHist_CutFlow_KaonZeroShort->Write();
     Logger::Info(__FUNCTION__, "- TH1D  \"{}\"", fHist_CutFlow_KaonZeroShort->GetName());
 
-    fInputChain_Events->ResetBranchAddresses();
-    fOutputTree->ResetBranchAddresses();
-
     Logger::Info(__FUNCTION__, "All done.");
 }
 
-}  // namespace Tree2Secondaries
+}  // namespace R2DS

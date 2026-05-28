@@ -4,15 +4,18 @@
 
 #include <Eigen/Eigen>
 
-#include "Math/Constants.hxx"
-#if T2S_LEGACY_KF
+#include "common/VC_TrackView.hpp"
+#include "common/VC_V0View.hpp"
+
+#include "KalmanFitter/BaseKalmanFitter.hxx"
+#if R2DS_LEGACY_KF
 #include "Legacy/LegacyParticle.hxx"
 #endif
 
-namespace Tree2Secondaries::KalmanFitter {
+namespace R2DS::KalmanFitter {
 
 // Create a `KF::Particle`, by setting `fP`, `fC` and `fQ` by hard-copying from a track.
-Particle Particle::FromTrack(const View::VecTracks& v, double mass) {
+Particle Particle::FromTrack(const Vector::TrackView& v, double mass) {
 
     Particle out;
 
@@ -27,7 +30,7 @@ Particle Particle::FromTrack(const View::VecTracks& v, double mass) {
 
     for (unsigned int i = 0; i < 6; ++i) {
         for (unsigned int j = 0; j <= i; ++j) {
-            out.fC(i, j) = v.Cov(i, j);
+            out.fC(i, j) = v.CovMatrix()[IJ(i, j)];
         }
     }
 
@@ -47,21 +50,21 @@ Particle Particle::FromTrack(const View::VecTracks& v, double mass) {
                     h1 * h1 * out.fC(4, 4) +  //
                     h2 * h2 * out.fC(5, 5) +  //
                     2 * (h0 * h1 * out.fC(4, 3) + h0 * h2 * out.fC(5, 3) + h1 * h2 * out.fC(5, 4)));
-    out.fC(7, 7) = Const::Initial_Css;
+    out.fC(7, 7) = Initial_Css;
 
-    out.fQ = v.Charge<int>();
+    out.fQ = v.Charge();
 
     return out;
 }
 
 // Create a `KF::Particle`, by setting `fP`, `fC` and `fQ` from a V0 view.
-Particle Particle::FromV0(const View::VecV0s& v) {
+Particle Particle::FromV0(const Vector::V0View& v) {
 
     Particle out;
 
-    out.fP(0) = v.X();
-    out.fP(1) = v.Y();
-    out.fP(2) = v.Z();
+    out.fP(0) = v.Decay_X();
+    out.fP(1) = v.Decay_Y();
+    out.fP(2) = v.Decay_Z();
     out.fP(3) = v.Px();
     out.fP(4) = v.Py();
     out.fP(5) = v.Pz();
@@ -70,17 +73,17 @@ Particle Particle::FromV0(const View::VecV0s& v) {
 
     for (unsigned int i = 0; i < 7; ++i) {
         for (unsigned int j = 0; j <= i; ++j) {
-            out.fC(i, j) = v.Cov(i, j);
+            out.fC(i, j) = v.CovMatrix()[IJ(i, j)];
         }
     }
-    out.fC(7, 7) = Const::Initial_Css;
+    out.fC(7, 7) = Initial_Css;
 
     out.fQ = 0;
 
     return out;
 }
 
-#if T2S_LEGACY_KF
+#if R2DS_LEGACY_KF
 Particle Particle::FromLegacy(const Legacy::Particle& part) {
 
     Particle out;
@@ -101,4 +104,4 @@ Particle Particle::FromLegacy(const Legacy::Particle& part) {
 }
 #endif
 
-}  // namespace Tree2Secondaries::KalmanFitter
+}  // namespace R2DS::KalmanFitter

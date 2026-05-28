@@ -10,7 +10,7 @@
 #include "View/Reconstructed/ViewRecTrack.hxx"
 #include "View/Reconstructed/ViewRecV0.hxx"
 
-namespace Tree2Secondaries::Legacy {
+namespace R2DS::Legacy {
 
 // Helper //
 
@@ -124,4 +124,4 @@ struct Particle {
     int fQ;
 };
 
-}  // namespace Tree2Secondaries::Legacy
+}  // namespace R2DS::Legacy

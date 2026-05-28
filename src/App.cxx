@@ -1,26 +1,27 @@
+#include <ROOT/RNTupleReader.hxx>
+
 #include "App/Parser.hxx"
 #include "App/Settings.hxx"
 #include "Finder/Finder.hxx"
 #include "Packager/Packager.hxx"
-
-namespace T2S = Tree2Secondaries;
+#include "Verifier/Verifier.hxx"
 
 int main(int argc, char *argv[]) {
 
-    T2S::Settings settings;
-    T2S::Parser parser("Tree2Secondaries");
+    R2DS::Settings settings;
+    R2DS::Parser parser("RNTuple2DoubleStrangeness");
     parser.Parse(argc, argv);
     if (parser.HelpOrError) return parser.ExitCode;
     parser.Assign(settings);
     settings.Print();
 
-    if (!settings.DoTheSearch) {
+    if (settings.Mode == R2DS::EProgramMode::PACKAGER) {
 
-        T2S::Packager pkgr(settings);
+        R2DS::Packager pkgr(settings);
         if (!pkgr.Initialize()) return 1;
 
-        for (long long i_event = 0; i_event < pkgr.NumberEventsToRead(); ++i_event) {
-            pkgr.GetEvent(i_event);
+        for (auto id_event : *pkgr.fReader) {
+            pkgr.fReader->LoadEntry(id_event);
             pkgr.ProcessEvent();
             if (settings.IsMC) pkgr.ProcessInjected();
             pkgr.ProcessTracks();
@@ -28,19 +29,33 @@ int main(int argc, char *argv[]) {
             pkgr.EndOfEvent();
         }
         pkgr.EndOfAnalysis();
+    } else if (settings.Mode == R2DS::EProgramMode::FINDER) {
 
-    } else {
-
-        T2S::Finder finder(settings);
+        R2DS::Finder finder(settings);
         if (!finder.Initialize()) return 1;
 
-        for (long long i_event = 0; i_event < finder.NumberEventsToRead(); ++i_event) {
-            finder.GetEvent(i_event);
+        for (auto id_event : *finder.fReader) {
+            finder.fReader->LoadEntry(id_event);
             finder.ProcessEvent();
             if (settings.IsMC) finder.ProcessInjected();
             finder.Find();
         }
         finder.EndOfAnalysis();
+
+    } else if (settings.Mode == R2DS::EProgramMode::VERIFIER) {
+
+        R2DS::Verifier verifier(settings);
+        if (!verifier.Initialize()) return 1;
+
+        for (auto id_event : *verifier.fReader) {
+            verifier.fReader->LoadEntry(id_event);
+            verifier.ProcessEvent();
+            verifier.Verify();
+        }
+        verifier.EndOfAnalysis();
+    } else {
+        Logger::Error("main", "Invalid mode.");
+        return 1;
     }
 
     return 0;

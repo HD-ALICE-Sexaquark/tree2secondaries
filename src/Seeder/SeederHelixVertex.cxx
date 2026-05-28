@@ -3,15 +3,16 @@
 #include <array>
 #include <cmath>
 
-#include "Math/BaseMath.hxx"
-#include "Math/Constants.hxx"
+#include "common/Constants.hpp"
+#include "common/Math.hpp"
+#include "common/VC_TrackView.hpp"
+
 #include "Seeder/BaseSeeder.hxx"
-#include "View/ViewVectorTracks.hxx"
-#if T2S_DEBUG
+#if R2DS_DEBUG
 #include "App/Logger.hxx"
 #endif
 
-namespace Tree2Secondaries::Seeder::HelixVertex {
+namespace R2DS::Seeder::HelixVertex {
 
 // First phase. Find point of closest approach (PCA) of this particle w.r.t. an arbitrary vertex in the XY plane.
 // Arguments:
@@ -23,7 +24,7 @@ namespace Tree2Secondaries::Seeder::HelixVertex {
 // - `pca.xyz`, `pca.mom`              -- position and momentum at their PCAs
 // - `ds`                              -- transport parameters needed to reach their PCAs
 // - `theta`, `sin`, `cos`, `sB`, `cB` -- cache related-quantities
-Seed FastPCA_XY(const View::VecTracks& q, const std::array<double, 3>& v, double bz, Cache* cache) {
+Seed FastPCA_XY(const Vector::TrackView& q, const std::array<double, 3>& v, double bz, Cache* cache) {
 
     // cache //
 
@@ -46,7 +47,7 @@ Seed FastPCA_XY(const View::VecTracks& q, const std::array<double, 3>& v, double
 
     c.a = c.dx * c.px0 + c.dy * c.py0;
 
-    c.bq = bz * q.Charge<double>() * Const::Kappa;
+    c.bq = bz * static_cast<double>(q.Charge()) * Common::Kappa;
     c.abq = c.a * c.bq;
 
     // prepare seed //
@@ -54,7 +55,7 @@ Seed FastPCA_XY(const View::VecTracks& q, const std::array<double, 3>& v, double
     Seed seed;
 
     seed.theta = std::atan2(c.abq, c.pt2 + c.bq * (c.dy * c.px0 - c.dx * c.py0));
-    std::tie(seed.sin, seed.cos) = Math::sincos(seed.theta);
+    std::tie(seed.sin, seed.cos) = Common::Math::sincos(seed.theta);
     seed.sB = seed.sin / c.bq;
     seed.cB = (1. - seed.cos) / c.bq;
 
@@ -63,7 +64,7 @@ Seed FastPCA_XY(const View::VecTracks& q, const std::array<double, 3>& v, double
     seed.pca.xyz = {c.x0 + seed.sB * c.px0 + seed.cB * c.py0, c.y0 - seed.cB * c.px0 + seed.sB * c.py0, c.z0 + seed.ds * c.pz0};
     seed.pca.mom = {seed.cos * c.px0 + seed.sin * c.py0, -seed.sin * c.px0 + seed.cos * c.py0, c.pz0};
 
-#if T2S_DEBUG
+#if R2DS_DEBUG
     Logger::Debug(__FUNCTION__, "seed.ds = {:13.6e}", seed.ds);
     Logger::Debug(__FUNCTION__, "seed.(x,y,z) = {}", seed.pca.xyz);
     Logger::Debug(__FUNCTION__, "seed.(px,py,pz) = {}", seed.pca.mom);
@@ -85,7 +86,7 @@ Seed CorrectPCA_Z(const Seed& s_xy, Cache& c) {
 
     // protection //
 
-    if (std::abs(c.cbq) < Const::AbsAlmostZero) return s_xy;
+    if (std::abs(c.cbq) < Common::AbsAlmostZero) return s_xy;
 
     // cache (2) //
 
@@ -98,7 +99,7 @@ Seed CorrectPCA_Z(const Seed& s_xy, Cache& c) {
     out.ds = s_xy.ds + c.sz;
 
     out.theta = c.bq * out.ds;
-    std::tie(out.sin, out.cos) = Math::sincos(out.theta);
+    std::tie(out.sin, out.cos) = Common::Math::sincos(out.theta);
     out.sB = out.sin / c.bq;
     out.cB = (1. - out.cos) / c.bq;
 
@@ -109,7 +110,7 @@ Seed CorrectPCA_Z(const Seed& s_xy, Cache& c) {
 
     c.pca_dz_worked = 1;
 
-#if T2S_DEBUG
+#if R2DS_DEBUG
     Logger::Debug(__FUNCTION__, "seed.ds = {:13.6e}", out.ds);
     Logger::Debug(__FUNCTION__, "seed.(x,y,z) = {}", out.pca.xyz);
     Logger::Debug(__FUNCTION__, "seed.(px,py,pz) = {}", out.pca.mom);
@@ -134,7 +135,7 @@ Deriv ComputeDerivatives_XY(Cache& c) {
 
     // protection //
 
-    if (c.den < Const::AbsAlmostZero) return out;
+    if (c.den < Common::AbsAlmostZero) return out;
 
     // compute deriv //
 
@@ -147,7 +148,7 @@ Deriv ComputeDerivatives_XY(Cache& c) {
 
     out.ds_dr1 = {-out.ds_dr[0], -out.ds_dr[1], -out.ds_dr[2], 0., 0., 0.};
 
-#if T2S_DEBUG
+#if R2DS_DEBUG
     Logger::Debug(__FUNCTION__, "(end) deriv.ds_dr = {}", out.ds_dr);
     Logger::Debug(__FUNCTION__, "(end) deriv.ds_dr1 = {}", out.ds_dr1);
 #endif
@@ -186,7 +187,7 @@ Deriv UpdateDerivatives_Z(const Seed& s_xy, const Deriv& d_xy, const Cache& c) {
 
     out.ds_dr1 = {-out.ds_dr[0], -out.ds_dr[1], -out.ds_dr[2], 0., 0., 0.};
 
-#if T2S_DEBUG
+#if R2DS_DEBUG
     Logger::Debug(__FUNCTION__, "(end) deriv.ds_dr = {}", out.ds_dr);
     Logger::Debug(__FUNCTION__, "(end) deriv.ds_dr1 = {}", out.ds_dr1);
 #endif
@@ -194,4 +195,4 @@ Deriv UpdateDerivatives_Z(const Seed& s_xy, const Deriv& d_xy, const Cache& c) {
     return out;
 }
 
-}  // namespace Tree2Secondaries::Seeder::HelixVertex
+}  // namespace R2DS::Seeder::HelixVertex
