@@ -1,7 +1,7 @@
 #pragma once
 
-#include "common/VC_TrackView.hpp"
-#include "common/VC_V0View.hpp"
+#include "common/POD_Track.hpp"
+#include "common/POD_V0.hpp"
 
 #include "Seeder/BaseSeeder.hxx"
 
@@ -42,7 +42,7 @@ struct Cache {
 
 // Main Methods //
 
-std::pair<Seed, Seed> FastPCAs_XY(const Vector::TrackView& q1, const Vector::V0View& n2, double bz, Cache* cache = nullptr);
+std::pair<Seed, Seed> FastPCAs_XY(const POD::Track& q1, const POD::V0& n2, double bz, Cache* cache = nullptr);
 std::pair<Seed, Seed> CorrectPCAs_Z(const Seed& s1_xy, const Seed& s2_xy, Cache& c);
 
 std::pair<Deriv, Deriv> ComputeDerivatives_XY(Cache& c);
@@ -50,7 +50,7 @@ std::pair<Deriv, Deriv> UpdateDerivatives_Z(const Seed& s1_xy, const Seed& s2_xy
 
 // Inline Methods //
 
-inline std::tuple<Seed, Seed, Cache> FastCorrectPCAs(const Vector::TrackView& q1, const Vector::V0View& n2, double bz) {
+inline std::tuple<Seed, Seed, Cache> FastCorrectPCAs(const POD::Track& q1, const POD::V0& n2, double bz) {
     Cache cache;
     auto [seed1_xy, seed2_xy] = FastPCAs_XY(q1, n2, bz, &cache);
     auto [seed1, seed2] = CorrectPCAs_Z(seed1_xy, seed2_xy, cache);

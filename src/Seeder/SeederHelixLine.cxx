@@ -6,8 +6,8 @@
 
 #include "common/Constants.hpp"
 #include "common/Math.hpp"
-#include "common/VC_TrackView.hpp"
-#include "common/VC_V0View.hpp"
+#include "common/POD_Track.hpp"
+#include "common/POD_V0.hpp"
 
 #include "Seeder/BaseSeeder.hxx"
 #if R2DS_DEBUG
@@ -28,29 +28,29 @@ namespace R2DS::Seeder::HelixLine {
 // - `ds`  -- transport parameters
 // - `pca` -- points of closest approach (position and momentum)
 // - `theta`, `sin`, `cos`, `sB`, `cB` -- cached ds computation variables
-std::pair<Seed, Seed> FastPCAs_XY(const Vector::TrackView& q1, const Vector::V0View& n2, double bz, Cache* cache) {
+std::pair<Seed, Seed> FastPCAs_XY(const POD::Track& q1, const POD::V0& n2, double bz, Cache* cache) {
 
     // cache //
 
     Cache local;
     Cache& c = cache != nullptr ? *cache : local;
 
-    c.bq1 = bz * static_cast<double>(q1.Charge()) * Common::Kappa;
+    c.bq1 = bz * static_cast<double>(q1.Charge) * Common::Kappa;
 
-    c.x01 = q1.X();
-    c.y01 = q1.Y();
-    c.z01 = q1.Z();
-    c.px01 = q1.Px();
-    c.py01 = q1.Py();
-    c.pz01 = q1.Pz();
+    c.x01 = q1.X;
+    c.y01 = q1.Y;
+    c.z01 = q1.Z;
+    c.px01 = q1.Px;
+    c.py01 = q1.Py;
+    c.pz01 = q1.Pz;
     c.pt12 = c.px01 * c.px01 + c.py01 * c.py01;
 
-    c.x02 = n2.Decay_X();
-    c.y02 = n2.Decay_Y();
-    c.z02 = n2.Decay_Z();
-    c.px02 = n2.Px();
-    c.py02 = n2.Py();
-    c.pz02 = n2.Pz();
+    c.x02 = n2.Decay_X;
+    c.y02 = n2.Decay_Y;
+    c.z02 = n2.Decay_Z;
+    c.px02 = n2.Px;
+    c.py02 = n2.Py;
+    c.pz02 = n2.Pz;
     c.pt22 = c.px02 * c.px02 + c.py02 * c.py02;
 
     c.dx0 = c.x01 - c.x02;

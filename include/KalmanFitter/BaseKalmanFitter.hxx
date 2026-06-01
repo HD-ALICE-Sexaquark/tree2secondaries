@@ -2,22 +2,22 @@
 
 #include <cstddef>
 
-#include <Math/Point3D.h>
-#include <Math/Vector3D.h>
+#include <Math/Point3Dfwd.h>
+#include <Math/Vector3Dfwd.h>
 
 #include <Eigen/Eigen>
 
-#include "common/VC_TrackView.hpp"
-#include "common/VC_V0View.hpp"
+#include "common/POD_Track.hpp"
+#include "common/POD_V0.hpp"
 
 #include "KalmanFitter/KalmanFitterParticle.hxx"
 #include "Seeder/BaseSeeder.hxx"
 
-namespace R2DS::KalmanFitter {
+namespace R2DS::KF {
 
 static constexpr double Initial_Css = 1.;
 
-static std::size_t IJ(std::size_t i, std::size_t j) { return (j <= i) ? i * (i + 1) / 2 + j : j * (j + 1) / 2 + i; }
+constexpr std::size_t IJ(std::size_t i, std::size_t j) { return (j <= i) ? i * (i + 1) / 2 + j : j * (j + 1) / 2 + i; }
 
 // Daughter Struct //
 
@@ -36,23 +36,22 @@ struct Daughter : Particle {
 
 Particle GetUpdated(const Daughter& kf_1, const Daughter& kf_2);
 
-Particle FitVertex(const KalmanFitter::Particle& part_1, const KalmanFitter::Particle& part_2, const Seeder::Result& s_1, const Seeder::Result& s_2,
-                   double bz = 0.);
+Particle FitVertex(const KF::Particle& part_1, const KF::Particle& part_2, const Seeder::Result& s_1, const Seeder::Result& s_2, double bz = 0.);
 
 // Inline Methods //
 
-inline Particle FitVertex(const Vector::TrackView& track_1, const Vector::TrackView& track_2, double mass_1, double mass_2, const Seeder::Result& s_1,
+inline Particle FitVertex(const POD::Track& track_1, const POD::Track& track_2, double mass_1, double mass_2, const Seeder::Result& s_1,
                           const Seeder::Result& s_2, double bz) {
     return FitVertex(Particle::FromTrack(track_1, mass_1), Particle::FromTrack(track_2, mass_2), s_1, s_2, bz);
 }
 
-inline Particle FitVertex(const Vector::TrackView& track, const Vector::V0View& v0, double mass_track, const Seeder::Result& s_track,
-                          const Seeder::Result& s_v0, double bz) {
+inline Particle FitVertex(const POD::Track& track, const POD::V0& v0, double mass_track, const Seeder::Result& s_track, const Seeder::Result& s_v0,
+                          double bz) {
     return FitVertex(Particle::FromTrack(track, mass_track), Particle::FromV0(v0), s_track, s_v0, bz);
 }
 
-inline Particle FitVertex(const Vector::V0View& v0_1, const Vector::V0View& v0_2, const Seeder::Result& s_1, const Seeder::Result& s_2) {
+inline Particle FitVertex(const POD::V0& v0_1, const POD::V0& v0_2, const Seeder::Result& s_1, const Seeder::Result& s_2) {
     return FitVertex(Particle::FromV0(v0_1), Particle::FromV0(v0_2), s_1, s_2);
 }
 
-}  // namespace R2DS::KalmanFitter
+}  // namespace R2DS::KF

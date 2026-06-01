@@ -1,4 +1,3 @@
-#include "KalmanFitter/BaseKalmanFitter.hxx"
 
 #include <Eigen/Eigen>
 
@@ -10,7 +9,9 @@
 #include "App/Utilities.hxx"
 #endif
 
-namespace R2DS::KalmanFitter {
+#include "KalmanFitter/BaseKalmanFitter.hxx"
+
+namespace R2DS::KF {
 
 // Daughter Struct //
 
@@ -119,9 +120,11 @@ void Daughter::Transport(const Seeder::PCA& pca, const Eigen::Ref<const Eigen::M
 
 // Main Fitting Method //
 
-Particle GetUpdated(const Daughter& kf_1, const Daughter& kf_2) {
+KF::Particle GetUpdated(const KF::Daughter& kf_1, const KF::Daughter& kf_2) {
 
-    Particle out = kf_1;  // PENDING: discarded data?
+    KF::Particle out;
+    out.fC = kf_1.fC;
+    out.fP = kf_1.fP;
 
     // sum of position covariances //
 
@@ -195,11 +198,10 @@ Particle GetUpdated(const Daughter& kf_1, const Daughter& kf_2) {
     return out;
 }
 
-Particle FitVertex(const KalmanFitter::Particle& part_1, const KalmanFitter::Particle& part_2, const Seeder::Result& s_1, const Seeder::Result& s_2,
-                   double bz) {
+KF::Particle FitVertex(const KF::Particle& part_1, const KF::Particle& part_2, const Seeder::Result& s_1, const Seeder::Result& s_2, double bz) {
 
-    Daughter kf_1(part_1);
-    Daughter kf_2(part_2);
+    KF::Daughter kf_1(part_1);
+    KF::Daughter kf_2(part_2);
 
     kf_1.PrepareJacobAndCorr(s_1, bz);
     kf_2.PrepareJacobAndCorr(s_2, bz);
@@ -210,4 +212,4 @@ Particle FitVertex(const KalmanFitter::Particle& part_1, const KalmanFitter::Par
     return GetUpdated(kf_1, kf_2);
 }
 
-}  // namespace R2DS::KalmanFitter
+}  // namespace R2DS::KF

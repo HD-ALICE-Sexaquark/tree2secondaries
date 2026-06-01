@@ -5,33 +5,26 @@
 #include <TFile.h>
 #include <TH1.h>
 
-#include <ROOT/RNTupleModel.hxx>
+#include <Math/Point3D.h>
 #include <ROOT/RNTupleReader.hxx>
-#include <ROOT/RNTupleWriter.hxx>
 
-#include "common/FL_Event.hpp"
-#include "common/FL_InjectedHdib.hpp"
-#include "common/FL_LambdaPair.hpp"
-#include "common/VC_McParticle.hpp"
-#include "common/VC_McParticleView.hpp"
-#include "common/VC_OnTheFlyLambda.hpp"
-#include "common/VC_OnTheFlyLambdaView.hpp"
+#include "common/Framework.hpp"
+#include "common/HD_Library.hpp"
+#include "common/Schema_Events.hpp"
+#include "common/Schema_FoundHdib.hpp"
 
 #include "App/Settings.hxx"
-#include "KalmanFitter/KF_LambdaPair.hxx"
+
+// forward declarations //
+// clang-format off
+namespace POD {
+    struct OnTheFlyLambda;
+    struct LambdaPair;
+}
+namespace KF { struct LambdaPair; }
+// clang-format on
 
 namespace R2DS {
-
-namespace MC {
-struct LambdaPair {
-    const Vector::McParticleView *lambda1;
-    const Vector::McParticleView *lambda1_neg;
-    const Vector::McParticleView *lambda1_pos;
-    const Vector::McParticleView *lambda2;
-    const Vector::McParticleView *lambda2_neg;
-    const Vector::McParticleView *lambda2_pos;
-};
-}  // namespace MC
 
 class Verifier {
    public:
@@ -41,15 +34,31 @@ class Verifier {
     Verifier &operator=(Verifier &&) = delete;
     ~Verifier() = default;
 
-    explicit Verifier(const Settings &settings) : fSettings{settings} {}
+    explicit Verifier(const Settings &settings)
+        : fSettings{settings},
+          // input
+          fInput_File{std::make_unique<TFile>(fSettings.PathInputFile.c_str(), "READ")},
+          fReader{E2R::Name_OutputRNT, *fInput_File},
+          fInput{fReader.Data()},
+          // output
+          fOutput_File{std::make_unique<TFile>(fSettings.PathOutputFile.c_str(), "RECREATE")},
+          fWriter{R2DS::Name_FoundHdibRNT, *fOutput_File},
+          fOutput{fWriter.Data()} {
 
-    bool Initialize();
+        PrepareOutputHistograms();
 
-    bool PrepareOutputFile();
+        Logger::Info(__FUNCTION__, "Verifier initialized successfully.");
+    }
+
     void PrepareOutputHistograms();
 
-    void ProcessEvent();
+    void Load(ROOT::NTupleSize_t entry_id) { fReader.Load(entry_id); }
+    [[nodiscard]] ROOT::NTupleSize_t NumberEventsToRead() {
+        auto total = fReader.Iter()->GetNEntries();
+        return fSettings.LimitToNEvents.has_value() ? std::min(fSettings.LimitToNEvents.value(), total) : total;
+    }
 
+    void ProcessEvent();
     void ProcessInjected();
 
     void Verify() {
@@ -57,37 +66,26 @@ class Verifier {
         VerifyLambdaPair(true);
     }
 
-    [[nodiscard]] unsigned long NumberEventsToRead() const {
-        unsigned long total_entries = fReader->GetNEntries();
-        return 0 < fSettings.LimitToNEvents && fSettings.LimitToNEvents < total_entries ? fSettings.LimitToNEvents : total_entries;
-    }
-
+    void EndOfEvent();
     void EndOfAnalysis();
 
-    std::unique_ptr<ROOT::RNTupleModel> fInput_Model;
-    std::unique_ptr<ROOT::RNTupleReader> fReader;
-
-    std::unique_ptr<ROOT::RNTupleModel> fOutput_Model;
-    std::unique_ptr<ROOT::RNTupleWriter> fWriter;
-
-    std::unique_ptr<ROOT::RNTupleModel> fOutput_Model_InjectedHdib;
-    std::unique_ptr<ROOT::RNTupleWriter> fWriter_InjectedHdib;
-
    private:
-    void Assign_Event();
-    void Assign_Candidate(const KalmanFitter::LambdaPair &hdibaryon, bool anti_channel);
-    void Assign_InjectedHdib(const Vector::McParticleView *injected, Flat::InjectedHdib &out, bool embedded_to_rec);
-    void Assign(const Vector::OnTheFlyLambdaView &lambda, const Vector::McParticleView *mc_lambda, const Vector::McParticleView *mc_neg,
-                const Vector::McParticleView *mc_pos, Flat::OnTheFlyLambda &out);
+    // on-the-fly lambda //
+
+    void BuildMcInfo(POD::OnTheFlyLambda &new_lambda, const HD::DecayTree &decay_pid);
+
+    // h-dibaryon //
 
     void VerifyLambdaPair(bool anti_channel);
-    [[nodiscard]] bool Cuts(const KalmanFitter::LambdaPair &hdibaryon, TH1D *cut_flow_hist) const;
-    std::unique_ptr<Vector::McParticleView> LinkInjectedSignal(const MC::LambdaPair &hdibaryon);
-    void Assign(const KalmanFitter::LambdaPair &hdibaryon, const MC::LambdaPair *mc_hdibaryon, bool anti_channel);
+
+    [[nodiscard]] bool Cuts(const KF::LambdaPair &hdibaryon, TH1D *cut_flow_hist) const;
+
+    void BuildMcInfo(POD::LambdaPair &new_v0, const HD::DecayTree &decay_pid);
+    void BuildRecInfo(POD::LambdaPair &new_v0, const KF::LambdaPair &kf_v0, bool anti_channel);
+
+    // member variables //
 
     const Settings &fSettings;
-
-    std::unique_ptr<TFile> fOutput_File;
 
     std::unique_ptr<TH1D> fHist_EventCounter;
 
@@ -96,17 +94,17 @@ class Verifier {
 
     // input //
 
-    Flat::Event fInput_Event;
+    std::unique_ptr<TFile> fInput_File;
+    Framework::Reader<Schema::Events> fReader;
+    Schema::Events &fInput;
+    // -- cached
     ROOT::Math::XYZPoint fPrimaryVertex;
-
-    Vector::McParticle fInput_McParticle;
-    Vector::OnTheFlyLambda fInput_OnTheFlyLambda;
 
     // output //
 
-    Flat::InjectedHdib fOutput_InjectedHdib;
-
-    Flat::LambdaPair fOutput_LambdaPair;
+    std::unique_ptr<TFile> fOutput_File;
+    Framework::Writer<Schema::FoundHdib> fWriter;
+    Schema::FoundHdib &fOutput;
 };
 
 }  // namespace R2DS

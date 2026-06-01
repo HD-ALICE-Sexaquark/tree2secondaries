@@ -67,7 +67,7 @@ FetchContent_MakeAvailable(eigen)
 message(STATUS "Fetching https://gitlab.com/libeigen/eigen -- fetched")
 
 message(STATUS "Looking for ROOT")
-find_package(ROOT 6.36 REQUIRED CONFIG COMPONENTS Core Hist RIO Tree EG)
+find_package(ROOT 6.36 REQUIRED CONFIG COMPONENTS Core Hist RIO EG ROOTNTuple)
 if(ROOT_FOUND)
   message(STATUS "Found ROOT: ${ROOT_INCLUDE_DIRS}")
 endif()
@@ -104,7 +104,7 @@ add_executable(
 
 target_link_libraries(
   ${PROJECT_NAME} PRIVATE CLI11::CLI11 Eigen3::Eigen ROOT::Core ROOT::RIO
-                          ROOT::Tree ROOT::Hist)
+                          ROOT::Hist ROOT::ROOTNTuple)
 
 target_include_directories(
   ${PROJECT_NAME} PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>

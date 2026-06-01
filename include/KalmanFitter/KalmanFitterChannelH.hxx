@@ -1,25 +1,25 @@
 #pragma once
 
-#include <Math/Point3D.h>
-#include <Math/Vector3D.h>
+#include <Math/Point3Dfwd.h>
+#include <Math/Vector3Dfwd.h>
 
 #include "common/Math.hpp"
-#include "common/VC_TrackView.hpp"
+#include "common/POD_Track.hpp"
 
 #include "KalmanFitter/KalmanFitterParticle.hxx"
 #include "Seeder/BaseSeeder.hxx"
 
-namespace R2DS::KalmanFitter {
+namespace R2DS::KF {
 
 struct ChannelH : Particle {
 
     ChannelH() = delete;
-    ChannelH(const Particle& fit, const Seeder::PCA& pca_ka1, const Seeder::PCA& pca_ka2, const Vector::TrackView& ka1, const Vector::TrackView& ka2)
+    ChannelH(const Particle& fit, const Seeder::PCA& pca_ka1, const Seeder::PCA& pca_ka2, const POD::Track& ka1, const POD::Track& ka2)
         : Particle{fit},  //
           Kaon1_PCAwrtSV{pca_ka1},
           Kaon2_PCAwrtSV{pca_ka2},
-          Kaon1{ka1},
-          Kaon2{ka2} {}
+          Kaon1{&ka1},
+          Kaon2{&ka2} {}
 
     // Member functions //
 
@@ -42,8 +42,8 @@ struct ChannelH : Particle {
 
     Seeder::PCA Kaon1_PCAwrtSV;
     Seeder::PCA Kaon2_PCAwrtSV;
-    Vector::TrackView Kaon1;
-    Vector::TrackView Kaon2;
+    const POD::Track* Kaon1;
+    const POD::Track* Kaon2;
 };
 
-}  // namespace R2DS::KalmanFitter
+}  // namespace R2DS::KF

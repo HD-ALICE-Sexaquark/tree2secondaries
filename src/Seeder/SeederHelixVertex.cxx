@@ -5,7 +5,7 @@
 
 #include "common/Constants.hpp"
 #include "common/Math.hpp"
-#include "common/VC_TrackView.hpp"
+#include "common/POD_Track.hpp"
 
 #include "Seeder/BaseSeeder.hxx"
 #if R2DS_DEBUG
@@ -24,20 +24,20 @@ namespace R2DS::Seeder::HelixVertex {
 // - `pca.xyz`, `pca.mom`              -- position and momentum at their PCAs
 // - `ds`                              -- transport parameters needed to reach their PCAs
 // - `theta`, `sin`, `cos`, `sB`, `cB` -- cache related-quantities
-Seed FastPCA_XY(const Vector::TrackView& q, const std::array<double, 3>& v, double bz, Cache* cache) {
+Seed FastPCA_XY(const POD::Track& q, const std::array<double, 3>& v, double bz, Cache* cache) {
 
     // cache //
 
     Cache local;
     Cache& c = cache != nullptr ? *cache : local;
 
-    c.x0 = q.X();
-    c.y0 = q.Y();
-    c.z0 = q.Z();
+    c.x0 = q.X;
+    c.y0 = q.Y;
+    c.z0 = q.Z;
 
-    c.px0 = q.Px();
-    c.py0 = q.Py();
-    c.pz0 = q.Pz();
+    c.px0 = q.Px;
+    c.py0 = q.Py;
+    c.pz0 = q.Pz;
 
     c.pt2 = c.px0 * c.px0 + c.py0 * c.py0;
 
@@ -47,7 +47,7 @@ Seed FastPCA_XY(const Vector::TrackView& q, const std::array<double, 3>& v, doub
 
     c.a = c.dx * c.px0 + c.dy * c.py0;
 
-    c.bq = bz * static_cast<double>(q.Charge()) * Common::Kappa;
+    c.bq = bz * static_cast<double>(q.Charge) * Common::Kappa;
     c.abq = c.a * c.bq;
 
     // prepare seed //

@@ -1,9 +1,8 @@
 #pragma once
 
+#include <optional>
 #include <string>
-#include <vector>
 
-#include "common/Constants.hpp"
 #include "common/DB_ReactionChannels.hpp"
 
 #include "App/Logger.hxx"
@@ -16,24 +15,27 @@ struct Settings {
     void Print() const {
         Logger::Info("Settings", "Mode            = {}",
                      Mode == EProgramMode::FINDER ? "FINDER" : (Mode == EProgramMode::PACKAGER ? "PACKAGER" : "VERIFIER"));
-        Logger::Info("Settings", "ReactionChannel = {}", ReactionChannel.name);
-        Logger::Info("Settings", "InputFiles      = ");
-        for (const auto& path : PathInputFiles) {
-            Logger::Info("Settings", "- {}", path);
+        if (ReactionChannel.has_value()) {
+            Logger::Info("Settings", "ReactionChannel = {}", ReactionChannel.value().name);
         }
-        Logger::Info("Settings", "IsMC            = {}", IsMC);
+        Logger::Info("Settings", "InputFile       = {}", PathInputFile);
         Logger::Info("Settings", "OutputFile      = {}", PathOutputFile);
-        Logger::Info("Settings", "SexaquarkMass   = {}", SexaquarkMass);
-        Logger::Info("Settings", "LimitToNEvents  = {}", LimitToNEvents);
+        if (SexaquarkMass.has_value()) {
+            Logger::Info("Settings", "SexaquarkMass   = {:.2f}", SexaquarkMass.value());
+        }
+        if (LimitToNEvents.has_value()) {
+            Logger::Info("Settings", "LimitToNEvents  = {}", LimitToNEvents.value());
+        } else {
+            Logger::Info("Settings", "LimitToNEvents  = --");
+        }
     }
 
-    std::vector<std::string> PathInputFiles;
+    std::string PathInputFile;
     std::string PathOutputFile;
-    DB::ReactionChannels::Definition ReactionChannel;
-    double SexaquarkMass{Common::DummyDouble};
-    long long LimitToNEvents{0};
+    std::optional<DB::ReactionChannels::Definition> ReactionChannel;
+    std::optional<double> SexaquarkMass;
+    std::optional<unsigned long> LimitToNEvents;
     EProgramMode Mode{EProgramMode::PACKAGER};
-    bool IsMC{false};
 };
 
 }  // namespace R2DS

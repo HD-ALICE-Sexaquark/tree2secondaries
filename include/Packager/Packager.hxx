@@ -7,24 +7,30 @@
 #include <TFile.h>
 #include <TH1.h>
 
-#include <ROOT/RNTupleModel.hxx>
-#include <ROOT/RNTupleReader.hxx>
-#include <ROOT/RNTupleWriter.hxx>
+#include <Math/Point3D.h>
 
+#include <ROOT/RNTupleReader.hxx>
+
+#include "App/Logger.hxx"
 #include "common/DB_Particles.hpp"
-#include "common/FL_Event.hpp"
-#include "common/VC_InjectedSexa.hpp"
-#include "common/VC_McParticle.hpp"
-#include "common/VC_McParticleView.hpp"
-#include "common/VC_Track.hpp"
-#include "common/VC_TrackView.hpp"
-#include "common/VC_V0.hpp"
+#include "common/Framework.hpp"
+#include "common/Schema_Events.hpp"
+#include "common/Schema_PackedEvents.hpp"
 
 #include "App/Settings.hxx"
-#include "KalmanFitter/KalmanFitterV0.hxx"
-#include "Seeder/BaseSeeder.hxx"
+
+// forward declarations //
+// clang-format off
+namespace POD {
+    struct Track;
+    struct V0;
+}
+namespace KF { struct V0; }
 
 namespace R2DS {
+
+namespace Seeder{ struct Seed; }
+// clang-format on
 
 // Pack secondary V0s and tracks.
 class Packager {
@@ -35,16 +41,37 @@ class Packager {
     Packager &operator=(Packager &&) = delete;
     ~Packager() = default;
 
-    explicit Packager(const Settings &settings) : fSettings{settings} {}
+    explicit Packager(const Settings &settings)
+        : fSettings{settings},
+          // input
+          fInput_File{std::make_unique<TFile>(fSettings.PathInputFile.c_str(), "READ")},
+          fReader{E2R::Name_OutputRNT, *fInput_File},
+          fInput{fReader.Data()},
+          // output
+          fOutput_File{std::make_unique<TFile>(fSettings.PathOutputFile.c_str(), "RECREATE")},
+          fWriter{R2DS::Name_PackedRNT, *fOutput_File},
+          fOutput{fWriter.Data()} {
 
-    bool Initialize();
+        PrepareOutputHistograms();
 
-    bool PrepareOutputFile();
+        Logger::Info(__FUNCTION__, "Packager initialized successfully.");
+    }
+
+    [[nodiscard]] bool CheckArguments() const {
+        // -- if data kind is real data, all good
+        if (!fInput.McParticle.has_value()) return true;
+        // -- if data kind is MC, it requires
+        bool state = fSettings.ReactionChannel.has_value() && fSettings.SexaquarkMass.has_value();
+        if (!state) Logger::Error(__FUNCTION__, "\"Packager\" is reading MC, but \"--channel <channel> --mass <mass>\" are missing.");
+        return state;
+    }
+
     void PrepareOutputHistograms();
 
-    [[nodiscard]] unsigned long NumberEventsToRead() const {
-        unsigned long total_entries = fReader->GetNEntries();
-        return 0 < fSettings.LimitToNEvents && fSettings.LimitToNEvents < total_entries ? fSettings.LimitToNEvents : total_entries;
+    void Load(ROOT::NTupleSize_t entry_id) { fReader.Load(entry_id); }
+    [[nodiscard]] ROOT::NTupleSize_t NumberEventsToRead() {
+        auto total = fReader.Iter()->GetNEntries();
+        return fSettings.LimitToNEvents.has_value() ? std::min(fSettings.LimitToNEvents.value(), total) : total;
     }
 
     void ProcessEvent();
@@ -75,7 +102,7 @@ class Packager {
         }
     }
 
-    [[nodiscard]] bool SlowCuts(const KalmanFitter::V0 &v0, const DB::Particles::Definition &pid) const {
+    [[nodiscard]] bool SlowCuts(const KF::V0 &v0, const DB::Particles::Definition &pid) const {
         switch (pid.pdg_code) {
             case DB::Particles::Particle("AntiLambda").pdg_code: {
                 return SlowCuts_Lambda(v0, fHist_CutFlow_AntiLambda.get());
@@ -94,36 +121,35 @@ class Packager {
     void EndOfEvent();
     void EndOfAnalysis();
 
-    std::unique_ptr<ROOT::RNTupleModel> fInput_Model;
-    std::unique_ptr<ROOT::RNTupleReader> fReader;
-
-    std::unique_ptr<ROOT::RNTupleModel> fOutput_Model;
-    std::unique_ptr<ROOT::RNTupleWriter> fWriter;
-
    private:
+    // tracks //
+
     void PackTracks(const DB::Particles::Definition &pid);
+
+    bool PassesProtonCuts(const POD::Track &track, TH1D *cut_flow_hist) const;
+    bool PassesKaonCuts(const POD::Track &track, TH1D *cut_flow_hist) const;
+    bool PassesPionCuts(const POD::Track &track, TH1D *cut_flow_hist) const;
+
+    void BuildMcInfo(POD::Track &new_track, int pdg_code_hypothesis, bool include_gm);
+
+    // V0s //
+
     void FindV0s(const DB::Particles::Definition &pid);
-
-    void Store(const Vector::TrackView *track, const Vector::McParticleView *linked_mc, Vector::Track &df);
-
-    bool PassesProtonCuts(const Vector::TrackView &track, TH1D *cut_flow_hist) const;
-    bool PassesKaonCuts(const Vector::TrackView &track, TH1D *cut_flow_hist) const;
-    bool PassesPionCuts(const Vector::TrackView &track, TH1D *cut_flow_hist) const;
 
     bool FastCuts_Lambda(const Seeder::Seed &seed_neg, const Seeder::Seed &seed_pos, TH1D *cut_flow_hist) const;
     bool FastCuts_KaonZeroShort(const Seeder::Seed &seed_neg, const Seeder::Seed &seed_pos, TH1D *cut_flow_hist) const;
 
-    bool SlowCuts_Lambda(const KalmanFitter::V0 &v0, TH1D *cut_flow_hist) const;
-    bool SlowCuts_KaonZeroShort(const KalmanFitter::V0 &v0, TH1D *cut_flow_hist) const;
+    bool SlowCuts_Lambda(const KF::V0 &kf_v0, TH1D *cut_flow_hist) const;
+    bool SlowCuts_KaonZeroShort(const KF::V0 &kf_v0, TH1D *cut_flow_hist) const;
 
-    void Store(const KalmanFitter::V0 *v0, const Vector::McParticleView *mc_neg, const Vector::McParticleView *mc_pos,
-               const Vector::McParticleView *mc_v0, Vector::V0 &df);
+    void BuildMcInfo(POD::V0 &new_v0, const DB::Particles::Definition &pid_hypothesis);
+    void BuildRecInfo(POD::V0 &new_v0, const KF::V0 &kf_v0);
+
+    // member variables //
 
     const Settings &fSettings;
 
-    std::unique_ptr<TFile> fOutput_File;
-
-    std::unique_ptr<TH1D> fHist_EventCounter;
+    std::unique_ptr<TH1D> fHist_EventCounter;  // event counter
 
     std::unique_ptr<TH1D> fHist_CutFlow_AntiProton;
     std::unique_ptr<TH1D> fHist_CutFlow_Proton;
@@ -147,25 +173,17 @@ class Packager {
 
     // input //
 
-    Flat::Event fInput_Event;
+    std::unique_ptr<TFile> fInput_File;
+    Framework::Reader<Schema::Events> fReader;
+    Schema::Events &fInput;
+    // -- cached
     ROOT::Math::XYZPoint fPrimaryVertex;
-
-    Vector::InjectedSexa fInput_InjectedSexa;
-    Vector::McParticle fInput_McParticle;
-    Vector::Track fInput_Track;
 
     // output //
 
-    Flat::Event fOutput_Event;
-
-    Vector::InjectedSexa fOutput_InjectedSexa;
-
-    Vector::V0 fOutput_AntiLambda;
-    Vector::V0 fOutput_Lambda;
-    Vector::V0 fOutput_KaonZeroShort;
-
-    Vector::Track fOutput_NegKaon;
-    Vector::Track fOutput_PosKaon;
+    std::unique_ptr<TFile> fOutput_File;
+    Framework::Writer<Schema::PackedEvents> fWriter;
+    Schema::PackedEvents &fOutput;
 };
 
 }  // namespace R2DS

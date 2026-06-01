@@ -2,27 +2,27 @@
 
 #include <cmath>
 
-#include <Math/Point3D.h>
-#include <Math/Vector3D.h>
+#include <Math/Point3Dfwd.h>
+#include <Math/Vector3Dfwd.h>
+#include <optional>
 
-#include "common/Constants.hpp"
 #include "common/Math.hpp"
-#include "common/VC_TrackView.hpp"
+#include "common/POD_Track.hpp"
 
 #include "KalmanFitter/KalmanFitterParticle.hxx"
 #include "Seeder/BaseSeeder.hxx"
 
-namespace R2DS::KalmanFitter {
+namespace R2DS::KF {
 
 struct V0 : Particle {
 
     V0() = delete;
-    V0(const Particle& fit, const Seeder::PCA& pca_neg, const Seeder::PCA& pca_pos, const Vector::TrackView& neg, const Vector::TrackView& pos)
+    V0(const Particle& fit, const Seeder::PCA& pca_neg, const Seeder::PCA& pca_pos, const POD::Track& neg, const POD::Track& pos)
         : Particle{fit},  //
           Neg_PCAwrtV0{pca_neg},
           Pos_PCAwrtV0{pca_pos},
-          Neg{neg},
-          Pos{pos} {}
+          Neg{&neg},
+          Pos{&pos} {}
 
     // Member functions //
 
@@ -44,23 +44,18 @@ struct V0 : Particle {
     [[nodiscard]] double ArmenterosQt() const {
         return Common::Math::ArmenterosQt(Px(), Py(), Pz(), Neg_PCAwrtV0.Px(), Neg_PCAwrtV0.Py(), Neg_PCAwrtV0.Pz());
     }
-    [[nodiscard]] double ArmenterosAlpha() const {
+    [[nodiscard]] std::optional<double> ArmenterosAlpha() const {
         return Common::Math::ArmenterosAlpha(Px(), Py(), Pz(),                                         //
                                              Neg_PCAwrtV0.Px(), Neg_PCAwrtV0.Py(), Neg_PCAwrtV0.Pz(),  //
                                              Pos_PCAwrtV0.Px(), Pos_PCAwrtV0.Py(), Pos_PCAwrtV0.Pz());
-    }
-    [[nodiscard]] double AbsArmQtOverAlpha() const {
-        double abs_alpha = std::abs(ArmenterosAlpha());
-        if (abs_alpha < Common::AbsAlmostZero) return Common::BigNumber;  // protection
-        return ArmenterosQt() / abs_alpha;
     }
 
     // Member variables //
 
     Seeder::PCA Neg_PCAwrtV0;
     Seeder::PCA Pos_PCAwrtV0;
-    Vector::TrackView Neg;
-    Vector::TrackView Pos;
+    const POD::Track* Neg;
+    const POD::Track* Pos;
 };
 
-}  // namespace R2DS::KalmanFitter
+}  // namespace R2DS::KF

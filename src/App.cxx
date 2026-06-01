@@ -1,5 +1,3 @@
-#include <ROOT/RNTupleReader.hxx>
-
 #include "App/Parser.hxx"
 #include "App/Settings.hxx"
 #include "Finder/Finder.hxx"
@@ -18,42 +16,40 @@ int main(int argc, char *argv[]) {
     if (settings.Mode == R2DS::EProgramMode::PACKAGER) {
 
         R2DS::Packager pkgr(settings);
-        if (!pkgr.Initialize()) return 1;
-
-        for (auto id_event : *pkgr.fReader) {
-            pkgr.fReader->LoadEntry(id_event);
+        if (!pkgr.CheckArguments()) return parser.ExitCode;
+        for (unsigned long id_event = 0; id_event < pkgr.NumberEventsToRead(); ++id_event) {
+            pkgr.Load(id_event);
             pkgr.ProcessEvent();
-            if (settings.IsMC) pkgr.ProcessInjected();
+            pkgr.ProcessInjected();
             pkgr.ProcessTracks();
             pkgr.Pack();
             pkgr.EndOfEvent();
         }
         pkgr.EndOfAnalysis();
+
     } else if (settings.Mode == R2DS::EProgramMode::FINDER) {
 
-        R2DS::Finder finder(settings);
-        if (!finder.Initialize()) return 1;
-
-        for (auto id_event : *finder.fReader) {
-            finder.fReader->LoadEntry(id_event);
-            finder.ProcessEvent();
-            if (settings.IsMC) finder.ProcessInjected();
-            finder.Find();
+        R2DS::Finder fndr(settings);
+        for (unsigned long id_event = 0; id_event < fndr.NumberEventsToRead(); ++id_event) {
+            fndr.Load(id_event);
+            fndr.ProcessEvent();
+            fndr.ProcessInjected();
+            fndr.Find();
         }
-        finder.EndOfAnalysis();
+        fndr.EndOfAnalysis();
 
     } else if (settings.Mode == R2DS::EProgramMode::VERIFIER) {
 
-        R2DS::Verifier verifier(settings);
-        if (!verifier.Initialize()) return 1;
-
-        for (auto id_event : *verifier.fReader) {
-            verifier.fReader->LoadEntry(id_event);
-            verifier.ProcessEvent();
-            verifier.Verify();
+        R2DS::Verifier vrfr(settings);
+        for (unsigned long id_event = 0; id_event < vrfr.NumberEventsToRead(); ++id_event) {
+            vrfr.Load(id_event);
+            vrfr.ProcessEvent();
+            vrfr.Verify();
         }
-        verifier.EndOfAnalysis();
+        vrfr.EndOfAnalysis();
+
     } else {
+
         Logger::Error("main", "Invalid mode.");
         return 1;
     }

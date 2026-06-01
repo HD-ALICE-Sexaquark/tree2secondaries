@@ -2,7 +2,6 @@
 
 #include <array>
 #include <string>
-#include <vector>
 
 #include <CLI/CLI.hpp>
 
@@ -31,51 +30,54 @@ class Parser {
             HelpOrError = (e.get_name() == "CallForHelp") || (ExitCode != 0);
             return CLI_APP.exit(e);
         }
-        return 0;  // = success
+        return 0;
     }
 
     void Assign(Settings& settings) {
         // -- mode
         CLI::App* mode_cmd = nullptr;
         if (CLI_APP.get_subcommand("search")) {
-            settings.mode = EProgramMode::FINDER;
+            settings.Mode = EProgramMode::FINDER;
             mode_cmd = CLI_APP.get_subcommand("search");
         } else if (CLI_APP.get_subcommand("pack")) {
-            settings.mode = EProgramMode::PACKAGER;
+            settings.Mode = EProgramMode::PACKAGER;
             mode_cmd = CLI_APP.get_subcommand("pack");
         } else if (CLI_APP.get_subcommand("verify")) {
-            settings.mode = EProgramMode::VERIFIER;
+            settings.Mode = EProgramMode::VERIFIER;
             mode_cmd = CLI_APP.get_subcommand("verify");
         }
-        // -- mc vs data
-        settings.IsMC = mode_cmd->got_subcommand("mc");
-        auto* type_cmd = settings.IsMC ? mode_cmd->get_subcommand("mc") : mode_cmd->get_subcommand("data");
-        // -- reaction channels
-        auto* opt_channel = type_cmd->get_option("-c");
-        settings.ReactionChannel = DB::ReactionChannels::FindReactionChannel(opt_channel->as<char>()).value();
-        // -- sexaquark mass
-        if (settings.IsMC) {
-            settings.SexaquarkMass = type_cmd->get_option("-m")->as<double>();
+
+        // -- reaction channel & mass (not applicable to verifier)
+        if (settings.Mode == EProgramMode::PACKAGER) {
+            auto* opt_channel = mode_cmd->get_option("-c");
+            settings.ReactionChannel = DB::ReactionChannels::FindReactionChannel(opt_channel->as<char>());
+            settings.SexaquarkMass = mode_cmd->get_option("-m")->as<double>();
         }
+
         // -- input path
-        settings.PathInputFiles = InputFiles;
+        settings.PathInputFile = InputFile;
+
         // -- n events limit
-        settings.LimitToNEvents = CLI_APP.get_option("-n")->as<unsigned int>();
+        auto* opt_n = CLI_APP.get_option("-n");
+        if (opt_n->count() > 0) {
+            settings.LimitToNEvents = opt_n->as<long long>();
+        }
+
         // -- output path
         settings.PathOutputFile = CLI_APP.get_option("-o")->as<std::string>();
         if (settings.PathOutputFile.empty()) {
-            std::string filename_prefix = settings.mode == EProgramMode::FINDER || settings.mode == EProgramMode::VERIFIER ? "Found" : "Packed";
-            std::string filename_suffix;
-            if (settings.IsMC) {
-                filename_suffix = std::format("MC_{}{:.2f}", settings.ReactionChannel.name, settings.SexaquarkMass);
-            } else {
-                filename_suffix = std::format("Data_Channel{}", settings.ReactionChannel.name);
+            if (settings.Mode == EProgramMode::VERIFIER) {
+                if (settings.ReactionChannel.has_value() && settings.SexaquarkMass.has_value()) {
+                    settings.PathOutputFile =
+                        std::format("Packed_{}{:.2f}.root", settings.ReactionChannel.value().name, settings.SexaquarkMass.value());
+                } else {
+                    settings.PathOutputFile = "Packed.root";
+                }
+                if (settings.Mode == EProgramMode::VERIFIER) settings.PathOutputFile = "Verified.root";
+                if (settings.Mode == EProgramMode::FINDER) settings.PathOutputFile = "Found.root";
             }
-            settings.PathOutputFile = std::format("{}_{}.root", filename_prefix, filename_suffix);
         }
     }
-
-    // member vars //
 
     int ExitCode{0};
     bool HelpOrError{false};
@@ -86,63 +88,32 @@ class Parser {
         constexpr std::array<char, 3> allowed_channels{'A', 'D', 'H'};
         constexpr std::array<double, 5> allowed_masses{1.73, 1.8, 1.87, 1.94, 2.01};
 
-        auto add_channels_opt = [allowed_channels](CLI::App* subcmd) {
-            subcmd->add_option("-c,--channel", "Process a standard reaction channel")
-                ->expected(1)
-                ->check(CLI::IsMember(allowed_channels))
-                ->required();
-        };
-
-        auto add_mass_opt = [allowed_masses](CLI::App* subcmd) {
-            subcmd
-                ->add_option("-m,--mass", "Assign Injected Sexaquark Mass")  //
-                ->expected(1)
-                ->check(CLI::IsMember(allowed_masses))
-                ->required();
-        };
-
-        CLI_APP
-            .add_option("-i,--input", InputFiles, "Path(s) of input file(s)")  //
-            ->required();
-        CLI_APP
-            .add_option("-o,--output", "Path of output file")  //
-            ->expected(1);
-        CLI_APP
-            .add_option("-n,--nevents", "Limit to N events")  //
-            ->expected(1)
-            ->check(CLI::NonNegativeNumber);
+        CLI_APP.add_option("-i,--input", InputFile, "Path of input file")->required();
+        CLI_APP.add_option("-o,--output", "Path of output file")->expected(1);
+        CLI_APP.add_option("-n,--nevents", "Limit to N events")->expected(1)->check(CLI::PositiveNumber);
 
         // -- package mode
-        auto* package_cmd = CLI_APP.add_subcommand("pack", "Package V0s and necessary tracks");
-        auto* package_mc_cmd = package_cmd->add_subcommand("mc", "Process MC");
-        add_channels_opt(package_mc_cmd);
-        add_mass_opt(package_mc_cmd);
-        auto* package_data_cmd = package_cmd->add_subcommand("data", "Process data");
-        add_channels_opt(package_data_cmd);
-        package_cmd->require_subcommand(1);
+        auto* package_cmd = CLI_APP.add_subcommand("pack", "Read \"AnalysisResults.root\" to package injected anti-sexaquarks, tracks and V0s");
+        package_cmd  //
+            ->add_option("-c,--channel", "(Required when reading MC) Process a standard reaction channel")
+            ->expected(1)
+            ->check(CLI::IsMember(allowed_channels));
+        package_cmd  //
+            ->add_option("-m,--mass", "(Required when reading MC) Assign injected sexaquark mass")
+            ->expected(1)
+            ->check(CLI::IsMember(allowed_masses));
 
         // -- search mode
-        auto* search_cmd = CLI_APP.add_subcommand("search", "Search for anti-sexaquark reactions");
-        auto* search_mc_cmd = search_cmd->add_subcommand("mc", "Process MC");
-        add_channels_opt(search_mc_cmd);
-        add_mass_opt(search_mc_cmd);
-        auto* search_data_cmd = search_cmd->add_subcommand("data", "Process data");
-        add_channels_opt(search_data_cmd);
-        search_cmd->require_subcommand(1);
+        CLI_APP.add_subcommand("search", "Read \"Packed.root\" files to search for anti-sexaquark reactions");
 
         // -- verify mode
-        auto* verify_cmd = CLI_APP.add_subcommand("verify", "Verify the existence of h-dibaryons");
-        verify_cmd->add_subcommand("mc", "Process MC");
-        verify_cmd->add_subcommand("data", "Process data");
-        verify_cmd->require_subcommand(1);
+        CLI_APP.add_subcommand("verify", "Read \"AnalysisResults.root\" to verify the existence of h-dibaryons");
 
         CLI_APP.require_subcommand(1);
     }
 
-    // member vars //
-
     CLI::App CLI_APP;
-    std::vector<std::string> InputFiles;
+    std::string InputFile;
 };
 
 }  // namespace R2DS

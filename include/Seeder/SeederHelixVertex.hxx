@@ -1,6 +1,6 @@
 #pragma once
 
-#include "common/VC_TrackView.hpp"
+#include "common/POD_Track.hpp"
 
 #include "Seeder/BaseSeeder.hxx"
 
@@ -27,7 +27,7 @@ struct Cache {
 
 // Main Methods //
 
-Seed FastPCA_XY(const Vector::TrackView& q, const std::array<double, 3>& v, double bz, Cache* cache = nullptr);
+Seed FastPCA_XY(const POD::Track& q, const std::array<double, 3>& v, double bz, Cache* cache = nullptr);
 Seed CorrectPCA_Z(const Seed& s_xy, Cache& c);
 
 Deriv ComputeDerivatives_XY(Cache& c);
@@ -35,7 +35,7 @@ Deriv UpdateDerivatives_Z(const Seed& s_xy, const Deriv& d_xy, const Cache& c);
 
 // Inline Methods //
 
-inline std::tuple<Seed, Cache> FastCorrectPCA(const Vector::TrackView& q, const std::array<double, 3>& v, double bz) {
+inline std::tuple<Seed, Cache> FastCorrectPCA(const POD::Track& q, const std::array<double, 3>& v, double bz) {
     Cache cache;
     auto seed_xy = FastPCA_XY(q, v, bz, &cache);
     auto seed = CorrectPCA_Z(seed_xy, cache);

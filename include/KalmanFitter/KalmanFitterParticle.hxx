@@ -10,15 +10,15 @@
 #include <Eigen/Eigen>
 
 #include "common/Constants.hpp"
-#include "common/VC_TrackView.hpp"
-#include "common/VC_V0View.hpp"
+#include "common/POD_Track.hpp"
+#include "common/POD_V0.hpp"
 
 #include "App/Utilities.hxx"  // NOTE: don't remove! print formatter below needs it
 #if R2DS_LEGACY_KF
 #include "Legacy/LegacyParticle.hxx"
 #endif
 
-namespace R2DS::KalmanFitter {
+namespace R2DS::KF {
 
 // ## KF::Particle ## //
 
@@ -27,8 +27,8 @@ struct Particle {
     // Constructors //
 
     Particle() = default;
-    static Particle FromTrack(const Vector::TrackView &v, double mass);
-    static Particle FromV0(const Vector::V0View &v);
+    static Particle FromTrack(const POD::Track &v, double mass);
+    static Particle FromV0(const POD::V0 &v);
 #if R2DS_LEGACY_KF
     static Particle FromLegacy(const Legacy::Particle &part);
 #endif
@@ -50,36 +50,37 @@ struct Particle {
     [[nodiscard]] double CovXZ() const { return fC(2, 0); }
     [[nodiscard]] double CovYZ() const { return fC(2, 1); }
     [[nodiscard]] double CovZ2() const { return fC(2, 2); }
-    [[nodiscard]] double CovXPx() const { return fC(3, 0); }
-    [[nodiscard]] double CovYPx() const { return fC(3, 1); }
-    [[nodiscard]] double CovZPx() const { return fC(3, 2); }
+    [[nodiscard]] double CovPxX() const { return fC(3, 0); }
+    [[nodiscard]] double CovPxY() const { return fC(3, 1); }
+    [[nodiscard]] double CovPxZ() const { return fC(3, 2); }
     [[nodiscard]] double CovPx2() const { return fC(3, 3); }
-    [[nodiscard]] double CovXPy() const { return fC(4, 0); }
-    [[nodiscard]] double CovYPy() const { return fC(4, 1); }
-    [[nodiscard]] double CovZPy() const { return fC(4, 2); }
-    [[nodiscard]] double CovPxPy() const { return fC(4, 3); }
+    [[nodiscard]] double CovPyX() const { return fC(4, 0); }
+    [[nodiscard]] double CovPyY() const { return fC(4, 1); }
+    [[nodiscard]] double CovPyZ() const { return fC(4, 2); }
+    [[nodiscard]] double CovPyPx() const { return fC(4, 3); }
     [[nodiscard]] double CovPy2() const { return fC(4, 4); }
-    [[nodiscard]] double CovXPz() const { return fC(5, 0); }
-    [[nodiscard]] double CovYPz() const { return fC(5, 1); }
-    [[nodiscard]] double CovZPz() const { return fC(5, 2); }
-    [[nodiscard]] double CovPxPz() const { return fC(5, 3); }
-    [[nodiscard]] double CovPyPz() const { return fC(5, 4); }
+    [[nodiscard]] double CovPzX() const { return fC(5, 0); }
+    [[nodiscard]] double CovPzY() const { return fC(5, 1); }
+    [[nodiscard]] double CovPzZ() const { return fC(5, 2); }
+    [[nodiscard]] double CovPzPx() const { return fC(5, 3); }
+    [[nodiscard]] double CovPzPy() const { return fC(5, 4); }
     [[nodiscard]] double CovPz2() const { return fC(5, 5); }
 
-    [[nodiscard]] double CovXE() const { return fC(6, 0); }
-    [[nodiscard]] double CovYE() const { return fC(6, 1); }
-    [[nodiscard]] double CovZE() const { return fC(6, 2); }
-    [[nodiscard]] double CovPxE() const { return fC(6, 3); }
-    [[nodiscard]] double CovPyE() const { return fC(6, 4); }
-    [[nodiscard]] double CovPzE() const { return fC(6, 5); }
+    [[nodiscard]] double CovEX() const { return fC(6, 0); }
+    [[nodiscard]] double CovEY() const { return fC(6, 1); }
+    [[nodiscard]] double CovEZ() const { return fC(6, 2); }
+    [[nodiscard]] double CovEPx() const { return fC(6, 3); }
+    [[nodiscard]] double CovEPy() const { return fC(6, 4); }
+    [[nodiscard]] double CovEPz() const { return fC(6, 5); }
     [[nodiscard]] double CovE2() const { return fC(6, 6); }
-    [[nodiscard]] double CovXS() const { return fC(7, 0); }
-    [[nodiscard]] double CovYS() const { return fC(7, 1); }
-    [[nodiscard]] double CovZS() const { return fC(7, 2); }
-    [[nodiscard]] double CovPxS() const { return fC(7, 3); }
-    [[nodiscard]] double CovPyS() const { return fC(7, 4); }
-    [[nodiscard]] double CovPzS() const { return fC(7, 5); }
-    [[nodiscard]] double CovES() const { return fC(7, 6); }
+
+    [[nodiscard]] double CovSX() const { return fC(7, 0); }
+    [[nodiscard]] double CovSY() const { return fC(7, 1); }
+    [[nodiscard]] double CovSZ() const { return fC(7, 2); }
+    [[nodiscard]] double CovSPx() const { return fC(7, 3); }
+    [[nodiscard]] double CovSPy() const { return fC(7, 4); }
+    [[nodiscard]] double CovSPz() const { return fC(7, 5); }
+    [[nodiscard]] double CovSE() const { return fC(7, 6); }
     [[nodiscard]] double CovS2() const { return fC(7, 7); }
 
     [[nodiscard]] double VarX() const { return CovX2(); }
@@ -158,14 +159,14 @@ struct Particle {
     int fQ{};
 };
 
-}  // namespace R2DS::KalmanFitter
+}  // namespace R2DS::KF
 
 // # KF::Particle Print Formatter # //
 
 template <>
-struct std::formatter<R2DS::KalmanFitter::Particle> {
+struct std::formatter<R2DS::KF::Particle> {
     constexpr auto parse(std::format_parse_context &ctx) { return ctx.begin(); }
-    auto format(const R2DS::KalmanFitter::Particle &p, std::format_context &ctx) const {
+    auto format(const R2DS::KF::Particle &p, std::format_context &ctx) const {
         auto out = ctx.out();
         out = std::format_to(out, "\n");
         out = std::format_to(out, "(X,Y,Z,S)    = ({:13.6e}, {:13.6e}, {:13.6e}, {:13.6e})\n", p.X(), p.Y(), p.Z(), p.S());
@@ -173,7 +174,7 @@ struct std::formatter<R2DS::KalmanFitter::Particle> {
         out = std::format_to(out, "Mass         = {:13.6e}\n", p.Mass().value_or(Common::DummyInt));
         out = std::format_to(out, "Radius2D     = {:13.6e}\n", p.Radius2D());
         out = std::format_to(out, "Chi2/NDF     = {:13.6e} / {} = {:13.6e}\n", p.Chi2(), p.NDF(), p.Chi2NDF());
-        // out = std::format_to(out, "fC           = {}\n", p.fC); // PENDING
+        out = std::format_to(out, "fC           = {}\n", p.fC);
         out = std::format_to(out, "\n");
         return out;
     }
