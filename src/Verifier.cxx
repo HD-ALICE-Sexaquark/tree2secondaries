@@ -51,51 +51,58 @@ void Verifier::ProcessEvent() {
 // ## Injected ZONE ## //
 
 void Verifier::ProcessInjected() {
-    // data kind must be MC //
-    if (!fInput.McParticle.has_value()) return;
-    const auto& mc_collection = fInput.McParticle.value();
-    // init new injected vector //
-    fOutput.InjectedHdib.emplace();
+    // alias collection //
+    const auto& mc_collection = fInput.McParticle;
     // loop over mc particles //
     for (const auto& mc : mc_collection) {
         // select only injected h-dibaryons //
         if (std::abs(mc.PdgCode) != DB::Particles::Particle("Hdibaryon").pdg_code) continue;
-        // create new injected h-dibaryon //
-        POD::McParticle new_hdib = mc;
-        // fill some extra info //
-        new_hdib.SignalID = mc.Status;
-        std::tie(new_hdib.Decay_X, new_hdib.Decay_Y, new_hdib.Decay_Z) = MC::GetDecayVertex(mc, mc_collection);
         // store //
-        fOutput.InjectedHdib->emplace_back(new_hdib);
+        fOutput.Injected.emplace_back(BuildInjectedHdibaryon(mc));
     }
+}
+
+POD::Extended::McParticle Verifier::BuildInjectedHdibaryon(const POD::McParticle& mc) {
+    POD::Extended::McParticle inj(mc);
+    std::tie(inj.Decay_X, inj.Decay_Y, inj.Decay_Z) = MC::GetDecayVertex(mc, fInput.McParticle);
+    inj.SignalID = static_cast<int>(mc.StatusCode);
+    inj.Mother_PdgCode = Common::DummyInt;
+    inj.GM_McEntry = Common::DummyInt;
+    inj.GM_PdgCode = Common::DummyInt;
+    inj.IsTrue = true;
+    inj.IsGen1Signal = false;
+    inj.IsGen2Signal = false;
+    inj.IsTrueSignal = true;
+    inj.IsSecondary = false;
+    inj.IsHybrid = false;
+
+    return inj;
+}
+
+// ## Charged Tracks ZONE ## //
+
+POD::Extended::McParticle Verifier::BuildMcTrack(unsigned int track_mc_entry, const HD::DecayTree& decay_pid, int pdg_code_hypothesis) {
+    // copy linked mc info //
+    POD::Extended::McParticle new_mc(fInput.McParticle[track_mc_entry]);
+    MC::Apply(new_mc, MC::HdibaryonRules::ClassifyDownstream(new_mc, fInput.McParticle, decay_pid, pdg_code_hypothesis, false));
+    return new_mc;
 }
 
 // ## Single On-The-Fly Lambda ZONE ## //
 
-void Verifier::BuildMcInfo(POD::OnTheFlyLambda& new_lambda, const HD::DecayTree& decay_pid) {
-    // -- data kind must be MC
-    if (!fInput.McParticle.has_value()) return;
-    const auto& mc_collection = fInput.McParticle.value();  // alias
-    // -- negative daughter
-    if (new_lambda.Neg_McEntry.has_value()) {
-        new_lambda.Neg_MC = mc_collection[new_lambda.Neg_McEntry.value()];
-    }
-    auto& mc_neg = new_lambda.Neg_MC.value();  // alias
-    MC::Apply(mc_neg, MC::HdibaryonRules::Classify(mc_neg, mc_collection, decay_pid, decay_pid.neg.pdg_code, false));
-    // -- positive daughter
-    if (new_lambda.Pos_McEntry.has_value()) {
-        new_lambda.Pos_MC = mc_collection[new_lambda.Pos_McEntry.value()];
-    }
-    auto& mc_pos = new_lambda.Pos_MC.value();  // alias
-    MC::Apply(mc_pos, MC::HdibaryonRules::Classify(mc_pos, mc_collection, decay_pid, decay_pid.pos.pdg_code, false));
-    // -- find V0's `McEntry`
+POD::Extended::McParticle Verifier::BuildMcOnTheFlyLambda(const POD::Extended::McParticle& mc_neg, const POD::Extended::McParticle& mc_pos,
+                                                          const HD::DecayTree& decay_pid) {
+    POD::Extended::McParticle mc_lambda;
+    // clang-format off
     auto mc_entry = MC::FindCommonMotherMcEntry(mc_neg, mc_pos);
-    if (!mc_entry.has_value()) return;
-    // -- classify and store
-    new_lambda.MC = mc_collection[mc_entry.value()];
-    auto& mc_lambda = new_lambda.MC.value();  // alias
-    MC::Apply(mc_lambda, MC::HdibaryonRules::Classify(mc_lambda, mc_collection, decay_pid, decay_pid.lambda.pdg_code, true));
+    if (!mc_entry.has_value()) { return mc_lambda; }
+    // clang-format on
+    // fill values //
+    static_cast<POD::McParticle&>(mc_lambda) = fInput.McParticle[mc_entry.value()];
+    MC::Apply(mc_lambda, MC::HdibaryonRules::ClassifyDownstream(mc_lambda, fInput.McParticle, decay_pid, decay_pid.lambda.pdg_code, true));
     mc_lambda.IsHybrid = mc_neg.IsTrueSignal != mc_pos.IsTrueSignal;
+
+    return mc_lambda;
 }
 
 // ## H-dibaryon ZONE ## //
@@ -141,14 +148,34 @@ void Verifier::VerifyLambdaPair(bool anti_channel) {
             // apply cuts //
             if (!Cuts(kf_hdib, hist_cut_flow)) continue;
 
-            // store //
-            POD::LambdaPair new_hdib;
-            // -- reconstructed info
-            BuildRecInfo(new_hdib, kf_hdib, anti_channel);
-            // -- linked mc info
-            BuildMcInfo(new_hdib, decay_pid);
-            // fill //
-            fOutput.LambdaPair.emplace_back(new_hdib);
+            // store reconstructed //
+            fOutput.Hdibaryon.emplace_back(CreateLambdaPair(kf_hdib, anti_channel));
+            fOutput.Lambda1.emplace_back(lambda1, lv_lambda1.E());
+            fOutput.Lambda2.emplace_back(lambda2, lv_lambda2.E());
+
+            // store mc //
+            if (fSettings.IsMC) {
+                // -- lambda 1's neg
+                auto mc_hdib_l1_neg = BuildMcTrack(fInput.OnTheFlyLambda_Neg_McEntry[entry_lambda1], decay_pid, decay_pid.neg.pdg_code);
+                fOutput.MC_Lambda1_Neg.emplace_back(mc_hdib_l1_neg);
+                // -- lambda 1's pos
+                auto mc_hdib_l1_pos = BuildMcTrack(fInput.OnTheFlyLambda_Pos_McEntry[entry_lambda1], decay_pid, decay_pid.pos.pdg_code);
+                fOutput.MC_Lambda1_Pos.emplace_back(mc_hdib_l1_pos);
+                // -- lambda 1
+                auto mc_hdib_l1 = BuildMcOnTheFlyLambda(mc_hdib_l1_neg, mc_hdib_l1_pos, decay_pid);
+                fOutput.MC_Lambda1.emplace_back(mc_hdib_l1);
+                // -- lambda 2's neg
+                auto mc_hdib_l2_neg = BuildMcTrack(fInput.OnTheFlyLambda_Neg_McEntry[entry_lambda2], decay_pid, decay_pid.neg.pdg_code);
+                fOutput.MC_Lambda2_Neg.emplace_back(mc_hdib_l2_neg);
+                // -- lambda 2's pos
+                auto mc_hdib_l2_pos = BuildMcTrack(fInput.OnTheFlyLambda_Pos_McEntry[entry_lambda2], decay_pid, decay_pid.pos.pdg_code);
+                fOutput.MC_Lambda2_Pos.emplace_back(mc_hdib_l2_pos);
+                // -- lambda 2
+                auto mc_hdib_l2 = BuildMcOnTheFlyLambda(mc_hdib_l2_neg, mc_hdib_l2_pos, decay_pid);
+                fOutput.MC_Lambda2.emplace_back(mc_hdib_l2);
+                // -- h-dibaryon
+                fOutput.MC_Hdibaryon.emplace_back(BuildMcHdibaryon(mc_hdib_l1, mc_hdib_l2, decay_pid));
+            }
         }  // end of loop over pos
     }  // end of loop over neg
 }
@@ -168,75 +195,84 @@ bool Verifier::Cuts(const KF::LambdaPair& kf_hdib, TH1D* cut_flow_hist) const {
     return true;
 }
 
-void Verifier::BuildMcInfo(POD::LambdaPair& new_hdib, const HD::DecayTree& decay_pid) {
-    // -- data kind must be MC
-    if (!fInput.McParticle.has_value()) return;
-    const auto& mc_collection = fInput.McParticle.value();  // alias
-    // lambdas
-    BuildMcInfo(new_hdib.Lambda1, decay_pid);
-    BuildMcInfo(new_hdib.Lambda2, decay_pid);
-    // injected
-    if (!new_hdib.Lambda1.MC.has_value() || !new_hdib.Lambda2.MC.has_value()) return;
-    const auto& mc_lambda1 = new_hdib.Lambda1.MC.value();  // alias
-    const auto& mc_lambda2 = new_hdib.Lambda2.MC.value();  // alias
-    // -- find common entry
+POD::Extended::McParticle Verifier::BuildMcHdibaryon(const POD::Extended::McParticle& mc_lambda1, const POD::Extended::McParticle& mc_lambda2,
+                                                     const HD::DecayTree& decay_pid) {
+    POD::Extended::McParticle mc_hdib;
+    // clang-format off
     auto mc_entry = MC::FindCommonMotherMcEntry(mc_lambda1, mc_lambda2);
-    if (!mc_entry.has_value()) return;
-    // copy values
-    new_hdib.MC = mc_collection[mc_entry.value()];
-    auto& mc_hdib = new_hdib.MC.value();  // alias
-    if (mc_hdib.PdgCode != decay_pid.hdibaryon.pdg_code) return;
-    // fill some extra info //
-    mc_hdib.SignalID = mc_hdib.Status;
+    if (!mc_entry.has_value()) { return mc_hdib; }
+    // clang-format on
+    // fill values //
+    static_cast<POD::McParticle&>(mc_hdib) = fInput.McParticle[mc_entry.value()];
     mc_hdib.Decay_X = mc_lambda1.Origin_X;
     mc_hdib.Decay_Y = mc_lambda1.Origin_Y;
     mc_hdib.Decay_Z = mc_lambda1.Origin_Z;
-    new_hdib.IsHybrid =
-        mc_lambda1.IsHybrid.value_or(false) || mc_lambda2.IsHybrid.value_or(false) || mc_lambda1.IsTrueSignal != mc_lambda2.IsTrueSignal;
+    mc_hdib.SignalID = static_cast<int>(mc_hdib.StatusCode);
+    if (mc_hdib.Mother_McEntry > Common::DummyInt) {
+        auto& mc_mother = fInput.McParticle[static_cast<std::size_t>(mc_hdib.Mother_McEntry)];
+        mc_hdib.Mother_PdgCode = mc_mother.PdgCode;
+        if (mc_mother.Mother_McEntry > Common::DummyInt) {
+            mc_hdib.GM_McEntry = mc_mother.Mother_McEntry;
+            mc_hdib.GM_PdgCode = fInput.McParticle[static_cast<std::size_t>(mc_hdib.GM_McEntry)].PdgCode;
+        }
+    }
+    mc_hdib.IsTrue = mc_hdib.PdgCode == decay_pid.hdibaryon.pdg_code;
+    mc_hdib.IsGen1Signal = false;
+    mc_hdib.IsGen2Signal = false;
+    mc_hdib.IsTrueSignal = mc_hdib.IsTrue;
+    mc_hdib.IsSecondary = mc_hdib.IsSecFromMat || mc_hdib.IsSecFromWeak;
+    mc_hdib.IsHybrid = mc_lambda1.IsHybrid || mc_lambda2.IsHybrid || mc_lambda1.IsTrueSignal != mc_lambda2.IsTrueSignal;
+
+    return mc_hdib;
 }
 
-void Verifier::BuildRecInfo(POD::LambdaPair& new_hdib, const KF::LambdaPair& kf_hdib, bool anti_channel) {
-    // -- candidate info
-    new_hdib.Decay_X = static_cast<float>(kf_hdib.DV.X());
-    new_hdib.Decay_Y = static_cast<float>(kf_hdib.DV.Y());
-    new_hdib.Decay_Z = static_cast<float>(kf_hdib.DV.Z());
-    new_hdib.Px = static_cast<float>(kf_hdib.Px());
-    new_hdib.Py = static_cast<float>(kf_hdib.Py());
-    new_hdib.Pz = static_cast<float>(kf_hdib.Pz());
-    new_hdib.Energy = static_cast<float>(kf_hdib.E());
-    new_hdib.AntiChannel = anti_channel;
+POD::LambdaPair Verifier::CreateLambdaPair(const KF::LambdaPair& kf_hdib, bool anti_channel) {
+    POD::LambdaPair hdib;
+    hdib.Decay_X = static_cast<float>(kf_hdib.DV.X());
+    hdib.Decay_Y = static_cast<float>(kf_hdib.DV.Y());
+    hdib.Decay_Z = static_cast<float>(kf_hdib.DV.Z());
+    hdib.Px = static_cast<float>(kf_hdib.Px());
+    hdib.Py = static_cast<float>(kf_hdib.Py());
+    hdib.Pz = static_cast<float>(kf_hdib.Pz());
+    hdib.Energy = static_cast<float>(kf_hdib.E());
+    hdib.AntiChannel = anti_channel;
     // -- lambda1
-    new_hdib.Lambda1 = *kf_hdib.Lambda1;
-    new_hdib.Lambda1_PCAwrtDV_X = static_cast<float>(kf_hdib.Lambda1_PCAwrtDV->X());
-    new_hdib.Lambda1_PCAwrtDV_Y = static_cast<float>(kf_hdib.Lambda1_PCAwrtDV->Y());
-    new_hdib.Lambda1_PCAwrtDV_Z = static_cast<float>(kf_hdib.Lambda1_PCAwrtDV->Z());
-    new_hdib.Lambda1_PCAwrtDV_Px = static_cast<float>(kf_hdib.Lambda1_PCAwrtDV->Px());
-    new_hdib.Lambda1_PCAwrtDV_Py = static_cast<float>(kf_hdib.Lambda1_PCAwrtDV->Py());
-    new_hdib.Lambda1_PCAwrtDV_Pz = static_cast<float>(kf_hdib.Lambda1_PCAwrtDV->Pz());
+    hdib.Lambda1_PCAwrtDV_X = static_cast<float>(kf_hdib.Lambda1_PCAwrtDV->X());
+    hdib.Lambda1_PCAwrtDV_Y = static_cast<float>(kf_hdib.Lambda1_PCAwrtDV->Y());
+    hdib.Lambda1_PCAwrtDV_Z = static_cast<float>(kf_hdib.Lambda1_PCAwrtDV->Z());
+    hdib.Lambda1_PCAwrtDV_Px = static_cast<float>(kf_hdib.Lambda1_PCAwrtDV->Px());
+    hdib.Lambda1_PCAwrtDV_Py = static_cast<float>(kf_hdib.Lambda1_PCAwrtDV->Py());
+    hdib.Lambda1_PCAwrtDV_Pz = static_cast<float>(kf_hdib.Lambda1_PCAwrtDV->Pz());
     // -- lambda2
-    new_hdib.Lambda2 = *kf_hdib.Lambda2;
-    new_hdib.Lambda2_PCAwrtDV_X = static_cast<float>(kf_hdib.Lambda2_PCAwrtDV->X());
-    new_hdib.Lambda2_PCAwrtDV_Y = static_cast<float>(kf_hdib.Lambda2_PCAwrtDV->Y());
-    new_hdib.Lambda2_PCAwrtDV_Z = static_cast<float>(kf_hdib.Lambda2_PCAwrtDV->Z());
-    new_hdib.Lambda2_PCAwrtDV_Px = static_cast<float>(kf_hdib.Lambda2_PCAwrtDV->Px());
-    new_hdib.Lambda2_PCAwrtDV_Py = static_cast<float>(kf_hdib.Lambda2_PCAwrtDV->Py());
-    new_hdib.Lambda2_PCAwrtDV_Pz = static_cast<float>(kf_hdib.Lambda2_PCAwrtDV->Pz());
+    hdib.Lambda2_PCAwrtDV_X = static_cast<float>(kf_hdib.Lambda2_PCAwrtDV->X());
+    hdib.Lambda2_PCAwrtDV_Y = static_cast<float>(kf_hdib.Lambda2_PCAwrtDV->Y());
+    hdib.Lambda2_PCAwrtDV_Z = static_cast<float>(kf_hdib.Lambda2_PCAwrtDV->Z());
+    hdib.Lambda2_PCAwrtDV_Px = static_cast<float>(kf_hdib.Lambda2_PCAwrtDV->Px());
+    hdib.Lambda2_PCAwrtDV_Py = static_cast<float>(kf_hdib.Lambda2_PCAwrtDV->Py());
+    hdib.Lambda2_PCAwrtDV_Pz = static_cast<float>(kf_hdib.Lambda2_PCAwrtDV->Pz());
+
+    return hdib;
 }
 
 // ## END OF CYCLES ## //
 
+// Only fill events that have h-dibaryon candidates.
 void Verifier::EndOfEvent() {
+    // if data, don't keep event with no candidates
+    if (!fSettings.IsMC && fOutput.Hdibaryon.empty()) return;
+    // if mc, keep event with injected or reconstructed candidates
+    if (fSettings.IsMC && fOutput.Hdibaryon.empty() && fOutput.Injected.empty()) return;
     // fill schema
-    fWriter.Fill();
-    // clear schema vectors
-    fOutput.Clear();
+    fWriter->Fill();
+    // clear schema
+    fOutput.Clear(fSettings.IsMC);
 }
 
 void Verifier::EndOfAnalysis() {
 
     Logger::Info(__FUNCTION__, "The following objects have been written into TFile {}:", fSettings.PathOutputFile);
 
-    Logger::Info(__FUNCTION__, "- RNTuple \"{}\"", R2DS::Name_FoundHdibRNT);
+    Logger::Info(__FUNCTION__, "- RNTuple \"{}\"", R2DS::Name_FoundHdibaryonRNT);
 
     // write histograms //
 

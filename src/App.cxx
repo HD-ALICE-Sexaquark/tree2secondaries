@@ -16,11 +16,10 @@ int main(int argc, char *argv[]) {
     if (settings.Mode == R2DS::EProgramMode::PACKAGER) {
 
         R2DS::Packager pkgr(settings);
-        if (!pkgr.CheckArguments()) return parser.ExitCode;
         for (unsigned long id_event = 0; id_event < pkgr.NumberEventsToRead(); ++id_event) {
             pkgr.Load(id_event);
             pkgr.ProcessEvent();
-            pkgr.ProcessInjected();
+            if (settings.IsMC) pkgr.ProcessInjected();
             pkgr.ProcessTracks();
             pkgr.Pack();
             pkgr.EndOfEvent();
@@ -33,8 +32,9 @@ int main(int argc, char *argv[]) {
         for (unsigned long id_event = 0; id_event < fndr.NumberEventsToRead(); ++id_event) {
             fndr.Load(id_event);
             fndr.ProcessEvent();
-            fndr.ProcessInjected();
+            if (settings.IsMC) fndr.ProcessInjected();
             fndr.Find();
+            fndr.EndOfEvent();
         }
         fndr.EndOfAnalysis();
 
@@ -44,7 +44,9 @@ int main(int argc, char *argv[]) {
         for (unsigned long id_event = 0; id_event < vrfr.NumberEventsToRead(); ++id_event) {
             vrfr.Load(id_event);
             vrfr.ProcessEvent();
+            if (settings.IsMC) vrfr.ProcessInjected();
             vrfr.Verify();
+            vrfr.EndOfEvent();
         }
         vrfr.EndOfAnalysis();
 

@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.25...3.31)
 project(
   RNTuple2DoubleStrangeness
-  VERSION 26.05.24
+  VERSION 26.06.02
   LANGUAGES CXX)
 
 # support folders in IDEs #
@@ -72,7 +72,7 @@ if(ROOT_FOUND)
   message(STATUS "Found ROOT: ${ROOT_INCLUDE_DIRS}")
 endif()
 
-# main target #
+# main target (1) #
 
 add_executable(
   ${PROJECT_NAME}
@@ -109,6 +109,30 @@ target_link_libraries(
 target_include_directories(
   ${PROJECT_NAME} PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
                          $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>)
+
+# (dictionary section) #
+
+ROOT_GENERATE_DICTIONARY(common_pod
+  common/Constants.hpp
+  common/POD_Event.hpp
+  common/POD_InjectedSexa.hpp
+  common/POD_McParticle.hpp
+  common/POD_Track.hpp
+  common/POD_OnTheFlyLambda.hpp
+  common/POD_V0.hpp
+  common/POD_Sexaquark.hpp
+  common/POD_LambdaPair.hpp
+  LINKDEF common/POD_LinkDef.h
+  MODULE ${PROJECT_NAME})
+
+add_library(common_pod_lib SHARED ${CMAKE_CURRENT_BINARY_DIR}/common_pod.cxx)
+target_include_directories(
+  common_pod_lib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}
+                        ${CMAKE_CURRENT_SOURCE_DIR}/common)
+target_link_libraries(
+  common_pod_lib PUBLIC ROOT::Core ROOT::RIO)
+
+# main target (2) #
 
 target_compile_options(
   ${PROJECT_NAME}

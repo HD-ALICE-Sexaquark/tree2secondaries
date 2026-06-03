@@ -8,10 +8,11 @@
 #include <Math/Point3D.h>
 #include <ROOT/RNTupleReader.hxx>
 
+#include "common/Constants.hpp"
 #include "common/Framework.hpp"
 #include "common/HD_Library.hpp"
 #include "common/Schema_Events.hpp"
-#include "common/Schema_FoundHdib.hpp"
+#include "common/Schema_FoundHdibaryon.hpp"
 
 #include "App/Settings.hxx"
 
@@ -38,12 +39,15 @@ class Verifier {
         : fSettings{settings},
           // input
           fInput_File{std::make_unique<TFile>(fSettings.PathInputFile.c_str(), "READ")},
-          fReader{E2R::Name_OutputRNT, *fInput_File},
-          fInput{fReader.Data()},
+          fInput{},
+          fReader{nullptr},
           // output
           fOutput_File{std::make_unique<TFile>(fSettings.PathOutputFile.c_str(), "RECREATE")},
-          fWriter{R2DS::Name_FoundHdibRNT, *fOutput_File},
-          fOutput{fWriter.Data()} {
+          fOutput{},
+          fWriter{nullptr} {
+
+        fReader = std::make_unique<Framework::Reader>(fInput.CreateModel(fSettings.IsMC, fSettings.IsMC), E2R::Name_OutputRNT, *fInput_File);
+        fWriter = std::make_unique<Framework::Writer>(fOutput.CreateModel(fSettings.IsMC), R2DS::Name_FoundHdibaryonRNT, *fOutput_File);
 
         PrepareOutputHistograms();
 
@@ -52,9 +56,9 @@ class Verifier {
 
     void PrepareOutputHistograms();
 
-    void Load(ROOT::NTupleSize_t entry_id) { fReader.Load(entry_id); }
+    void Load(ROOT::NTupleSize_t entry_id) { fReader->Load(entry_id); }
     [[nodiscard]] ROOT::NTupleSize_t NumberEventsToRead() {
-        auto total = fReader.Iter()->GetNEntries();
+        auto total = fReader->Iter()->GetNEntries();
         return fSettings.LimitToNEvents.has_value() ? std::min(fSettings.LimitToNEvents.value(), total) : total;
     }
 
@@ -70,41 +74,45 @@ class Verifier {
     void EndOfAnalysis();
 
    private:
-    // on-the-fly lambda //
+    // injected //
+    POD::Extended::McParticle BuildInjectedHdibaryon(const POD::McParticle &mc);
 
-    void BuildMcInfo(POD::OnTheFlyLambda &new_lambda, const HD::DecayTree &decay_pid);
+    // mc charged track //
+    POD::Extended::McParticle BuildMcTrack(unsigned int track_mc_entry, const HD::DecayTree &decay_pid, int pdg_code_hypothesis);
+
+    // on-the-fly lambda //
+    POD::Extended::McParticle BuildMcOnTheFlyLambda(const POD::Extended::McParticle &mc_neg, const POD::Extended::McParticle &mc_pos,
+                                                    const HD::DecayTree &decay_pid);
 
     // h-dibaryon //
-
+    POD::Extended::McParticle BuildMcHdibaryon(const POD::Extended::McParticle &mc_lambda1, const POD::Extended::McParticle &mc_lambda2,
+                                               const HD::DecayTree &decay_pid);
+    POD::LambdaPair CreateLambdaPair(const KF::LambdaPair &kf_hdib, bool anti_channel);
     void VerifyLambdaPair(bool anti_channel);
-
     [[nodiscard]] bool Cuts(const KF::LambdaPair &hdibaryon, TH1D *cut_flow_hist) const;
-
-    void BuildMcInfo(POD::LambdaPair &new_v0, const HD::DecayTree &decay_pid);
-    void BuildRecInfo(POD::LambdaPair &new_v0, const KF::LambdaPair &kf_v0, bool anti_channel);
 
     // member variables //
 
     const Settings &fSettings;
 
-    std::unique_ptr<TH1D> fHist_EventCounter;
-
-    std::unique_ptr<TH1D> fHist_CutFlow;
-    std::unique_ptr<TH1D> fHist_CutFlow_AntiChannel;
-
     // input //
 
     std::unique_ptr<TFile> fInput_File;
-    Framework::Reader<Schema::Events> fReader;
-    Schema::Events &fInput;
+    Schema::Events fInput;
+    std::unique_ptr<Framework::Reader> fReader;
     // -- cached
     ROOT::Math::XYZPoint fPrimaryVertex;
 
     // output //
 
     std::unique_ptr<TFile> fOutput_File;
-    Framework::Writer<Schema::FoundHdib> fWriter;
-    Schema::FoundHdib &fOutput;
+    Schema::FoundHdibaryon fOutput;
+    std::unique_ptr<Framework::Writer> fWriter;
+
+    std::unique_ptr<TH1D> fHist_EventCounter;
+
+    std::unique_ptr<TH1D> fHist_CutFlow;
+    std::unique_ptr<TH1D> fHist_CutFlow_AntiChannel;
 };
 
 }  // namespace R2DS

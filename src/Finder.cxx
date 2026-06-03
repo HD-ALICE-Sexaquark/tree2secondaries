@@ -1,13 +1,11 @@
 #include <cstddef>
-#include <memory>
 #include <optional>
 #include <string_view>
 
-#include "common/Constants.hpp"
 #include "common/DB_Particles.hpp"
 #include "common/MC_Helpers.hpp"
 #include "common/Math.hpp"
-#include "common/POD_ChannelA.hpp"
+#include "common/POD_Sexaquark.hpp"
 #include "common/POD_Track.hpp"
 #include "common/R2DS_Cuts.hpp"
 
@@ -41,49 +39,94 @@ void Finder::PrepareOutputHistograms() {
 
 void Finder::ProcessEvent() {
     // -- copy event info
-    fOutput.Event = fInput.Event;
+    fOutput_Base->Event = fInput.Event;
     // -- update event counter
     fHist_EventCounter->Fill(0.);
     // -- cache pv
-    fPrimaryVertex.SetCoordinates(fOutput.Event.PV_X, fOutput.Event.PV_Y, fOutput.Event.PV_Z);
+    fPrimaryVertex.SetCoordinates(fOutput_Base->Event.PV_X, fOutput_Base->Event.PV_Y, fOutput_Base->Event.PV_Z);
 }
 
 // ## Injected ZONE ## //
 
 void Finder::ProcessInjected() {
-    // data kind must be MC //
-    if (!fInput.InjectedSexa.has_value()) return;
     // -- copy injected info
-    fOutput.InjectedSexa = std::move(fInput.InjectedSexa);
+    fOutput_Base->Injected = std::move(fInput.InjectedSexa);
+}
+
+POD::Linked::InjectedSexa Finder::BuildMcSexaquark(const POD::Extended::McParticle& mc_dau1, const POD::Extended::McParticle& mc_dau2) {
+    POD::Linked::InjectedSexa mc_sexa;
+    // -- hybridness must be filled independently of found matching injected sexaquark
+    mc_sexa.IsHybrid = mc_dau1.IsTrueSignal != mc_dau2.IsTrueSignal || mc_dau1.SignalID != mc_dau2.SignalID || mc_dau1.IsHybrid || mc_dau2.IsHybrid;
+    // -- find common reaction id
+    auto entry_inj = MC::SexaquarkRules::FindCommonReactionID(mc_dau1, mc_dau2);
+    if (!entry_inj.has_value()) {
+        return mc_sexa;
+    }
+    // -- if found, fill it with matching injected info
+    static_cast<POD::Extended::InjectedSexa&>(mc_sexa) = fOutput_Base->Injected[entry_inj.value()];
+
+    return mc_sexa;
 }
 
 // ## Channel A ZONE ## //
 
-void Finder::FindSexaquarks_ChannelA(bool control_channel) {
+void Finder::FindSexaquarks_ChannelA(bool anti_channel) {
 
     // determine rules and aliases //
     // -- lambda
-    const auto& input_lambdas = control_channel ? fInput.Lambda : fInput.AntiLambda;
+    //    -- rec
+    const auto& input_lambdas = anti_channel ? fInput.Lambda : fInput.AntiLambda;
+    const auto& input_lambdas_neg = anti_channel ? fInput.Lambda_Neg : fInput.AntiLambda_Neg;
+    const auto& input_lambdas_pos = anti_channel ? fInput.Lambda_Pos : fInput.AntiLambda_Pos;
     const std::size_t n_lambdas = input_lambdas.size();
+    //    -- mc
+    const std::vector<POD::Extended::McParticle>* input_mc_lambdas = nullptr;
+    const std::vector<POD::Extended::McParticle>* input_mc_lambdas_neg = nullptr;
+    const std::vector<POD::Extended::McParticle>* input_mc_lambdas_pos = nullptr;
+    if (fSettings.IsMC) {
+        input_mc_lambdas = anti_channel ? &fInput.MC_Lambda : &fInput.MC_AntiLambda;
+        input_mc_lambdas_neg = anti_channel ? &fInput.MC_Lambda_Neg : &fInput.MC_AntiLambda_Neg;
+        input_mc_lambdas_pos = anti_channel ? &fInput.MC_Lambda_Pos : &fInput.MC_AntiLambda_Pos;
+    }
     // -- k0s
+    //    -- rec
     const auto& input_k0s = fInput.KaonZeroShort;
+    const auto& input_k0s_neg = fInput.KaonZeroShort_Neg;
+    const auto& input_k0s_pos = fInput.KaonZeroShort_Pos;
     const std::size_t n_k0s = input_k0s.size();
+    //    -- mc
+    const std::vector<POD::Extended::McParticle>* input_mc_k0s = nullptr;
+    const std::vector<POD::Extended::McParticle>* input_mc_k0s_neg = nullptr;
+    const std::vector<POD::Extended::McParticle>* input_mc_k0s_pos = nullptr;
+    if (fSettings.IsMC) {
+        input_mc_k0s = &fInput.MC_KaonZeroShort;
+        input_mc_k0s_neg = &fInput.MC_KaonZeroShort_Neg;
+        input_mc_k0s_pos = &fInput.MC_KaonZeroShort_Pos;
+    }
     // -- cut flow hist
-    TH1D* hist = control_channel ? fHist_CutFlow_AntiChannel.get() : fHist_CutFlow.get();
+    TH1D* hist = anti_channel ? fHist_CutFlow_AntiChannel.get() : fHist_CutFlow.get();
 
     // loop over all possible pairs of (anti)lambda + K0S //
     for (std::size_t entry_lambda = 0; entry_lambda < n_lambdas; ++entry_lambda) {
-        const POD::V0& lambda = input_lambdas[entry_lambda];  // cache index lookup
+        // cache index lookups //
+        const POD::V0& lambda = input_lambdas[entry_lambda];
+        const POD::Track& lambda_neg = input_lambdas_neg[entry_lambda];
+        const POD::Track& lambda_pos = input_lambdas_pos[entry_lambda];
+
         /* lambda.CacheCalculations(entry_lambda, fPrimaryVertex); PENDING */
 
         for (std::size_t entry_k0s = 0; entry_k0s < n_k0s; ++entry_k0s) {
-            const POD::V0& k0s = input_k0s[entry_k0s];  // cache index lookup
+            // cache index lookups //
+            const POD::V0& k0s = input_k0s[entry_k0s];
+            const POD::Track& k0s_neg = input_k0s_neg[entry_k0s];
+            const POD::Track& k0s_pos = input_k0s_pos[entry_k0s];
 
-            // -- sanity check
-            if (lambda.Neg.EsdEntry == k0s.Neg.EsdEntry || lambda.Neg.EsdEntry == k0s.Pos.EsdEntry || lambda.Pos.EsdEntry == k0s.Neg.EsdEntry ||
-                lambda.Pos.EsdEntry == k0s.Pos.EsdEntry) {
+            // sanity check //
+            if (lambda_neg.EsdEntry == k0s_neg.EsdEntry || lambda_neg.EsdEntry == k0s_pos.EsdEntry || lambda_pos.EsdEntry == k0s_neg.EsdEntry ||
+                lambda_pos.EsdEntry == k0s_pos.EsdEntry) {
                 continue;
             }
+
             /* k0s.CacheCalculations(entry_k0s, fPrimaryVertex); PENDING */
 
             // PCAs //
@@ -101,16 +144,32 @@ void Finder::FindSexaquarks_ChannelA(bool control_channel) {
             KF::ChannelA kf_sexa(fit, seed_lambda.pca, seed_k0s.pca, lambda, k0s);
 
             // apply cuts (2) //
-            if (!SlowCuts(kf_sexa, hist)) continue;
+            if (!SlowCuts_ChannelA(kf_sexa, hist)) continue;
 
-            // store //
-            POD::ChannelA new_sexa;
-            // -- reconstructed info
-            BuildRecInfo(new_sexa, kf_sexa, control_channel);
-            // -- linked mc info
-            BuildMcInfo(new_sexa, control_channel);
-            // fill //
-            fOutput.ChannelA.emplace_back(new_sexa);
+            // store reconstructed //
+            fOutput_ChannelA.Sexaquark.emplace_back(Create_ChannelA(kf_sexa, anti_channel));
+            fOutput_ChannelA.V0A.emplace_back(lambda);
+            fOutput_ChannelA.V0A_Neg.emplace_back(lambda_neg);
+            fOutput_ChannelA.V0A_Pos.emplace_back(lambda_pos);
+            fOutput_ChannelA.V0B.emplace_back(k0s);
+            fOutput_ChannelA.V0B_Neg.emplace_back(k0s_neg);
+            fOutput_ChannelA.V0B_Pos.emplace_back(k0s_pos);
+
+            // store mc //
+            if (fSettings.IsMC) {
+                // -- V0A
+                const auto& mc_lambda = (*input_mc_lambdas)[entry_lambda];
+                fOutput_ChannelA.MC_V0A.emplace_back(mc_lambda);
+                fOutput_ChannelA.MC_V0A_Neg.emplace_back((*input_mc_lambdas_neg)[entry_lambda]);
+                fOutput_ChannelA.MC_V0A_Pos.emplace_back((*input_mc_lambdas_pos)[entry_lambda]);
+                // -- V0B
+                const auto& mc_k0s = (*input_mc_k0s)[entry_k0s];
+                fOutput_ChannelA.MC_V0B.emplace_back(mc_k0s);
+                fOutput_ChannelA.MC_V0B_Neg.emplace_back((*input_mc_k0s_neg)[entry_k0s]);
+                fOutput_ChannelA.MC_V0B_Pos.emplace_back((*input_mc_k0s_pos)[entry_k0s]);
+                // -- h-dibaryon
+                fOutput_ChannelA.MC_Sexaquark.emplace_back(BuildMcSexaquark(mc_lambda, mc_k0s));
+            }
         }
     }
 }
@@ -128,7 +187,7 @@ bool Finder::FastCuts_ChannelA(const Seeder::Seed& seed_v0a, const Seeder::Seed&
     return true;
 }
 
-bool Finder::SlowCuts(const KF::ChannelA& kf_sexa, TH1D* cut_flow_hist) const {
+bool Finder::SlowCuts_ChannelA(const KF::ChannelA& kf_sexa, TH1D* cut_flow_hist) const {
 
     if (kf_sexa.SquaredRadius2D() < Cuts::ChannelA::Min_Radius2D * Cuts::ChannelA::Min_Radius2D) return false;
     cut_flow_hist->Fill(2.);
@@ -154,80 +213,89 @@ bool Finder::SlowCuts(const KF::ChannelA& kf_sexa, TH1D* cut_flow_hist) const {
     return true;
 }
 
-void Finder::BuildMcInfo(POD::ChannelA& new_sexa, bool control_channel) {
-    // data kind must be MC (already filled in `ProcessInjected(...)` //
-    if (!fOutput.InjectedSexa.has_value()) return;
-    new_sexa.MC = MC::SexaquarkRules::FindInjected(new_sexa.V0A.MC, new_sexa.V0B.MC, fOutput.InjectedSexa.value(), control_channel);
-    new_sexa.IsSignal = new_sexa.MC.has_value();
-    // clang-format off
-    if (new_sexa.IsSignal) { new_sexa.IsHybrid = false; return; }
-    // clang-format on
-    auto [sig_a, hyb_a] = MC::IsSignalIsHybrid(new_sexa.V0A.MC);
-    auto [sig_b, hyb_b] = MC::IsSignalIsHybrid(new_sexa.V0B.MC);
-    new_sexa.IsHybrid = hyb_a || hyb_b || (sig_a != sig_b);
-}
-
-void Finder::BuildRecInfo(POD::ChannelA& new_sexa, const KF::ChannelA& kf_sexa, bool control_channel) {
-    // candidate info
-    new_sexa.SV_X = static_cast<float>(kf_sexa.X());
-    new_sexa.SV_Y = static_cast<float>(kf_sexa.Y());
-    new_sexa.SV_Z = static_cast<float>(kf_sexa.Z());
-    new_sexa.Px = static_cast<float>(kf_sexa.Px());
-    new_sexa.Py = static_cast<float>(kf_sexa.Py());
-    new_sexa.Pz = static_cast<float>(kf_sexa.Pz());
-    new_sexa.Energy = static_cast<float>(kf_sexa.E());
-    new_sexa.Chi2NDF = static_cast<float>(kf_sexa.Chi2NDF());
-    new_sexa.E_MinusNucleon = static_cast<float>(kf_sexa.E() - DB::Particles::Particle("Neutron").mass);
-    new_sexa.ControlChannel = control_channel;
+POD::Sexaquark Finder::Create_ChannelA(const KF::ChannelA& kf_sexa, bool anti_channel) {
+    POD::Sexaquark sexa;  // non-initialized on purpose
+    sexa.SV_X = static_cast<float>(kf_sexa.X());
+    sexa.SV_Y = static_cast<float>(kf_sexa.Y());
+    sexa.SV_Z = static_cast<float>(kf_sexa.Z());
+    sexa.Px = static_cast<float>(kf_sexa.Px());
+    sexa.Py = static_cast<float>(kf_sexa.Py());
+    sexa.Pz = static_cast<float>(kf_sexa.Pz());
+    sexa.Energy = static_cast<float>(kf_sexa.E());
+    sexa.Chi2NDF = static_cast<float>(kf_sexa.Chi2NDF());
+    sexa.E_MinusNucleon = static_cast<float>(kf_sexa.E() - DB::Particles::Particle("Neutron").mass);  // small optimization
+    sexa.AntiChannel = anti_channel;
     // -- V0A
-    new_sexa.V0A = *kf_sexa.V0A;
-    new_sexa.V0A_PCAwrtSV_X = static_cast<float>(kf_sexa.V0A_PCAwrtSV.X());
-    new_sexa.V0A_PCAwrtSV_Y = static_cast<float>(kf_sexa.V0A_PCAwrtSV.Y());
-    new_sexa.V0A_PCAwrtSV_Z = static_cast<float>(kf_sexa.V0A_PCAwrtSV.Z());
-    new_sexa.V0A_PCAwrtSV_Px = static_cast<float>(kf_sexa.V0A_PCAwrtSV.Px());
-    new_sexa.V0A_PCAwrtSV_Py = static_cast<float>(kf_sexa.V0A_PCAwrtSV.Py());
-    new_sexa.V0A_PCAwrtSV_Pz = static_cast<float>(kf_sexa.V0A_PCAwrtSV.Pz());
+    sexa.Dau1_PCAwrtSV_X = static_cast<float>(kf_sexa.V0A_PCAwrtSV.X());
+    sexa.Dau1_PCAwrtSV_Y = static_cast<float>(kf_sexa.V0A_PCAwrtSV.Y());
+    sexa.Dau1_PCAwrtSV_Z = static_cast<float>(kf_sexa.V0A_PCAwrtSV.Z());
+    sexa.Dau1_PCAwrtSV_Px = static_cast<float>(kf_sexa.V0A_PCAwrtSV.Px());
+    sexa.Dau1_PCAwrtSV_Py = static_cast<float>(kf_sexa.V0A_PCAwrtSV.Py());
+    sexa.Dau1_PCAwrtSV_Pz = static_cast<float>(kf_sexa.V0A_PCAwrtSV.Pz());
     // -- V0B
-    new_sexa.V0B = *kf_sexa.V0B;
-    new_sexa.V0B_PCAwrtSV_X = static_cast<float>(kf_sexa.V0B_PCAwrtSV.X());
-    new_sexa.V0B_PCAwrtSV_Y = static_cast<float>(kf_sexa.V0B_PCAwrtSV.Y());
-    new_sexa.V0B_PCAwrtSV_Z = static_cast<float>(kf_sexa.V0B_PCAwrtSV.Z());
-    new_sexa.V0B_PCAwrtSV_Px = static_cast<float>(kf_sexa.V0B_PCAwrtSV.Px());
-    new_sexa.V0B_PCAwrtSV_Py = static_cast<float>(kf_sexa.V0B_PCAwrtSV.Py());
-    new_sexa.V0B_PCAwrtSV_Pz = static_cast<float>(kf_sexa.V0B_PCAwrtSV.Pz());
+    sexa.Dau2_PCAwrtSV_X = static_cast<float>(kf_sexa.V0B_PCAwrtSV.X());
+    sexa.Dau2_PCAwrtSV_Y = static_cast<float>(kf_sexa.V0B_PCAwrtSV.Y());
+    sexa.Dau2_PCAwrtSV_Z = static_cast<float>(kf_sexa.V0B_PCAwrtSV.Z());
+    sexa.Dau2_PCAwrtSV_Px = static_cast<float>(kf_sexa.V0B_PCAwrtSV.Px());
+    sexa.Dau2_PCAwrtSV_Py = static_cast<float>(kf_sexa.V0B_PCAwrtSV.Py());
+    sexa.Dau2_PCAwrtSV_Pz = static_cast<float>(kf_sexa.V0B_PCAwrtSV.Pz());
+
+    return sexa;
 }
 
 // ## Channel D ZONE ## //
 
-void Finder::FindSexaquarks_ChannelD(bool control_channel) {
+void Finder::FindSexaquarks_ChannelD(bool anti_channel) {
 
     // determine rules and aliases //
     // -- lambda
-    const auto& input_lambdas = control_channel ? fInput.Lambda : fInput.AntiLambda;
+    //    -- rec
+    const auto& input_lambdas = anti_channel ? fInput.Lambda : fInput.AntiLambda;
+    const auto& input_lambdas_neg = anti_channel ? fInput.Lambda_Neg : fInput.AntiLambda_Neg;
+    const auto& input_lambdas_pos = anti_channel ? fInput.Lambda_Pos : fInput.AntiLambda_Pos;
     const std::size_t n_lambdas = input_lambdas.size();
-    // -- kaons
-    const auto& input_kaons = control_channel ? fInput.PosKaon : fInput.NegKaon;
+    //    -- mc
+    const std::vector<POD::Extended::McParticle>* input_mc_lambdas = nullptr;
+    const std::vector<POD::Extended::McParticle>* input_mc_lambdas_neg = nullptr;
+    const std::vector<POD::Extended::McParticle>* input_mc_lambdas_pos = nullptr;
+    if (fSettings.IsMC) {
+        input_mc_lambdas = anti_channel ? &fInput.MC_Lambda : &fInput.MC_AntiLambda;
+        input_mc_lambdas_neg = anti_channel ? &fInput.MC_Lambda_Neg : &fInput.MC_AntiLambda_Neg;
+        input_mc_lambdas_pos = anti_channel ? &fInput.MC_Lambda_Pos : &fInput.MC_AntiLambda_Pos;
+    }
+    // -- kaon
+    //    -- rec
+    const auto& input_kaons = anti_channel ? fInput.NegKaon : fInput.PosKaon;
     const std::size_t n_kaons = input_kaons.size();
-    constexpr double mass_kaon = DB::Particles::Particle("PosKaon").mass;
+    //    -- mc
+    const std::vector<POD::Extended::McParticle>* input_mc_kaons = nullptr;
+    if (fSettings.IsMC) {
+        input_mc_kaons = anti_channel ? &fInput.MC_NegKaon : &fInput.MC_PosKaon;
+    }
+    constexpr double mass_kaon = DB::Particles::Particle("NegKaon").mass;
     // -- cut flow hist
-    TH1D* hist = control_channel ? fHist_CutFlow_AntiChannel.get() : fHist_CutFlow.get();
+    TH1D* hist = anti_channel ? fHist_CutFlow_AntiChannel.get() : fHist_CutFlow.get();
 
     // loop over all possible pairs of (anti)lambda + (pos/neg)kaon //
     for (std::size_t entry_lambda = 0; entry_lambda < n_lambdas; ++entry_lambda) {
-        const POD::V0& lambda = input_lambdas[entry_lambda];  // cache index lookup
+        // cache index lookups //
+        const POD::V0& lambda = input_lambdas[entry_lambda];
+        const POD::Track& lambda_neg = input_lambdas_neg[entry_lambda];
+        const POD::Track& lambda_pos = input_lambdas_pos[entry_lambda];
 
         /* v0.CacheCalculations(entry_v0, fPrimaryVertex); // PENDING */
 
         for (std::size_t entry_kaon = 0; entry_kaon < n_kaons; ++entry_kaon) {
-            const POD::Track& kaon = input_kaons[entry_kaon];  // cache index lookup
+            // cache index lookup //
+            const POD::Track& kaon = input_kaons[entry_kaon];
 
             // -- sanity check
-            if (lambda.Neg.EsdEntry == kaon.EsdEntry || lambda.Pos.EsdEntry == kaon.EsdEntry) continue;
+            if (lambda_neg.EsdEntry == kaon.EsdEntry || lambda_pos.EsdEntry == kaon.EsdEntry) continue;
 
             /* kaon.CacheCalculations(entry_kaon, fPrimaryVertex, fOutput.Event.MagneticField); // PENDING */
 
             // PCAs (1) //
-            auto [seed_kaon, seed_v0, pca_cache] = Seeder::HelixLine::FastCorrectPCAs(kaon, lambda, fOutput.Event.MagneticField);
+            auto [seed_kaon, seed_v0, pca_cache] = Seeder::HelixLine::FastCorrectPCAs(kaon, lambda, fOutput_Base->Event.MagneticField);
 
             // apply cuts (1) //
             if (!FastCuts_ChannelD(seed_kaon, seed_v0, hist)) continue;
@@ -236,22 +304,32 @@ void Finder::FindSexaquarks_ChannelD(bool control_channel) {
             auto [deriv_v0, deriv_ka] = Seeder::HelixLine::ComputeDerivatives(seed_kaon, seed_v0, pca_cache);
 
             // fit vertex //
-            auto fit = KF::FitVertex(kaon, lambda, mass_kaon,                     //
-                                     {seed_kaon, deriv_ka}, {seed_v0, deriv_v0},  //
-                                     fOutput.Event.MagneticField);
+            auto fit = KF::FitVertex(kaon, lambda, mass_kaon, {seed_kaon, deriv_ka}, {seed_v0, deriv_v0}, fOutput_Base->Event.MagneticField);
             KF::ChannelD kf_sexa(fit, seed_v0.pca, seed_kaon.pca, lambda, kaon);
 
             // apply cuts (2) //
-            if (!SlowCuts(kf_sexa, hist)) continue;
+            if (!SlowCuts_ChannelD(kf_sexa, hist)) continue;
 
-            // store //
-            POD::ChannelD new_sexa;
-            // -- reconstructed info
-            BuildRecInfo(new_sexa, kf_sexa, control_channel);
-            // -- linked mc info
-            BuildMcInfo(new_sexa, control_channel);
-            // fill //
-            fOutput.ChannelD.emplace_back(new_sexa);
+            // store reconstructed //
+            fOutput_ChannelD.Sexaquark.emplace_back(Create_ChannelD(kf_sexa, anti_channel));
+            fOutput_ChannelD.V0.emplace_back(lambda);
+            fOutput_ChannelD.V0_Neg.emplace_back(lambda_neg);
+            fOutput_ChannelD.V0_Pos.emplace_back(lambda_pos);
+            fOutput_ChannelD.Kaon.emplace_back(kaon);
+
+            // store mc //
+            if (fSettings.IsMC) {
+                // -- V0
+                const auto& mc_lambda = (*input_mc_lambdas)[entry_lambda];
+                fOutput_ChannelD.MC_V0.emplace_back(mc_lambda);
+                fOutput_ChannelD.MC_V0_Neg.emplace_back((*input_mc_lambdas_neg)[entry_lambda]);
+                fOutput_ChannelD.MC_V0_Pos.emplace_back((*input_mc_lambdas_pos)[entry_lambda]);
+                // -- Kaon
+                const auto& mc_kaon = (*input_mc_kaons)[entry_kaon];
+                fOutput_ChannelD.MC_Kaon.emplace_back(mc_kaon);
+                // -- h-dibaryon
+                fOutput_ChannelD.MC_Sexaquark.emplace_back(BuildMcSexaquark(mc_lambda, mc_kaon));
+            }
         }
     }
 }
@@ -266,7 +344,7 @@ bool Finder::FastCuts_ChannelD(const Seeder::Seed& seed_ka, const Seeder::Seed& 
     return true;
 }
 
-bool Finder::SlowCuts(const KF::ChannelD& sexa, TH1D* cut_flow_hist) const {
+bool Finder::SlowCuts_ChannelD(const KF::ChannelD& sexa, TH1D* cut_flow_hist) const {
 
     double sq_radius_2d = sexa.SquaredRadius2D();
     if (sq_radius_2d < Cuts::ChannelD::Min_Radius2D * Cuts::ChannelD::Min_Radius2D ||
@@ -299,60 +377,51 @@ bool Finder::SlowCuts(const KF::ChannelD& sexa, TH1D* cut_flow_hist) const {
     return true;
 }
 
-void Finder::BuildMcInfo(POD::ChannelD& new_sexa, bool control_channel) {
-    // data kind must be MC (already filled in `ProcessInjected(...)` //
-    if (!fOutput.InjectedSexa.has_value()) return;
-    new_sexa.MC = MC::SexaquarkRules::FindInjected(new_sexa.V0.MC, new_sexa.Kaon.MC, fOutput.InjectedSexa.value(), control_channel);
-    new_sexa.IsSignal = new_sexa.MC.has_value();
-    // clang-format off
-    if (new_sexa.IsSignal) { new_sexa.IsHybrid = false; return; }
-    // clang-format on
-    auto [sig_a, hyb_a] = MC::IsSignalIsHybrid(new_sexa.V0.MC);
-    auto [sig_b, hyb_b] = MC::IsSignalIsHybrid(new_sexa.Kaon.MC);
-    new_sexa.IsHybrid = hyb_a || hyb_b || (sig_a != sig_b);
-}
-
-void Finder::BuildRecInfo(POD::ChannelD& new_sexa, const KF::ChannelD& kf_sexa, bool control_channel) {
-    // candidate info
-    new_sexa.SV_X = static_cast<float>(kf_sexa.X());
-    new_sexa.SV_Y = static_cast<float>(kf_sexa.Y());
-    new_sexa.SV_Z = static_cast<float>(kf_sexa.Z());
-    new_sexa.Px = static_cast<float>(kf_sexa.Px());
-    new_sexa.Py = static_cast<float>(kf_sexa.Py());
-    new_sexa.Pz = static_cast<float>(kf_sexa.Pz());
-    new_sexa.Energy = static_cast<float>(kf_sexa.E());
-    new_sexa.Chi2NDF = static_cast<float>(kf_sexa.Chi2NDF());
-    new_sexa.E_MinusNucleon = static_cast<float>(kf_sexa.E() - DB::Particles::Particle("Proton").mass);
-    new_sexa.ControlChannel = control_channel;
+POD::Sexaquark Finder::Create_ChannelD(const KF::ChannelD& kf_sexa, bool anti_channel) {
+    POD::Sexaquark sexa;  // non-initialized on purpose
+    sexa.SV_X = static_cast<float>(kf_sexa.X());
+    sexa.SV_Y = static_cast<float>(kf_sexa.Y());
+    sexa.SV_Z = static_cast<float>(kf_sexa.Z());
+    sexa.Px = static_cast<float>(kf_sexa.Px());
+    sexa.Py = static_cast<float>(kf_sexa.Py());
+    sexa.Pz = static_cast<float>(kf_sexa.Pz());
+    sexa.Energy = static_cast<float>(kf_sexa.E());
+    sexa.Chi2NDF = static_cast<float>(kf_sexa.Chi2NDF());
+    sexa.E_MinusNucleon = static_cast<float>(kf_sexa.E() - DB::Particles::Particle("Proton").mass);  // small optimization
+    sexa.AntiChannel = anti_channel;
     // -- V0
-    new_sexa.V0 = *kf_sexa.V0;
-    new_sexa.V0_PCAwrtSV_X = static_cast<float>(kf_sexa.V0_PCAwrtSV.X());
-    new_sexa.V0_PCAwrtSV_Y = static_cast<float>(kf_sexa.V0_PCAwrtSV.Y());
-    new_sexa.V0_PCAwrtSV_Z = static_cast<float>(kf_sexa.V0_PCAwrtSV.Z());
-    new_sexa.V0_PCAwrtSV_Px = static_cast<float>(kf_sexa.V0_PCAwrtSV.Px());
-    new_sexa.V0_PCAwrtSV_Py = static_cast<float>(kf_sexa.V0_PCAwrtSV.Py());
-    new_sexa.V0_PCAwrtSV_Pz = static_cast<float>(kf_sexa.V0_PCAwrtSV.Pz());
+    sexa.Dau1_PCAwrtSV_X = static_cast<float>(kf_sexa.V0_PCAwrtSV.X());
+    sexa.Dau1_PCAwrtSV_Y = static_cast<float>(kf_sexa.V0_PCAwrtSV.Y());
+    sexa.Dau1_PCAwrtSV_Z = static_cast<float>(kf_sexa.V0_PCAwrtSV.Z());
+    sexa.Dau1_PCAwrtSV_Px = static_cast<float>(kf_sexa.V0_PCAwrtSV.Px());
+    sexa.Dau1_PCAwrtSV_Py = static_cast<float>(kf_sexa.V0_PCAwrtSV.Py());
+    sexa.Dau1_PCAwrtSV_Pz = static_cast<float>(kf_sexa.V0_PCAwrtSV.Pz());
     // -- kaon
-    new_sexa.Kaon = *kf_sexa.Kaon;
-    new_sexa.Kaon_PCAwrtSV_X = static_cast<float>(kf_sexa.Kaon_PCAwrtSV.X());
-    new_sexa.Kaon_PCAwrtSV_Y = static_cast<float>(kf_sexa.Kaon_PCAwrtSV.Y());
-    new_sexa.Kaon_PCAwrtSV_Z = static_cast<float>(kf_sexa.Kaon_PCAwrtSV.Z());
-    new_sexa.Kaon_PCAwrtSV_Px = static_cast<float>(kf_sexa.Kaon_PCAwrtSV.Px());
-    new_sexa.Kaon_PCAwrtSV_Py = static_cast<float>(kf_sexa.Kaon_PCAwrtSV.Py());
-    new_sexa.Kaon_PCAwrtSV_Pz = static_cast<float>(kf_sexa.Kaon_PCAwrtSV.Pz());
+    sexa.Dau2_PCAwrtSV_X = static_cast<float>(kf_sexa.Kaon_PCAwrtSV.X());
+    sexa.Dau2_PCAwrtSV_Y = static_cast<float>(kf_sexa.Kaon_PCAwrtSV.Y());
+    sexa.Dau2_PCAwrtSV_Z = static_cast<float>(kf_sexa.Kaon_PCAwrtSV.Z());
+    sexa.Dau2_PCAwrtSV_Px = static_cast<float>(kf_sexa.Kaon_PCAwrtSV.Px());
+    sexa.Dau2_PCAwrtSV_Py = static_cast<float>(kf_sexa.Kaon_PCAwrtSV.Py());
+    sexa.Dau2_PCAwrtSV_Pz = static_cast<float>(kf_sexa.Kaon_PCAwrtSV.Pz());
+
+    return sexa;
 }
 
 // ## Channel H ZONE ## //
 
-void Finder::FindSexaquarks_ChannelH(bool control_channel) {
+void Finder::FindSexaquarks_ChannelH(bool anti_channel) {
 
     // determine rules and aliases //
     // -- kaons
-    const auto& input_kaons = control_channel ? fInput.PosKaon : fInput.NegKaon;
+    //    -- rec
+    const auto& input_kaons = anti_channel ? fInput.NegKaon : fInput.PosKaon;
     const std::size_t n_kaons = input_kaons.size();
+    //    -- mc
+    const std::vector<POD::Extended::McParticle>* input_mc_kaons = nullptr;
+    if (fSettings.IsMC) input_mc_kaons = anti_channel ? &fInput.MC_NegKaon : &fInput.MC_PosKaon;
+    constexpr double mass_kaon = DB::Particles::Particle("NegKaon").mass;
     // -- cut flow hist
-    TH1D* hist = control_channel ? fHist_CutFlow_AntiChannel.get() : fHist_CutFlow.get();
-    constexpr double mass_kaon = DB::Particles::Particle("PosKaon").mass;
+    TH1D* hist = anti_channel ? fHist_CutFlow_AntiChannel.get() : fHist_CutFlow.get();
 
     // loop over all possible pairs of (pos)kaon+(pos)kaon or (neg)kaon+(neg)kaon //
     for (std::size_t entry_kaon1 = 0; entry_kaon1 + 1 < n_kaons; ++entry_kaon1) {
@@ -364,10 +433,10 @@ void Finder::FindSexaquarks_ChannelH(bool control_channel) {
             // NOTE: sanity check not needed, because loops don't intersect
             const POD::Track& kaon2 = input_kaons[entry_kaon2];  // cache index lookup
 
-            /* kaon2.CacheCalculations(entry_kaon2, fPrimaryVertex, fOutput.Event.MagneticField); PENDING */
+            /* kaon2.CacheCalculations(entry_kaon2, fPrimaryVertex, fOutput.Event.MagneticField); // PENDING */
 
             // PCAs (1) //
-            auto [seed_kaon1, seed_kaon2, pca_cache] = Seeder::HelixHelix::FastCorrectPCAs(kaon1, kaon2, fOutput.Event.MagneticField);
+            auto [seed_kaon1, seed_kaon2, pca_cache] = Seeder::HelixHelix::FastCorrectPCAs(kaon1, kaon2, fOutput_Base->Event.MagneticField);
 
             // apply cuts (1) //
             if (!FastCuts_ChannelH(seed_kaon1, seed_kaon2, hist)) continue;
@@ -376,21 +445,29 @@ void Finder::FindSexaquarks_ChannelH(bool control_channel) {
             auto [deriv_kaon1, deriv_kaon2] = Seeder::HelixHelix::ComputeDerivatives(seed_kaon1, seed_kaon2, pca_cache);
 
             // fit vertex //
-            auto fit = KF::FitVertex(kaon1, kaon2, mass_kaon, mass_kaon,  //
-                                     {seed_kaon1, deriv_kaon1}, {seed_kaon2, deriv_kaon2}, fOutput.Event.MagneticField);
+            auto fit = KF::FitVertex(kaon1, kaon2, mass_kaon, mass_kaon, {seed_kaon1, deriv_kaon1}, {seed_kaon2, deriv_kaon2},
+                                     fOutput_Base->Event.MagneticField);
             KF::ChannelH kf_sexa(fit, seed_kaon1.pca, seed_kaon2.pca, kaon1, kaon2);
 
             // apply cuts (2) //
-            if (!SlowCuts(kf_sexa, hist)) continue;
+            if (!SlowCuts_ChannelH(kf_sexa, hist)) continue;
 
-            // store //
-            POD::ChannelH new_sexa;
-            // -- reconstructed info
-            BuildRecInfo(new_sexa, kf_sexa, control_channel);
-            // -- linked mc info
-            BuildMcInfo(new_sexa, control_channel);
-            // fill //
-            fOutput.ChannelH.emplace_back(new_sexa);
+            // store reconstructed //
+            fOutput_ChannelH.Sexaquark.emplace_back(Create_ChannelH(kf_sexa, anti_channel));
+            fOutput_ChannelH.Kaon1.emplace_back(kaon1);
+            fOutput_ChannelH.Kaon2.emplace_back(kaon2);
+
+            // store mc //
+            if (fSettings.IsMC) {
+                // -- Kaon1
+                const auto& mc_kaon1 = (*input_mc_kaons)[entry_kaon1];
+                fOutput_ChannelH.MC_Kaon1.emplace_back(mc_kaon1);
+                // -- Kaon2
+                const auto& mc_kaon2 = (*input_mc_kaons)[entry_kaon2];
+                fOutput_ChannelH.MC_Kaon2.emplace_back(mc_kaon2);
+                // -- h-dibaryon
+                fOutput_ChannelH.MC_Sexaquark.emplace_back(BuildMcSexaquark(mc_kaon1, mc_kaon2));
+            }
         }
     }
 }
@@ -402,61 +479,68 @@ bool Finder::FastCuts_ChannelH(const Seeder::Seed& seed_kaon1, const Seeder::See
     return true;
 }
 
-bool Finder::SlowCuts(const KF::ChannelH& sexa, TH1D* cut_flow_hist) const {
+bool Finder::SlowCuts_ChannelH(const KF::ChannelH& sexa, TH1D* cut_flow_hist) const {
     //
     // PENDING
     //
     return true;
 }
 
-void Finder::BuildMcInfo(POD::ChannelH& new_sexa, bool control_channel) {
-    // data kind must be MC (already filled in `ProcessInjected(...)` //
-    if (!fOutput.InjectedSexa.has_value()) return;
-    new_sexa.MC = MC::SexaquarkRules::FindInjected(new_sexa.Kaon1.MC, new_sexa.Kaon2.MC, fOutput.InjectedSexa.value(), control_channel);
-    new_sexa.IsSignal = new_sexa.MC.has_value();
-    // clang-format off
-    if (new_sexa.IsSignal) { new_sexa.IsHybrid = false; return; }
-    // clang-format on
-    auto [sig_a, hyb_a] = MC::IsSignalIsHybrid(new_sexa.Kaon1.MC);
-    auto [sig_b, hyb_b] = MC::IsSignalIsHybrid(new_sexa.Kaon2.MC);
-    new_sexa.IsHybrid = hyb_a || hyb_b || (sig_a != sig_b);
-}
+POD::Sexaquark Finder::Create_ChannelH(const KF::ChannelH& kf_sexa, bool anti_channel) {
+    POD::Sexaquark sexa;  // non-initialized on purpose
+    sexa.SV_X = static_cast<float>(kf_sexa.X());
+    sexa.SV_Y = static_cast<float>(kf_sexa.Y());
+    sexa.SV_Z = static_cast<float>(kf_sexa.Z());
+    sexa.Px = static_cast<float>(kf_sexa.Px());
+    sexa.Py = static_cast<float>(kf_sexa.Py());
+    sexa.Pz = static_cast<float>(kf_sexa.Pz());
+    sexa.Energy = static_cast<float>(kf_sexa.E());
+    sexa.Chi2NDF = static_cast<float>(kf_sexa.Chi2NDF());
+    sexa.E_MinusNucleon = static_cast<float>(kf_sexa.E() - DB::Particles::Particle("Proton").mass);  // small optimization
+    sexa.AntiChannel = anti_channel;
+    // -- Kaon 1
+    sexa.Dau1_PCAwrtSV_X = static_cast<float>(kf_sexa.Kaon1_PCAwrtSV.X());
+    sexa.Dau1_PCAwrtSV_Y = static_cast<float>(kf_sexa.Kaon1_PCAwrtSV.Y());
+    sexa.Dau1_PCAwrtSV_Z = static_cast<float>(kf_sexa.Kaon1_PCAwrtSV.Z());
+    sexa.Dau1_PCAwrtSV_Px = static_cast<float>(kf_sexa.Kaon1_PCAwrtSV.Px());
+    sexa.Dau1_PCAwrtSV_Py = static_cast<float>(kf_sexa.Kaon1_PCAwrtSV.Py());
+    sexa.Dau1_PCAwrtSV_Pz = static_cast<float>(kf_sexa.Kaon1_PCAwrtSV.Pz());
+    // -- Kaon 2
+    sexa.Dau2_PCAwrtSV_X = static_cast<float>(kf_sexa.Kaon2_PCAwrtSV.X());
+    sexa.Dau2_PCAwrtSV_Y = static_cast<float>(kf_sexa.Kaon2_PCAwrtSV.Y());
+    sexa.Dau2_PCAwrtSV_Z = static_cast<float>(kf_sexa.Kaon2_PCAwrtSV.Z());
+    sexa.Dau2_PCAwrtSV_Px = static_cast<float>(kf_sexa.Kaon2_PCAwrtSV.Px());
+    sexa.Dau2_PCAwrtSV_Py = static_cast<float>(kf_sexa.Kaon2_PCAwrtSV.Py());
+    sexa.Dau2_PCAwrtSV_Pz = static_cast<float>(kf_sexa.Kaon2_PCAwrtSV.Pz());
 
-void Finder::BuildRecInfo(POD::ChannelH& new_sexa, const KF::ChannelH& kf_sexa, bool control_channel) {
-    // candidate info
-    new_sexa.SV_X = static_cast<float>(kf_sexa.X());
-    new_sexa.SV_Y = static_cast<float>(kf_sexa.Y());
-    new_sexa.SV_Z = static_cast<float>(kf_sexa.Z());
-    new_sexa.Px = static_cast<float>(kf_sexa.Px());
-    new_sexa.Py = static_cast<float>(kf_sexa.Py());
-    new_sexa.Pz = static_cast<float>(kf_sexa.Pz());
-    new_sexa.Energy = static_cast<float>(kf_sexa.E());
-    new_sexa.Chi2NDF = static_cast<float>(kf_sexa.Chi2NDF());
-    new_sexa.E_MinusNucleon = static_cast<float>(kf_sexa.E() - DB::Particles::Particle("Proton").mass);
-    new_sexa.ControlChannel = control_channel;
-    // -- kaon 1
-    new_sexa.Kaon1 = *kf_sexa.Kaon1;
-    new_sexa.Kaon1_PCAwrtSV_X = static_cast<float>(kf_sexa.Kaon1_PCAwrtSV.X());
-    new_sexa.Kaon1_PCAwrtSV_Y = static_cast<float>(kf_sexa.Kaon1_PCAwrtSV.Y());
-    new_sexa.Kaon1_PCAwrtSV_Z = static_cast<float>(kf_sexa.Kaon1_PCAwrtSV.Z());
-    new_sexa.Kaon1_PCAwrtSV_Px = static_cast<float>(kf_sexa.Kaon1_PCAwrtSV.Px());
-    new_sexa.Kaon1_PCAwrtSV_Py = static_cast<float>(kf_sexa.Kaon1_PCAwrtSV.Py());
-    new_sexa.Kaon1_PCAwrtSV_Pz = static_cast<float>(kf_sexa.Kaon1_PCAwrtSV.Pz());
-    // -- kaon 2
-    new_sexa.Kaon2 = *kf_sexa.Kaon2;
-    new_sexa.Kaon2_PCAwrtSV_X = static_cast<float>(kf_sexa.Kaon2_PCAwrtSV.X());
-    new_sexa.Kaon2_PCAwrtSV_Y = static_cast<float>(kf_sexa.Kaon2_PCAwrtSV.Y());
-    new_sexa.Kaon2_PCAwrtSV_Z = static_cast<float>(kf_sexa.Kaon2_PCAwrtSV.Z());
-    new_sexa.Kaon2_PCAwrtSV_Px = static_cast<float>(kf_sexa.Kaon2_PCAwrtSV.Px());
-    new_sexa.Kaon2_PCAwrtSV_Py = static_cast<float>(kf_sexa.Kaon2_PCAwrtSV.Py());
-    new_sexa.Kaon2_PCAwrtSV_Pz = static_cast<float>(kf_sexa.Kaon2_PCAwrtSV.Pz());
+    return sexa;
 }
 
 void Finder::EndOfEvent() {
+    // if data, don't keep event with no candidates
+    // if mc, keep event with injected or reconstructed candidates
+    // NOTE: if they're empty, there's nothing to clear
+    if (fReactionChannel.name == 'A') {
+        if (!fSettings.IsMC && fOutput_ChannelA.Sexaquark.empty()) return;
+        if (fSettings.IsMC && fOutput_ChannelA.Sexaquark.empty() && fOutput_ChannelA.Injected.empty()) return;
+    }
+    if (fReactionChannel.name == 'D') {
+        if (!fSettings.IsMC && fOutput_ChannelD.Sexaquark.empty()) return;
+        if (fSettings.IsMC && fOutput_ChannelD.Sexaquark.empty() && fOutput_ChannelD.Injected.empty()) return;
+    }
+    if (fReactionChannel.name == 'H') {
+        if (!fSettings.IsMC && fOutput_ChannelH.Sexaquark.empty()) return;
+        if (fSettings.IsMC && fOutput_ChannelH.Sexaquark.empty() && fOutput_ChannelH.Injected.empty()) return;
+    }
     // fill schema
-    fWriter.Fill();
+    fWriter->Fill();
     // clear schema vectors
-    fOutput.Clear();
+    if (fReactionChannel.name == 'A')
+        fOutput_ChannelA.Clear(fSettings.IsMC);
+    else if (fReactionChannel.name == 'D')
+        fOutput_ChannelD.Clear(fSettings.IsMC);
+    else if (fReactionChannel.name == 'H')
+        fOutput_ChannelH.Clear(fSettings.IsMC);
 }
 
 // ## END OF CYCLES ## //
@@ -465,7 +549,7 @@ void Finder::EndOfAnalysis() {
 
     Logger::Info(__FUNCTION__, "The following objects have been written into TFile {}:", fSettings.PathOutputFile);
 
-    Logger::Info(__FUNCTION__, "- RNTuple \"{}\"", R2DS::Name_FoundSexaRNT);
+    Logger::Info(__FUNCTION__, "- RNTuple \"{}\"", fName_FoundRNT);
 
     // write histograms //
 

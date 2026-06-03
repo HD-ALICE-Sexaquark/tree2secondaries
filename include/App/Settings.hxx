@@ -1,28 +1,28 @@
 #pragma once
 
+#include <cstdint>
 #include <optional>
 #include <string>
-
-#include "common/DB_ReactionChannels.hpp"
 
 #include "App/Logger.hxx"
 
 namespace R2DS {
 
-enum class EProgramMode { FINDER, PACKAGER, VERIFIER };
+enum EProgramMode : std::uint8_t { FINDER, PACKAGER, VERIFIER };
+const std::array Name_ProgramMode{"FINDER", "PACKAGER", "VERIFIER"};
 
 struct Settings {
     void Print() const {
-        Logger::Info("Settings", "Mode            = {}",
-                     Mode == EProgramMode::FINDER ? "FINDER" : (Mode == EProgramMode::PACKAGER ? "PACKAGER" : "VERIFIER"));
-        if (ReactionChannel.has_value()) {
-            Logger::Info("Settings", "ReactionChannel = {}", ReactionChannel.value().name);
+        Logger::Info("Settings", "Mode            = {}", Name_ProgramMode[Mode]);
+        Logger::Info("Settings", "Data Kind       = {}", IsMC ? "MC" : "RD");
+        if (IsMC && Mode == EProgramMode::PACKAGER) {
+            Logger::Info("Settings", "ReactionChannel = {}", ReactionChannel);
+            Logger::Info("Settings", "SexaquarkMass   = {:.2f}", SexaquarkMass);
+        } else if (Mode == EProgramMode::FINDER) {
+            Logger::Info("Settings", "ReactionChannel = {}", ReactionChannel);
         }
         Logger::Info("Settings", "InputFile       = {}", PathInputFile);
         Logger::Info("Settings", "OutputFile      = {}", PathOutputFile);
-        if (SexaquarkMass.has_value()) {
-            Logger::Info("Settings", "SexaquarkMass   = {:.2f}", SexaquarkMass.value());
-        }
         if (LimitToNEvents.has_value()) {
             Logger::Info("Settings", "LimitToNEvents  = {}", LimitToNEvents.value());
         } else {
@@ -32,10 +32,11 @@ struct Settings {
 
     std::string PathInputFile;
     std::string PathOutputFile;
-    std::optional<DB::ReactionChannels::Definition> ReactionChannel;
-    std::optional<double> SexaquarkMass;
     std::optional<unsigned long> LimitToNEvents;
+    double SexaquarkMass{};
     EProgramMode Mode{EProgramMode::PACKAGER};
+    char ReactionChannel{};
+    bool IsMC;
 };
 
 }  // namespace R2DS

@@ -7,6 +7,7 @@
 #include "common/Math.hpp"
 #include "common/POD_Event.hpp"
 #include "common/POD_InjectedSexa.hpp"
+#include "common/POD_McParticle.hpp"
 #include "common/POD_Track.hpp"
 #include "common/POD_V0.hpp"
 #include "common/R2DS_Cuts.hpp"
@@ -76,32 +77,42 @@ void Packager::ProcessEvent() {
 // Select Primary Particles (particles with no mother), generated via the Sexaquark-Reaction Generator, and with valid Reaction ID;
 // and store their origin vertex as the coordinates for this particular secondary vertex.
 void Packager::ProcessInjected() {
-    // data kind must be MC and have injected (anti)sexaquarks info //
-    if (!fInput.McParticle.has_value()) return;
-    if (!fInput.InjectedSexa.has_value()) return;
-    const double n_mass = DB::Particles::FindParticle(fSettings.ReactionChannel.value().nucleon_pdg)->mass;
+    const double n_mass = DB::Particles::FindParticle(fReactionChannel.nucleon_pdg).mass;
 
-    // copy input injected sexa info //
-    fOutput.InjectedSexa = std::move(fInput.InjectedSexa);
-
-    // update secondary vertex info //
+    // clang-format off
+    std::array<float, E2R::NSexaReactionsPerEvent> sv_x; sv_x.fill(Common::DummyFloat);
+    std::array<float, E2R::NSexaReactionsPerEvent> sv_y; sv_y.fill(Common::DummyFloat);
+    std::array<float, E2R::NSexaReactionsPerEvent> sv_z; sv_z.fill(Common::DummyFloat);
     std::array<bool, E2R::NSexaReactionsPerEvent> sv_found{};
+    // clang-format on
+
     // -- loop over all mc particles
-    for (const auto& mc : fInput.McParticle.value()) {
+    for (const auto& mc : fInput.McParticle) {
         // -- select only first-gen signal products
-        if (!MC::SexaquarkRules::IsGen1Signal(mc, fSettings.ReactionChannel.value())) continue;
+        if (!MC::SexaquarkRules::IsGen1Signal(mc, fReactionChannel)) continue;
         // -- derive entry
-        auto entry_injected = mc.Status - E2R::ReactionID_Offset;
+        auto entry_injected = mc.StatusCode - E2R::ReactionID_Offset;
         // -- if sv not filled, fill it
         if (sv_found[entry_injected]) continue;
-        POD::InjectedSexa& out_injected_sexa = fOutput.InjectedSexa.value()[entry_injected];  // cache index lookup
-        out_injected_sexa.SV_X = mc.Origin_X;
-        out_injected_sexa.SV_Y = mc.Origin_Y;
-        out_injected_sexa.SV_Z = mc.Origin_Z;
-        out_injected_sexa.Energy = CMath::Hypot4(out_injected_sexa.Px, out_injected_sexa.Py, out_injected_sexa.Pz, fSettings.SexaquarkMass.value());
-        out_injected_sexa.Nucleon_Energy =
-            CMath::Hypot4(out_injected_sexa.Nucleon_Px, out_injected_sexa.Nucleon_Py, out_injected_sexa.Nucleon_Pz, n_mass);
+        sv_x[entry_injected] = mc.Origin_X;
+        sv_y[entry_injected] = mc.Origin_Y;
+        sv_z[entry_injected] = mc.Origin_Z;
         sv_found[entry_injected] = true;
+    }
+
+    // copy input injected sexa info //
+    fOutput.InjectedSexa.resize(E2R::NSexaReactionsPerEvent);
+    for (std::size_t entry_inj = 0; entry_inj < E2R::NSexaReactionsPerEvent; ++entry_inj) {
+        // cache index lookup //
+        POD::InjectedSexa& input_inj = fInput.InjectedSexa[entry_inj];
+        POD::Extended::InjectedSexa& output_inj = fOutput.InjectedSexa[entry_inj];
+        // fill values //
+        static_cast<POD::InjectedSexa&>(output_inj) = input_inj;
+        output_inj.SV_X = sv_x[entry_inj];
+        output_inj.SV_Y = sv_y[entry_inj];
+        output_inj.SV_Z = sv_z[entry_inj];
+        output_inj.Energy = static_cast<float>(CMath::Hypot4(input_inj.Px, input_inj.Py, input_inj.Pz, fSettings.SexaquarkMass));
+        output_inj.Nucleon_Energy = static_cast<float>(CMath::Hypot4(input_inj.Nucleon_Px, input_inj.Nucleon_Py, input_inj.Nucleon_Pz, n_mass));
     }
 }
 
@@ -156,21 +167,22 @@ void Packager::ProcessTracks() {
 // NOTE: exclusive to secondary charged kaons.
 void Packager::PackTracks(const DB::Particles::Definition& pid) {
 
-    // alias input //
-    const auto& input_tracks = fInput.Track;
-
-    // determine rules based on particle species //
+    // determine rules and aliases //
     std::vector<std::size_t>* vec_entries = nullptr;
+    const auto& input_tracks = fInput.Track;
     std::vector<POD::Track>* output_tracks = nullptr;
+    std::vector<POD::Extended::McParticle>* output_mc = nullptr;
     switch (pid.pdg_code) {
         case DB::Particles::Particle("NegKaon").pdg_code: {
             vec_entries = &fEntries_NegKaon;
             output_tracks = &fOutput.NegKaon;
+            output_mc = &fOutput.MC_NegKaon;
             break;
         }
         case DB::Particles::Particle("PosKaon").pdg_code: {
             vec_entries = &fEntries_PosKaon;
             output_tracks = &fOutput.PosKaon;
+            output_mc = &fOutput.MC_PosKaon;
             break;
         }
         default:
@@ -180,11 +192,12 @@ void Packager::PackTracks(const DB::Particles::Definition& pid) {
     // loop over selected tracks //
     for (const std::size_t& entry_track : *vec_entries) {
         // NOTE: cuts were already applied in `ProcessTracks(...)`
-        POD::Track new_track = input_tracks[entry_track];  // copy track
-        // -- get linked mc
-        BuildMcInfo(new_track, pid.pdg_code, true);
-        // -- push
-        output_tracks->emplace_back(new_track);
+        // -- reconstructed
+        output_tracks->emplace_back(input_tracks[entry_track]);
+        // -- mc
+        if (fSettings.IsMC) {
+            output_mc->emplace_back(BuildMcTrack(fInput.Track_McEntry[entry_track], pid.pdg_code, true));
+        }
     }  // end of loop over selected tracks
 }
 
@@ -215,20 +228,12 @@ bool Packager::PassesPionCuts(const POD::Track& track, TH1D* cut_flow_hist) cons
     return true;
 }
 
-void Packager::BuildMcInfo(POD::Track& new_track, int pdg_code_hypothesis, bool include_gm) {
-    // -- data kind must be MC
-    if (!fInput.McParticle.has_value()) return;
-    // -- track must have `McEntry`
-    if (!new_track.McEntry.has_value()) [[unlikely]] {
-        return;
-    }
-    // -- alias mc collection
-    const auto& mc_collection = fInput.McParticle.value();
-    // -- copy linked mc info
-    new_track.MC = mc_collection[new_track.McEntry.value()];
-    auto c =
-        MC::SexaquarkRules::Classify(new_track.MC.value(), mc_collection, fSettings.ReactionChannel.value(), pdg_code_hypothesis, include_gm, false);
-    MC::Apply(new_track.MC.value(), c);
+POD::Extended::McParticle Packager::BuildMcTrack(unsigned int track_mc_entry, int pdg_code_hypothesis, bool include_gm) {
+    // copy linked mc info //
+    POD::Extended::McParticle new_mc(fInput.McParticle[track_mc_entry]);
+    auto c = MC::SexaquarkRules::ClassifyDownstream(new_mc, fInput.McParticle, fReactionChannel, pdg_code_hypothesis, include_gm, false);
+    MC::Apply(new_mc, c);
+    return new_mc;
 }
 
 // ## V0s ZONE ## //
@@ -239,26 +244,46 @@ void Packager::FindV0s(const DB::Particles::Definition& pid) {
     const auto& input_tracks = fInput.Track;
 
     // determine rules based on V0 species //
-    std::vector<POD::V0>* output_v0s = nullptr;
     const std::vector<std::size_t>* vec_entries_neg = &fEntries_PiMinus;
     const std::vector<std::size_t>* vec_entries_pos = &fEntries_PiPlus;
-    auto pid_pos = DB::Particles::Particle("PiPlus");
     auto pid_neg = DB::Particles::Particle("PiMinus");
+    auto pid_pos = DB::Particles::Particle("PiPlus");
+    std::vector<POD::V0>* output_vec_v0 = nullptr;
+    std::vector<POD::Track>* output_vec_v0_neg = nullptr;
+    std::vector<POD::Track>* output_vec_v0_pos = nullptr;
+    std::vector<POD::Extended::McParticle>* output_vec_mc_v0 = nullptr;
+    std::vector<POD::Extended::McParticle>* output_vec_mc_v0_neg = nullptr;
+    std::vector<POD::Extended::McParticle>* output_vec_mc_v0_pos = nullptr;
     switch (pid.pdg_code) {
         case DB::Particles::Particle("AntiLambda").pdg_code: {
-            output_v0s = &fOutput.AntiLambda;
             vec_entries_neg = &fEntries_AntiProton;
             pid_neg = DB::Particles::Particle("AntiProton");
+            output_vec_v0 = &fOutput.AntiLambda;
+            output_vec_v0_neg = &fOutput.AntiLambda_Neg;
+            output_vec_v0_pos = &fOutput.AntiLambda_Pos;
+            output_vec_mc_v0 = &fOutput.MC_AntiLambda;
+            output_vec_mc_v0_neg = &fOutput.MC_AntiLambda_Neg;
+            output_vec_mc_v0_pos = &fOutput.MC_AntiLambda_Pos;
             break;
         }
         case DB::Particles::Particle("Lambda").pdg_code: {
-            output_v0s = &fOutput.Lambda;
             vec_entries_pos = &fEntries_Proton;
             pid_pos = DB::Particles::Particle("Proton");
+            output_vec_v0 = &fOutput.Lambda;
+            output_vec_v0_neg = &fOutput.Lambda_Neg;
+            output_vec_v0_pos = &fOutput.Lambda_Pos;
+            output_vec_mc_v0 = &fOutput.MC_Lambda;
+            output_vec_mc_v0_neg = &fOutput.MC_Lambda_Neg;
+            output_vec_mc_v0_pos = &fOutput.MC_Lambda_Pos;
             break;
         }
         case DB::Particles::Particle("KaonZeroShort").pdg_code: {
-            output_v0s = &fOutput.KaonZeroShort;
+            output_vec_v0 = &fOutput.KaonZeroShort;
+            output_vec_v0_neg = &fOutput.KaonZeroShort_Neg;
+            output_vec_v0_pos = &fOutput.KaonZeroShort_Pos;
+            output_vec_mc_v0 = &fOutput.MC_KaonZeroShort;
+            output_vec_mc_v0_neg = &fOutput.MC_KaonZeroShort_Neg;
+            output_vec_mc_v0_pos = &fOutput.MC_KaonZeroShort_Pos;
             break;
         }
         default: {
@@ -271,13 +296,13 @@ void Packager::FindV0s(const DB::Particles::Definition& pid) {
     for (const auto& entry_neg : *vec_entries_neg) {
         const POD::Track& track_neg = input_tracks[entry_neg];  // cache index lookup
 
-        /* neg->CacheCalculations(entry_neg, fPrimaryVertex, fOutput.Event.MagneticField); */
+        /* neg->CacheCalculations(entry_neg, fPrimaryVertex, fOutput.Event.MagneticField); // PENDING */
 
         for (const auto& entry_pos : *vec_entries_pos) {
             if (entry_neg == entry_pos) continue;
             const POD::Track& track_pos = input_tracks[entry_pos];  // cache index lookup
 
-            /* pos->CacheCalculations(entry_pos, fPrimaryVertex, fOutput.Event.MagneticField); */
+            /* pos->CacheCalculations(entry_pos, fPrimaryVertex, fOutput.Event.MagneticField); // PENDING */
 
 #if R2DS_LEGACY_KF
             // PCAs //
@@ -308,14 +333,23 @@ void Packager::FindV0s(const DB::Particles::Definition& pid) {
             if (!SlowCuts(kf_v0, pid)) continue;
 #endif
 
-            // store //
-            POD::V0 new_v0;
-            // -- reconstructed info
-            BuildRecInfo(new_v0, kf_v0);
-            // -- linked mc info
-            BuildMcInfo(new_v0, pid);
+            // store reconstructed //
+            output_vec_v0->emplace_back(CreateV0(kf_v0));
+            output_vec_v0_neg->emplace_back(track_neg);
+            output_vec_v0_pos->emplace_back(track_pos);
+
+            // store mc //
+            if (fSettings.IsMC) {
+                // -- neg
+                POD::Extended::McParticle new_mc_neg = BuildMcTrack(fInput.Track_McEntry[entry_neg], pid_neg.pdg_code, true);
+                output_vec_mc_v0_neg->emplace_back(new_mc_neg);
+                // -- pos
+                POD::Extended::McParticle new_mc_pos = BuildMcTrack(fInput.Track_McEntry[entry_pos], pid_pos.pdg_code, true);
+                output_vec_mc_v0_pos->emplace_back(new_mc_pos);
+                // -- v0
+                output_vec_mc_v0->emplace_back(BuildMcV0(new_mc_neg, new_mc_pos, pid.pdg_code));
+            }
             // -- push
-            output_v0s->emplace_back(new_v0);
         }  // end of loop over pos
     }  // end of loop over neg
 }
@@ -407,27 +441,23 @@ bool Packager::SlowCuts_KaonZeroShort(const KF::V0& kf_v0, TH1D* cut_flow_hist) 
     return true;
 }
 
-void Packager::BuildMcInfo(POD::V0& new_v0, const DB::Particles::Definition& pid_hypothesis) {
-    // -- data kind must be MC
-    if (!fInput.McParticle.has_value()) return;
-    // -- alias mc collection
-    const auto& mc_collection = fInput.McParticle.value();
-    // -- classify daughters
-    BuildMcInfo(new_v0.Neg, pid_hypothesis.daughters_pdg[pid_hypothesis.idx_neg_dau], false);
-    BuildMcInfo(new_v0.Pos, pid_hypothesis.daughters_pdg[pid_hypothesis.idx_pos_dau], false);
-    if (!new_v0.Neg.MC.has_value() || !new_v0.Pos.MC.has_value()) return;
-    // -- find V0's `McEntry`
-    auto mc_entry = MC::FindCommonMotherMcEntry(*new_v0.Neg.MC, *new_v0.Pos.MC);
-    if (!mc_entry.has_value()) return;
-    new_v0.MC = mc_collection[mc_entry.value()];
-    auto& mc_v0 = new_v0.MC.value();  // alias
-    // -- classify and store
-    auto c = MC::SexaquarkRules::Classify(mc_v0, mc_collection, fSettings.ReactionChannel.value(), pid_hypothesis.pdg_code, false, true);
-    MC::Apply(mc_v0, c);
-    mc_v0.IsHybrid = new_v0.Neg.MC->IsTrueSignal != new_v0.Pos.MC->IsTrueSignal;
+POD::Extended::McParticle Packager::BuildMcV0(const POD::Extended::McParticle& mc_neg, const POD::Extended::McParticle& mc_pos,
+                                              int pdg_code_hypothesis) {
+    POD::Extended::McParticle mc_v0;
+    // clang-format off
+    auto mc_entry = MC::FindCommonMotherMcEntry(mc_neg, mc_pos);
+    if (!mc_entry.has_value()) {  return mc_v0; }
+    // clang-format on
+    // fill values //
+    static_cast<POD::McParticle&>(mc_v0) = fInput.McParticle[mc_entry.value()];
+    MC::Apply(mc_v0, MC::SexaquarkRules::ClassifyDownstream(mc_v0, fInput.McParticle, fReactionChannel, pdg_code_hypothesis, false, true));
+    mc_v0.IsHybrid = mc_neg.IsTrueSignal != mc_pos.IsTrueSignal;
+
+    return mc_v0;
 }
 
-void Packager::BuildRecInfo(POD::V0& new_v0, const KF::V0& kf_v0) {
+POD::V0 Packager::CreateV0(const KF::V0& kf_v0) {
+    POD::V0 new_v0;  // non-initialized on purpose
     new_v0.Decay_X = static_cast<float>(kf_v0.X());
     new_v0.Decay_Y = static_cast<float>(kf_v0.Y());
     new_v0.Decay_Z = static_cast<float>(kf_v0.Z());
@@ -438,7 +468,6 @@ void Packager::BuildRecInfo(POD::V0& new_v0, const KF::V0& kf_v0) {
     new_v0.CovMatrix = kf_v0.Cov<7>();
     new_v0.Chi2NDF = static_cast<float>(kf_v0.Chi2NDF());
     // -- negative daughter
-    new_v0.Neg = *kf_v0.Neg;
     new_v0.Neg_PCAwrtV0_X = static_cast<float>(kf_v0.Neg_PCAwrtV0.X());
     new_v0.Neg_PCAwrtV0_Y = static_cast<float>(kf_v0.Neg_PCAwrtV0.Y());
     new_v0.Neg_PCAwrtV0_Z = static_cast<float>(kf_v0.Neg_PCAwrtV0.Z());
@@ -446,13 +475,14 @@ void Packager::BuildRecInfo(POD::V0& new_v0, const KF::V0& kf_v0) {
     new_v0.Neg_PCAwrtV0_Py = static_cast<float>(kf_v0.Neg_PCAwrtV0.Py());
     new_v0.Neg_PCAwrtV0_Pz = static_cast<float>(kf_v0.Neg_PCAwrtV0.Pz());
     // -- positive daughter
-    new_v0.Pos = *kf_v0.Pos;
     new_v0.Pos_PCAwrtV0_X = static_cast<float>(kf_v0.Pos_PCAwrtV0.X());
     new_v0.Pos_PCAwrtV0_Y = static_cast<float>(kf_v0.Pos_PCAwrtV0.Y());
     new_v0.Pos_PCAwrtV0_Z = static_cast<float>(kf_v0.Pos_PCAwrtV0.Z());
     new_v0.Pos_PCAwrtV0_Px = static_cast<float>(kf_v0.Pos_PCAwrtV0.Px());
     new_v0.Pos_PCAwrtV0_Py = static_cast<float>(kf_v0.Pos_PCAwrtV0.Py());
     new_v0.Pos_PCAwrtV0_Pz = static_cast<float>(kf_v0.Pos_PCAwrtV0.Pz());
+
+    return new_v0;
 }
 
 // ## END OF CYCLES ## //
@@ -460,10 +490,10 @@ void Packager::BuildRecInfo(POD::V0& new_v0, const KF::V0& kf_v0) {
 void Packager::EndOfEvent() {
 
     // -- fill schema
-    fWriter.Fill();
+    fWriter->Fill();
 
     // -- clear schema vectors
-    fOutput.Clear();
+    fOutput.Clear(fSettings.IsMC);
 
     // -- clear temporary entries containers
     fEntries_AntiProton.clear();

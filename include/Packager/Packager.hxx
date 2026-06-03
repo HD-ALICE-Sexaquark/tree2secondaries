@@ -12,7 +12,9 @@
 #include <ROOT/RNTupleReader.hxx>
 
 #include "App/Logger.hxx"
+#include "common/Constants.hpp"
 #include "common/DB_Particles.hpp"
+#include "common/DB_ReactionChannels.hpp"
 #include "common/Framework.hpp"
 #include "common/Schema_Events.hpp"
 #include "common/Schema_PackedEvents.hpp"
@@ -43,34 +45,29 @@ class Packager {
 
     explicit Packager(const Settings &settings)
         : fSettings{settings},
+          fReactionChannel{DB::ReactionChannels::FindReactionChannel(fSettings.ReactionChannel)},
           // input
           fInput_File{std::make_unique<TFile>(fSettings.PathInputFile.c_str(), "READ")},
-          fReader{E2R::Name_OutputRNT, *fInput_File},
-          fInput{fReader.Data()},
+          fInput{},
+          fReader{nullptr},
           // output
           fOutput_File{std::make_unique<TFile>(fSettings.PathOutputFile.c_str(), "RECREATE")},
-          fWriter{R2DS::Name_PackedRNT, *fOutput_File},
-          fOutput{fWriter.Data()} {
+          fOutput{},
+          fWriter{nullptr} {
+
+        fReader = std::make_unique<Framework::Reader>(fInput.CreateModel(fSettings.IsMC, fSettings.IsMC), E2R::Name_OutputRNT, *fInput_File);
+        fWriter = std::make_unique<Framework::Writer>(fOutput.CreateModel(fSettings.IsMC), R2DS::Name_PackedRNT, *fOutput_File);
 
         PrepareOutputHistograms();
 
         Logger::Info(__FUNCTION__, "Packager initialized successfully.");
     }
 
-    [[nodiscard]] bool CheckArguments() const {
-        // -- if data kind is real data, all good
-        if (!fInput.McParticle.has_value()) return true;
-        // -- if data kind is MC, it requires
-        bool state = fSettings.ReactionChannel.has_value() && fSettings.SexaquarkMass.has_value();
-        if (!state) Logger::Error(__FUNCTION__, "\"Packager\" is reading MC, but \"--channel <channel> --mass <mass>\" are missing.");
-        return state;
-    }
-
     void PrepareOutputHistograms();
 
-    void Load(ROOT::NTupleSize_t entry_id) { fReader.Load(entry_id); }
+    void Load(ROOT::NTupleSize_t entry_id) { fReader->Load(entry_id); }
     [[nodiscard]] ROOT::NTupleSize_t NumberEventsToRead() {
-        auto total = fReader.Iter()->GetNEntries();
+        auto total = fReader->Iter()->GetNEntries();
         return fSettings.LimitToNEvents.has_value() ? std::min(fSettings.LimitToNEvents.value(), total) : total;
     }
 
@@ -130,7 +127,7 @@ class Packager {
     bool PassesKaonCuts(const POD::Track &track, TH1D *cut_flow_hist) const;
     bool PassesPionCuts(const POD::Track &track, TH1D *cut_flow_hist) const;
 
-    void BuildMcInfo(POD::Track &new_track, int pdg_code_hypothesis, bool include_gm);
+    POD::Extended::McParticle BuildMcTrack(unsigned int track_mc_entry, int pdg_code_hypothesis, bool include_gm);
 
     // V0s //
 
@@ -142,25 +139,13 @@ class Packager {
     bool SlowCuts_Lambda(const KF::V0 &kf_v0, TH1D *cut_flow_hist) const;
     bool SlowCuts_KaonZeroShort(const KF::V0 &kf_v0, TH1D *cut_flow_hist) const;
 
-    void BuildMcInfo(POD::V0 &new_v0, const DB::Particles::Definition &pid_hypothesis);
-    void BuildRecInfo(POD::V0 &new_v0, const KF::V0 &kf_v0);
+    POD::Extended::McParticle BuildMcV0(const POD::Extended::McParticle &mc_neg, const POD::Extended::McParticle &mc_pos, int pdg_code_hypothesis);
+    POD::V0 CreateV0(const KF::V0 &kf_v0);
 
     // member variables //
 
     const Settings &fSettings;
-
-    std::unique_ptr<TH1D> fHist_EventCounter;  // event counter
-
-    std::unique_ptr<TH1D> fHist_CutFlow_AntiProton;
-    std::unique_ptr<TH1D> fHist_CutFlow_Proton;
-    std::unique_ptr<TH1D> fHist_CutFlow_NegKaon;
-    std::unique_ptr<TH1D> fHist_CutFlow_PosKaon;
-    std::unique_ptr<TH1D> fHist_CutFlow_PiMinus;
-    std::unique_ptr<TH1D> fHist_CutFlow_PiPlus;
-
-    std::unique_ptr<TH1D> fHist_CutFlow_AntiLambda;
-    std::unique_ptr<TH1D> fHist_CutFlow_Lambda;
-    std::unique_ptr<TH1D> fHist_CutFlow_KaonZeroShort;
+    DB::ReactionChannels::Definition fReactionChannel;
 
     // temporary entries containers, cleaned after event loop //
 
@@ -174,16 +159,29 @@ class Packager {
     // input //
 
     std::unique_ptr<TFile> fInput_File;
-    Framework::Reader<Schema::Events> fReader;
-    Schema::Events &fInput;
+    Schema::Events fInput;
+    std::unique_ptr<Framework::Reader> fReader;
     // -- cached
     ROOT::Math::XYZPoint fPrimaryVertex;
 
     // output //
 
     std::unique_ptr<TFile> fOutput_File;
-    Framework::Writer<Schema::PackedEvents> fWriter;
-    Schema::PackedEvents &fOutput;
+    Schema::PackedEvents fOutput;
+    std::unique_ptr<Framework::Writer> fWriter;
+
+    std::unique_ptr<TH1D> fHist_EventCounter;
+
+    std::unique_ptr<TH1D> fHist_CutFlow_AntiProton;
+    std::unique_ptr<TH1D> fHist_CutFlow_Proton;
+    std::unique_ptr<TH1D> fHist_CutFlow_NegKaon;
+    std::unique_ptr<TH1D> fHist_CutFlow_PosKaon;
+    std::unique_ptr<TH1D> fHist_CutFlow_PiMinus;
+    std::unique_ptr<TH1D> fHist_CutFlow_PiPlus;
+
+    std::unique_ptr<TH1D> fHist_CutFlow_AntiLambda;
+    std::unique_ptr<TH1D> fHist_CutFlow_Lambda;
+    std::unique_ptr<TH1D> fHist_CutFlow_KaonZeroShort;
 };
 
 }  // namespace R2DS
