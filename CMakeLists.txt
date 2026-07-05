@@ -1,12 +1,14 @@
-cmake_minimum_required(VERSION 3.25...3.31)
+cmake_minimum_required(VERSION 3.28...3.31)
 project(
-  RNTuple2DoubleStrangeness
-  VERSION 26.06.02
+  t2ds
+  VERSION 26.07.05
   LANGUAGES CXX)
 
-# support folders in IDEs #
+# set "Release" as default build type #
 
-set_property(GLOBAL PROPERTY USE_FOLDERS ON)
+if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+  set(CMAKE_BUILD_TYPE Release CACHE STRING "" FORCE)
+endif()
 
 # prevent in-source builds #
 
@@ -18,8 +20,8 @@ endif()
 
 set(CMAKE_CXX_EXTENSIONS OFF) # ensure -std=c++xx instead of -std=g++xx
 set(CMAKE_CXX_STANDARD 23)
-set(CMAKE_CXX_STANDARD_REQUIRED True)
-set(CMAKE_EXPORT_COMPILE_COMMANDS True)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # includes and macros #
 
@@ -31,18 +33,9 @@ include(FetchContent)
 check_ipo_supported(RESULT LTO_SUPPORTED)
 if(LTO_SUPPORTED)
   message(STATUS "LTO/IPO is supported")
-  set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
+  set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE)
 else()
   message(STATUS "LTO/IPO is not supported")
-endif()
-
-# option: profiling #
-
-option(ENABLE_PROFILING "Enable profiling with gprof" OFF)
-if(ENABLE_PROFILING)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pg")
-  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -pg")
-  set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -pg")
 endif()
 
 option(LEGACY_KF "Enable original KFParticle functions" OFF)
@@ -52,103 +45,113 @@ option(LEGACY_KF "Enable original KFParticle functions" OFF)
 message(STATUS "Fetching https://github.com/CLIUtils/CLI11")
 FetchContent_Declare(
   cli11_proj
-  QUIET
+  SYSTEM
   GIT_REPOSITORY https://github.com/CLIUtils/CLI11.git
-  GIT_TAG v2.6.2)
+  GIT_TAG v2.6.2
+  GIT_SHALLOW TRUE)
 FetchContent_MakeAvailable(cli11_proj)
 message(STATUS "Fetching https://github.com/CLIUtils/CLI11 -- fetched")
 
 message(STATUS "Fetching https://gitlab.com/libeigen/eigen")
 FetchContent_Declare(
   eigen
+  SYSTEM
+  EXCLUDE_FROM_ALL
   GIT_REPOSITORY https://gitlab.com/libeigen/eigen.git
-  GIT_TAG 5.0.1)
+  GIT_TAG 5.0.1
+  GIT_SHALLOW TRUE)
 FetchContent_MakeAvailable(eigen)
 message(STATUS "Fetching https://gitlab.com/libeigen/eigen -- fetched")
 
 message(STATUS "Looking for ROOT")
-find_package(ROOT 6.36 REQUIRED CONFIG COMPONENTS Core Hist RIO EG ROOTNTuple)
+find_package(ROOT 6.40 REQUIRED CONFIG COMPONENTS Core Tree MathCore GenVector Hist RIO ROOTNTuple)
 if(ROOT_FOUND)
   message(STATUS "Found ROOT: ${ROOT_INCLUDE_DIRS}")
 endif()
 
-# main target (1) #
+# flags #
 
-add_executable(
-  ${PROJECT_NAME}
-  $<$<BOOL:${LEGACY_KF}>:
-  src/Legacy/LegacyAddDaughter.cxx
-  src/Legacy/LegacyAddDaughterWithEnergyFit.cxx
-  src/Legacy/LegacyGetMeasurement.cxx
-  src/Legacy/LegacyHelixHelix.cxx
-  src/Legacy/LegacyHelixPoint.cxx
-  src/Legacy/LegacyInvertCholesky.cxx
-  src/Legacy/LegacyLineLine.cxx
-  src/Legacy/LegacyLinePoint.cxx
-  src/Legacy/LegacyMultQSQt.cxx
-  src/Legacy/LegacyParticle.cxx
-  src/Legacy/LegacyTransportBz.cxx
-  src/Legacy/LegacyTransportLine.cxx
-  >
-  src/Seeder/SeederHelixHelix.cxx
-  src/Seeder/SeederHelixLine.cxx
-  src/Seeder/SeederHelixVertex.cxx
-  src/Seeder/SeederLineLine.cxx
-  src/Seeder/SeederLineVertex.cxx
-  src/KalmanFitter/KalmanFitter.cxx
-  src/KalmanFitter/KalmanFitterParticle.cxx
-  src/Packager.cxx
-  src/Finder.cxx
-  src/Verifier.cxx
-  src/App.cxx)
+set(T2DS_RELEASE_FLAGS -march=x86-64-v3 -mtune=native -ffp-contract=fast -fno-math-errno -fno-trapping-math)
 
-target_link_libraries(
-  ${PROJECT_NAME} PRIVATE CLI11::CLI11 Eigen3::Eigen ROOT::Core ROOT::RIO
-                          ROOT::Hist ROOT::ROOTNTuple)
+# option: profiling #
 
-target_include_directories(
-  ${PROJECT_NAME} PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
-                         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>)
+option(ENABLE_PROFILING "Enable profiling with gprof" OFF)
+if(ENABLE_PROFILING)
+  # these affect only targets created after the call
+  add_compile_options(-pg)
+  add_link_options(-pg)
+endif()
 
-# (dictionary section) #
+# root dictionary #
 
-ROOT_GENERATE_DICTIONARY(common_pod
-  common/Constants.hpp
-  common/POD_Event.hpp
-  common/POD_InjectedSexa.hpp
-  common/POD_McParticle.hpp
-  common/POD_Track.hpp
-  common/POD_OnTheFlyLambda.hpp
-  common/POD_V0.hpp
-  common/POD_Sexaquark.hpp
-  common/POD_LambdaPair.hpp
-  LINKDEF common/POD_LinkDef.h
-  MODULE ${PROJECT_NAME})
+add_library(POD SHARED)
+root_generate_dictionary(G__POD common/Constants.hpp
+                                common/POD_Event.hpp
+                                common/POD_InjectedHdib.hpp
+                                common/POD_InjectedSexa.hpp
+                                common/POD_LambdaPair.hpp
+                                common/POD_McParticle.hpp
+                                common/POD_PreFoundLambda.hpp
+                                common/POD_Sexaquark.hpp
+                                common/POD_Track.hpp
+                                common/POD_V0.hpp
+                                LINKDEF common/POD_LinkDef.h
+                                MODULE POD)
 
-add_library(common_pod_lib SHARED ${CMAKE_CURRENT_BINARY_DIR}/common_pod.cxx)
-target_include_directories(
-  common_pod_lib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}
-                        ${CMAKE_CURRENT_SOURCE_DIR}/common)
-target_link_libraries(
-  common_pod_lib PUBLIC ROOT::Core ROOT::RIO)
+target_link_libraries(POD PUBLIC ROOT::Core ROOT::RIO)
+target_link_options(POD PRIVATE -Wno-alloc-size-larger-than)
+target_include_directories(POD PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}
+                                      ${CMAKE_CURRENT_SOURCE_DIR}/common)
 
-# main target (2) #
+# main target #
 
-target_compile_options(
-  ${PROJECT_NAME}
-  PRIVATE -Wall
-          -Wextra
-          -Wshadow
-          -Wnon-virtual-dtor
-          -Wpedantic
-          -Wconversion
-          $<$<CONFIG:Release>:-mtune=native
-          -march=native
-          -ffp-contract=fast
-          -fno-math-errno
-          -mfma>)
+add_executable(${PROJECT_NAME} src/Seeder/SeederHelixHelix.cxx
+                               src/Seeder/SeederHelixLine.cxx
+                               src/Seeder/SeederHelixVertex.cxx
+                               src/Seeder/SeederLineLine.cxx
+                               src/Seeder/SeederLineVertex.cxx
+                               src/KalmanFitter/KalmanFitter.cxx
+                               src/KalmanFitter/KalmanFitterParticle.cxx
+                               src/Packager.cxx
+                               src/Finder.cxx
+                               src/Verifier.cxx
+                               src/App.cxx)
 
-target_compile_definitions(
-  ${PROJECT_NAME}
-  PUBLIC EIGEN_DONT_PARALLELIZE $<$<BOOL:${LEGACY_KF}>:R2DS_LEGACY_KF>
-         $<$<CONFIG:Debug>:R2DS_DEBUG> $<$<CONFIG:Release>:EIGEN_NO_DEBUG>)
+if(LEGACY_KF)
+  # add sources to a target
+  target_sources(${PROJECT_NAME} PRIVATE src/Legacy/LegacyAddDaughter.cxx
+                                         src/Legacy/LegacyAddDaughterWithEnergyFit.cxx
+                                         src/Legacy/LegacyGetMeasurement.cxx
+                                         src/Legacy/LegacyHelixHelix.cxx
+                                         src/Legacy/LegacyHelixPoint.cxx
+                                         src/Legacy/LegacyInvertCholesky.cxx
+                                         src/Legacy/LegacyLineLine.cxx
+                                         src/Legacy/LegacyLinePoint.cxx
+                                         src/Legacy/LegacyMultQSQt.cxx
+                                         src/Legacy/LegacyParticle.cxx
+                                         src/Legacy/LegacyTransportBz.cxx
+                                         src/Legacy/LegacyTransportLine.cxx)
+endif()
+
+target_link_libraries(${PROJECT_NAME} PRIVATE POD
+                                              CLI11::CLI11
+                                              Eigen3::Eigen
+                                              ROOT::Core ROOT::Tree ROOT::MathCore ROOT::GenVector
+                                              ROOT::RIO ROOT::Hist ROOT::ROOTNTuple)
+
+target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
+                                                   ${CMAKE_CURRENT_SOURCE_DIR}/include)
+
+target_compile_options(${PROJECT_NAME} PRIVATE -Wall
+                                               -Wextra
+                                               -Wshadow
+                                               -Wnon-virtual-dtor
+                                               -Wpedantic
+                                               -Wconversion
+                                               -Wdouble-promotion
+                                               $<$<CONFIG:Release>:${T2DS_OPT_FLAGS}>)
+
+target_compile_definitions(${PROJECT_NAME} PRIVATE EIGEN_DONT_PARALLELIZE
+                                                   $<$<BOOL:${LEGACY_KF}>:T2DS_LEGACY_KF>
+                                                   $<$<CONFIG:Debug>:T2DS_DEBUG>
+                                                   $<$<CONFIG:Release>:EIGEN_NO_DEBUG>)

@@ -4,7 +4,7 @@
 
 #include "Seeder/BaseSeeder.hxx"
 
-namespace R2DS::Seeder::HelixVertex {
+namespace T2DS::Seeder::HelixVertex {
 
 struct Cache {
     // filled @ `FastPCA_XY` //
@@ -47,4 +47,4 @@ inline Deriv ComputeDerivatives(const Seed& seed_xy, Cache& cache) {
     return UpdateDerivatives_Z(seed_xy, deriv_xy, cache);
 }
 
-}  // namespace R2DS::Seeder::HelixVertex
+}  // namespace T2DS::Seeder::HelixVertex

@@ -6,7 +6,7 @@
 
 #include "App/Logger.hxx"
 
-namespace R2DS {
+namespace T2DS {
 
 enum EProgramMode : std::uint8_t { FINDER, PACKAGER, VERIFIER };
 const std::array Name_ProgramMode{"FINDER", "PACKAGER", "VERIFIER"};
@@ -39,4 +39,4 @@ struct Settings {
     bool IsMC;
 };
 
-}  // namespace R2DS
+}  // namespace T2DS

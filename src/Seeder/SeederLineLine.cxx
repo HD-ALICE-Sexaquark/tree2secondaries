@@ -1,5 +1,3 @@
-#include "Seeder/SeederLineLine.hxx"
-
 #include <array>
 #include <cmath>
 #include <utility>
@@ -8,11 +6,13 @@
 
 #include "Seeder/BaseSeeder.hxx"
 #include "Seeder/SeederLineVertex.hxx"
-#if R2DS_DEBUG
+#if T2DS_DEBUG
 #include "App/Logger.hxx"
 #endif
 
-namespace R2DS::Seeder::LineLine {
+#include "Seeder/SeederLineLine.hxx"
+
+namespace T2DS::Seeder::LineLine {
 
 // First phase. Find points of closest approach (PCAs) between two V0s.
 // Assume they transport as straight lines.
@@ -91,7 +91,7 @@ std::pair<Seed, Seed> FastPCAs(double x01, double y01, double z01, double px01, 
     seed2.pca.xyz = {x02 + c.px02 * seed2.ds, y02 + c.py02 * seed2.ds, z02 + c.pz02 * seed2.ds};
     seed2.pca.mom = {c.px02, c.py02, c.pz02};
 
-#if R2DS_DEBUG
+#if T2DS_DEBUG
     Logger::Debug(__FUNCTION__, "seed1.ds = {:13.6e}", seed1.ds);
     Logger::Debug(__FUNCTION__, "seed1.(x,y,z) = {}", seed1.pca.xyz);
     Logger::Debug(__FUNCTION__, "seed1.(px,py,pz) = {}", seed1.pca.mom);
@@ -145,7 +145,7 @@ std::pair<Deriv, Deriv> ComputeDerivatives(const Cache& c) {
     double a2 = c.drp2 * c.p12 - c.drp1 * c.p1p2;
     double detp2 = c.detp * c.detp;
 
-    for (size_t i = 0; i < 6; ++i) {
+    for (std::size_t i = 0; i < 6; ++i) {
         double da1_dr1 = drp2_dr1[i] * c.p1p2 + c.drp2 * dp1p2_dr1[i] - drp1_dr1[i] * c.p22;  // - drp1 * dp22_dr1[i] = 0
         double da1_dr2 = drp2_dr2[i] * c.p1p2 + c.drp2 * dp1p2_dr2[i] - drp1_dr2[i] * c.p22 - c.drp1 * dp22_dr2[i];
         double da2_dr1 = drp2_dr1[i] * c.p12 + c.drp2 * dp12_dr1[i] - drp1_dr1[i] * c.p1p2 - c.drp1 * dp1p2_dr1[i];
@@ -157,7 +157,7 @@ std::pair<Deriv, Deriv> ComputeDerivatives(const Cache& c) {
         deriv2.ds_dr[i] = da2_dr2 / c.detp - a2 * ddetp_dr2[i] / detp2;
     }
 
-#if R2DS_DEBUG
+#if T2DS_DEBUG
     Logger::Debug(__FUNCTION__, "deriv1.ds_dr = {}", deriv1.ds_dr);
     Logger::Debug(__FUNCTION__, "deriv1.ds_dr1 = {}", deriv1.ds_dr1);
     Logger::Debug(__FUNCTION__, "deriv2.ds_dr = {}", deriv2.ds_dr);
@@ -167,4 +167,4 @@ std::pair<Deriv, Deriv> ComputeDerivatives(const Cache& c) {
     return {deriv1, deriv2};
 }
 
-}  // namespace R2DS::Seeder::LineLine
+}  // namespace T2DS::Seeder::LineLine

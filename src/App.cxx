@@ -6,17 +6,17 @@
 
 int main(int argc, char *argv[]) {
 
-    R2DS::Settings settings;
-    R2DS::Parser parser("RNTuple2DoubleStrangeness");
+    T2DS::Settings settings;
+    T2DS::Parser parser("Tree2DoubleStrangeness");
     parser.Parse(argc, argv);
     if (parser.HelpOrError) return parser.ExitCode;
     parser.Assign(settings);
     settings.Print();
 
-    if (settings.Mode == R2DS::EProgramMode::PACKAGER) {
+    if (settings.Mode == T2DS::EProgramMode::PACKAGER) {
 
-        R2DS::Packager pkgr(settings);
-        for (unsigned long id_event = 0; id_event < pkgr.NumberEventsToRead(); ++id_event) {
+        T2DS::Packager pkgr(settings);
+        for (long long id_event = 0; id_event < pkgr.NumberEventsToRead(); ++id_event) {
             pkgr.Load(id_event);
             pkgr.ProcessEvent();
             if (settings.IsMC) pkgr.ProcessInjected();
@@ -26,9 +26,9 @@ int main(int argc, char *argv[]) {
         }
         pkgr.EndOfAnalysis();
 
-    } else if (settings.Mode == R2DS::EProgramMode::FINDER) {
+    } else if (settings.Mode == T2DS::EProgramMode::FINDER) {
 
-        R2DS::Finder fndr(settings);
+        T2DS::Finder fndr(settings);
         for (unsigned long id_event = 0; id_event < fndr.NumberEventsToRead(); ++id_event) {
             fndr.Load(id_event);
             fndr.ProcessEvent();
@@ -38,13 +38,14 @@ int main(int argc, char *argv[]) {
         }
         fndr.EndOfAnalysis();
 
-    } else if (settings.Mode == R2DS::EProgramMode::VERIFIER) {
+    } else if (settings.Mode == T2DS::EProgramMode::VERIFIER) {
 
-        R2DS::Verifier vrfr(settings);
-        for (unsigned long id_event = 0; id_event < vrfr.NumberEventsToRead(); ++id_event) {
+        T2DS::Verifier vrfr(settings);
+        for (long long id_event = 0; id_event < vrfr.NumberEventsToRead(); ++id_event) {
             vrfr.Load(id_event);
             vrfr.ProcessEvent();
             if (settings.IsMC) vrfr.ProcessInjected();
+            vrfr.ProcessPreFoundLambda();
             vrfr.Verify();
             vrfr.EndOfEvent();
         }

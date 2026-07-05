@@ -7,13 +7,14 @@
 
 #include <Eigen/Eigen>
 
+#include "common/POD_PreFoundLambda.hpp"
 #include "common/POD_Track.hpp"
 #include "common/POD_V0.hpp"
 
 #include "KalmanFitter/KalmanFitterParticle.hxx"
 #include "Seeder/BaseSeeder.hxx"
 
-namespace R2DS::KF {
+namespace T2DS::KF {
 
 static constexpr double Initial_Css = 1.;
 
@@ -54,4 +55,9 @@ inline Particle FitVertex(const POD::V0& v0_1, const POD::V0& v0_2, const Seeder
     return FitVertex(Particle::FromV0(v0_1), Particle::FromV0(v0_2), s_1, s_2);
 }
 
-}  // namespace R2DS::KF
+inline Particle FitVertex(const POD::Extended::PreFoundLambda& l1, const POD::Extended::PreFoundLambda& l2, const Seeder::Result& s1,
+                          const Seeder::Result& s2) {
+    return FitVertex(Particle::FromPreFoundLambda(l1), Particle::FromPreFoundLambda(l2), s1, s2);
+}
+
+}  // namespace T2DS::KF

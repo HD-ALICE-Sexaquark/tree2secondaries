@@ -4,14 +4,14 @@
 #include "common/Constants.hpp"
 
 #include "Seeder/BaseSeeder.hxx"
-#if R2DS_DEBUG
+#if T2DS_DEBUG
 #include "App/Logger.hxx"
 #include "App/Utilities.hxx"
 #endif
 
 #include "KalmanFitter/BaseKalmanFitter.hxx"
 
-namespace R2DS::KF {
+namespace T2DS::KF {
 
 // Daughter Struct //
 
@@ -81,7 +81,7 @@ void Daughter::PrepareJacobAndCorr(const Seeder::Result& s, double bz) {
 
     corr = df_ds * ds_dr1;
 
-#if R2DS_DEBUG
+#if T2DS_DEBUG
     Logger::Debug(__FUNCTION__, "jacob  = {}", jacob);
     Logger::Debug(__FUNCTION__, "corr   = {}", corr);
 #endif
@@ -112,7 +112,7 @@ void Daughter::Transport(const Seeder::PCA& pca, const Eigen::Ref<const Eigen::M
     // -- with corr. matrix + other particle's cov matrix
     fC.block<6, 6>(0, 0).noalias() += corr * other_bt_cov.block<6, 6>(0, 0).selfadjointView<Eigen::Lower>() * corr.transpose();
 
-#if R2DS_DEBUG
+#if T2DS_DEBUG
     Logger::Debug(__FUNCTION__, "fP = {}", fP);
     Logger::Debug(__FUNCTION__, "fC = {}", fC);
 #endif
@@ -181,7 +181,7 @@ KF::Particle GetUpdated(const KF::Daughter& kf_1, const KF::Daughter& kf_2) {
     out.fQ = kf_1.Charge() + kf_2.Charge();
     out.fNDF += 2;
 
-#if R2DS_DEBUG
+#if T2DS_DEBUG
     Logger::Debug(__FUNCTION__, "mS     = {}", mS);
     Logger::Debug(__FUNCTION__, "zeta   = {}", zeta);
     Logger::Debug(__FUNCTION__, "mCHt   = {}", mCHt);
@@ -212,4 +212,4 @@ KF::Particle FitVertex(const KF::Particle& part_1, const KF::Particle& part_2, c
     return GetUpdated(kf_1, kf_2);
 }
 
-}  // namespace R2DS::KF
+}  // namespace T2DS::KF

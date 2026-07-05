@@ -10,15 +10,16 @@
 #include <Eigen/Eigen>
 
 #include "common/Constants.hpp"
+#include "common/POD_PreFoundLambda.hpp"
 #include "common/POD_Track.hpp"
 #include "common/POD_V0.hpp"
 
 #include "App/Utilities.hxx"  // NOTE: don't remove! print formatter below needs it
-#if R2DS_LEGACY_KF
+#if T2DS_LEGACY_KF
 #include "Legacy/LegacyParticle.hxx"
 #endif
 
-namespace R2DS::KF {
+namespace T2DS::KF {
 
 // ## KF::Particle ## //
 
@@ -29,7 +30,8 @@ struct Particle {
     Particle() = default;
     static Particle FromTrack(const POD::Track &v, double mass);
     static Particle FromV0(const POD::V0 &v);
-#if R2DS_LEGACY_KF
+    static Particle FromPreFoundLambda(const POD::Extended::PreFoundLambda &l);
+#if T2DS_LEGACY_KF
     static Particle FromLegacy(const Legacy::Particle &part);
 #endif
 
@@ -91,6 +93,13 @@ struct Particle {
     [[nodiscard]] double VarPz() const { return CovPz2(); }
     [[nodiscard]] double VarE() const { return CovE2(); }
     [[nodiscard]] double VarS() const { return CovS2(); }
+
+    template <unsigned int N>
+    [[nodiscard]] std::array<float, N> State() const {
+        std::array<float, N> out{};
+        for (unsigned int i = 0; i < N; ++i) out[i] = static_cast<float>(fP(i));
+        return out;
+    }
 
     template <unsigned int N>
     [[nodiscard]] std::array<float, (N * (N + 1)) / 2> Cov() const {
@@ -159,14 +168,14 @@ struct Particle {
     int fQ{};
 };
 
-}  // namespace R2DS::KF
+}  // namespace T2DS::KF
 
 // # KF::Particle Print Formatter # //
 
 template <>
-struct std::formatter<R2DS::KF::Particle> {
+struct std::formatter<T2DS::KF::Particle> {
     constexpr auto parse(std::format_parse_context &ctx) { return ctx.begin(); }
-    auto format(const R2DS::KF::Particle &p, std::format_context &ctx) const {
+    auto format(const T2DS::KF::Particle &p, std::format_context &ctx) const {
         auto out = ctx.out();
         out = std::format_to(out, "\n");
         out = std::format_to(out, "(X,Y,Z,S)    = ({:13.6e}, {:13.6e}, {:13.6e}, {:13.6e})\n", p.X(), p.Y(), p.Z(), p.S());

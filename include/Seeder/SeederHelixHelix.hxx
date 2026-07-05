@@ -4,7 +4,7 @@
 
 #include "Seeder/BaseSeeder.hxx"
 
-namespace R2DS::Seeder::HelixHelix {
+namespace T2DS::Seeder::HelixHelix {
 
 struct Cache {
     // filled @ `FastPCAs_XY` //
@@ -68,4 +68,4 @@ inline std::tuple<Deriv, Deriv> ComputeDerivatives(const Seed& seed1_xy, const S
     return {deriv1, deriv2};
 }
 
-}  // namespace R2DS::Seeder::HelixHelix
+}  // namespace T2DS::Seeder::HelixHelix

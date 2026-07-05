@@ -7,7 +7,6 @@
 #include <TH1.h>
 
 #include <Math/Point3D.h>
-#include <ROOT/RNTupleReader.hxx>
 
 #include "common/Constants.hpp"
 #include "common/DB_ReactionChannels.hpp"
@@ -23,20 +22,13 @@
 
 // forward declarations //
 // clang-format off
-namespace POD {
-    struct InjectedSexa;
-    struct Track;
-    struct V0;
-}
-namespace KF {
-    struct ChannelA;
-    struct ChannelD;
-    struct ChannelH;
-}
+namespace POD { struct InjectedSexa; struct Track; struct V0; }
+namespace Cached { struct Sexaquark; }
 
-namespace R2DS {
+namespace T2DS {
 
-namespace Seeder { struct Seed; }
+namespace Seeder { struct PCA; }
+namespace KF { struct Particle; }
 // clang-format on
 
 class Finder {
@@ -79,7 +71,7 @@ class Finder {
             return;
         }
 
-        fReader = std::make_unique<Framework::Reader>(fInput.CreateModel(fSettings.IsMC), R2DS::Name_PackedRNT, *fInput_File);
+        fReader = std::make_unique<Framework::Reader>(fInput.CreateModel(fSettings.IsMC), T2DS::Name_PackedRNT, *fInput_File);
         fWriter = std::make_unique<Framework::Writer>(std::move(model), fName_FoundRNT, *fOutput_File);
 
         PrepareOutputHistograms();
@@ -124,22 +116,22 @@ class Finder {
     POD::Linked::InjectedSexa BuildMcSexaquark(const POD::Extended::McParticle &mc_dau1, const POD::Extended::McParticle &mc_dau2);
 
     // channel A //
-    void FindSexaquarks_ChannelA(bool anti_channel);
-    [[nodiscard]] bool FastCuts_ChannelA(const Seeder::Seed &seed_v0a, const Seeder::Seed &seed_v0b, TH1D *cut_flow_hist) const;
-    [[nodiscard]] bool SlowCuts_ChannelA(const KF::ChannelA &kf_sexa, TH1D *cut_flow_hist) const;
-    POD::Sexaquark Create_ChannelA(const KF::ChannelA &kf_sexa, bool anti_channel);
+    void FindSexaquarks_ChannelA(bool is_bkg_channel);
+    [[nodiscard]] bool FastCuts_ChannelA(const Seeder::PCA &pca_v0a, const Seeder::PCA &pca_v0b, TH1D *hist_cut_flow) const;
+    [[nodiscard]] bool SlowCuts_ChannelA(const Cached::Sexaquark &c_sexa, TH1D *hist_cut_flow) const;
+    POD::Sexaquark Create_ChannelA(const KF::Particle &fit, const Seeder::PCA &pca_v0a, const Seeder::PCA &pca_v0b, bool is_bkg_channel);
 
     // channel D //
-    void FindSexaquarks_ChannelD(bool anti_channel);
-    [[nodiscard]] bool FastCuts_ChannelD(const Seeder::Seed &seed_ka, const Seeder::Seed &seed_v0, TH1D *cut_flow_hist) const;
-    [[nodiscard]] bool SlowCuts_ChannelD(const KF::ChannelD &kf_sexa, TH1D *cut_flow_hist) const;
-    POD::Sexaquark Create_ChannelD(const KF::ChannelD &kf_sexa, bool anti_channel);
+    void FindSexaquarks_ChannelD(bool is_bkg_channel);
+    [[nodiscard]] bool FastCuts_ChannelD(const Seeder::PCA &pca_v0, const Seeder::PCA &pca_ka, TH1D *hist_cut_flow) const;
+    [[nodiscard]] bool SlowCuts_ChannelD(const Cached::Sexaquark &c_sexa, TH1D *hist_cut_flow) const;
+    POD::Sexaquark Create_ChannelD(const KF::Particle &fit, const Seeder::PCA &pca_v0, const Seeder::PCA &pca_ka, bool is_bkg_channel);
 
     // channel H //
-    void FindSexaquarks_ChannelH(bool anti_channel);
-    [[nodiscard]] bool FastCuts_ChannelH(const Seeder::Seed &seed_kaon1, const Seeder::Seed &seed_kaon2, TH1D *cut_flow_hist) const;
-    [[nodiscard]] bool SlowCuts_ChannelH(const KF::ChannelH &kf_sexa, TH1D *cut_flow_hist) const;
-    POD::Sexaquark Create_ChannelH(const KF::ChannelH &kf_sexa, bool anti_channel);
+    void FindSexaquarks_ChannelH(bool is_bkg_channel);
+    [[nodiscard]] bool FastCuts_ChannelH(const Seeder::PCA &pca_kaon1, const Seeder::PCA &pca_kaon2, TH1D *hist_cut_flow) const;
+    [[nodiscard]] bool SlowCuts_ChannelH(const Cached::Sexaquark &c_sexa, TH1D *hist_cut_flow) const;
+    POD::Sexaquark Create_ChannelH(const KF::Particle &fit, const Seeder::PCA &pca_kaon1, const Seeder::PCA &pca_kaon2, bool is_bkg_channel);
 
     // member variables //
 
@@ -162,12 +154,14 @@ class Finder {
     Schema::FoundChannelD fOutput_ChannelD;
     Schema::FoundChannelH fOutput_ChannelH;
     Schema::FoundSexaquark *fOutput_Base;  // NOTE: already initialized in constructor
-
     std::unique_ptr<Framework::Writer> fWriter;
-    std::unique_ptr<TH1D> fHist_EventCounter;
 
-    std::unique_ptr<TH1D> fHist_CutFlow;
-    std::unique_ptr<TH1D> fHist_CutFlow_AntiChannel;
+    // histograms
+    // -- event counter
+    std::unique_ptr<TH1D> fHist_EventCounter;
+    // -- cut flow for anti-sexaquarks + bkg. sexaquarks
+    std::unique_ptr<TH1D> fHist_CutFlow_AntiSexaquark;
+    std::unique_ptr<TH1D> fHist_CutFlow_BkgCandidates;
 };
 
-}  // namespace R2DS
+}  // namespace T2DS

@@ -2,12 +2,12 @@
 
 #include <array>
 
-#include "common/POD_OnTheFlyLambda.hpp"
+#include "common/POD_PreFoundLambda.hpp"
 #include "common/POD_V0.hpp"
 
 #include "Seeder/BaseSeeder.hxx"
 
-namespace R2DS::Seeder::LineVertex {
+namespace T2DS::Seeder::LineVertex {
 
 struct Cache {
     // filled @ `FastPCA` //
@@ -30,6 +30,10 @@ inline Seed FastPCA(const POD::V0& v0, const std::array<double, 3>& vtx, Cache* 
     return FastPCA(v0.Decay_X, v0.Decay_Y, v0.Decay_Z, v0.Px, v0.Py, v0.Pz, vtx, cache);
 }
 
+inline Seed FastPCA(const POD::Extended::PreFoundLambda& lambda, const std::array<double, 3>& vtx, Cache* cache = nullptr) {
+    return FastPCA(lambda.Decay_X, lambda.Decay_Y, lambda.Decay_Z, lambda.Px, lambda.Py, lambda.Pz, vtx, cache);
+}
+
 inline Result FullPCA(const POD::V0& v0, const std::array<double, 3>& vtx) {
     Cache cache;
     Seed seed = FastPCA(v0, vtx, &cache);
@@ -37,8 +41,11 @@ inline Result FullPCA(const POD::V0& v0, const std::array<double, 3>& vtx) {
     return {seed, deriv};
 }
 
-inline Seed FullPCA(const POD::OnTheFlyLambda& l, const std::array<double, 3>& vtx) {
-    return FastPCA(l.Decay_X, l.Decay_Y, l.Decay_Z, l.Px, l.Py, l.Pz, vtx);
+inline Result FullPCA(const POD::Extended::PreFoundLambda& lambda, const std::array<double, 3>& vtx) {
+    Cache cache;
+    Seed seed = FastPCA(lambda, vtx, &cache);
+    Deriv deriv = ComputeDerivatives(cache);
+    return {seed, deriv};
 }
 
-}  // namespace R2DS::Seeder::LineVertex
+}  // namespace T2DS::Seeder::LineVertex

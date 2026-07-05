@@ -1,16 +1,16 @@
-#include "Seeder/SeederLineVertex.hxx"
-
 #include <array>
 #include <cmath>
 
 #include "common/Constants.hpp"
 
 #include "Seeder/BaseSeeder.hxx"
-#if R2DS_DEBUG
+#if T2DS_DEBUG
 #include "App/Logger.hxx"
 #endif
 
-namespace R2DS::Seeder::LineVertex {
+#include "Seeder/SeederLineVertex.hxx"
+
+namespace T2DS::Seeder::LineVertex {
 
 // First phase. Find the point of closest approach (PCA) of a neutral particle w.r.t. a vertex, assuming it transports as a neutral particle.
 // Arguments:
@@ -57,7 +57,7 @@ Seed FastPCA(double x0, double y0, double z0, double px, double py, double pz,  
     seed.pca.xyz = {x0 + c.px0 * seed.ds, y0 + c.py0 * seed.ds, z0 + c.pz0 * seed.ds};
     seed.pca.mom = {c.px0, c.py0, c.pz0};
 
-#if R2DS_DEBUG
+#if T2DS_DEBUG
     Logger::Debug(__FUNCTION__, "seed.ds = {:13.6e}", seed.ds);
     Logger::Debug(__FUNCTION__, "seed.(x,y,z) = {}", seed.pca.xyz);
     Logger::Debug(__FUNCTION__, "seed.(px,py,pz) = {}", seed.pca.mom);
@@ -88,7 +88,7 @@ Deriv ComputeDerivatives(const Cache& c) {
                  (c.dz * c.p2 - 2. * c.pz0 * c.a) / p4};
     out.ds_dr1 = {-out.ds_dr[0], -out.ds_dr[1], -out.ds_dr[2], 0., 0., 0.};
 
-#if R2DS_DEBUG
+#if T2DS_DEBUG
     Logger::Debug(__FUNCTION__, "deriv.ds_dr = {}", out.ds_dr);
     Logger::Debug(__FUNCTION__, "deriv.ds_dr1 = {}", out.ds_dr1);
 #endif
@@ -96,4 +96,4 @@ Deriv ComputeDerivatives(const Cache& c) {
     return out;
 }
 
-}  // namespace R2DS::Seeder::LineVertex
+}  // namespace T2DS::Seeder::LineVertex

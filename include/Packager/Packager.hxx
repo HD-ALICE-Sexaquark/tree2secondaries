@@ -9,13 +9,12 @@
 
 #include <Math/Point3D.h>
 
-#include <ROOT/RNTupleReader.hxx>
-
 #include "App/Logger.hxx"
 #include "common/Constants.hpp"
 #include "common/DB_Particles.hpp"
 #include "common/DB_ReactionChannels.hpp"
 #include "common/Framework.hpp"
+#include "common/Framework_TeeTree.hpp"
 #include "common/Schema_Events.hpp"
 #include "common/Schema_PackedEvents.hpp"
 
@@ -23,15 +22,13 @@
 
 // forward declarations //
 // clang-format off
-namespace POD {
-    struct Track;
-    struct V0;
-}
-namespace KF { struct V0; }
+namespace POD { struct Track; struct V0; }
+namespace Cached { struct V0; }
 
-namespace R2DS {
+namespace T2DS {
 
-namespace Seeder{ struct Seed; }
+namespace Seeder{ struct PCA; }
+namespace KF{ struct Particle; }
 // clang-format on
 
 // Pack secondary V0s and tracks.
@@ -55,8 +52,9 @@ class Packager {
           fOutput{},
           fWriter{nullptr} {
 
-        fReader = std::make_unique<Framework::Reader>(fInput.CreateModel(fSettings.IsMC, fSettings.IsMC), E2R::Name_OutputRNT, *fInput_File);
-        fWriter = std::make_unique<Framework::Writer>(fOutput.CreateModel(fSettings.IsMC), R2DS::Name_PackedRNT, *fOutput_File);
+        fReader = std::make_unique<Framework::TeeTree::Reader>(fInput.CreateModel_TeeTree(fSettings.IsMC, fSettings.IsMC), E2T::Name_OutputTree,
+                                                               *fInput_File);
+        fWriter = std::make_unique<Framework::Writer>(fOutput.CreateModel(fSettings.IsMC), T2DS::Name_PackedRNT, *fOutput_File);
 
         PrepareOutputHistograms();
 
@@ -65,10 +63,10 @@ class Packager {
 
     void PrepareOutputHistograms();
 
-    void Load(ROOT::NTupleSize_t entry_id) { fReader->Load(entry_id); }
-    [[nodiscard]] ROOT::NTupleSize_t NumberEventsToRead() {
-        auto total = fReader->Iter()->GetNEntries();
-        return fSettings.LimitToNEvents.has_value() ? std::min(fSettings.LimitToNEvents.value(), total) : total;
+    void Load(long long entry_idx) { fReader->Load(entry_idx); }
+    [[nodiscard]] long long NumberEventsToRead() {
+        auto total = fReader->GetEntries();
+        return fSettings.LimitToNEvents.has_value() ? std::min(static_cast<long long>(fSettings.LimitToNEvents.value()), total) : total;
     }
 
     void ProcessEvent();
@@ -83,7 +81,7 @@ class Packager {
         PackTracks(DB::Particles::Particle("PosKaon"));
     }
 
-    [[nodiscard]] bool FastCuts(const Seeder::Seed &pca_neg, const Seeder::Seed &pca_pos, const DB::Particles::Definition &pid) const {
+    [[nodiscard]] bool FastCuts(const Seeder::PCA &pca_neg, const Seeder::PCA &pca_pos, const DB::Particles::Definition &pid) const {
         switch (pid.pdg_code) {
             case DB::Particles::Particle("AntiLambda").pdg_code: {
                 return FastCuts_Lambda(pca_neg, pca_pos, fHist_CutFlow_AntiLambda.get());
@@ -99,16 +97,16 @@ class Packager {
         }
     }
 
-    [[nodiscard]] bool SlowCuts(const KF::V0 &v0, const DB::Particles::Definition &pid) const {
+    [[nodiscard]] bool SlowCuts(const Cached::V0 &c_v0, const DB::Particles::Definition &pid) const {
         switch (pid.pdg_code) {
             case DB::Particles::Particle("AntiLambda").pdg_code: {
-                return SlowCuts_Lambda(v0, fHist_CutFlow_AntiLambda.get());
+                return SlowCuts_Lambda(c_v0, fHist_CutFlow_AntiLambda.get());
             }
             case DB::Particles::Particle("Lambda").pdg_code: {
-                return SlowCuts_Lambda(v0, fHist_CutFlow_Lambda.get());
+                return SlowCuts_Lambda(c_v0, fHist_CutFlow_Lambda.get());
             }
             case DB::Particles::Particle("KaonZeroShort").pdg_code: {
-                return SlowCuts_KaonZeroShort(v0, fHist_CutFlow_KaonZeroShort.get());
+                return SlowCuts_KaonZeroShort(c_v0, fHist_CutFlow_KaonZeroShort.get());
             }
             default:
                 return false;
@@ -123,9 +121,9 @@ class Packager {
 
     void PackTracks(const DB::Particles::Definition &pid);
 
-    bool PassesProtonCuts(const POD::Track &track, TH1D *cut_flow_hist) const;
-    bool PassesKaonCuts(const POD::Track &track, TH1D *cut_flow_hist) const;
-    bool PassesPionCuts(const POD::Track &track, TH1D *cut_flow_hist) const;
+    bool PassesProtonCuts(const POD::Track &track, TH1D *hist_cut_flow) const;
+    bool PassesKaonCuts(const POD::Track &track, TH1D *hist_cut_flow) const;
+    bool PassesPionCuts(const POD::Track &track, TH1D *hist_cut_flow) const;
 
     POD::Extended::McParticle BuildMcTrack(unsigned int track_mc_entry, int pdg_code_hypothesis, bool include_gm);
 
@@ -133,14 +131,14 @@ class Packager {
 
     void FindV0s(const DB::Particles::Definition &pid);
 
-    bool FastCuts_Lambda(const Seeder::Seed &seed_neg, const Seeder::Seed &seed_pos, TH1D *cut_flow_hist) const;
-    bool FastCuts_KaonZeroShort(const Seeder::Seed &seed_neg, const Seeder::Seed &seed_pos, TH1D *cut_flow_hist) const;
+    bool FastCuts_Lambda(const Seeder::PCA &pca_neg, const Seeder::PCA &pca_pos, TH1D *hist_cut_flow) const;
+    bool FastCuts_KaonZeroShort(const Seeder::PCA &pca_neg, const Seeder::PCA &pca_pos, TH1D *hist_cut_flow) const;
 
-    bool SlowCuts_Lambda(const KF::V0 &kf_v0, TH1D *cut_flow_hist) const;
-    bool SlowCuts_KaonZeroShort(const KF::V0 &kf_v0, TH1D *cut_flow_hist) const;
+    bool SlowCuts_Lambda(const Cached::V0 &v0, TH1D *hist_cut_flow) const;
+    bool SlowCuts_KaonZeroShort(const Cached::V0 &v0, TH1D *hist_cut_flow) const;
 
     POD::Extended::McParticle BuildMcV0(const POD::Extended::McParticle &mc_neg, const POD::Extended::McParticle &mc_pos, int pdg_code_hypothesis);
-    POD::V0 CreateV0(const KF::V0 &kf_v0);
+    POD::V0 CreateV0(const KF::Particle &fit, const Seeder::PCA &neg_pca_wrt_v0, const Seeder::PCA &pos_pca_wrt_v0);
 
     // member variables //
 
@@ -160,7 +158,7 @@ class Packager {
 
     std::unique_ptr<TFile> fInput_File;
     Schema::Events fInput;
-    std::unique_ptr<Framework::Reader> fReader;
+    std::unique_ptr<Framework::TeeTree::Reader> fReader;
     // -- cached
     ROOT::Math::XYZPoint fPrimaryVertex;
 
@@ -170,18 +168,20 @@ class Packager {
     Schema::PackedEvents fOutput;
     std::unique_ptr<Framework::Writer> fWriter;
 
+    // histograms
+    // -- event counter
     std::unique_ptr<TH1D> fHist_EventCounter;
-
+    // -- cut flow for tracks
     std::unique_ptr<TH1D> fHist_CutFlow_AntiProton;
     std::unique_ptr<TH1D> fHist_CutFlow_Proton;
     std::unique_ptr<TH1D> fHist_CutFlow_NegKaon;
     std::unique_ptr<TH1D> fHist_CutFlow_PosKaon;
     std::unique_ptr<TH1D> fHist_CutFlow_PiMinus;
     std::unique_ptr<TH1D> fHist_CutFlow_PiPlus;
-
+    // -- cut flow for v0s
     std::unique_ptr<TH1D> fHist_CutFlow_AntiLambda;
     std::unique_ptr<TH1D> fHist_CutFlow_Lambda;
     std::unique_ptr<TH1D> fHist_CutFlow_KaonZeroShort;
 };
 
-}  // namespace R2DS
+}  // namespace T2DS

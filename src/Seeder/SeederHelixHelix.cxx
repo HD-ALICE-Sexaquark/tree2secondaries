@@ -1,5 +1,3 @@
-#include "Seeder/SeederHelixHelix.hxx"
-
 #include <array>
 #include <cmath>
 #include <utility>
@@ -9,11 +7,13 @@
 #include "common/POD_Track.hpp"
 
 #include "Seeder/BaseSeeder.hxx"
-#if R2DS_DEBUG
+#if T2DS_DEBUG
 #include "App/Logger.hxx"
 #endif
 
-namespace R2DS::Seeder::HelixHelix {
+#include "Seeder/SeederHelixHelix.hxx"
+
+namespace T2DS::Seeder::HelixHelix {
 
 // First phase. Find the points of closest approach (PCA) of two particles in the XY plane.
 // Both particles are charged and under a constant magnetic field. Assume helical trajectories.
@@ -125,7 +125,7 @@ std::pair<Seed, Seed> FastPCAs_XY(const POD::Track& q1, const POD::Track& q2, do
         }
     }
 
-#if R2DS_DEBUG
+#if T2DS_DEBUG
     Logger::Debug(__FUNCTION__, "seed1_xy.ds = {:13.6e}", seed1_xy.ds);
     Logger::Debug(__FUNCTION__, "seed1_xy.(x,y,z) = {}", seed1_xy.pca.xyz);
     Logger::Debug(__FUNCTION__, "seed1_xy.(px,py,pz) = {}", seed1_xy.pca.mom);
@@ -198,7 +198,7 @@ std::pair<Seed, Seed> CorrectPCAs_Z(const Seed& s1_xy, const Seed& s2_xy, Cache&
 
     c.pca_dz_worked = 1;
 
-#if R2DS_DEBUG
+#if T2DS_DEBUG
     Logger::Debug(__FUNCTION__, "seed1.ds = {:13.6e}", s1.ds);
     Logger::Debug(__FUNCTION__, "seed1.(x,y,z) = {}", s1.pca.xyz);
     Logger::Debug(__FUNCTION__, "seed1.(px,py,pz) = {}", s1.pca.mom);
@@ -286,7 +286,7 @@ std::pair<Deriv, Deriv> ComputeDerivatives_XY(Cache& c) {
     std::array<double, 6> dd1dr2{};
     if (c.d1 > 0.) {
         double kd_sq1 = -c.kd / c.d1;
-        for (size_t i = 0; i < 6; ++i) {
+        for (std::size_t i = 0; i < 6; ++i) {
             dd1dr1[i] = kd_sq1 * dkddr1[i];
             dd1dr2[i] = kd_sq1 * dkddr2[i];
         }
@@ -296,7 +296,7 @@ std::pair<Deriv, Deriv> ComputeDerivatives_XY(Cache& c) {
         dd1dr2[4] += c.py02 * c.pt12 / c.d1;
     }
 
-#if R2DS_DEBUG
+#if T2DS_DEBUG
     Logger::Debug(__FUNCTION__, "dk11dr2 = {}", dk11dr2);
     Logger::Debug(__FUNCTION__, "dk12dr1 = {}", dk12dr1);
     Logger::Debug(__FUNCTION__, "dk12dr2 = {}", dk12dr2);
@@ -321,14 +321,14 @@ std::pair<Deriv, Deriv> ComputeDerivatives_XY(Cache& c) {
     c.cc1 = c.bb1 * c.bb1 + c.aa1 * c.aa1;
     c.dd1 = c.cc1 > 0. ? (1. / c.bq1 * 1. / c.cc1) : 0.;
 
-#if R2DS_DEBUG
+#if T2DS_DEBUG
     Logger::Debug(__FUNCTION__, "(end) c.aa1 = {:13.6e}", c.aa1);
     Logger::Debug(__FUNCTION__, "(end) c.bb1 = {:13.6e}", c.bb1);
     Logger::Debug(__FUNCTION__, "(end) c.cc1 = {:13.6e}", c.cc1);
     Logger::Debug(__FUNCTION__, "(end) c.dd1 = {:13.6e}", c.dd1);
 #endif
 
-    for (size_t i = 0; i < 6; ++i) {
+    for (std::size_t i = 0; i < 6; ++i) {
         double daa1_dr1 = c.bq1 * (dk11dr1[i] * c.c1 + c.k11 * dc1dr1[i] + c.w_sign * dk21dr1[i] * c.d1 + c.w_sign * c.k21 * dd1dr1[i]);
         double daa1_dr2 = c.bq1 * (dk11dr2[i] * c.c1 + c.k11 * dc1dr2[i] + c.w_sign * dk21dr2[i] * c.d1 + c.w_sign * c.k21 * dd1dr2[i]);
         double dbb1_dr1 = c.w_sign * c.bq1 * c.bq1 * (dk11dr1[i] * c.d1 + c.k11 * dd1dr1[i]) - (dk21dr1[i] * c.c1 + c.k21 * dc1dr1[i]);
@@ -345,14 +345,14 @@ std::pair<Deriv, Deriv> ComputeDerivatives_XY(Cache& c) {
     c.cc2 = c.bb2 * c.bb2 + c.aa2 * c.aa2;
     c.dd2 = c.cc2 > 0. ? (1. / c.bq2 * 1. / c.cc2) : 0.;
 
-#if R2DS_DEBUG
+#if T2DS_DEBUG
     Logger::Debug(__FUNCTION__, "(end) c.aa2 = {:13.6e}", c.aa2);
     Logger::Debug(__FUNCTION__, "(end) c.bb2 = {:13.6e}", c.bb2);
     Logger::Debug(__FUNCTION__, "(end) c.cc2 = {:13.6e}", c.cc2);
     Logger::Debug(__FUNCTION__, "(end) c.dd2 = {:13.6e}", c.dd2);
 #endif
 
-    for (size_t i = 0; i < 6; ++i) {
+    for (std::size_t i = 0; i < 6; ++i) {
         double daa2_dr1 = c.bq2 * (dk12dr1[i] * c.c2 + c.k12 * dc2dr1[i] + c.w_sign * dk22dr1[i] * c.d1 + c.w_sign * c.k22 * dd1dr1[i]);
         double daa2_dr2 = c.bq2 * (dk12dr2[i] * c.c2 + c.k12 * dc2dr2[i] + c.w_sign * dk22dr2[i] * c.d1 + c.w_sign * c.k22 * dd1dr2[i]);
         double dbb2_dr1 = c.w_sign * c.bq2 * c.bq2 * (dk12dr1[i] * c.d1 + c.k12 * dd1dr1[i]) - (dk22dr1[i] * c.c2 + c.k22 * dc2dr1[i]);
@@ -362,7 +362,7 @@ std::pair<Deriv, Deriv> ComputeDerivatives_XY(Cache& c) {
         deriv2.ds_dr[i] = c.dd2 * (daa2_dr2 * c.bb2 - dbb2_dr2 * c.aa2);
     }
 
-#if R2DS_DEBUG
+#if T2DS_DEBUG
     Logger::Debug(__FUNCTION__, "(end) deriv1.ds_dr = {}", deriv1.ds_dr);
     Logger::Debug(__FUNCTION__, "(end) deriv1.ds_dr1 = {}", deriv1.ds_dr1);
     Logger::Debug(__FUNCTION__, "(end) deriv2.ds_dr = {}", deriv2.ds_dr);
@@ -388,7 +388,7 @@ std::pair<Deriv, Deriv> UpdateDerivatives_Z(const Seed& s1_xy, const Seed& s2_xy
 
     if (c.pca_dz_worked == 0) return {d1_xy, d2_xy};
 
-#if R2DS_DEBUG
+#if T2DS_DEBUG
     Logger::Debug(__FUNCTION__, "s1_xy.sin = {}", s1_xy.sin);
     Logger::Debug(__FUNCTION__, "s1_xy.cos = {}", s1_xy.cos);
     Logger::Debug(__FUNCTION__, "s1_xy.sB  = {}", s1_xy.sB);
@@ -422,7 +422,7 @@ std::pair<Deriv, Deriv> UpdateDerivatives_Z(const Seed& s1_xy, const Seed& s2_xy
     double dsl2ds0 = a2_ds0 / c.detp - c.a2 * detp_ds0 / detp2;
     double dsl2ds1 = a2_ds1 / c.detp - c.a2 * detp_ds1 / detp2;
 
-#if R2DS_DEBUG
+#if T2DS_DEBUG
     Logger::Debug(__FUNCTION__, "lp1p2_ds0 = {:13.6e}", lp1p2_ds0);
     Logger::Debug(__FUNCTION__, "lp1p2_ds1 = {:13.6e}", lp1p2_ds1);
     Logger::Debug(__FUNCTION__, "ldrp1_ds0 = {:13.6e}", ldrp1_ds0);
@@ -442,7 +442,7 @@ std::pair<Deriv, Deriv> UpdateDerivatives_Z(const Seed& s1_xy, const Seed& s2_xy
     std::array<double, 6> dsldr2{};
     std::array<double, 6> dsldr3{};
 
-    for (size_t i = 0; i < 6; ++i) {
+    for (std::size_t i = 0; i < 6; ++i) {
         dsldr0[i] = dsl1ds0 * d1_xy.ds_dr[i] + dsl1ds1 * d2_xy.ds_dr1[i];
         dsldr1[i] = dsl1ds0 * d1_xy.ds_dr1[i] + dsl1ds1 * d2_xy.ds_dr[i];
         dsldr2[i] = dsl2ds0 * d1_xy.ds_dr[i] + dsl2ds1 * d2_xy.ds_dr1[i];
@@ -452,14 +452,14 @@ std::pair<Deriv, Deriv> UpdateDerivatives_Z(const Seed& s1_xy, const Seed& s2_xy
     Deriv d1 = d1_xy;
     Deriv d2 = d2_xy;
 
-    for (size_t i = 0; i < 6; ++i) {
+    for (std::size_t i = 0; i < 6; ++i) {
         d1.ds_dr[i] += dsldr0[i];
         d1.ds_dr1[i] += dsldr1[i];
         d2.ds_dr1[i] += dsldr2[i];
         d2.ds_dr[i] += dsldr3[i];
     }
 
-#if R2DS_DEBUG
+#if T2DS_DEBUG
     Logger::Debug(__FUNCTION__, "(intermediate) deriv1.ds_dr  = {}", d1.ds_dr);
     Logger::Debug(__FUNCTION__, "(intermediate) deriv1.ds_dr1 = {}", d1.ds_dr1);
     Logger::Debug(__FUNCTION__, "(intermediate) deriv2.ds_dr  = {}", d2.ds_dr);
@@ -505,7 +505,7 @@ std::pair<Deriv, Deriv> UpdateDerivatives_Z(const Seed& s1_xy, const Seed& s2_xy
     std::array<double, 6> p12_dr0{0., 0., 0., 2. * c.px01, 2. * c.py01, 2. * c.pz01};
     std::array<double, 6> p22_dr1{0., 0., 0., 2. * c.px02, 2. * c.py02, 2. * c.pz02};
 
-#if R2DS_DEBUG
+#if T2DS_DEBUG
     Logger::Debug(__FUNCTION__, "lp1p2_dr0 = {}", lp1p2_dr0);
     Logger::Debug(__FUNCTION__, "lp1p2_dr1 = {}", lp1p2_dr1);
     Logger::Debug(__FUNCTION__, "ldrp1_dr0 = {}", ldrp1_dr0);
@@ -516,7 +516,7 @@ std::pair<Deriv, Deriv> UpdateDerivatives_Z(const Seed& s1_xy, const Seed& s2_xy
     Logger::Debug(__FUNCTION__, "p22_dr1 = {}", p22_dr1);
 #endif
 
-    for (size_t i = 0; i < 6; ++i) {
+    for (std::size_t i = 0; i < 6; ++i) {
         double a1_dr0 = ldrp2_dr0[i] * c.lp1p2 + c.ldrp2 * lp1p2_dr0[i] - ldrp1_dr0[i] * c.p22;
         double a1_dr1 = ldrp2_dr1[i] * c.lp1p2 + c.ldrp2 * lp1p2_dr1[i] - ldrp1_dr1[i] * c.p22 - c.ldrp1 * p22_dr1[i];
         double a2_dr0 = ldrp2_dr0[i] * c.p12 + c.ldrp2 * p12_dr0[i] - ldrp1_dr0[i] * c.lp1p2 - c.ldrp1 * lp1p2_dr0[i];
@@ -530,7 +530,7 @@ std::pair<Deriv, Deriv> UpdateDerivatives_Z(const Seed& s1_xy, const Seed& s2_xy
         d2.ds_dr[i] += a2_dr1 / c.detp - c.a2 * detp_dr1 / detp2;
     }
 
-#if R2DS_DEBUG
+#if T2DS_DEBUG
     Logger::Debug(__FUNCTION__, "(end) deriv1.ds_dr  = {}", d1.ds_dr);
     Logger::Debug(__FUNCTION__, "(end) deriv1.ds_dr1 = {}", d1.ds_dr1);
     Logger::Debug(__FUNCTION__, "(end) deriv2.ds_dr  = {}", d2.ds_dr);
@@ -540,4 +540,4 @@ std::pair<Deriv, Deriv> UpdateDerivatives_Z(const Seed& s1_xy, const Seed& s2_xy
     return {d1, d2};
 }
 
-}  // namespace R2DS::Seeder::HelixHelix
+}  // namespace T2DS::Seeder::HelixHelix

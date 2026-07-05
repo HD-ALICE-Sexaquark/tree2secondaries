@@ -1,5 +1,3 @@
-#include "Seeder/SeederHelixVertex.hxx"
-
 #include <array>
 #include <cmath>
 
@@ -8,11 +6,13 @@
 #include "common/POD_Track.hpp"
 
 #include "Seeder/BaseSeeder.hxx"
-#if R2DS_DEBUG
+#if T2DS_DEBUG
 #include "App/Logger.hxx"
 #endif
 
-namespace R2DS::Seeder::HelixVertex {
+#include "Seeder/SeederHelixVertex.hxx"
+
+namespace T2DS::Seeder::HelixVertex {
 
 // First phase. Find point of closest approach (PCA) of this particle w.r.t. an arbitrary vertex in the XY plane.
 // Arguments:
@@ -64,7 +64,7 @@ Seed FastPCA_XY(const POD::Track& q, const std::array<double, 3>& v, double bz, 
     seed.pca.xyz = {c.x0 + seed.sB * c.px0 + seed.cB * c.py0, c.y0 - seed.cB * c.px0 + seed.sB * c.py0, c.z0 + seed.ds * c.pz0};
     seed.pca.mom = {seed.cos * c.px0 + seed.sin * c.py0, -seed.sin * c.px0 + seed.cos * c.py0, c.pz0};
 
-#if R2DS_DEBUG
+#if T2DS_DEBUG
     Logger::Debug(__FUNCTION__, "seed.ds = {:13.6e}", seed.ds);
     Logger::Debug(__FUNCTION__, "seed.(x,y,z) = {}", seed.pca.xyz);
     Logger::Debug(__FUNCTION__, "seed.(px,py,pz) = {}", seed.pca.mom);
@@ -110,7 +110,7 @@ Seed CorrectPCA_Z(const Seed& s_xy, Cache& c) {
 
     c.pca_dz_worked = 1;
 
-#if R2DS_DEBUG
+#if T2DS_DEBUG
     Logger::Debug(__FUNCTION__, "seed.ds = {:13.6e}", out.ds);
     Logger::Debug(__FUNCTION__, "seed.(x,y,z) = {}", out.pca.xyz);
     Logger::Debug(__FUNCTION__, "seed.(px,py,pz) = {}", out.pca.mom);
@@ -148,7 +148,7 @@ Deriv ComputeDerivatives_XY(Cache& c) {
 
     out.ds_dr1 = {-out.ds_dr[0], -out.ds_dr[1], -out.ds_dr[2], 0., 0., 0.};
 
-#if R2DS_DEBUG
+#if T2DS_DEBUG
     Logger::Debug(__FUNCTION__, "(end) deriv.ds_dr = {}", out.ds_dr);
     Logger::Debug(__FUNCTION__, "(end) deriv.ds_dr1 = {}", out.ds_dr1);
 #endif
@@ -179,7 +179,7 @@ Deriv UpdateDerivatives_Z(const Seed& s_xy, const Deriv& d_xy, const Cache& c) {
 
     Deriv out = d_xy;
 
-    for (size_t i = 0; i < 6; ++i) {
+    for (std::size_t i = 0; i < 6; ++i) {
         out.ds_dr[i] += c.pz0 * c.pz0 * d_xy.ds_dr[i] / c.cbq - c.sz * dc_dr[i] / c.cbq;
     }
     out.ds_dr[2] += c.pz0 / c.cbq;
@@ -187,7 +187,7 @@ Deriv UpdateDerivatives_Z(const Seed& s_xy, const Deriv& d_xy, const Cache& c) {
 
     out.ds_dr1 = {-out.ds_dr[0], -out.ds_dr[1], -out.ds_dr[2], 0., 0., 0.};
 
-#if R2DS_DEBUG
+#if T2DS_DEBUG
     Logger::Debug(__FUNCTION__, "(end) deriv.ds_dr = {}", out.ds_dr);
     Logger::Debug(__FUNCTION__, "(end) deriv.ds_dr1 = {}", out.ds_dr1);
 #endif
@@ -195,4 +195,4 @@ Deriv UpdateDerivatives_Z(const Seed& s_xy, const Deriv& d_xy, const Cache& c) {
     return out;
 }
 
-}  // namespace R2DS::Seeder::HelixVertex
+}  // namespace T2DS::Seeder::HelixVertex

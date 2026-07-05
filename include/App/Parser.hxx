@@ -7,7 +7,7 @@
 
 #include "App/Settings.hxx"
 
-namespace R2DS {
+namespace T2DS {
 
 class Parser {
    public:
@@ -108,7 +108,7 @@ class Parser {
         };
 
         // package mode
-        auto* package_cmd = CLI_APP.add_subcommand("pack", "Read \"EventsRNT.root\" to package injected anti-sexaquarks, tracks and V0s");
+        auto* package_cmd = CLI_APP.add_subcommand("pack", "Read \"AnalysisResults.root\" to package injected anti-sexaquarks, tracks and V0s");
         // -- mc
         auto* package_mc_cmd = package_cmd->add_subcommand("mc", "Process MC");
         add_channels_opt(package_mc_cmd);
@@ -128,7 +128,7 @@ class Parser {
         search_cmd->require_subcommand(1);
 
         // -- verify mode
-        auto* verify_cmd = CLI_APP.add_subcommand("verify", "Read \"EventsRNT.root\" to verify the existence of h-dibaryons");
+        auto* verify_cmd = CLI_APP.add_subcommand("verify", "Read \"AnalysisResults.root\" to verify the existence of h-dibaryons");
         verify_cmd->add_subcommand("mc", "Process MC");
         verify_cmd->add_subcommand("data", "Process data");
         verify_cmd->require_subcommand(1);
@@ -140,4 +140,4 @@ class Parser {
     std::string InputFile;
 };
 
-}  // namespace R2DS
+}  // namespace T2DS

@@ -1,11 +1,11 @@
 #pragma once
 
-#include "common/POD_OnTheFlyLambda.hpp"
+#include "common/POD_PreFoundLambda.hpp"
 #include "common/POD_V0.hpp"
 
 #include "Seeder/BaseSeeder.hxx"
 
-namespace R2DS::Seeder::LineLine {
+namespace T2DS::Seeder::LineLine {
 
 struct Cache {
     // filled @ `FastPCAs` //
@@ -36,6 +36,12 @@ inline std::pair<Seed, Seed> FastPCAs(const POD::V0& v01, const POD::V0& v02, Ca
                     cache);
 }
 
+inline std::pair<Seed, Seed> FastPCAs(const POD::Extended::PreFoundLambda& l1, const POD::Extended::PreFoundLambda& l2, Cache* cache = nullptr) {
+    return FastPCAs(l1.Decay_X, l1.Decay_Y, l1.Decay_Z, l1.Px, l1.Py, l1.Pz,  //
+                    l2.Decay_X, l2.Decay_Y, l2.Decay_Z, l2.Px, l2.Py, l2.Pz,  //
+                    cache);
+}
+
 inline std::pair<Result, Result> FullPCAs(const POD::V0& v01, const POD::V0& v02) {
     Cache cache;
     auto [seed1, seed2] = FastPCAs(v01, v02, &cache);
@@ -43,10 +49,11 @@ inline std::pair<Result, Result> FullPCAs(const POD::V0& v01, const POD::V0& v02
     return {{seed1, deriv1}, {seed2, deriv2}};
 }
 
-inline std::pair<Seed, Seed> FullPCAs(const POD::OnTheFlyLambda& l1, const POD::OnTheFlyLambda& l2) {
-    return FastPCAs(l1.Decay_X, l1.Decay_Y, l1.Decay_Z, l1.Px, l1.Py, l1.Pz,  //
-                    l2.Decay_X, l2.Decay_Y, l2.Decay_Z, l2.Px, l2.Py, l2.Pz,  //
-                    nullptr);
+inline std::pair<Result, Result> FullPCAs(const POD::Extended::PreFoundLambda& l1, const POD::Extended::PreFoundLambda& l2) {
+    Cache cache;
+    auto [seed1, seed2] = FastPCAs(l1, l2, &cache);
+    auto [deriv1, deriv2] = ComputeDerivatives(cache);
+    return {{seed1, deriv1}, {seed2, deriv2}};
 }
 
-}  // namespace R2DS::Seeder::LineLine
+}  // namespace T2DS::Seeder::LineLine

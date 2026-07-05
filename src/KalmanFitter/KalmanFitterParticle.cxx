@@ -2,17 +2,18 @@
 
 #include <Eigen/Eigen>
 
+#include "common/POD_PreFoundLambda.hpp"
 #include "common/POD_Track.hpp"
 #include "common/POD_V0.hpp"
 
 #include "KalmanFitter/BaseKalmanFitter.hxx"
-#if R2DS_LEGACY_KF
+#if T2DS_LEGACY_KF
 #include "Legacy/LegacyParticle.hxx"
 #endif
 
 #include "KalmanFitter/KalmanFitterParticle.hxx"
 
-namespace R2DS::KF {
+namespace T2DS::KF {
 
 // Create a `KF::Particle`, by setting `fP`, `fC` and `fQ` by hard-copying from a track.
 Particle Particle::FromTrack(const POD::Track& v, double mass) {
@@ -83,7 +84,33 @@ Particle Particle::FromV0(const POD::V0& v) {
     return out;
 }
 
-#if R2DS_LEGACY_KF
+// Create a `KF::Particle`, by setting `fP`, `fC` and `fQ` from a V0 view.
+Particle Particle::FromPreFoundLambda(const POD::Extended::PreFoundLambda& l) {
+
+    Particle out;
+
+    out.fP(0) = l.Decay_X;
+    out.fP(1) = l.Decay_Y;
+    out.fP(2) = l.Decay_Z;
+    out.fP(3) = l.Px;
+    out.fP(4) = l.Py;
+    out.fP(5) = l.Pz;
+    out.fP(6) = l.Energy;
+    out.fP(7) = 0.;
+
+    for (unsigned int i = 0; i < 7; ++i) {
+        for (unsigned int j = 0; j <= i; ++j) {
+            out.fC(i, j) = l.CovMatrix[IJ(i, j)];
+        }
+    }
+    out.fC(7, 7) = Initial_Css;
+
+    out.fQ = 0;
+
+    return out;
+}
+
+#if T2DS_LEGACY_KF
 Particle Particle::FromLegacy(const Legacy::Particle& part) {
 
     Particle out;
@@ -104,4 +131,4 @@ Particle Particle::FromLegacy(const Legacy::Particle& part) {
 }
 #endif
 
-}  // namespace R2DS::KF
+}  // namespace T2DS::KF

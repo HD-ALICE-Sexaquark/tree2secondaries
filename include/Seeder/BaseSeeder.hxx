@@ -2,10 +2,7 @@
 
 #include <array>
 
-#include <Math/Point3D.h>
-#include <Math/Vector3D.h>
-
-namespace R2DS::Seeder {
+namespace T2DS::Seeder {
 
 // # Structs # //
 
@@ -16,9 +13,6 @@ struct PCA {
     [[nodiscard]] double Px() const noexcept { return mom[0]; }
     [[nodiscard]] double Py() const noexcept { return mom[1]; }
     [[nodiscard]] double Pz() const noexcept { return mom[2]; }
-
-    [[nodiscard]] ROOT::Math::XYZPoint GetXYZ_AsROOT() const { return {X(), Y(), Z()}; }
-    [[nodiscard]] ROOT::Math::XYZVector GetPxPyPz_AsROOT() const { return {Px(), Py(), Pz()}; }
 
     std::array<double, 3> xyz{};
     std::array<double, 3> mom{};
@@ -44,4 +38,4 @@ struct Result {
     Deriv deriv;
 };
 
-}  // namespace R2DS::Seeder
+}  // namespace T2DS::Seeder
