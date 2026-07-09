@@ -34,7 +34,7 @@ namespace T2DS {
 
 void Packager::PrepareOutputHistograms() {
 
-    fHist_EventCounter = std::make_unique<TH1D>("N_Events", ";;N_Events", 1, 0, 1);
+    fHist_EventCounter = std::make_unique<TH1D>("N_Events", ";N_Events;", 1, 0., 1.);
 
     constexpr int x_nbins = 20;
     constexpr float x_min = 0.;
@@ -81,7 +81,7 @@ void Packager::ProcessEvent() {
 // Loop over all MC particles.
 // Select particles with no mother, generated via the AntiSexaquark-Reaction Generator, and with valid Reaction IDs;
 // and store their origin vertex as the coordinates for this particular secondary vertex.
-void Packager::ProcessInjected() {
+void Packager::ProcessInjectedSexa() {
     const double n_mass = DB::Particles::FindParticle(fReactionChannel.nucleon_pdg).mass;
 
     // clang-format off
@@ -89,6 +89,10 @@ void Packager::ProcessInjected() {
     std::array<float, E2T::NSexaReactionsPerEvent> sv_y; sv_y.fill(Common::DummyFloat);
     std::array<float, E2T::NSexaReactionsPerEvent> sv_z; sv_z.fill(Common::DummyFloat);
     std::array<bool, E2T::NSexaReactionsPerEvent> sv_found{};
+    std::array<double, E2T::NSexaReactionsPerEvent> sum_px{};
+    std::array<double, E2T::NSexaReactionsPerEvent> sum_py{};
+    std::array<double, E2T::NSexaReactionsPerEvent> sum_pz{};
+    std::array<double, E2T::NSexaReactionsPerEvent> sum_e{};
     // clang-format on
 
     // -- loop over all mc particles
@@ -97,6 +101,11 @@ void Packager::ProcessInjected() {
         if (!MC::SexaquarkRules::IsGen1Signal(mc, fReactionChannel)) continue;
         // -- derive entry
         auto entry_injected = mc.StatusCode - E2T::ReactionID_Offset;
+        // -- add up lorentz vector
+        sum_px[entry_injected] += static_cast<double>(mc.Px);
+        sum_py[entry_injected] += static_cast<double>(mc.Py);
+        sum_pz[entry_injected] += static_cast<double>(mc.Pz);
+        sum_e[entry_injected] += static_cast<double>(mc.Energy);
         // -- if sv not filled, fill it
         if (sv_found[entry_injected]) continue;
         sv_x[entry_injected] = mc.Origin_X;
@@ -116,6 +125,10 @@ void Packager::ProcessInjected() {
         output_inj.SV_X = sv_x[entry_inj];
         output_inj.SV_Y = sv_y[entry_inj];
         output_inj.SV_Z = sv_z[entry_inj];
+        output_inj.After_Px = static_cast<float>(sum_px[entry_inj]);
+        output_inj.After_Py = static_cast<float>(sum_py[entry_inj]);
+        output_inj.After_Pz = static_cast<float>(sum_pz[entry_inj]);
+        output_inj.After_Energy = static_cast<float>(sum_e[entry_inj]);
         output_inj.Energy = static_cast<float>(CMath::Hypot4(input_inj.Px, input_inj.Py, input_inj.Pz, fSettings.SexaquarkMass));
         output_inj.Nucleon_Energy = static_cast<float>(CMath::Hypot4(input_inj.Nucleon_Px, input_inj.Nucleon_Py, input_inj.Nucleon_Pz, n_mass));
     }

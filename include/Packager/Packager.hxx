@@ -70,7 +70,7 @@ class Packager {
     }
 
     void ProcessEvent();
-    void ProcessInjected();
+    void ProcessInjectedSexa();
     void ProcessTracks();
 
     void Pack() {

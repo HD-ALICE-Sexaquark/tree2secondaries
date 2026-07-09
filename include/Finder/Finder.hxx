@@ -33,6 +33,7 @@ namespace KF { struct Particle; }
 
 class Finder {
    public:
+    Finder() = delete;
     Finder(const Finder &) = delete;
     Finder(Finder &&) = delete;
     Finder &operator=(const Finder &) = delete;
@@ -153,7 +154,7 @@ class Finder {
     Schema::FoundChannelA fOutput_ChannelA;
     Schema::FoundChannelD fOutput_ChannelD;
     Schema::FoundChannelH fOutput_ChannelH;
-    Schema::FoundSexaquark *fOutput_Base;  // NOTE: already initialized in constructor
+    Schema::FoundSexaquark *fOutput_Base;
     std::unique_ptr<Framework::Writer> fWriter;
 
     // histograms

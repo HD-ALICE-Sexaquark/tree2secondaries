@@ -19,7 +19,7 @@ int main(int argc, char *argv[]) {
         for (long long id_event = 0; id_event < pkgr.NumberEventsToRead(); ++id_event) {
             pkgr.Load(id_event);
             pkgr.ProcessEvent();
-            if (settings.IsMC) pkgr.ProcessInjected();
+            if (settings.IsMC) pkgr.ProcessInjectedSexa();
             pkgr.ProcessTracks();
             pkgr.Pack();
             pkgr.EndOfEvent();

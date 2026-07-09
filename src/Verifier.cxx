@@ -30,7 +30,7 @@ namespace T2DS {
 
 void Verifier::PrepareOutputHistograms() {
     // event counter
-    fHist_EventCounter = std::make_unique<TH1D>("N_Events", ";;N_Events", 1, 0, 1);
+    fHist_EventCounter = std::make_unique<TH1D>("N_Events", ";N_Events;", 1, 0., 1.);
     // cut flows
     constexpr int x_nbins = 20;
     constexpr float x_min = 0.;
@@ -77,7 +77,7 @@ void Verifier::ProcessInjected() {
 POD::InjectedHdib Verifier::BuildInjectedHdibaryon(const POD::McParticle& mc) {
     POD::InjectedHdib inj;
     inj.SignalID = static_cast<int>(mc.StatusCode);
-    inj.AntiChannel = mc.PdgCode == DB::Particles::Particle("AntiHdibaryon").pdg_code;
+    inj.IsAntiChannel = mc.PdgCode == DB::Particles::Particle("AntiHdibaryon").pdg_code;
     std::tie(inj.Decay_X, inj.Decay_Y, inj.Decay_Z) = MC::GetDecayVertex(mc, fInput.McParticle);
     inj.Px = mc.Px;
     inj.Py = mc.Py;
@@ -92,8 +92,9 @@ POD::InjectedHdib Verifier::BuildInjectedHdibaryon(const POD::McParticle& mc) {
         inj.Lambda1_Pz = mc_l1.Pz;
         inj.Lambda1_Energy = mc_l1.Energy;
         // lambda 1's proton daughter
-        auto entry_proton = MC::FindDaughterMcEntry(
-            mc_l1, fInput.McParticle, inj.AntiChannel ? DB::Particles::Particle("AntiProton").pdg_code : DB::Particles::Particle("Proton").pdg_code);
+        auto entry_proton =
+            MC::FindDaughterMcEntry(mc_l1, fInput.McParticle,
+                                    inj.IsAntiChannel ? DB::Particles::Particle("AntiProton").pdg_code : DB::Particles::Particle("Proton").pdg_code);
         if (entry_proton.has_value()) {
             auto& mc_proton = fInput.McParticle[entry_proton.value()];
             inj.Proton1_Px = mc_proton.Px;
@@ -103,7 +104,7 @@ POD::InjectedHdib Verifier::BuildInjectedHdibaryon(const POD::McParticle& mc) {
         }
         // lambda 1's pion daughter
         auto entry_pion = MC::FindDaughterMcEntry(
-            mc_l1, fInput.McParticle, inj.AntiChannel ? DB::Particles::Particle("PiPlus").pdg_code : DB::Particles::Particle("PiMinus").pdg_code);
+            mc_l1, fInput.McParticle, inj.IsAntiChannel ? DB::Particles::Particle("PiPlus").pdg_code : DB::Particles::Particle("PiMinus").pdg_code);
         if (entry_pion.has_value()) {
             auto& mc_pion = fInput.McParticle[entry_pion.value()];
             inj.Pion1_Px = mc_pion.Px;
@@ -121,8 +122,9 @@ POD::InjectedHdib Verifier::BuildInjectedHdibaryon(const POD::McParticle& mc) {
         inj.Lambda2_Pz = mc_l2.Pz;
         inj.Lambda2_Energy = mc_l2.Energy;
         // lambda 2's proton daughter
-        auto entry_proton = MC::FindDaughterMcEntry(
-            mc_l2, fInput.McParticle, inj.AntiChannel ? DB::Particles::Particle("AntiProton").pdg_code : DB::Particles::Particle("Proton").pdg_code);
+        auto entry_proton =
+            MC::FindDaughterMcEntry(mc_l2, fInput.McParticle,
+                                    inj.IsAntiChannel ? DB::Particles::Particle("AntiProton").pdg_code : DB::Particles::Particle("Proton").pdg_code);
         if (entry_proton.has_value()) {
             auto& mc_proton = fInput.McParticle[entry_proton.value()];
             inj.Proton2_Px = mc_proton.Px;
@@ -132,7 +134,7 @@ POD::InjectedHdib Verifier::BuildInjectedHdibaryon(const POD::McParticle& mc) {
         }
         // lambda 2's pion daughter
         auto entry_pion = MC::FindDaughterMcEntry(
-            mc_l2, fInput.McParticle, inj.AntiChannel ? DB::Particles::Particle("PiPlus").pdg_code : DB::Particles::Particle("PiMinus").pdg_code);
+            mc_l2, fInput.McParticle, inj.IsAntiChannel ? DB::Particles::Particle("PiPlus").pdg_code : DB::Particles::Particle("PiMinus").pdg_code);
         if (entry_pion.has_value()) {
             auto& mc_pion = fInput.McParticle[entry_pion.value()];
             inj.Pion2_Px = mc_pion.Px;
@@ -289,7 +291,13 @@ POD::Extended::PreFoundLambda Verifier::CreateExtendedPreFoundLambda(const POD::
                                              static_cast<float>(fit.E()),
                                              fit.Cov<7>(),
                                              static_cast<float>(fit.Chi2NDF()),
+                                             static_cast<float>(pca_neg.X()),
+                                             static_cast<float>(pca_neg.Y()),
+                                             static_cast<float>(pca_neg.Z()),
                                              static_cast<float>(CMath::Hypot4(pca_neg.Px(), pca_neg.Py(), pca_neg.Pz(), mass_neg)),
+                                             static_cast<float>(pca_pos.X()),
+                                             static_cast<float>(pca_pos.Y()),
+                                             static_cast<float>(pca_pos.Z()),
                                              static_cast<float>(CMath::Hypot4(pca_pos.Px(), pca_pos.Py(), pca_pos.Pz(), mass_pos))};
     // override previous info
     new_lambda.Decay_X = static_cast<float>(fit.X());
@@ -428,7 +436,7 @@ POD::LambdaPair Verifier::CreateLambdaPair(const KF::Particle& fit, const Seeder
     new_hdib.Pz = static_cast<float>(fit.Pz());
     new_hdib.Energy = static_cast<float>(fit.E());
     new_hdib.Chi2NDF = static_cast<float>(fit.Chi2NDF());
-    new_hdib.AntiChannel = anti_channel;
+    new_hdib.IsAntiChannel = anti_channel;
     // -- lambda1
     new_hdib.Lambda1_PCAwrtDV_X = static_cast<float>(pca_lambda1.X());
     new_hdib.Lambda1_PCAwrtDV_Y = static_cast<float>(pca_lambda1.Y());

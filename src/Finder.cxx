@@ -24,7 +24,7 @@ namespace T2DS {
 
 void Finder::PrepareOutputHistograms() {
     // event counter //
-    fHist_EventCounter = std::make_unique<TH1D>("N_Events", ";;N_Events", 1, 0, 1);
+    fHist_EventCounter = std::make_unique<TH1D>("N_Events", ";N_Events;", 1, 0., 1.);
     // cut flows //
     constexpr int x_nbins = 20;
     constexpr float x_min = 0.;
