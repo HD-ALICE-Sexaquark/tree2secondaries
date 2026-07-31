@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <cstdint>
 #include <optional>
 #include <string>
@@ -9,7 +10,7 @@
 namespace T2DS {
 
 enum EProgramMode : std::uint8_t { FINDER, PACKAGER, VERIFIER };
-const std::array Name_ProgramMode{"FINDER", "PACKAGER", "VERIFIER"};
+inline constexpr std::array<const char*, 3> Name_ProgramMode{"FINDER", "PACKAGER", "VERIFIER"};
 
 struct Settings {
     void Print() const {

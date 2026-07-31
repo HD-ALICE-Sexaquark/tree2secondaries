@@ -7,9 +7,6 @@
 #include "common/POD_V0.hpp"
 
 #include "KalmanFitter/BaseKalmanFitter.hxx"
-#if T2DS_LEGACY_KF
-#include "Legacy/LegacyParticle.hxx"
-#endif
 
 #include "KalmanFitter/KalmanFitterParticle.hxx"
 
@@ -109,26 +106,5 @@ Particle Particle::FromPreFoundLambda(const POD::Extended::PreFoundLambda& l) {
 
     return out;
 }
-
-#if T2DS_LEGACY_KF
-Particle Particle::FromLegacy(const Legacy::Particle& part) {
-
-    Particle out;
-
-    out.fP = Eigen::Map<const Eigen::Vector<double, 8>>(part.fP);
-
-    for (int i = 0; i < 8; ++i) {
-        for (int j = 0; j <= i; ++j) {
-            out.fC(i, j) = part.fC[Legacy::IJ(i, j)];
-        }
-    }
-
-    out.fChi2 = part.fChi2;
-    out.fNDF = part.fNDF;
-    out.fQ = part.fQ;
-
-    return out;
-}
-#endif
 
 }  // namespace T2DS::KF

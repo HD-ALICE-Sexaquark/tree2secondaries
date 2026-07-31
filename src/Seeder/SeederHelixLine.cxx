@@ -37,20 +37,20 @@ std::pair<Seed, Seed> FastPCAs_XY(const POD::Track& q1, const POD::V0& n2, doubl
 
     c.bq1 = bz * static_cast<double>(q1.Charge) * Common::Kappa;
 
-    c.x01 = q1.X;
-    c.y01 = q1.Y;
-    c.z01 = q1.Z;
-    c.px01 = q1.Px;
-    c.py01 = q1.Py;
-    c.pz01 = q1.Pz;
+    c.x01 = static_cast<double>(q1.X);
+    c.y01 = static_cast<double>(q1.Y);
+    c.z01 = static_cast<double>(q1.Z);
+    c.px01 = static_cast<double>(q1.Px);
+    c.py01 = static_cast<double>(q1.Py);
+    c.pz01 = static_cast<double>(q1.Pz);
     c.pt12 = c.px01 * c.px01 + c.py01 * c.py01;
 
-    c.x02 = n2.Decay_X;
-    c.y02 = n2.Decay_Y;
-    c.z02 = n2.Decay_Z;
-    c.px02 = n2.Px;
-    c.py02 = n2.Py;
-    c.pz02 = n2.Pz;
+    c.x02 = static_cast<double>(n2.Decay_X);
+    c.y02 = static_cast<double>(n2.Decay_Y);
+    c.z02 = static_cast<double>(n2.Decay_Z);
+    c.px02 = static_cast<double>(n2.Px);
+    c.py02 = static_cast<double>(n2.Py);
+    c.pz02 = static_cast<double>(n2.Pz);
     c.pt22 = c.px02 * c.px02 + c.py02 * c.py02;
 
     c.dx0 = c.x01 - c.x02;
@@ -371,11 +371,11 @@ std::pair<Deriv, Deriv> UpdateDerivatives_Z(const Seed& s1_xy, const Seed& s2_xy
                                     s1_xy.cB * c.py1 - c.px1 * s1_xy.sB + s1_xy.cos * c.dx - s1_xy.sin * c.dy,
                                     -s1_xy.cB * c.px1 - c.py1 * s1_xy.sB + s1_xy.sin * c.dx + s1_xy.cos * c.dy,
                                     -s1_xy.ds * c.pz01 + c.dz};
-    std::array<double, 6> ldrp1_dr1{c.px1, c.py1, c.pz01, 0., 0., s2_xy.ds * c.pz01};
+    std::array<double, 6> ldrp1_dr1{c.px1, c.py1, c.pz01, c.px1 * s2_xy.ds, c.py1 * s2_xy.ds, s2_xy.ds * c.pz01};
     std::array<double, 6> ldrp2_dr0{
         -c.px02, -c.py02, -c.pz02, s1_xy.cB * c.py02 - c.px02 * s1_xy.sB, -s1_xy.cB * c.px02 - c.py02 * s1_xy.sB, -s1_xy.ds * c.pz02};
-    std::array<double, 6> ldrp2_dr1{c.px02, c.py02, c.pz02, c.dx, c.dy, c.dz + s2_xy.ds * c.pz02};
-    std::array<double, 6> p12_dr0{0., 0., 0., 2. * c.px1, 2. * c.py1, 2. * c.pz01};
+    std::array<double, 6> ldrp2_dr1{c.px02, c.py02, c.pz02, c.px02 * s2_xy.ds + c.dx, c.py02 * s2_xy.ds + c.dy, c.dz + s2_xy.ds * c.pz02};
+    std::array<double, 6> p12_dr0{0., 0., 0., 2. * c.px01, 2. * c.py01, 2. * c.pz01};
     std::array<double, 6> p22_dr1{0., 0., 0., 2. * c.px02, 2. * c.py02, 2. * c.pz02};
 
     for (std::size_t i = 0; i < 6; ++i) {

@@ -28,6 +28,20 @@ namespace KF { struct Particle; }
 // clang-format on
 
 class Verifier {
+
+    enum EPreFoundLambda {
+        kAvailablePreFoundLambdas,
+        kPassesDaughtersPID,
+        kPassesRapidityCut,
+        kPassesMinPtProton,
+        kNPreFoundLambdaCuts,
+    };
+
+    enum ELambdaPair {
+        kAllCombinations,
+        kNLambdaPairCuts,
+    };
+
    public:
     Verifier(const Verifier &) = delete;
     Verifier(Verifier &&) = delete;
@@ -84,7 +98,7 @@ class Verifier {
 
     // pre-found on-the-fly (anti)lambdas //
     [[nodiscard]] bool FastCuts_Lambda(const Seeder::PCA &pca_neg, const Seeder::PCA &pca_pos);
-    bool SlowCuts_Lambda(const Cached::PreFoundLambda &lambda, TH1D *hist_cut_flow);
+    bool SlowCuts_Lambda(const Cached::PreFoundLambda &c_lambda, bool anti_channel);
 
     POD::Extended::McParticle BuildMcPreFoundLambda(const POD::Extended::McParticle &mc_neg, const POD::Extended::McParticle &mc_pos,
                                                     const HD::DecayTree &decay_pid);

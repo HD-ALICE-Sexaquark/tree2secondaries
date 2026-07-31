@@ -3,6 +3,7 @@
 
 #include "common/Cached_V0.hpp"
 #include "common/Constants.hpp"
+#include "common/Cuts_T2DS_Packager.hpp"
 #include "common/DB_Particles.hpp"
 #include "common/MC_Helpers.hpp"
 #include "common/Math.hpp"
@@ -11,18 +12,12 @@
 #include "common/POD_McParticle.hpp"
 #include "common/POD_Track.hpp"
 #include "common/POD_V0.hpp"
-#include "common/T2DS_Cuts.hpp"
 
 #include "App/Logger.hxx"
-#include "KalmanFitter/KalmanFitterParticle.hxx"
-#if !T2DS_LEGACY_KF
 #include "KalmanFitter/BaseKalmanFitter.hxx"
+#include "KalmanFitter/KalmanFitterParticle.hxx"
 #include "Seeder/BaseSeeder.hxx"
 #include "Seeder/SeederHelixHelix.hxx"
-#else
-#include "Legacy/LegacyFitter.hxx"
-#include "Legacy/LegacyHelixHelix.hxx"
-#endif
 
 #include "Packager/Packager.hxx"
 
@@ -185,7 +180,6 @@ void Packager::PackTracks(const DB::Particles::Definition& pid) {
 
     // determine rules and aliases //
     std::vector<std::size_t>* vec_entries = nullptr;
-    const auto& input_tracks = fInput.Track;
     std::vector<POD::Track>* output_tracks = nullptr;
     std::vector<POD::Extended::McParticle>* output_mc = nullptr;
     switch (pid.pdg_code) {
@@ -213,7 +207,7 @@ void Packager::PackTracks(const DB::Particles::Definition& pid) {
     for (const std::size_t& entry_track : *vec_entries) {
         // NOTE: cuts were already applied in `ProcessTracks(...)`
         // -- reconstructed
-        output_tracks->emplace_back(input_tracks[entry_track]);
+        output_tracks->emplace_back(fInput.Track[entry_track]);
         // -- mc
         if (fSettings.IsMC) {
             output_mc->emplace_back(BuildMcTrack(fInput.Track_McEntry[entry_track], pid.pdg_code, true));
@@ -320,15 +314,6 @@ void Packager::FindV0s(const DB::Particles::Definition& pid) {
             if (entry_neg == entry_pos) continue;
             const POD::Track& track_pos = input_tracks[entry_pos];  // cache index lookup
 
-#if T2DS_LEGACY_KF
-            // PCAs //
-            auto [seed_neg, seed_pos, deriv_neg, deriv_pos] = Legacy::HelixHelix::FullPCAs(neg, pos, mass_neg, mass_pos, fInput_Event.magnetic_field);
-
-            // fit vertex //
-            auto l_fit = Legacy::Fit(neg, pos, mass_neg, mass_pos, fOutput.Event.magnetic_field);
-            auto fit = KF::Particle::FromLegacy(l_fit);
-#else
-
             // PCAs //
             auto [seed_neg, seed_pos, pca_cache] = Seeder::HelixHelix::FastCorrectPCAs(track_neg, track_pos, fOutput.Event.MagneticField);
 
@@ -344,11 +329,10 @@ void Packager::FindV0s(const DB::Particles::Definition& pid) {
 
             // create storage+computation units //
             POD::V0 v0 = CreateV0(fit, seed_neg.pca, seed_pos.pca);
-            Cached::V0 c_v0(v0, track_neg, track_pos, fPrimaryVertex);
+            Cached::V0 c_v0(v0, fPrimaryVertex);
 
             // apply cuts (2) //
             if (!SlowCuts(c_v0, pid)) continue;
-#endif
 
             // store reconstructed //
             output_vec_v0->emplace_back(v0);
@@ -399,7 +383,7 @@ bool Packager::SlowCuts_Lambda(const Cached::V0& c_v0, TH1D* cut_flow_hist) cons
     if (mass < Cuts::Lambda::Min_Mass || mass > Cuts::Lambda::Max_Mass) return false;
     cut_flow_hist->Fill(2.);
 
-    if (c_v0.Decay_SquaredRadius2D() < Cuts::Lambda::Min_Radius2D * Cuts::Lambda::Min_Radius2D) return false;
+    if (c_v0.Decay_SquaredRadius2D() < Cuts::Lambda::Min_Decay_Radius2D * Cuts::Lambda::Min_Decay_Radius2D) return false;
     cut_flow_hist->Fill(3.);
 
     if (c_v0.Neg_SquaredDCA_wrt_V0() > Cuts::Lambda::Max_DCAnegV0 * Cuts::Lambda::Max_DCAnegV0) return false;
@@ -438,7 +422,7 @@ bool Packager::SlowCuts_KaonZeroShort(const Cached::V0& c_v0, TH1D* cut_flow_his
     if (std::abs(c_v0.Rapidity()) > Cuts::KaonZeroShort::AbsMax_Rapidity) return false;
     cut_flow_hist->Fill(4.);
 
-    if (c_v0.Decay_SquaredRadius2D() < Cuts::KaonZeroShort::Min_Radius2D * Cuts::KaonZeroShort::Min_Radius2D) return false;
+    if (c_v0.Decay_SquaredRadius2D() < Cuts::KaonZeroShort::Min_Decay_Radius2D * Cuts::KaonZeroShort::Min_Decay_Radius2D) return false;
     cut_flow_hist->Fill(5.);
 
     if (c_v0.Neg_SquaredDCA_wrt_V0() > Cuts::KaonZeroShort::Max_DCAnegV0 * Cuts::KaonZeroShort::Max_DCAnegV0) return false;

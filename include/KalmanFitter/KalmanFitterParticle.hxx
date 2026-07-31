@@ -15,9 +15,6 @@
 #include "common/POD_V0.hpp"
 
 #include "App/Utilities.hxx"  // NOTE: don't remove! print formatter below needs it
-#if T2DS_LEGACY_KF
-#include "Legacy/LegacyParticle.hxx"
-#endif
 
 namespace T2DS::KF {
 
@@ -31,9 +28,6 @@ struct Particle {
     static Particle FromTrack(const POD::Track &v, double mass);
     static Particle FromV0(const POD::V0 &v);
     static Particle FromPreFoundLambda(const POD::Extended::PreFoundLambda &l);
-#if T2DS_LEGACY_KF
-    static Particle FromLegacy(const Legacy::Particle &part);
-#endif
 
     // Named Accesors //
 

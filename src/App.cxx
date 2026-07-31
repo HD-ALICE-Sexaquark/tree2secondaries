@@ -16,7 +16,8 @@ int main(int argc, char *argv[]) {
     if (settings.Mode == T2DS::EProgramMode::PACKAGER) {
 
         T2DS::Packager pkgr(settings);
-        for (long long id_event = 0; id_event < pkgr.NumberEventsToRead(); ++id_event) {
+        const auto n_events = pkgr.NumberEventsToRead();
+        for (long long id_event = 0; id_event < n_events; ++id_event) {
             pkgr.Load(id_event);
             pkgr.ProcessEvent();
             if (settings.IsMC) pkgr.ProcessInjectedSexa();
@@ -29,7 +30,8 @@ int main(int argc, char *argv[]) {
     } else if (settings.Mode == T2DS::EProgramMode::FINDER) {
 
         T2DS::Finder fndr(settings);
-        for (unsigned long id_event = 0; id_event < fndr.NumberEventsToRead(); ++id_event) {
+        const auto n_events = fndr.NumberEventsToRead();
+        for (unsigned long id_event = 0; id_event < n_events; ++id_event) {
             fndr.Load(id_event);
             fndr.ProcessEvent();
             if (settings.IsMC) fndr.ProcessInjected();
@@ -41,7 +43,8 @@ int main(int argc, char *argv[]) {
     } else if (settings.Mode == T2DS::EProgramMode::VERIFIER) {
 
         T2DS::Verifier vrfr(settings);
-        for (long long id_event = 0; id_event < vrfr.NumberEventsToRead(); ++id_event) {
+        const auto n_events = vrfr.NumberEventsToRead();
+        for (long long id_event = 0; id_event < n_events; ++id_event) {
             vrfr.Load(id_event);
             vrfr.ProcessEvent();
             if (settings.IsMC) vrfr.ProcessInjected();

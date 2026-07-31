@@ -5,6 +5,7 @@
 #include "common/Cached_Hdibaryon.hpp"
 #include "common/Cached_PreFoundLambda.hpp"
 #include "common/Constants.hpp"
+#include "common/Cuts_T2DS_Verifier.hpp"
 #include "common/DB_Particles.hpp"
 #include "common/HD_Library.hpp"
 #include "common/MC_Helpers.hpp"
@@ -32,20 +33,17 @@ void Verifier::PrepareOutputHistograms() {
     // event counter
     fHist_EventCounter = std::make_unique<TH1D>("N_Events", ";N_Events;", 1, 0., 1.);
     // cut flows
-    constexpr int x_nbins = 20;
-    constexpr float x_min = 0.;
-    constexpr float x_max = 20.;
     constexpr const char* hist_title = ";Cut N;N Passed Cut";
     // -- for (anti)lambdas
     fHist_CutFlow_AntiLambda = std::make_unique<TH1D>(  //
-        std::format("CutFlow_{}", DB::Particles::Particle("AntiLambda").acronym).c_str(), hist_title, x_nbins, x_min, x_max);
+        std::format("CutFlow_{}", DB::Particles::Particle("AntiLambda").acronym).c_str(), hist_title, kNPreFoundLambdaCuts, 0., kNPreFoundLambdaCuts);
     fHist_CutFlow_Lambda = std::make_unique<TH1D>(  //
-        std::format("CutFlow_{}", DB::Particles::Particle("Lambda").acronym).c_str(), hist_title, x_nbins, x_min, x_max);
+        std::format("CutFlow_{}", DB::Particles::Particle("Lambda").acronym).c_str(), hist_title, kNPreFoundLambdaCuts, 0., kNPreFoundLambdaCuts);
     // -- for (anti)h-dibaryons
     fHist_CutFlow_AntiHdibaryon = std::make_unique<TH1D>(  //
-        std::format("CutFlow_{}", DB::Particles::Particle("AntiHdibaryon").acronym).c_str(), hist_title, x_nbins, x_min, x_max);
+        std::format("CutFlow_{}", DB::Particles::Particle("AntiHdibaryon").acronym).c_str(), hist_title, kNLambdaPairCuts, 0., kNLambdaPairCuts);
     fHist_CutFlow_Hdibaryon = std::make_unique<TH1D>(  //
-        std::format("CutFlow_{}", DB::Particles::Particle("Hdibaryon").acronym).c_str(), hist_title, x_nbins, x_min, x_max);
+        std::format("CutFlow_{}", DB::Particles::Particle("Hdibaryon").acronym).c_str(), hist_title, kNLambdaPairCuts, 0., kNLambdaPairCuts);
 }
 
 // ## Event ZONE ## //
@@ -84,7 +82,7 @@ POD::InjectedHdib Verifier::BuildInjectedHdibaryon(const POD::McParticle& mc) {
     inj.Pz = mc.Pz;
     inj.Energy = mc.Energy;
     // lambda 1
-    if (mc.FirstDau_McEntry > 0) {
+    if (mc.FirstDau_McEntry > Common::DummyInt) {
         auto& mc_l1 = fInput.McParticle[static_cast<std::size_t>(mc.FirstDau_McEntry)];
         std::tie(inj.Lambda1_Decay_X, inj.Lambda1_Decay_Y, inj.Lambda1_Decay_Z) = MC::GetDecayVertex(mc_l1, fInput.McParticle);
         inj.Lambda1_Px = mc_l1.Px;
@@ -114,7 +112,7 @@ POD::InjectedHdib Verifier::BuildInjectedHdibaryon(const POD::McParticle& mc) {
         }
     }
     // lambda 2
-    if (mc.LastDau_McEntry > 0) {
+    if (mc.LastDau_McEntry > Common::DummyInt) {
         auto& mc_l2 = fInput.McParticle[static_cast<std::size_t>(mc.LastDau_McEntry)];
         std::tie(inj.Lambda2_Decay_X, inj.Lambda2_Decay_Y, inj.Lambda2_Decay_Z) = MC::GetDecayVertex(mc_l2, fInput.McParticle);
         inj.Lambda2_Px = mc_l2.Px;
@@ -156,26 +154,30 @@ POD::Extended::McParticle Verifier::BuildMcTrack(unsigned int track_mc_entry, co
     return new_mc;
 }
 
+// Extract track information from a `POD::PreFoundLambda` as a `POD::Track`.
 POD::Track Verifier::ExtractTrack(const POD::PreFoundLambda& pod_lambda, short charge) const {
-    POD::Track new_track;
-    new_track.EsdEntry = charge < 0 ? pod_lambda.Neg_EsdEntry : pod_lambda.Pos_EsdEntry;
-    new_track.X = charge < 0 ? pod_lambda.Neg_State[0] : pod_lambda.Pos_State[0];
-    new_track.Y = charge < 0 ? pod_lambda.Neg_State[1] : pod_lambda.Pos_State[1];
-    new_track.Z = charge < 0 ? pod_lambda.Neg_State[2] : pod_lambda.Pos_State[2];
-    new_track.Px = charge < 0 ? pod_lambda.Neg_State[3] : pod_lambda.Pos_State[3];
-    new_track.Py = charge < 0 ? pod_lambda.Neg_State[4] : pod_lambda.Pos_State[4];
-    new_track.Pz = charge < 0 ? pod_lambda.Neg_State[5] : pod_lambda.Pos_State[5];
-    new_track.Charge = charge;
-    new_track.PreDCAxy = charge < 0 ? pod_lambda.Neg_PreDCAxy : pod_lambda.Pos_PreDCAxy;
-    new_track.PreDCAz = charge < 0 ? pod_lambda.Neg_PreDCAz : pod_lambda.Pos_PreDCAz;
-    new_track.TPC_Signal = Common::DummyFloat;
-    new_track.NSigmasPion = charge < 0 ? pod_lambda.Neg_NSigmasPion : pod_lambda.Pos_NSigmasPion;
-    new_track.NSigmasKaon = charge < 0 ? pod_lambda.Neg_NSigmasKaon : pod_lambda.Pos_NSigmasKaon;
-    new_track.NSigmasProton = charge < 0 ? pod_lambda.Neg_NSigmasProton : pod_lambda.Pos_NSigmasProton;
-    new_track.CovMatrix = charge < 0 ? pod_lambda.Neg_CovMatrix : pod_lambda.Pos_CovMatrix;
-    new_track.TPC_FirstRow = Common::DummyInt;
-
-    return new_track;
+    return {
+        charge < 0 ? pod_lambda.Neg_EsdEntry : pod_lambda.Pos_EsdEntry,
+        charge < 0 ? pod_lambda.Neg_State[0] : pod_lambda.Pos_State[0],
+        charge < 0 ? pod_lambda.Neg_State[1] : pod_lambda.Pos_State[1],
+        charge < 0 ? pod_lambda.Neg_State[2] : pod_lambda.Pos_State[2],
+        charge < 0 ? pod_lambda.Neg_State[3] : pod_lambda.Pos_State[3],
+        charge < 0 ? pod_lambda.Neg_State[4] : pod_lambda.Pos_State[4],
+        charge < 0 ? pod_lambda.Neg_State[5] : pod_lambda.Pos_State[5],
+        charge < 0 ? pod_lambda.Neg_PreDCAxy : pod_lambda.Pos_PreDCAxy,
+        charge < 0 ? pod_lambda.Neg_PreDCAz : pod_lambda.Pos_PreDCAz,
+        charge < 0 ? pod_lambda.Neg_NSigmasPion : pod_lambda.Pos_NSigmasPion,
+        charge < 0 ? pod_lambda.Neg_NSigmasKaon : pod_lambda.Pos_NSigmasKaon,
+        charge < 0 ? pod_lambda.Neg_NSigmasProton : pod_lambda.Pos_NSigmasProton,
+        charge < 0 ? pod_lambda.Neg_CovMatrix : pod_lambda.Pos_CovMatrix,
+        Common::DummyFloat,
+        Common::DummyInt,
+        charge < 0 ? pod_lambda.Neg_TPC_NCrossedRows : pod_lambda.Pos_TPC_NCrossedRows,
+        charge < 0 ? pod_lambda.Neg_TPC_NClusters : pod_lambda.Pos_TPC_NClusters,
+        charge < 0 ? pod_lambda.Neg_TPC_NClustersFindable : pod_lambda.Pos_TPC_NClustersFindable,
+        charge < 0 ? pod_lambda.Neg_TPC_Chi2 : pod_lambda.Pos_TPC_Chi2,
+        charge,
+    };
 }
 
 // ## Single Pre-Found Lambda ZONE ## //
@@ -203,7 +205,6 @@ void Verifier::ProcessPreFoundLambda() {
         for (auto anti_channel : {false, true}) {
 
             const auto& decay_tree = HD::GetDecayTree(anti_channel);
-            auto* hist_cut_flow = anti_channel ? fHist_CutFlow_AntiLambda.get() : fHist_CutFlow_Lambda.get();
 
             // fit vertex //
             auto fit = KF::FitVertex(track_neg, track_pos, decay_tree.neg.mass, decay_tree.pos.mass, {seed_neg, deriv_neg}, {seed_pos, deriv_pos},
@@ -215,7 +216,7 @@ void Verifier::ProcessPreFoundLambda() {
             Cached::PreFoundLambda c_lambda(new_lambda, decay_tree.neg.mass, decay_tree.pos.mass, fPrimaryVertex);
 
             // apply more cuts (2) //
-            if (!SlowCuts_Lambda(c_lambda, hist_cut_flow)) continue;
+            if (!SlowCuts_Lambda(c_lambda, anti_channel)) continue;
 
             // store reconstructed //
             if (anti_channel) {
@@ -225,40 +226,51 @@ void Verifier::ProcessPreFoundLambda() {
             }
 
             // store mc //
-            if (fSettings.IsMC) {
-                // -- build mc particles
-                auto mc_lambda_neg = BuildMcTrack(fInput.PreFoundLambda_Neg_McEntry[entry_lambda], decay_tree, decay_tree.neg.pdg_code);
-                auto mc_lambda_pos = BuildMcTrack(fInput.PreFoundLambda_Pos_McEntry[entry_lambda], decay_tree, decay_tree.pos.pdg_code);
-                auto mc_lambda = BuildMcPreFoundLambda(mc_lambda_neg, mc_lambda_pos, decay_tree);
-                // -- store
-                if (anti_channel) {
-                    fTemp_MC_AntiLambda.emplace_back(mc_lambda);
-                    fTemp_MC_AntiLambda_Neg.emplace_back(mc_lambda_neg);
-                    fTemp_MC_AntiLambda_Pos.emplace_back(mc_lambda_pos);
-                } else {
-                    fTemp_MC_Lambda.emplace_back(mc_lambda);
-                    fTemp_MC_Lambda_Neg.emplace_back(mc_lambda_neg);
-                    fTemp_MC_Lambda_Pos.emplace_back(mc_lambda_pos);
-                }
+            if (!fSettings.IsMC) continue;
+
+            // -- build mc particles
+            auto mc_lambda_neg = BuildMcTrack(fInput.PreFoundLambda_Neg_McEntry[entry_lambda], decay_tree, decay_tree.neg.pdg_code);
+            auto mc_lambda_pos = BuildMcTrack(fInput.PreFoundLambda_Pos_McEntry[entry_lambda], decay_tree, decay_tree.pos.pdg_code);
+            auto mc_lambda = BuildMcPreFoundLambda(mc_lambda_neg, mc_lambda_pos, decay_tree);
+
+            // -- store
+            if (anti_channel) {
+                fTemp_MC_AntiLambda.emplace_back(mc_lambda);
+                fTemp_MC_AntiLambda_Neg.emplace_back(mc_lambda_neg);
+                fTemp_MC_AntiLambda_Pos.emplace_back(mc_lambda_pos);
+            } else {
+                fTemp_MC_Lambda.emplace_back(mc_lambda);
+                fTemp_MC_Lambda_Neg.emplace_back(mc_lambda_neg);
+                fTemp_MC_Lambda_Pos.emplace_back(mc_lambda_pos);
             }
         }
     }  // end of loop over pre-found (anti)lambdas
 }
 
+// Fill both histograms at this stage.
 bool Verifier::FastCuts_Lambda(const Seeder::PCA& pca_neg, const Seeder::PCA& pca_pos) {
-    // NOTE: yes, fill both histograms at this stage.
-    fHist_CutFlow_AntiLambda->Fill(0.);
-    fHist_CutFlow_Lambda->Fill(0.);
-
-    // PENDING //
+    fHist_CutFlow_AntiLambda->Fill(kAvailablePreFoundLambdas);
+    fHist_CutFlow_Lambda->Fill(kAvailablePreFoundLambdas);
 
     return true;
 }
 
-bool Verifier::SlowCuts_Lambda(const Cached::PreFoundLambda& lambda, TH1D* hist_cut_flow) {
-    hist_cut_flow->Fill(1.);
+bool Verifier::SlowCuts_Lambda(const Cached::PreFoundLambda& c_lambda, bool anti_channel) {
+    auto* hist_cut_flow = anti_channel ? fHist_CutFlow_AntiLambda.get() : fHist_CutFlow_Lambda.get();
 
-    // PENDING //
+    bool pid_proton = anti_channel ? std::abs(static_cast<double>(c_lambda.Neg_NSigmasProton)) < Cuts::PreFoundLambda::AbsMax_NSigmasProton
+                                   : std::abs(static_cast<double>(c_lambda.Pos_NSigmasProton)) < Cuts::PreFoundLambda::AbsMax_NSigmasProton;
+    bool pid_pion = anti_channel ? std::abs(static_cast<double>(c_lambda.Pos_NSigmasPion)) < Cuts::PreFoundLambda::AbsMax_NSigmasPion  //
+                                 : std::abs(static_cast<double>(c_lambda.Neg_NSigmasPion)) < Cuts::PreFoundLambda::AbsMax_NSigmasPion;
+    if (!pid_proton || !pid_pion) return false;
+    hist_cut_flow->Fill(kPassesDaughtersPID);
+
+    if (std::abs(c_lambda.Rapidity()) > Cuts::PreFoundLambda::AbsMax_Rapidity) return false;
+    hist_cut_flow->Fill(kPassesRapidityCut);
+
+    auto proton_pt = anti_channel ? c_lambda.Neg_Pt() : c_lambda.Pos_Pt();
+    if (proton_pt < Cuts::PreFoundLambda::Min_Pt_Proton) return false;
+    hist_cut_flow->Fill(kPassesMinPtProton);
 
     return true;
 }
@@ -335,7 +347,12 @@ void Verifier::VerifyLambdaPair(bool anti_channel) {
 
         for (std::size_t entry_lambda2 = entry_lambda1 + 1; entry_lambda2 < n_lambdas; ++entry_lambda2) {
             const auto& lambda2 = input_lambdas[entry_lambda2];  // cache index lookup
-            // NOTE: sanity check not needed, because loops don't intersect
+
+            // sanity check //
+            if (lambda1.Neg_EsdEntry == lambda2.Neg_EsdEntry || lambda1.Neg_EsdEntry == lambda2.Pos_EsdEntry ||
+                lambda1.Pos_EsdEntry == lambda2.Neg_EsdEntry || lambda1.Pos_EsdEntry == lambda2.Pos_EsdEntry) {
+                continue;
+            }
 
             // PCAs //
             Seeder::LineLine::Cache pca_cache;
@@ -377,7 +394,7 @@ void Verifier::VerifyLambdaPair(bool anti_channel) {
 }
 
 bool Verifier::FastCuts_Hdibaryon(const Seeder::PCA& pca_lambda1, const Seeder::PCA& pca_lambda2, TH1D* hist_cut_flow) {
-    hist_cut_flow->Fill(0.);
+    hist_cut_flow->Fill(kAllCombinations);
 
     // PENDING //
 

@@ -38,16 +38,13 @@ else()
   message(STATUS "LTO/IPO is not supported")
 endif()
 
-option(LEGACY_KF "Enable original KFParticle functions" OFF)
-
 # find dependencies #
 
 message(STATUS "Fetching https://github.com/CLIUtils/CLI11")
 FetchContent_Declare(
   cli11_proj
-  SYSTEM
   GIT_REPOSITORY https://github.com/CLIUtils/CLI11.git
-  GIT_TAG v2.6.2
+  GIT_TAG v2.7.0
   GIT_SHALLOW TRUE)
 FetchContent_MakeAvailable(cli11_proj)
 message(STATUS "Fetching https://github.com/CLIUtils/CLI11 -- fetched")
@@ -55,7 +52,6 @@ message(STATUS "Fetching https://github.com/CLIUtils/CLI11 -- fetched")
 message(STATUS "Fetching https://gitlab.com/libeigen/eigen")
 FetchContent_Declare(
   eigen
-  SYSTEM
   EXCLUDE_FROM_ALL
   GIT_REPOSITORY https://gitlab.com/libeigen/eigen.git
   GIT_TAG 5.0.1
@@ -117,22 +113,6 @@ add_executable(${PROJECT_NAME} src/Seeder/SeederHelixHelix.cxx
                                src/Verifier.cxx
                                src/App.cxx)
 
-if(LEGACY_KF)
-  # add sources to a target
-  target_sources(${PROJECT_NAME} PRIVATE src/Legacy/LegacyAddDaughter.cxx
-                                         src/Legacy/LegacyAddDaughterWithEnergyFit.cxx
-                                         src/Legacy/LegacyGetMeasurement.cxx
-                                         src/Legacy/LegacyHelixHelix.cxx
-                                         src/Legacy/LegacyHelixPoint.cxx
-                                         src/Legacy/LegacyInvertCholesky.cxx
-                                         src/Legacy/LegacyLineLine.cxx
-                                         src/Legacy/LegacyLinePoint.cxx
-                                         src/Legacy/LegacyMultQSQt.cxx
-                                         src/Legacy/LegacyParticle.cxx
-                                         src/Legacy/LegacyTransportBz.cxx
-                                         src/Legacy/LegacyTransportLine.cxx)
-endif()
-
 target_link_libraries(${PROJECT_NAME} PRIVATE POD
                                               CLI11::CLI11
                                               Eigen3::Eigen
@@ -149,9 +129,8 @@ target_compile_options(${PROJECT_NAME} PRIVATE -Wall
                                                -Wpedantic
                                                -Wconversion
                                                -Wdouble-promotion
-                                               $<$<CONFIG:Release>:${T2DS_OPT_FLAGS}>)
+                                               $<$<CONFIG:Release>:${T2DS_RELEASE_FLAGS}>)
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE EIGEN_DONT_PARALLELIZE
-                                                   $<$<BOOL:${LEGACY_KF}>:T2DS_LEGACY_KF>
                                                    $<$<CONFIG:Debug>:T2DS_DEBUG>
                                                    $<$<CONFIG:Release>:EIGEN_NO_DEBUG>)

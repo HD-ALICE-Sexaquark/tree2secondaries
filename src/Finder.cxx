@@ -3,12 +3,12 @@
 #include <string_view>
 
 #include "common/Cached_Sexaquark.hpp"
+#include "common/Cuts_T2DS_Finder.hpp"
 #include "common/DB_Particles.hpp"
 #include "common/MC_Helpers.hpp"
 #include "common/Math.hpp"
 #include "common/POD_Sexaquark.hpp"
 #include "common/POD_Track.hpp"
-#include "common/T2DS_Cuts.hpp"
 
 #include "KalmanFitter/BaseKalmanFitter.hxx"
 #include "Seeder/BaseSeeder.hxx"
@@ -180,24 +180,24 @@ void Finder::FindSexaquarks_ChannelA(bool is_bkg_channel) {
 bool Finder::FastCuts_ChannelA(const Seeder::PCA& pca_v0a, const Seeder::PCA& pca_v0b, TH1D* hist_cut_flow) const {
     hist_cut_flow->Fill(0.);
 
-    if (Common::Math::SquaredDistance(pca_v0a.xyz, pca_v0b.xyz) > T2DS::Cuts::ChannelA::Max_DCAbtwV0s * T2DS::Cuts::ChannelA::Max_DCAbtwV0s) {
-        return false;
-    }
-    hist_cut_flow->Fill(1.);
+    // if (Common::Math::SquaredDistance(pca_v0a.xyz, pca_v0b.xyz) > T2DS::Cuts::ChannelA::Max_DCAbtwV0s * T2DS::Cuts::ChannelA::Max_DCAbtwV0s) {
+    // return false;
+    // }
+    // hist_cut_flow->Fill(1.);
 
     return true;
 }
 
 bool Finder::SlowCuts_ChannelA(const Cached::Sexaquark& c_sexa, TH1D* hist_cut_flow) const {
 
-    if (c_sexa.SV_SquaredRadius2D() < Cuts::ChannelA::Min_Radius2D * Cuts::ChannelA::Min_Radius2D) return false;
-    hist_cut_flow->Fill(2.);
+    // if (c_sexa.SV_SquaredRadius2D() < Cuts::ChannelA::Min_Radius2D * Cuts::ChannelA::Min_Radius2D) return false;
+    // hist_cut_flow->Fill(2.);
 
-    if (c_sexa.Dau1_SquaredDCA_wrt_SV() > Cuts::ChannelA::Max_DCALaSV * Cuts::ChannelA::Max_DCALaSV) return false;
-    hist_cut_flow->Fill(3.);
+    // if (c_sexa.Dau1_SquaredDCA_wrt_SV() > Cuts::ChannelA::Max_DCALaSV * Cuts::ChannelA::Max_DCALaSV) return false;
+    // hist_cut_flow->Fill(3.);
 
-    if (c_sexa.Dau2_SquaredDCA_wrt_SV() > Cuts::ChannelA::Max_DCAK0SV * Cuts::ChannelA::Max_DCAK0SV) return false;
-    hist_cut_flow->Fill(4.);
+    // if (c_sexa.Dau2_SquaredDCA_wrt_SV() > Cuts::ChannelA::Max_DCAK0SV * Cuts::ChannelA::Max_DCAK0SV) return false;
+    // hist_cut_flow->Fill(4.);
 
     // if (c_sexa.CPA_wrt(fInput_Event.PV.X, fInput_Event.PV.Y, fInput_Event.PV.Z) < Cuts::ChannelA::Min_CPAwrtPV) return false;
     // hist_cut_flow->Fill(5.);
@@ -298,7 +298,7 @@ void Finder::FindSexaquarks_ChannelD(bool is_bkg_channel) {
             if (!FastCuts_ChannelD(seed_v0.pca, seed_kaon.pca, hist)) continue;
 
             // PCAs derivatives //
-            auto [deriv_v0, deriv_ka] = Seeder::HelixLine::ComputeDerivatives(seed_kaon, seed_v0, pca_cache);
+            auto [deriv_ka, deriv_v0] = Seeder::HelixLine::ComputeDerivatives(seed_kaon, seed_v0, pca_cache);
 
             // fit vertex //
             auto fit = KF::FitVertex(kaon, lambda, mass_kaon, {seed_kaon, deriv_ka}, {seed_v0, deriv_v0}, fOutput_Base->Event.MagneticField);
@@ -337,20 +337,20 @@ void Finder::FindSexaquarks_ChannelD(bool is_bkg_channel) {
 bool Finder::FastCuts_ChannelD(const Seeder::PCA& pca_v0, const Seeder::PCA& pca_ka, TH1D* hist_cut_flow) const {
     hist_cut_flow->Fill(0.);
 
-    if (Common::Math::SquaredDistance(pca_ka.xyz, pca_v0.xyz) > Cuts::ChannelD::Max_DCAKaLa * Cuts::ChannelD::Max_DCAKaLa) return false;
-    hist_cut_flow->Fill(1.);
+    // if (Common::Math::SquaredDistance(pca_ka.xyz, pca_v0.xyz) > Cuts::ChannelD::Max_DCAKaLa * Cuts::ChannelD::Max_DCAKaLa) return false;
+    // hist_cut_flow->Fill(1.);
 
     return true;
 }
 
 bool Finder::SlowCuts_ChannelD(const Cached::Sexaquark& c_sexa, TH1D* hist_cut_flow) const {
 
-    double sq_radius_2d = c_sexa.SV_SquaredRadius2D();
-    if (sq_radius_2d < Cuts::ChannelD::Min_Radius2D * Cuts::ChannelD::Min_Radius2D ||
-        sq_radius_2d > Cuts::ChannelD::Max_Radius2D * Cuts::ChannelD::Max_Radius2D) {
-        return false;
-    }
-    hist_cut_flow->Fill(2.);
+    // double sq_radius_2d = c_sexa.SV_SquaredRadius2D();
+    // if (sq_radius_2d < Cuts::ChannelD::Min_Radius2D * Cuts::ChannelD::Min_Radius2D ||
+    // sq_radius_2d > Cuts::ChannelD::Max_Radius2D * Cuts::ChannelD::Max_Radius2D) {
+    // return false;
+    // }
+    // hist_cut_flow->Fill(2.);
 
     // if (sexa.AbsRapidity_MinusNucleon() > Cuts::ChannelD::AbsMax_Rapidity) return false;  // PENDING: kinematics, affected by Fermi motion
     // hist_cut_flow->Fill(3.);
@@ -361,11 +361,11 @@ bool Finder::SlowCuts_ChannelD(const Cached::Sexaquark& c_sexa, TH1D* hist_cut_f
     // }
     // hist_cut_flow->Fill(3.);
 
-    if (c_sexa.Dau1_SquaredDCA_wrt_SV() > Cuts::ChannelD::Max_DCALaSV * Cuts::ChannelD::Max_DCALaSV) return false;
-    hist_cut_flow->Fill(4.);
+    // if (c_sexa.Dau1_SquaredDCA_wrt_SV() > Cuts::ChannelD::Max_DCALaSV * Cuts::ChannelD::Max_DCALaSV) return false;
+    // hist_cut_flow->Fill(4.);
 
-    if (c_sexa.Dau2_SquaredDCA_wrt_SV() > Cuts::ChannelD::Max_DCAKaSV * Cuts::ChannelD::Max_DCAKaSV) return false;
-    hist_cut_flow->Fill(5.);
+    // if (c_sexa.Dau2_SquaredDCA_wrt_SV() > Cuts::ChannelD::Max_DCAKaSV * Cuts::ChannelD::Max_DCAKaSV) return false;
+    // hist_cut_flow->Fill(5.);
 
     // if (sexa.DCA_V0Neg_wrt_SV(fInput_Event.MagneticField) > Cuts::ChannelD::Max_DCALaNegSV) return false;
     // hist_cut_flow->Fill(6.);

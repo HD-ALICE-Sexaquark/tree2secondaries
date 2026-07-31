@@ -1,9 +1,11 @@
-.env
-.vscode/
 .cache/
+.claude/
+.vscode/
 build/
-files/
 deprecated/
-compile_commands.json
+files/
+original/
 output/
 slurm/
+.env
+compile_commands.json

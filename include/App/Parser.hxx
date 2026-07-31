@@ -58,20 +58,25 @@ class Parser {
             settings.LimitToNEvents = opt_n->as<long long>();
         }
 
+        // -- reaction channel & mass
+        if (settings.IsMC && settings.Mode == EProgramMode::PACKAGER) {
+            settings.ReactionChannel = data_kind_cmd->get_option("-c")->as<char>();
+            settings.SexaquarkMass = data_kind_cmd->get_option("-m")->as<double>();
+        } else if (settings.Mode == EProgramMode::FINDER) {
+            settings.ReactionChannel = data_kind_cmd->get_option("-c")->as<char>();
+        }
+
         // -- output path, reaction channel & mass
         settings.PathOutputFile = CLI_APP.get_option("-o")->as<std::string>();
         if (settings.PathOutputFile.empty()) {
             if (settings.Mode == EProgramMode::PACKAGER) {
                 if (settings.IsMC) {
-                    settings.ReactionChannel = data_kind_cmd->get_option("-c")->as<char>();
-                    settings.SexaquarkMass = data_kind_cmd->get_option("-m")->as<double>();
                     settings.PathOutputFile = std::format("PackedRNT_{}{:.2f}.root", settings.ReactionChannel, settings.SexaquarkMass);
                 } else {
                     settings.PathOutputFile = "PackedRNT.root";
                 }
             }
             if (settings.Mode == EProgramMode::FINDER) {
-                settings.ReactionChannel = data_kind_cmd->get_option("-c")->as<char>();
                 settings.PathOutputFile = std::format("FoundRNT_Channel{}.root", settings.ReactionChannel);
             }
             if (settings.Mode == EProgramMode::VERIFIER) {
