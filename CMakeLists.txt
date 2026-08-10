@@ -44,7 +44,7 @@ message(STATUS "Fetching https://github.com/CLIUtils/CLI11")
 FetchContent_Declare(
   cli11_proj
   GIT_REPOSITORY https://github.com/CLIUtils/CLI11.git
-  GIT_TAG v2.7.0
+  GIT_TAG v2.7.2
   GIT_SHALLOW TRUE)
 FetchContent_MakeAvailable(cli11_proj)
 message(STATUS "Fetching https://github.com/CLIUtils/CLI11 -- fetched")

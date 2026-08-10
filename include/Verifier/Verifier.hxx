@@ -29,18 +29,60 @@ namespace KF { struct Particle; }
 
 class Verifier {
 
-    enum EPreFoundLambda {
-        kAvailablePreFoundLambdas,
-        kPassesDaughtersPID,
-        kPassesRapidityCut,
-        kPassesMinPtProton,
+    enum class EPreFoundLambda : int {
+        kAllPreFoundLambdas,
+        // fast cuts
+        kPasses_Max_DCAbtwDaughters,
+        // slow cuts
+        kPasses_AbsMax_Pz,
+        kPasses_Max_Pt,
+        kPasses_Min_Pt,
+        kPasses_AbsMax_Rapidity,
+        kPasses_Min_Mass,
+        kPasses_Max_Mass,
+        kPasses_Min_CPAwrtPV,
+        kPasses_AbsMax_ArmRadiusDev,
+        kPasses_Max_DCAwrtPV,
+        kPasses_Max_Chi2NDF,
+        // -- depend on (anti)protons
+        kPasses_AbsMax_Pz_Proton,
+        kPasses_Max_Pt_Proton,
+        kPasses_Min_Pt_Proton,
+        // -- depend on pi(minus/plus)
+        kPasses_AbsMax_Pz_Pion,
+        kPasses_Max_Pt_Pion,
+        kPasses_Min_Pt_Pion,
+        // --
         kNPreFoundLambdaCuts,
     };
-
-    enum ELambdaPair {
+    enum class ELambdaPair : int {
         kAllCombinations,
+        // fast cuts
+        kPasses_Max_DCAbtwDau,
+        // slow cuts
+        kPasses_AbsMax_Pz,
+        kPasses_Max_Pt,
+        kPasses_Min_Pt,
+        kPasses_Min_Mass,
+        kPasses_Max_Mass,
+        kPasses_AbsMax_Rapidity,
+        kPasses_Max_DecayLength,
+        kPasses_Min_CPAwrtPV,
+        kPasses_Max_Chi2NDF,
+        // (anti)lambdas : depend on (anti)h-dibaryon decay vertex
+        kPasses_Max_L1_DecayLength,
+        kPasses_Min_L1_DecayLength,
+        kPasses_Min_L1_CPAwrtDV,
+        kPasses_Max_L2_DecayLength,
+        kPasses_Min_L2_DecayLength,
+        kPasses_Min_L2_CPAwrtDV,
+        // --
         kNLambdaPairCuts,
     };
+    template <typename E>
+    void FillHist(TH1D *hist, const E &bin_n) {
+        hist->Fill(static_cast<double>(bin_n));
+    }
 
    public:
     Verifier(const Verifier &) = delete;

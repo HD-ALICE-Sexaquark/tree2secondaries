@@ -33,17 +33,69 @@ void Verifier::PrepareOutputHistograms() {
     // event counter
     fHist_EventCounter = std::make_unique<TH1D>("N_Events", ";N_Events;", 1, 0., 1.);
     // cut flows
-    constexpr const char* hist_title = ";Cut N;N Passed Cut";
+    constexpr const char* hist_title = ";;N Passed Cut";
     // -- for (anti)lambdas
-    fHist_CutFlow_AntiLambda = std::make_unique<TH1D>(  //
-        std::format("CutFlow_{}", DB::Particles::Particle("AntiLambda").acronym).c_str(), hist_title, kNPreFoundLambdaCuts, 0., kNPreFoundLambdaCuts);
-    fHist_CutFlow_Lambda = std::make_unique<TH1D>(  //
-        std::format("CutFlow_{}", DB::Particles::Particle("Lambda").acronym).c_str(), hist_title, kNPreFoundLambdaCuts, 0., kNPreFoundLambdaCuts);
+    fHist_CutFlow_AntiLambda = std::make_unique<TH1D>(                                                 //
+        std::format("CutFlow_{}", DB::Particles::Particle("AntiLambda").acronym).c_str(), hist_title,  //
+        static_cast<int>(EPreFoundLambda::kNPreFoundLambdaCuts), 0., static_cast<double>(EPreFoundLambda::kNPreFoundLambdaCuts));
+    fHist_CutFlow_Lambda = std::make_unique<TH1D>(                                                 //
+        std::format("CutFlow_{}", DB::Particles::Particle("Lambda").acronym).c_str(), hist_title,  //
+        static_cast<int>(EPreFoundLambda::kNPreFoundLambdaCuts), 0., static_cast<double>(EPreFoundLambda::kNPreFoundLambdaCuts));
+    for (auto* hist_lambda : {fHist_CutFlow_AntiLambda.get(), fHist_CutFlow_Lambda.get()}) {
+        auto* x_axis = hist_lambda->GetXaxis();
+        x_axis->SetBinLabel(static_cast<int>(EPreFoundLambda::kAllPreFoundLambdas) + 1, "AllPreFoundLambdas");
+        // fast cuts
+        x_axis->SetBinLabel(static_cast<int>(EPreFoundLambda::kPasses_Max_DCAbtwDaughters) + 1, "Passes_Max_DCAbtwDaughters");
+        // slow cuts
+        x_axis->SetBinLabel(static_cast<int>(EPreFoundLambda::kPasses_AbsMax_Pz) + 1, "Passes_AbsMax_Pz");
+        x_axis->SetBinLabel(static_cast<int>(EPreFoundLambda::kPasses_Max_Pt) + 1, "Passes_Max_Pt");
+        x_axis->SetBinLabel(static_cast<int>(EPreFoundLambda::kPasses_Min_Pt) + 1, "Passes_Min_Pt");
+        x_axis->SetBinLabel(static_cast<int>(EPreFoundLambda::kPasses_AbsMax_Rapidity) + 1, "Passes_AbsMax_Rapidity");
+        x_axis->SetBinLabel(static_cast<int>(EPreFoundLambda::kPasses_Min_Mass) + 1, "Passes_Min_Mass");
+        x_axis->SetBinLabel(static_cast<int>(EPreFoundLambda::kPasses_Max_Mass) + 1, "Passes_Max_Mass");
+        x_axis->SetBinLabel(static_cast<int>(EPreFoundLambda::kPasses_Min_CPAwrtPV) + 1, "Passes_Min_CPAwrtPV");
+        x_axis->SetBinLabel(static_cast<int>(EPreFoundLambda::kPasses_AbsMax_ArmRadiusDev) + 1, "Passes_AbsMax_ArmRadiusDev");
+        x_axis->SetBinLabel(static_cast<int>(EPreFoundLambda::kPasses_Max_DCAwrtPV) + 1, "Passes_Max_DCAwrtPV");
+        x_axis->SetBinLabel(static_cast<int>(EPreFoundLambda::kPasses_Max_Chi2NDF) + 1, "Passes_Max_Chi2NDF");
+        // -- depend on (anti)protons
+        x_axis->SetBinLabel(static_cast<int>(EPreFoundLambda::kPasses_AbsMax_Pz_Proton) + 1, "Passes_AbsMax_Pz_Proton");
+        x_axis->SetBinLabel(static_cast<int>(EPreFoundLambda::kPasses_Max_Pt_Proton) + 1, "Passes_Max_Pt_Proton");
+        x_axis->SetBinLabel(static_cast<int>(EPreFoundLambda::kPasses_Min_Pt_Proton) + 1, "Passes_Min_Pt_Proton");
+        // -- depend on pi(minus/plus)
+        x_axis->SetBinLabel(static_cast<int>(EPreFoundLambda::kPasses_AbsMax_Pz_Pion) + 1, "Passes_AbsMax_Pz_Pion");
+        x_axis->SetBinLabel(static_cast<int>(EPreFoundLambda::kPasses_Max_Pt_Pion) + 1, "Passes_Max_Pt_Pion");
+        x_axis->SetBinLabel(static_cast<int>(EPreFoundLambda::kPasses_Min_Pt_Pion) + 1, "Passes_Min_Pt_Pion");
+    }
     // -- for (anti)h-dibaryons
-    fHist_CutFlow_AntiHdibaryon = std::make_unique<TH1D>(  //
-        std::format("CutFlow_{}", DB::Particles::Particle("AntiHdibaryon").acronym).c_str(), hist_title, kNLambdaPairCuts, 0., kNLambdaPairCuts);
-    fHist_CutFlow_Hdibaryon = std::make_unique<TH1D>(  //
-        std::format("CutFlow_{}", DB::Particles::Particle("Hdibaryon").acronym).c_str(), hist_title, kNLambdaPairCuts, 0., kNLambdaPairCuts);
+    fHist_CutFlow_AntiHdibaryon = std::make_unique<TH1D>(                                                 //
+        std::format("CutFlow_{}", DB::Particles::Particle("AntiHdibaryon").acronym).c_str(), hist_title,  //
+        static_cast<int>(ELambdaPair::kNLambdaPairCuts), 0., static_cast<double>(ELambdaPair::kNLambdaPairCuts));
+    fHist_CutFlow_Hdibaryon = std::make_unique<TH1D>(                                                 //
+        std::format("CutFlow_{}", DB::Particles::Particle("Hdibaryon").acronym).c_str(), hist_title,  //
+        static_cast<int>(ELambdaPair::kNLambdaPairCuts), 0., static_cast<double>(ELambdaPair::kNLambdaPairCuts));
+    for (auto* hist_hdib : {fHist_CutFlow_AntiHdibaryon.get(), fHist_CutFlow_Hdibaryon.get()}) {
+        auto* x_axis = hist_hdib->GetXaxis();
+        x_axis->SetBinLabel(static_cast<int>(ELambdaPair::kAllCombinations) + 1, "AllCombinations");
+        // fast cuts
+        x_axis->SetBinLabel(static_cast<int>(ELambdaPair::kPasses_Max_DCAbtwDau) + 1, "Passes_Max_DCAbtwDau");
+        // slow cuts
+        x_axis->SetBinLabel(static_cast<int>(ELambdaPair::kPasses_AbsMax_Pz) + 1, "Passes_AbsMax_Pz");
+        x_axis->SetBinLabel(static_cast<int>(ELambdaPair::kPasses_Max_Pt) + 1, "Passes_Max_Pt");
+        x_axis->SetBinLabel(static_cast<int>(ELambdaPair::kPasses_Min_Pt) + 1, "Passes_Min_Pt");
+        x_axis->SetBinLabel(static_cast<int>(ELambdaPair::kPasses_Min_Mass) + 1, "Passes_Min_Mass");
+        x_axis->SetBinLabel(static_cast<int>(ELambdaPair::kPasses_Max_Mass) + 1, "Passes_Max_Mass");
+        x_axis->SetBinLabel(static_cast<int>(ELambdaPair::kPasses_AbsMax_Rapidity) + 1, "Passes_AbsMax_Rapidity");
+        x_axis->SetBinLabel(static_cast<int>(ELambdaPair::kPasses_Max_DecayLength) + 1, "Passes_Max_DecayLength");
+        x_axis->SetBinLabel(static_cast<int>(ELambdaPair::kPasses_Min_CPAwrtPV) + 1, "Passes_Min_CPAwrtPV");
+        x_axis->SetBinLabel(static_cast<int>(ELambdaPair::kPasses_Max_Chi2NDF) + 1, "Passes_Max_Chi2NDF");
+        // (anti)lambdas : depend on (anti)h-dibaryon decay vertex
+        x_axis->SetBinLabel(static_cast<int>(ELambdaPair::kPasses_Max_L1_DecayLength) + 1, "Passes_Max_L1_DecayLength");
+        x_axis->SetBinLabel(static_cast<int>(ELambdaPair::kPasses_Min_L1_DecayLength) + 1, "Passes_Min_L1_DecayLength");
+        x_axis->SetBinLabel(static_cast<int>(ELambdaPair::kPasses_Min_L1_CPAwrtDV) + 1, "Passes_Min_L1_CPAwrtDV");
+        x_axis->SetBinLabel(static_cast<int>(ELambdaPair::kPasses_Max_L2_DecayLength) + 1, "Passes_Max_L2_DecayLength");
+        x_axis->SetBinLabel(static_cast<int>(ELambdaPair::kPasses_Min_L2_DecayLength) + 1, "Passes_Min_L2_DecayLength");
+        x_axis->SetBinLabel(static_cast<int>(ELambdaPair::kPasses_Min_L2_CPAwrtDV) + 1, "Passes_Min_L2_CPAwrtDV");
+    }
 }
 
 // ## Event ZONE ## //
@@ -213,7 +265,7 @@ void Verifier::ProcessPreFoundLambda() {
             // create storage+computation (anti)lambda //
             POD::Extended::PreFoundLambda new_lambda =
                 CreateExtendedPreFoundLambda(in_lambda, fit, seed_neg.pca, seed_pos.pca, decay_tree.neg.mass, decay_tree.pos.mass);
-            Cached::PreFoundLambda c_lambda(new_lambda, decay_tree.neg.mass, decay_tree.pos.mass, fPrimaryVertex);
+            Cached::PreFoundLambda c_lambda(new_lambda, anti_channel, fPrimaryVertex);
 
             // apply more cuts (2) //
             if (!SlowCuts_Lambda(c_lambda, anti_channel)) continue;
@@ -249,8 +301,12 @@ void Verifier::ProcessPreFoundLambda() {
 
 // Fill both histograms at this stage.
 bool Verifier::FastCuts_Lambda(const Seeder::PCA& pca_neg, const Seeder::PCA& pca_pos) {
-    fHist_CutFlow_AntiLambda->Fill(kAvailablePreFoundLambdas);
-    fHist_CutFlow_Lambda->Fill(kAvailablePreFoundLambdas);
+    FillHist(fHist_CutFlow_AntiLambda.get(), EPreFoundLambda::kAllPreFoundLambdas);
+    FillHist(fHist_CutFlow_Lambda.get(), EPreFoundLambda::kAllPreFoundLambdas);
+
+    if (Common::Math::Distance(pca_neg.xyz, pca_pos.xyz) > Cuts::PreFoundLambda::Max_DCAbtwDaughters) return false;
+    FillHist(fHist_CutFlow_AntiLambda.get(), EPreFoundLambda::kPasses_Max_DCAbtwDaughters);
+    FillHist(fHist_CutFlow_Lambda.get(), EPreFoundLambda::kPasses_Max_DCAbtwDaughters);
 
     return true;
 }
@@ -258,19 +314,57 @@ bool Verifier::FastCuts_Lambda(const Seeder::PCA& pca_neg, const Seeder::PCA& pc
 bool Verifier::SlowCuts_Lambda(const Cached::PreFoundLambda& c_lambda, bool anti_channel) {
     auto* hist_cut_flow = anti_channel ? fHist_CutFlow_AntiLambda.get() : fHist_CutFlow_Lambda.get();
 
-    bool pid_proton = anti_channel ? std::abs(static_cast<double>(c_lambda.Neg_NSigmasProton)) < Cuts::PreFoundLambda::AbsMax_NSigmasProton
-                                   : std::abs(static_cast<double>(c_lambda.Pos_NSigmasProton)) < Cuts::PreFoundLambda::AbsMax_NSigmasProton;
-    bool pid_pion = anti_channel ? std::abs(static_cast<double>(c_lambda.Pos_NSigmasPion)) < Cuts::PreFoundLambda::AbsMax_NSigmasPion  //
-                                 : std::abs(static_cast<double>(c_lambda.Neg_NSigmasPion)) < Cuts::PreFoundLambda::AbsMax_NSigmasPion;
-    if (!pid_proton || !pid_pion) return false;
-    hist_cut_flow->Fill(kPassesDaughtersPID);
+    if (std::abs(static_cast<double>(c_lambda.Pz)) > Cuts::PreFoundLambda::AbsMax_Pz) return false;
+    FillHist(hist_cut_flow, EPreFoundLambda::kPasses_AbsMax_Pz);
+
+    if (c_lambda.Pt() > Cuts::PreFoundLambda::Max_Pt) return false;
+    FillHist(hist_cut_flow, EPreFoundLambda::kPasses_Max_Pt);
+
+    if (c_lambda.Pt() < Cuts::PreFoundLambda::Min_Pt) return false;
+    FillHist(hist_cut_flow, EPreFoundLambda::kPasses_Min_Pt);
 
     if (std::abs(c_lambda.Rapidity()) > Cuts::PreFoundLambda::AbsMax_Rapidity) return false;
-    hist_cut_flow->Fill(kPassesRapidityCut);
+    FillHist(hist_cut_flow, EPreFoundLambda::kPasses_AbsMax_Rapidity);
 
-    auto proton_pt = anti_channel ? c_lambda.Neg_Pt() : c_lambda.Pos_Pt();
-    if (proton_pt < Cuts::PreFoundLambda::Min_Pt_Proton) return false;
-    hist_cut_flow->Fill(kPassesMinPtProton);
+    if (c_lambda.Mass() < Cuts::PreFoundLambda::Min_Mass) return false;
+    FillHist(hist_cut_flow, EPreFoundLambda::kPasses_Min_Mass);
+
+    if (c_lambda.Mass() > Cuts::PreFoundLambda::Max_Mass) return false;
+    FillHist(hist_cut_flow, EPreFoundLambda::kPasses_Max_Mass);
+
+    if (c_lambda.CPA_wrt_PV() < Cuts::PreFoundLambda::Min_CPAwrtPV) return false;
+    FillHist(hist_cut_flow, EPreFoundLambda::kPasses_Min_CPAwrtPV);
+
+    if (std::abs(c_lambda.ArmRadiusDev()) > Cuts::PreFoundLambda::AbsMax_ArmRadiusDev) return false;
+    FillHist(hist_cut_flow, EPreFoundLambda::kPasses_AbsMax_ArmRadiusDev);
+
+    if (c_lambda.DCA_wrt_PV() > Cuts::PreFoundLambda::Max_DCAwrtPV) return false;
+    FillHist(hist_cut_flow, EPreFoundLambda::kPasses_Max_DCAwrtPV);
+
+    if (static_cast<double>(c_lambda.Chi2NDF) > Cuts::PreFoundLambda::Max_Chi2NDF) return false;
+    FillHist(hist_cut_flow, EPreFoundLambda::kPasses_Max_Chi2NDF);
+
+    // depend on (anti)protons //
+
+    if (std::abs(c_lambda.Pr_Pz()) > Cuts::PreFoundLambda::AbsMax_Pz_Proton) return false;
+    FillHist(hist_cut_flow, EPreFoundLambda::kPasses_AbsMax_Pz_Proton);
+
+    if (c_lambda.Pr_Pt() > Cuts::PreFoundLambda::Max_Pt_Proton) return false;
+    FillHist(hist_cut_flow, EPreFoundLambda::kPasses_Max_Pt_Proton);
+
+    if (c_lambda.Pr_Pt() < Cuts::PreFoundLambda::Min_Pt_Proton) return false;
+    FillHist(hist_cut_flow, EPreFoundLambda::kPasses_Min_Pt_Proton);
+
+    // depend on pi(minus/plus) //
+
+    if (std::abs(c_lambda.Pi_Pz()) > Cuts::PreFoundLambda::AbsMax_Pz_Pion) return false;
+    FillHist(hist_cut_flow, EPreFoundLambda::kPasses_AbsMax_Pz_Pion);
+
+    if (c_lambda.Pi_Pt() > Cuts::PreFoundLambda::Max_Pt_Pion) return false;
+    FillHist(hist_cut_flow, EPreFoundLambda::kPasses_Max_Pt_Pion);
+
+    if (c_lambda.Pi_Pt() < Cuts::PreFoundLambda::Min_Pt_Pion) return false;
+    FillHist(hist_cut_flow, EPreFoundLambda::kPasses_Min_Pt_Pion);
 
     return true;
 }
@@ -280,7 +374,7 @@ POD::Extended::McParticle Verifier::BuildMcPreFoundLambda(const POD::Extended::M
     POD::Extended::McParticle mc_lambda;
 
     // -- fill hybridness, independently of no common mother
-    mc_lambda.IsHybrid = mc_neg.IsTrueSignal != mc_pos.IsTrueSignal;
+    mc_lambda.IsHybrid = mc_neg.IsTrueSignal != mc_pos.IsTrueSignal || mc_neg.SignalID != mc_pos.SignalID;
 
     auto mc_entry = MC::FindCommonMotherMcEntry(mc_neg, mc_pos);
     if (!mc_entry.has_value()) return mc_lambda;
@@ -394,17 +488,62 @@ void Verifier::VerifyLambdaPair(bool anti_channel) {
 }
 
 bool Verifier::FastCuts_Hdibaryon(const Seeder::PCA& pca_lambda1, const Seeder::PCA& pca_lambda2, TH1D* hist_cut_flow) {
-    hist_cut_flow->Fill(kAllCombinations);
+    FillHist(hist_cut_flow, ELambdaPair::kAllCombinations);
 
-    // PENDING //
+    if (Common::Math::Distance(pca_lambda1.xyz, pca_lambda2.xyz) > Cuts::LambdaPair::Max_DCAbtwDau) return false;
+    FillHist(hist_cut_flow, ELambdaPair::kPasses_Max_DCAbtwDau);
 
     return true;
 }
 
 bool Verifier::SlowCuts_Hdibaryon(const Cached::Hdibaryon& c_hdib, TH1D* hist_cut_flow) {
-    hist_cut_flow->Fill(1.);
 
-    // PENDING //
+    if (std::abs(static_cast<double>(c_hdib.Pz)) > Cuts::LambdaPair::AbsMax_Pz) return false;
+    FillHist(hist_cut_flow, ELambdaPair::kPasses_AbsMax_Pz);
+
+    if (c_hdib.Pt() > Cuts::LambdaPair::Max_Pt) return false;
+    FillHist(hist_cut_flow, ELambdaPair::kPasses_Max_Pt);
+
+    if (c_hdib.Pt() < Cuts::LambdaPair::Min_Pt) return false;
+    FillHist(hist_cut_flow, ELambdaPair::kPasses_Min_Pt);
+
+    if (c_hdib.Mass() < Cuts::LambdaPair::Min_Mass) return false;
+    FillHist(hist_cut_flow, ELambdaPair::kPasses_Min_Mass);
+
+    if (c_hdib.Mass() > Cuts::LambdaPair::Max_Mass) return false;
+    FillHist(hist_cut_flow, ELambdaPair::kPasses_Max_Mass);
+
+    if (std::abs(c_hdib.Rapidity()) > Cuts::LambdaPair::AbsMax_Rapidity) return false;
+    FillHist(hist_cut_flow, ELambdaPair::kPasses_AbsMax_Rapidity);
+
+    if (c_hdib.DecayLength() > Cuts::LambdaPair::Max_DecayLength) return false;
+    FillHist(hist_cut_flow, ELambdaPair::kPasses_Max_DecayLength);
+
+    if (c_hdib.CPA_wrt_PV() < Cuts::LambdaPair::Min_CPAwrtPV) return false;
+    FillHist(hist_cut_flow, ELambdaPair::kPasses_Min_CPAwrtPV);
+
+    if (static_cast<double>(c_hdib.Chi2NDF) > Cuts::LambdaPair::Max_Chi2NDF) return false;
+    FillHist(hist_cut_flow, ELambdaPair::kPasses_Max_Chi2NDF);
+
+    // (anti)lambda : depend on (anti)h-dibaryon decay vertex //
+
+    if (c_hdib.L1_DecayLength() > Cuts::PreFoundLambda::Max_DecayLength) return false;
+    FillHist(hist_cut_flow, ELambdaPair::kPasses_Max_L1_DecayLength);
+
+    if (c_hdib.L1_DecayLength() < Cuts::PreFoundLambda::Min_DecayLength) return false;
+    FillHist(hist_cut_flow, ELambdaPair::kPasses_Min_L1_DecayLength);
+
+    if (c_hdib.L1_CPA_wrt_DV() < Cuts::PreFoundLambda::Min_CPAwrtDV) return false;
+    FillHist(hist_cut_flow, ELambdaPair::kPasses_Min_L1_CPAwrtDV);
+
+    if (c_hdib.L2_DecayLength() > Cuts::PreFoundLambda::Max_DecayLength) return false;
+    FillHist(hist_cut_flow, ELambdaPair::kPasses_Max_L2_DecayLength);
+
+    if (c_hdib.L2_DecayLength() < Cuts::PreFoundLambda::Min_DecayLength) return false;
+    FillHist(hist_cut_flow, ELambdaPair::kPasses_Min_L2_DecayLength);
+
+    if (c_hdib.L2_CPA_wrt_DV() < Cuts::PreFoundLambda::Min_CPAwrtDV) return false;
+    FillHist(hist_cut_flow, ELambdaPair::kPasses_Min_L2_CPAwrtDV);
 
     return true;
 }
@@ -414,7 +553,8 @@ POD::Extended::McParticle Verifier::BuildMcHdibaryon(const POD::Extended::McPart
     POD::Extended::McParticle mc_hdib;
 
     // -- fill hybridness, independently of no common mother
-    mc_hdib.IsHybrid = mc_lambda1.IsHybrid || mc_lambda2.IsHybrid || mc_lambda1.IsTrueSignal != mc_lambda2.IsTrueSignal;
+    mc_hdib.IsHybrid = mc_lambda1.IsHybrid || mc_lambda2.IsHybrid || mc_lambda1.IsTrueSignal != mc_lambda2.IsTrueSignal ||
+                       mc_lambda1.SignalID != mc_lambda2.SignalID;
 
     auto mc_entry = MC::FindCommonMotherMcEntry(mc_lambda1, mc_lambda2);
     if (!mc_entry.has_value()) return mc_hdib;

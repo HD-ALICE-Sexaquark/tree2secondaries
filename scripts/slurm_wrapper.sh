@@ -102,7 +102,7 @@ for reaction_channel in "${reaction_channels[@]}"; do
         if [[ ${MODE} == "search" ]]; then
             input_glob="${PRODUCTION_PATH}${sim_set:+_${sim_set}}/PackedRNT_*.root"
         else
-            # mode == "pack"
+            # mode == "pack" or "verify"
             if [[ ${DATA_TYPE} == "mc" ]]; then
                 input_glob="${PRODUCTION_PATH}${sim_set:+_${sim_set}}/AnalysisResults_*.root"
             else

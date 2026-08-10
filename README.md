@@ -1,12 +1,14 @@
 # tree2secondaries
 
+Single-threaded program, ideally executed in a job scheduler like Slurm or HTCondor.
+
 ## Requirements
 
 - CMake (v3.28 or higher)
 - C++ compiler compatible with C++23
 - Internet connection to fetch **[CLIUtils/CLI11] (<https://github.com/CLIUtils/CLI11>)** and
 **[Eigen](https://gitlab.com/libeigen/eigen)**
-- **[ROOT](https://root.cern.ch)** v6.40.00+
+- **[ROOT](https://root.cern.ch)** v6.40.02+
 
 ## Building
 
@@ -16,7 +18,7 @@ cmake ../ <options>
 cmake --build .
 ```
 
-Additional `<option>`:
+Additional `<options>`:
 
 - `-DCMAKE_BUILD_TYPE=` -- (`Debug`, `Release`, `DebWithRelInfo`) if not specified, it defaults to `Release`
 - `-DENABLE_PROFILING=ON` -- (default: `OFF`) enable profiling (see below)
@@ -24,7 +26,7 @@ Additional `<option>`:
 ## Usage
 
 ```
-./t2ds [OPTIONS] SUBCOMMAND
+./t2ds [OPTIONS] SUBCOMMAND [SUBCOMMAND OPTIONS]
 
 OPTIONS:
 
@@ -48,5 +50,6 @@ SUBCOMMANDS:
                 -c, --channel : {A,D,H} Process a standard reaction channel
 
   verify data
-  verify mc   : Read "AnalysisResults.root" to verify the existence of (anti)h-dibaryons
+  verify mc   : Read "AnalysisResults.root" to verify the existence of (anti)h-dibaryons.
+                Doesn't require further options.
 ```
