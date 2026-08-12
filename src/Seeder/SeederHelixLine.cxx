@@ -232,7 +232,7 @@ std::pair<Deriv, Deriv> ComputeDerivatives_XY(Cache& c) {
     std::array<double, 6> dk12dr2{-c.bq1 * c.px02, -c.bq1 * c.py02, 0., c.bq1 * c.dx0 + c.py01, c.bq1 * c.dy0 - c.px01, 0.};
     std::array<double, 6> dk21dr1{0., 0., 0., -c.bq1 * c.px02, -c.bq1 * c.py02, 0.};
     std::array<double, 6> dk21dr2{0., 0., 0., -c.bq1 * c.px01, -c.bq1 * c.py01, 0.};
-    // std::array<double, 6> dk22dr1{0., 0., 0., 0., 0., 0.};  // NOTE: kept for historical reasons
+    // std::array<double, 6> dk22dr1{0., 0., 0., 0., 0., 0.};  // NOTE: kept commented for historical reasons
     std::array<double, 6> dk22dr2{0., 0., 0., -2. * c.bq1 * c.px02, -2. * c.bq1 * c.py02, 0.};
 
     std::array<double, 6> dkddr1{-c.bq1 * c.py02, c.bq1 * c.px02, 0., -c.px02, -c.py02, 0.};
@@ -242,7 +242,7 @@ std::pair<Deriv, Deriv> ComputeDerivatives_XY(Cache& c) {
     std::array<double, 6> dc1dr2{-c.bq1 * c.bq1 * c.py02,           c.bq1 * c.bq1 * c.px02,           0.,
                                  -c.bq1 * (c.bq1 * c.dy0 - c.px01), c.bq1 * (c.bq1 * c.dx0 + c.py01), 0.};
 
-    // std::array<double, 6> dc2dr1{0., 0., 0., 0., 0., 0.};  // NOTE: kept for historical reasons
+    // std::array<double, 6> dc2dr1{0., 0., 0., 0., 0., 0.};  // NOTE: kept commented for historical reasons
     std::array<double, 6> dc2dr2{0., 0., 0., 2. * c.bq1 * c.px02, 2. * c.bq1 * c.py02, 0.};
 
     std::array<double, 6> dd1dr1{};

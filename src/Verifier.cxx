@@ -1,5 +1,6 @@
 #include <cstddef>
 #include <memory>
+#include <optional>
 #include <tuple>
 
 #include "common/Cached_Hdibaryon.hpp"
@@ -109,7 +110,8 @@ void Verifier::ProcessEvent() {
     // update event counter
     fHist_EventCounter->Fill(0.);
     // cache pv
-    fPrimaryVertex.SetCoordinates(fOutput.Event.PV_X, fOutput.Event.PV_Y, fOutput.Event.PV_Z);
+    fPrimaryVertex.SetCoordinates(static_cast<double>(fOutput.Event.PV_X), static_cast<double>(fOutput.Event.PV_Y),
+                                  static_cast<double>(fOutput.Event.PV_Z));
 }
 
 // ## Injected ZONE ## //
@@ -236,6 +238,13 @@ POD::Track Verifier::ExtractTrack(const POD::PreFoundLambda& pod_lambda, short c
 
 void Verifier::ProcessPreFoundLambda() {
 
+    constexpr FitSetup setup = GetFitSetup();
+    const KF::MassPolicy fit_policy{
+        .pin_daughters = setup.pin_lambda_daughters,
+        .daughters_already_pinned = false,
+        .mother_mass = setup.pin_lambda_mass ? std::make_optional(DB::Particles::Particle("Lambda").mass) : std::nullopt,
+    };
+
     // loop over pre-found (anti)lambdas //
     for (std::size_t entry_lambda = 0; entry_lambda < fInput.PreFoundLambda.size(); ++entry_lambda) {
 
@@ -259,12 +268,11 @@ void Verifier::ProcessPreFoundLambda() {
             const auto& decay_tree = HD::GetDecayTree(anti_channel);
 
             // fit vertex //
-            auto fit = KF::FitVertex(track_neg, track_pos, decay_tree.neg.mass, decay_tree.pos.mass, {seed_neg, deriv_neg}, {seed_pos, deriv_pos},
-                                     fOutput.Event.MagneticField);
+            auto fit = KF::FitVertex(track_neg, track_pos, decay_tree.neg, decay_tree.pos, {seed_neg, deriv_neg}, {seed_pos, deriv_pos},
+                                     fOutput.Event.MagneticField, fit_policy);
 
             // create storage+computation (anti)lambda //
-            POD::Extended::PreFoundLambda new_lambda =
-                CreateExtendedPreFoundLambda(in_lambda, fit, seed_neg.pca, seed_pos.pca, decay_tree.neg.mass, decay_tree.pos.mass);
+            POD::Extended::PreFoundLambda new_lambda = CreateExtendedPreFoundLambda(in_lambda, fit, seed_neg.pca, seed_pos.pca);
             Cached::PreFoundLambda c_lambda(new_lambda, anti_channel, fPrimaryVertex);
 
             // apply more cuts (2) //
@@ -304,7 +312,7 @@ bool Verifier::FastCuts_Lambda(const Seeder::PCA& pca_neg, const Seeder::PCA& pc
     FillHist(fHist_CutFlow_AntiLambda.get(), EPreFoundLambda::kAllPreFoundLambdas);
     FillHist(fHist_CutFlow_Lambda.get(), EPreFoundLambda::kAllPreFoundLambdas);
 
-    if (Common::Math::Distance(pca_neg.xyz, pca_pos.xyz) > Cuts::PreFoundLambda::Max_DCAbtwDaughters) return false;
+    if (CMath::Distance(pca_neg.xyz, pca_pos.xyz) > Cuts::PreFoundLambda::Max_DCAbtwDaughters) return false;
     FillHist(fHist_CutFlow_AntiLambda.get(), EPreFoundLambda::kPasses_Max_DCAbtwDaughters);
     FillHist(fHist_CutFlow_Lambda.get(), EPreFoundLambda::kPasses_Max_DCAbtwDaughters);
 
@@ -341,8 +349,8 @@ bool Verifier::SlowCuts_Lambda(const Cached::PreFoundLambda& c_lambda, bool anti
     if (c_lambda.DCA_wrt_PV() > Cuts::PreFoundLambda::Max_DCAwrtPV) return false;
     FillHist(hist_cut_flow, EPreFoundLambda::kPasses_Max_DCAwrtPV);
 
-    if (static_cast<double>(c_lambda.Chi2NDF) > Cuts::PreFoundLambda::Max_Chi2NDF) return false;
-    FillHist(hist_cut_flow, EPreFoundLambda::kPasses_Max_Chi2NDF);
+    // if (static_cast<double>(c_lambda.Chi2NDF) > Cuts::PreFoundLambda::Max_Chi2NDF) return false; // PENDING: temporarily turned off, need to
+    // re-tune FillHist(hist_cut_flow, EPreFoundLambda::kPasses_Max_Chi2NDF); // PENDING: temporarily turned off, need to re-tune
 
     // depend on (anti)protons //
 
@@ -386,38 +394,37 @@ POD::Extended::McParticle Verifier::BuildMcPreFoundLambda(const POD::Extended::M
     return mc_lambda;
 }
 
-POD::Extended::PreFoundLambda Verifier::CreateExtendedPreFoundLambda(const POD::PreFoundLambda& old_lambda, const KF::Particle& fit,
-                                                                     const Seeder::PCA& pca_neg, const Seeder::PCA& pca_pos, double mass_neg,
-                                                                     double mass_pos) {
+POD::Extended::PreFoundLambda Verifier::CreateExtendedPreFoundLambda(const POD::PreFoundLambda& old_lambda, const KF::FitResult& fit,
+                                                                     const Seeder::PCA& pca_neg, const Seeder::PCA& pca_pos) {
     // profit from initialization list to extend data
     POD::Extended::PreFoundLambda new_lambda{old_lambda,
-                                             static_cast<float>(fit.Px()),
-                                             static_cast<float>(fit.Py()),
-                                             static_cast<float>(fit.Pz()),
-                                             static_cast<float>(fit.E()),
-                                             fit.Cov<7>(),
-                                             static_cast<float>(fit.Chi2NDF()),
+                                             static_cast<float>(fit.mother.Px()),
+                                             static_cast<float>(fit.mother.Py()),
+                                             static_cast<float>(fit.mother.Pz()),
+                                             static_cast<float>(fit.mother.E()),
+                                             fit.mother.Cov<7>(),
+                                             static_cast<float>(fit.mother.Chi2NDF()),
                                              static_cast<float>(pca_neg.X()),
                                              static_cast<float>(pca_neg.Y()),
                                              static_cast<float>(pca_neg.Z()),
-                                             static_cast<float>(CMath::Hypot4(pca_neg.Px(), pca_neg.Py(), pca_neg.Pz(), mass_neg)),
+                                             static_cast<float>(fit.Dau1_E()),
                                              static_cast<float>(pca_pos.X()),
                                              static_cast<float>(pca_pos.Y()),
                                              static_cast<float>(pca_pos.Z()),
-                                             static_cast<float>(CMath::Hypot4(pca_pos.Px(), pca_pos.Py(), pca_pos.Pz(), mass_pos))};
+                                             static_cast<float>(fit.Dau2_E())};
     // override previous info
-    new_lambda.Decay_X = static_cast<float>(fit.X());
-    new_lambda.Decay_Y = static_cast<float>(fit.Y());
-    new_lambda.Decay_Z = static_cast<float>(fit.Z());
+    new_lambda.Decay_X = static_cast<float>(fit.mother.X());
+    new_lambda.Decay_Y = static_cast<float>(fit.mother.Y());
+    new_lambda.Decay_Z = static_cast<float>(fit.mother.Z());
     new_lambda.DcaV0Daughters = static_cast<float>(CMath::Distance(pca_neg.xyz, pca_pos.xyz));
     // -- negative daughter
-    new_lambda.Neg_PCAwrtV0_Px = static_cast<float>(pca_neg.Px());
-    new_lambda.Neg_PCAwrtV0_Py = static_cast<float>(pca_neg.Py());
-    new_lambda.Neg_PCAwrtV0_Pz = static_cast<float>(pca_neg.Pz());
+    new_lambda.Neg_PCAwrtV0_Px = static_cast<float>(fit.Dau1_Px());
+    new_lambda.Neg_PCAwrtV0_Py = static_cast<float>(fit.Dau1_Py());
+    new_lambda.Neg_PCAwrtV0_Pz = static_cast<float>(fit.Dau1_Pz());
     // -- positive daughter
-    new_lambda.Pos_PCAwrtV0_Px = static_cast<float>(pca_pos.Px());
-    new_lambda.Pos_PCAwrtV0_Py = static_cast<float>(pca_pos.Py());
-    new_lambda.Pos_PCAwrtV0_Pz = static_cast<float>(pca_pos.Pz());
+    new_lambda.Pos_PCAwrtV0_Px = static_cast<float>(fit.Dau2_Px());
+    new_lambda.Pos_PCAwrtV0_Py = static_cast<float>(fit.Dau2_Py());
+    new_lambda.Pos_PCAwrtV0_Pz = static_cast<float>(fit.Dau2_Pz());
 
     return new_lambda;
 }
@@ -434,6 +441,14 @@ void Verifier::VerifyLambdaPair(bool anti_channel) {
     const auto& input_mc_lambdas_neg = anti_channel ? fTemp_MC_AntiLambda_Neg : fTemp_MC_Lambda_Neg;
     const auto& input_mc_lambdas_pos = anti_channel ? fTemp_MC_AntiLambda_Pos : fTemp_MC_Lambda_Pos;
     const std::size_t n_lambdas = input_lambdas.size();
+
+    // -- the (anti)h-dibaryon mass is never pinned, because it's the property to study
+    constexpr FitSetup setup = GetFitSetup();
+    const KF::MassPolicy fit_policy{
+        .pin_daughters = setup.pin_lambdas,
+        .daughters_already_pinned = setup.lambdas_on_shell,
+        .mother_mass = std::nullopt,
+    };
 
     // loop over all possible pairs of (anti)lambdas //
     for (std::size_t entry_lambda1 = 0; entry_lambda1 + 1 < n_lambdas; ++entry_lambda1) {
@@ -459,7 +474,8 @@ void Verifier::VerifyLambdaPair(bool anti_channel) {
             auto [deriv_lambda1, deriv_lambda2] = Seeder::LineLine::ComputeDerivatives(pca_cache);
 
             // fit vertex //
-            auto fit = KF::FitVertex(lambda1, lambda2, {seed_lambda1, deriv_lambda1}, {seed_lambda2, deriv_lambda2});
+            auto fit = KF::FitVertex(lambda1, lambda2, decay_pid.lambda, decay_pid.lambda, {seed_lambda1, deriv_lambda1},
+                                     {seed_lambda2, deriv_lambda2}, fit_policy);
 
             // create storage+computation units //
             POD::LambdaPair hdib = CreateLambdaPair(fit, seed_lambda1.pca, seed_lambda2.pca, anti_channel);
@@ -490,7 +506,7 @@ void Verifier::VerifyLambdaPair(bool anti_channel) {
 bool Verifier::FastCuts_Hdibaryon(const Seeder::PCA& pca_lambda1, const Seeder::PCA& pca_lambda2, TH1D* hist_cut_flow) {
     FillHist(hist_cut_flow, ELambdaPair::kAllCombinations);
 
-    if (Common::Math::Distance(pca_lambda1.xyz, pca_lambda2.xyz) > Cuts::LambdaPair::Max_DCAbtwDau) return false;
+    if (CMath::Distance(pca_lambda1.xyz, pca_lambda2.xyz) > Cuts::LambdaPair::Max_DCAbtwDau) return false;
     FillHist(hist_cut_flow, ELambdaPair::kPasses_Max_DCAbtwDau);
 
     return true;
@@ -522,8 +538,8 @@ bool Verifier::SlowCuts_Hdibaryon(const Cached::Hdibaryon& c_hdib, TH1D* hist_cu
     if (c_hdib.CPA_wrt_PV() < Cuts::LambdaPair::Min_CPAwrtPV) return false;
     FillHist(hist_cut_flow, ELambdaPair::kPasses_Min_CPAwrtPV);
 
-    if (static_cast<double>(c_hdib.Chi2NDF) > Cuts::LambdaPair::Max_Chi2NDF) return false;
-    FillHist(hist_cut_flow, ELambdaPair::kPasses_Max_Chi2NDF);
+    // if (static_cast<double>(c_hdib.Chi2NDF) > Cuts::LambdaPair::Max_Chi2NDF) return false; // PENDING: temporarily turned off, need to re-tune
+    // FillHist(hist_cut_flow, ELambdaPair::kPasses_Max_Chi2NDF); // PENDING: temporarily turned off, need to re-tune
 
     // (anti)lambda : depend on (anti)h-dibaryon decay vertex //
 
@@ -582,32 +598,34 @@ POD::Extended::McParticle Verifier::BuildMcHdibaryon(const POD::Extended::McPart
     return mc_hdib;
 }
 
-POD::LambdaPair Verifier::CreateLambdaPair(const KF::Particle& fit, const Seeder::PCA& pca_lambda1, const Seeder::PCA& pca_lambda2,
+POD::LambdaPair Verifier::CreateLambdaPair(const KF::FitResult& fit, const Seeder::PCA& pca_lambda1, const Seeder::PCA& pca_lambda2,
                                            bool anti_channel) {
     POD::LambdaPair new_hdib;
-    new_hdib.Decay_X = static_cast<float>(fit.X());
-    new_hdib.Decay_Y = static_cast<float>(fit.Y());
-    new_hdib.Decay_Z = static_cast<float>(fit.Z());
-    new_hdib.Px = static_cast<float>(fit.Px());
-    new_hdib.Py = static_cast<float>(fit.Py());
-    new_hdib.Pz = static_cast<float>(fit.Pz());
-    new_hdib.Energy = static_cast<float>(fit.E());
-    new_hdib.Chi2NDF = static_cast<float>(fit.Chi2NDF());
+    new_hdib.Decay_X = static_cast<float>(fit.mother.X());
+    new_hdib.Decay_Y = static_cast<float>(fit.mother.Y());
+    new_hdib.Decay_Z = static_cast<float>(fit.mother.Z());
+    new_hdib.Px = static_cast<float>(fit.mother.Px());
+    new_hdib.Py = static_cast<float>(fit.mother.Py());
+    new_hdib.Pz = static_cast<float>(fit.mother.Pz());
+    new_hdib.Energy = static_cast<float>(fit.mother.E());
+    new_hdib.Chi2NDF = static_cast<float>(fit.mother.Chi2NDF());
     new_hdib.IsAntiChannel = anti_channel;
     // -- lambda1
     new_hdib.Lambda1_PCAwrtDV_X = static_cast<float>(pca_lambda1.X());
     new_hdib.Lambda1_PCAwrtDV_Y = static_cast<float>(pca_lambda1.Y());
     new_hdib.Lambda1_PCAwrtDV_Z = static_cast<float>(pca_lambda1.Z());
-    new_hdib.Lambda1_PCAwrtDV_Px = static_cast<float>(pca_lambda1.Px());
-    new_hdib.Lambda1_PCAwrtDV_Py = static_cast<float>(pca_lambda1.Py());
-    new_hdib.Lambda1_PCAwrtDV_Pz = static_cast<float>(pca_lambda1.Pz());
+    new_hdib.Lambda1_Fit_Px = static_cast<float>(fit.Dau1_Px());
+    new_hdib.Lambda1_Fit_Py = static_cast<float>(fit.Dau1_Py());
+    new_hdib.Lambda1_Fit_Pz = static_cast<float>(fit.Dau1_Pz());
+    new_hdib.Lambda1_Fit_Energy = static_cast<float>(fit.Dau1_E());
     // -- lambda2
     new_hdib.Lambda2_PCAwrtDV_X = static_cast<float>(pca_lambda2.X());
     new_hdib.Lambda2_PCAwrtDV_Y = static_cast<float>(pca_lambda2.Y());
     new_hdib.Lambda2_PCAwrtDV_Z = static_cast<float>(pca_lambda2.Z());
-    new_hdib.Lambda2_PCAwrtDV_Px = static_cast<float>(pca_lambda2.Px());
-    new_hdib.Lambda2_PCAwrtDV_Py = static_cast<float>(pca_lambda2.Py());
-    new_hdib.Lambda2_PCAwrtDV_Pz = static_cast<float>(pca_lambda2.Pz());
+    new_hdib.Lambda2_Fit_Px = static_cast<float>(fit.Dau2_Px());
+    new_hdib.Lambda2_Fit_Py = static_cast<float>(fit.Dau2_Py());
+    new_hdib.Lambda2_Fit_Pz = static_cast<float>(fit.Dau2_Pz());
+    new_hdib.Lambda2_Fit_Energy = static_cast<float>(fit.Dau2_E());
 
     return new_hdib;
 }

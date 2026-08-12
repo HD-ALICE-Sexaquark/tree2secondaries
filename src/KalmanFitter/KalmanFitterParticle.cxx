@@ -2,6 +2,7 @@
 
 #include <Eigen/Eigen>
 
+#include "common/DB_Particles.hpp"
 #include "common/POD_PreFoundLambda.hpp"
 #include "common/POD_Track.hpp"
 #include "common/POD_V0.hpp"
@@ -12,23 +13,41 @@
 
 namespace T2DS::KF {
 
-// Create a `KF::Particle`, by setting `fP`, `fC` and `fQ` by hard-copying from a track.
-Particle Particle::FromTrack(const POD::Track& v, double mass) {
+// Record what the fit is allowed to assume about this particle's mass.
+// - An stable particle is always exactly on its own mass shell.
+// - An unstable (but reconstructable) particle only carries a lower bound (the sum of its daughters' masses),
+//   unless the caller asserts it was already pinned.
+void Particle::SetMassBookkeeping(const DB::Particles::Definition& pid, bool on_shell) {
+
+    if (DB::Particles::IsStable(pid)) {
+        fMassHypo = pid.mass;
+        fSumDaughterMass = pid.mass;
+        return;
+    }
+
+    if (on_shell) fMassHypo = pid.mass;
+    fSumDaughterMass = fMassHypo.value_or(DB::Particles::SumDaughterMass(pid));
+}
+
+// Create a `KF::Particle`, by setting `fP`, `fC` and `fQ` from a track.
+Particle Particle::FromTrack(const POD::Track& v, const DB::Particles::Definition& pid) {
+
+    const double mass = pid.mass;
 
     Particle out;
 
-    out.fP(0) = v.X;
-    out.fP(1) = v.Y;
-    out.fP(2) = v.Z;
-    out.fP(3) = v.Px;
-    out.fP(4) = v.Py;
-    out.fP(5) = v.Pz;
+    out.fP(0) = static_cast<double>(v.X);
+    out.fP(1) = static_cast<double>(v.Y);
+    out.fP(2) = static_cast<double>(v.Z);
+    out.fP(3) = static_cast<double>(v.Px);
+    out.fP(4) = static_cast<double>(v.Py);
+    out.fP(5) = static_cast<double>(v.Pz);
     out.fP(6) = std::sqrt(mass * mass + out.SquaredMomentum());
     out.fP(7) = 0.;
 
     for (unsigned int i = 0; i < 6; ++i) {
         for (unsigned int j = 0; j <= i; ++j) {
-            out.fC(i, j) = v.CovMatrix[IJ(i, j)];
+            out.fC(i, j) = static_cast<double>(v.CovMatrix[IJ(i, j)]);
         }
     }
 
@@ -52,57 +71,63 @@ Particle Particle::FromTrack(const POD::Track& v, double mass) {
 
     out.fQ = v.Charge;
 
+    out.SetMassBookkeeping(pid, true);
+
     return out;
 }
 
 // Create a `KF::Particle`, by setting `fP`, `fC` and `fQ` from a V0 view.
-Particle Particle::FromV0(const POD::V0& v) {
+Particle Particle::FromV0(const POD::V0& v, const DB::Particles::Definition& pid, bool on_shell) {
 
     Particle out;
 
-    out.fP(0) = v.Decay_X;
-    out.fP(1) = v.Decay_Y;
-    out.fP(2) = v.Decay_Z;
-    out.fP(3) = v.Px;
-    out.fP(4) = v.Py;
-    out.fP(5) = v.Pz;
-    out.fP(6) = v.Energy;
+    out.fP(0) = static_cast<double>(v.Decay_X);
+    out.fP(1) = static_cast<double>(v.Decay_Y);
+    out.fP(2) = static_cast<double>(v.Decay_Z);
+    out.fP(3) = static_cast<double>(v.Px);
+    out.fP(4) = static_cast<double>(v.Py);
+    out.fP(5) = static_cast<double>(v.Pz);
+    out.fP(6) = static_cast<double>(v.Energy);
     out.fP(7) = 0.;
 
     for (unsigned int i = 0; i < 7; ++i) {
         for (unsigned int j = 0; j <= i; ++j) {
-            out.fC(i, j) = v.CovMatrix[IJ(i, j)];
+            out.fC(i, j) = static_cast<double>(v.CovMatrix[IJ(i, j)]);
         }
     }
     out.fC(7, 7) = Initial_Css;
 
     out.fQ = 0;
 
+    out.SetMassBookkeeping(pid, on_shell);
+
     return out;
 }
 
-// Create a `KF::Particle`, by setting `fP`, `fC` and `fQ` from a V0 view.
-Particle Particle::FromPreFoundLambda(const POD::Extended::PreFoundLambda& l) {
+// Create a `KF::Particle`, by setting `fP`, `fC` and `fQ` from a pre-found (anti)lambda view.
+Particle Particle::FromPreFoundLambda(const POD::Extended::PreFoundLambda& l, const DB::Particles::Definition& pid, bool on_shell) {
 
     Particle out;
 
-    out.fP(0) = l.Decay_X;
-    out.fP(1) = l.Decay_Y;
-    out.fP(2) = l.Decay_Z;
-    out.fP(3) = l.Px;
-    out.fP(4) = l.Py;
-    out.fP(5) = l.Pz;
-    out.fP(6) = l.Energy;
+    out.fP(0) = static_cast<double>(l.Decay_X);
+    out.fP(1) = static_cast<double>(l.Decay_Y);
+    out.fP(2) = static_cast<double>(l.Decay_Z);
+    out.fP(3) = static_cast<double>(l.Px);
+    out.fP(4) = static_cast<double>(l.Py);
+    out.fP(5) = static_cast<double>(l.Pz);
+    out.fP(6) = static_cast<double>(l.Energy);
     out.fP(7) = 0.;
 
     for (unsigned int i = 0; i < 7; ++i) {
         for (unsigned int j = 0; j <= i; ++j) {
-            out.fC(i, j) = l.CovMatrix[IJ(i, j)];
+            out.fC(i, j) = static_cast<double>(l.CovMatrix[IJ(i, j)]);
         }
     }
     out.fC(7, 7) = Initial_Css;
 
     out.fQ = 0;
+
+    out.SetMassBookkeeping(pid, on_shell);
 
     return out;
 }

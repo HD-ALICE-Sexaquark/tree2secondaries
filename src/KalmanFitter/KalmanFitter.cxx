@@ -1,3 +1,5 @@
+#include <cmath>
+#include <optional>
 
 #include <Eigen/Eigen>
 
@@ -13,7 +15,7 @@
 
 namespace T2DS::KF {
 
-// Daughter Struct //
+// == Daughter Struct == //
 
 // Calculate the transport Jacobian = d(fP new)/d(fP old) and the correlation matrix = d(fP new)/d(r1),
 // given
@@ -118,11 +120,149 @@ void Daughter::Transport(const Seeder::PCA& pca, const Eigen::Ref<const Eigen::M
 #endif
 }
 
-// Main Fitting Method //
+// == Mass Constraint == //
 
-KF::Particle GetUpdated(const KF::Daughter& kf_1, const KF::Daughter& kf_2) {
+// Pin the state vector `p` (and propagate its covariance `c`) onto the mass shell defined by `mass`, by rescaling
+//     p -> p/(1 - lambda)
+//     E -> E/(1 + lambda)
+// where lambda is chosen so that E'^2 - p'^2 = mass^2.
+// Substituting gives the quartic:
+//     f(lambda) = -m^2 * lambda^4 + a * lambda^2 + b * lambda + c
+//     a = E^2 - p^2 + 2m^2
+//     b = -2(E^2 + p^2)
+//     c = E^2 - p^2 - m^2
+// whose root lambda = 0 corresponds to a particle already on shell, since f(0) = c.
+// The Jacobian d(p new)/d(p old) is stored in `j`, and the two rescaling factors are returned.
+// If no usable lambda could be found, returns nullopt; leaving `p` and `c` untouched, and `j` as identity.
+std::optional<MassScale> SetMassConstraint(Eigen::Vector<double, 8>& p, Eigen::Matrix<double, 8, 8>& c, Eigen::Matrix<double, 7, 7>& j, double mass) {
 
-    KF::Particle out;
+    j.setIdentity();
+
+    // a negative energy cannot be rescaled onto a physical shell
+    if (p(6) < 0.) return std::nullopt;
+
+    const double energy2 = p(6) * p(6);
+    const double mom2 = p.segment<3>(3).squaredNorm();
+    const double mass2 = mass * mass;
+
+    const double a = energy2 - mom2 + 2. * mass2;
+    const double b = -2. * (energy2 + mom2);
+    const double c0 = energy2 - mom2 - mass2;
+
+    // solve for lambda //
+
+    // -- seed with the smaller root of the quadratic part, i.e. dropping the -m^2*lambda^4 term.
+    //    (energy2 + mom2) == -b/2 and d == (b^2 - 4ac)/4, so the textbook form is (energy2 + mom2 - sqrt(d))/a.
+    //    That subtracts two nearly-equal numbers exactly in the near-on-shell case that dominates here, so use
+    //    the conjugate instead: the roots multiply to c0/a, hence lambda_- == c0/((energy2 + mom2) + sqrt(d)).
+    //    It also degrades gracefully to the linear root -c0/b as a -> 0, so no separate fallback is needed.
+    const double d = 4. * energy2 * mom2 - mass2 * (energy2 - mom2 - 2. * mass2);
+    const double q = energy2 + mom2 + (d > 0. ? std::sqrt(d) : 0.);
+
+    double lambda = 0.;
+    if (q > MassConstraint_MinDenom) lambda = c0 / q;
+
+    // -- refine by Newton
+    for (int i = 0; i < MassConstraint_MaxIter; ++i) {
+        const double lambda2 = lambda * lambda;
+        const double f = -mass2 * lambda2 * lambda2 + a * lambda2 + b * lambda + c0;
+        const double df = -4. * mass2 * lambda2 * lambda + 2. * a * lambda + b;
+        if (std::abs(df) < MassConstraint_MinDenom) break;
+        const double delta = f / df;
+        lambda -= delta;
+        if (std::abs(delta) < MassConstraint_Tolerance) break;
+    }
+
+    // -- protection: lambda = +-1 would blow up the rescaling; leave caller's state untouched
+    if (!std::isfinite(lambda) || std::abs(1. - lambda) < MassConstraint_MinDenom || std::abs(1. + lambda) < MassConstraint_MinDenom) {
+        return std::nullopt;
+    }
+
+    const double lpi = 1. / (1. + lambda);
+    const double lmi = 1. / (1. - lambda);
+    const double lp2i = lpi * lpi;
+    const double lm2i = lmi * lmi;
+
+    // prepare Jacobian Matrix //
+
+    // -- d(lambda)/d(px,py,pz,E), by implicit differentiation of f
+    const double lambda2 = lambda * lambda;
+    const double dfl = -4. * mass2 * lambda2 * lambda + 2. * a * lambda + b;
+
+    // protection
+    if (std::abs(dfl) < MassConstraint_MinDenom) return std::nullopt;
+
+    Eigen::Vector<double, 4> dfx;
+    dfx(0) = -2. * (1. + lambda) * (1. + lambda) * p(3);
+    dfx(1) = -2. * (1. + lambda) * (1. + lambda) * p(4);
+    dfx(2) = -2. * (1. + lambda) * (1. + lambda) * p(5);
+    dfx(3) = 2. * (1. - lambda) * (1. - lambda) * p(6);
+
+    Eigen::Vector<double, 4> dlx = -dfx / dfl;
+
+    // -- d(px',py',pz',E')/d(lambda)
+    Eigen::Vector<double, 4> dxx;
+    dxx(0) = p(3) * lm2i;
+    dxx(1) = p(4) * lm2i;
+    dxx(2) = p(5) * lm2i;
+    dxx(3) = -p(6) * lp2i;
+
+    // -- position rows stay untouched, which is what keeps the position block of `c` (and hence the later
+    //    D/K2/A/M correction in GetUpdatedMC) valid
+    j.block<4, 4>(3, 3).noalias() = dxx * dlx.transpose();
+    j.block<3, 3>(3, 3).diagonal().array() += lmi;
+    j(6, 6) += lpi;
+
+    // apply //
+
+    // row/col 7 (S) is left alone, matching the original
+    // NOTE: that leaves S's cross-covariances with the rescaled momenta stale. Harmless as long as nothing reads
+    //       them -- `fP(7)` is never even filled -- but it is a real inconsistency, not just an omission.
+    c.topLeftCorner<7, 7>() = (j * c.topLeftCorner<7, 7>() * j.transpose()).eval();
+
+    p.segment<3>(3) *= lmi;
+    p(6) *= lpi;
+
+    return MassScale{lmi, lpi};
+}
+
+// Pin the fitted mother `part` onto the mass shell defined by `mass`, updating chi2, NDF (+= 1) and the mass bookkeeping.
+// It always fires, when enabled. Returns the rescaling that was applied, so the caller can pass it on to the daughters.
+std::optional<MassScale> SetNonlinearMassConstraint(Particle& part, double mass) {
+
+    // h = d(m^2)/d(px,py,pz,E)
+    Eigen::Vector<double, 4> h;
+    h << -2. * part.Px(), -2. * part.Py(), -2. * part.Pz(), 2. * part.E();
+
+    const double var_m2 = h.transpose() * part.fC.block<4, 4>(3, 3) * h;
+
+    // -- the mass error is already 0, so the particle can't be constrained (the original doesn't guard this one,
+    //    but its linearised counterpart does)
+    if (var_m2 < MassConstraint_MinVariance) return std::nullopt;
+
+    const double residual = part.E() * part.E() - part.SquaredMomentum() - mass * mass;
+
+    // -- `j` is discarded: there's no cross-covariance left to rotate at this point
+    Eigen::Matrix<double, 7, 7> j;
+    const std::optional<MassScale> scale = SetMassConstraint(part.fP, part.fC, j, mass);
+    if (!scale) return std::nullopt;
+
+    // -- both bail-outs above happen before anything is mutated, so a failure leaves `part` untouched
+
+    part.fChi2 += residual * residual / var_m2;
+    part.fNDF += 1;
+    part.fMassHypo = mass;
+    part.fSumDaughterMass = mass;
+
+    return scale;
+}
+
+// == Main Fitting Methods == //
+
+KF::FitResult GetUpdated(const KF::Daughter& kf_1, const KF::Daughter& kf_2) {
+
+    KF::FitResult res;
+    KF::Particle& out = res.mother;
     out.fC = kf_1.fC;
     out.fP = kf_1.fP;
 
@@ -137,7 +277,8 @@ KF::Particle GetUpdated(const KF::Daughter& kf_1, const KF::Daughter& kf_2) {
 
     // update chi2 //
 
-    out.fChi2 = zeta.transpose() * ldlt.solve(zeta);
+    const Eigen::Vector<double, 3> mSz = ldlt.solve(zeta);
+    out.fChi2 = zeta.dot(mSz);
 
     // correlation between state and position measurement //
 
@@ -161,6 +302,11 @@ KF::Particle GetUpdated(const KF::Daughter& kf_1, const KF::Daughter& kf_2) {
 
     out.fC.block<7, 7>(0, 0).noalias() -= mK * mCHt.transpose();
 
+    // recover the individual daughter 4-momenta //
+
+    res.dau_2.noalias() = kf_2.fP.segment<4>(3) - kf_2.fC.block<4, 3>(3, 0) * mSz;
+    res.dau_1 = out.fP.segment<4>(3) - res.dau_2;
+
     // correlation correction //
 
     Eigen::Matrix<double, 3, 3> F3C1F1T =
@@ -169,23 +315,26 @@ KF::Particle GetUpdated(const KF::Daughter& kf_1, const KF::Daughter& kf_2) {
         kf_2.jacob.block<3, 6>(0, 0) * kf_2.bt_cov.block<6, 6>(0, 0).selfadjointView<Eigen::Lower>() * kf_1.corr.block<3, 6>(0, 0).transpose();
     Eigen::Matrix<double, 3, 3> D = F3C1F1T + F4C2F2T;
 
-    Eigen::Matrix<double, 3, 3> K = ldlt.solve(kf_1.fC.block<3, 3>(0, 0)).transpose();
+    Eigen::Matrix<double, 3, 3> K = mK.topRows<3>();
     Eigen::Matrix<double, 3, 3> K2 = Eigen::Matrix<double, 3, 3>::Identity() - K.transpose();
     Eigen::Matrix<double, 3, 3> A = D * K2;
     Eigen::Matrix<double, 3, 3> M = K * A;
 
     out.fC.block<3, 3>(0, 0).noalias() += M + M.transpose();
 
-    // update charge and NDF //
+    // update charge, NDF and mass bookkeeping //
 
     out.fQ = kf_1.Charge() + kf_2.Charge();
     out.fNDF += 2;
+    out.fMassHypo = std::nullopt;
+    out.fSumDaughterMass = kf_1.fSumDaughterMass + kf_2.fSumDaughterMass;
 
 #if T2DS_DEBUG
     Logger::Debug(__FUNCTION__, "mS     = {}", mS);
     Logger::Debug(__FUNCTION__, "zeta   = {}", zeta);
     Logger::Debug(__FUNCTION__, "mCHt   = {}", mCHt);
     Logger::Debug(__FUNCTION__, "mK     = {}", mK);
+    Logger::Debug(__FUNCTION__, "mSz    = {}", mSz);
     Logger::Debug(__FUNCTION__, "D      = {}", D);
     Logger::Debug(__FUNCTION__, "K      = {}", K);
     Logger::Debug(__FUNCTION__, "K2     = {}", K2);
@@ -195,10 +344,141 @@ KF::Particle GetUpdated(const KF::Daughter& kf_1, const KF::Daughter& kf_2) {
     Logger::Debug(__FUNCTION__, "out.fC = {}", out.fC);
 #endif
 
-    return out;
+    return res;
 }
 
-KF::Particle FitVertex(const KF::Particle& part_1, const KF::Particle& part_2, const Seeder::Result& s_1, const Seeder::Result& s_2, double bz) {
+// Same vertex measurement as `GetUpdated()`, but the 4-momenta are combined only after each daughter has been pinned to
+// its own mass shell; which guarantees mass(mother) >= sum(mass(daughters)).
+// This forces a different assembly order:
+// `GetUpdated()` folds the momentum sum into the Kalman update via the "CHt - D'" shortcut, whereas here
+// the mother and the daughter measurement are updated separately, their cross-covariance `mDf` is tracked explicitly,
+// and only then are the 4-momenta added.
+KF::FitResult GetUpdatedMC(const KF::Daughter& kf_1, const KF::Daughter& kf_2) {
+
+    KF::FitResult res;
+    KF::Particle& out = res.mother;
+    out.fC = kf_1.fC;
+    out.fP = kf_1.fP;
+
+    // the daughter measurement, mutated in place below //
+
+    Eigen::Vector<double, 8> m = kf_2.fP;
+    Eigen::Matrix<double, 8, 8> mV = kf_2.fC;
+
+    // sum of position covariances //
+
+    Eigen::Matrix<double, 3, 3> mS = kf_1.fC.block<3, 3>(0, 0) + kf_2.fC.block<3, 3>(0, 0);
+    auto ldlt = mS.selfadjointView<Eigen::Lower>().ldlt();
+
+    // residual = measured - estimated //
+
+    Eigen::Vector<double, 3> zeta = m.head<3>() - kf_1.fP.head<3>();
+
+    // update chi2 //
+
+    const Eigen::Vector<double, 3> mSz = ldlt.solve(zeta);
+    out.fChi2 = zeta.dot(mSz);
+
+    // correlations with the position measurement //
+
+    // -- different from `GetUpdated()`, the daughter is updated later
+    Eigen::Matrix<double, 7, 3> mCHt = kf_1.fC.block<7, 3>(0, 0);
+    Eigen::Matrix<double, 7, 3> mVHt = kf_2.fC.block<7, 3>(0, 0);
+
+    // Kalman gains, one per particle //
+
+    Eigen::Matrix<double, 7, 3> mK = ldlt.solve(mCHt.transpose()).transpose();
+    Eigen::Matrix<double, 7, 3> mKm = ldlt.solve(mVHt.transpose()).transpose();
+
+    // cross-covariance between the updated daughter and the updated mother //
+
+    Eigen::Matrix<double, 7, 7> mDf = mKm * mCHt.transpose();
+
+    // state updates: P += K * zeta, m -= Km * zeta //
+
+    out.fP.head<7>().noalias() += mK * zeta;
+    m.head<7>().noalias() -= mKm * zeta;
+
+    // covariance updates //
+
+    out.fC.topLeftCorner<7, 7>().noalias() -= mK * mCHt.transpose();
+    mV.topLeftCorner<7, 7>().noalias() -= mKm * mVHt.transpose();
+
+    // pin both particles to their mass shells //
+
+    Eigen::Matrix<double, 7, 7> mJ1 = Eigen::Matrix<double, 7, 7>::Identity();
+    Eigen::Matrix<double, 7, 7> mJ2 = Eigen::Matrix<double, 7, 7>::Identity();
+
+    ConstrainToMassShell(out.fP, out.fC, mJ1, kf_1.fMassHypo, kf_1.fSumDaughterMass);
+    ConstrainToMassShell(m, mV, mJ2, kf_2.fMassHypo, kf_2.fSumDaughterMass);
+
+    mDf = (mJ2 * mDf * mJ1.transpose()).eval();
+
+    // keep the two shell-pinned 4-momenta -- these are exactly what gets summed just below //
+
+    res.dau_1 = out.fP.segment<4>(3);
+    res.dau_2 = m.segment<4>(3);
+
+    // add the daughter 4-momentum to the mother's //
+
+    out.fP.segment<4>(3).noalias() += m.segment<4>(3);
+    out.fC.block<4, 4>(3, 3).noalias() += mV.block<4, 4>(3, 3);
+
+    // fold in cross-covariance //
+
+    out.fC.block<4, 3>(3, 0).noalias() += mDf.block<4, 3>(3, 0);
+    out.fC.block<4, 4>(3, 3).noalias() += mDf.block<4, 4>(3, 3) + mDf.block<4, 4>(3, 3).transpose();
+
+    // correlation correction //
+
+    Eigen::Matrix<double, 3, 3> F3C1F1T =
+        kf_2.corr.block<3, 6>(0, 0) * kf_1.bt_cov.block<6, 6>(0, 0).selfadjointView<Eigen::Lower>() * kf_1.jacob.block<3, 6>(0, 0).transpose();
+    Eigen::Matrix<double, 3, 3> F4C2F2T =
+        kf_2.jacob.block<3, 6>(0, 0) * kf_2.bt_cov.block<6, 6>(0, 0).selfadjointView<Eigen::Lower>() * kf_1.corr.block<3, 6>(0, 0).transpose();
+    Eigen::Matrix<double, 3, 3> D = F3C1F1T + F4C2F2T;
+
+    Eigen::Matrix<double, 3, 3> K = mK.topRows<3>();
+    Eigen::Matrix<double, 3, 3> K2 = Eigen::Matrix<double, 3, 3>::Identity() - K.transpose();
+    Eigen::Matrix<double, 3, 3> A = D * K2;
+    Eigen::Matrix<double, 3, 3> M = K * A;
+
+    out.fC.block<3, 3>(0, 0).noalias() += M + M.transpose();
+
+    // restore symmetry //
+
+    // -- force `fC` stay a full symmetric matrix
+    Eigen::Matrix<double, 7, 7> sym = out.fC.topLeftCorner<7, 7>();
+    out.fC.topLeftCorner<7, 7>() = sym.selfadjointView<Eigen::Lower>();
+
+    // update charge, NDF and mass bookkeeping //
+
+    out.fQ = kf_1.Charge() + kf_2.Charge();
+    out.fNDF += 2;
+    out.fMassHypo = std::nullopt;
+    out.fSumDaughterMass = kf_1.fSumDaughterMass + kf_2.fSumDaughterMass;
+
+#if T2DS_DEBUG
+    Logger::Debug(__FUNCTION__, "mS     = {}", mS);
+    Logger::Debug(__FUNCTION__, "zeta   = {}", zeta);
+    Logger::Debug(__FUNCTION__, "mCHt   = {}", mCHt);
+    Logger::Debug(__FUNCTION__, "mVHt   = {}", mVHt);
+    Logger::Debug(__FUNCTION__, "mK     = {}", mK);
+    Logger::Debug(__FUNCTION__, "mSz    = {}", mSz);
+    Logger::Debug(__FUNCTION__, "mKm    = {}", mKm);
+    Logger::Debug(__FUNCTION__, "mJ1    = {}", mJ1);
+    Logger::Debug(__FUNCTION__, "mJ2    = {}", mJ2);
+    Logger::Debug(__FUNCTION__, "mDf    = {}", mDf);
+    Logger::Debug(__FUNCTION__, "D      = {}", D);
+    Logger::Debug(__FUNCTION__, "M      = {}", M);
+    Logger::Debug(__FUNCTION__, "out.fP = {}", out.fP);
+    Logger::Debug(__FUNCTION__, "out.fC = {}", out.fC);
+#endif
+
+    return res;
+}
+
+KF::FitResult FitVertex(const KF::Particle& part_1, const KF::Particle& part_2, const Seeder::Result& s_1, const Seeder::Result& s_2, double bz,
+                        const MassPolicy& policy) {
 
     KF::Daughter kf_1(part_1);
     KF::Daughter kf_2(part_2);
@@ -209,7 +489,15 @@ KF::Particle FitVertex(const KF::Particle& part_1, const KF::Particle& part_2, c
     kf_1.Transport(s_1.seed.pca, kf_2.bt_cov);
     kf_2.Transport(s_2.seed.pca, kf_1.bt_cov);
 
-    return GetUpdated(kf_1, kf_2);
+    KF::FitResult res = policy.pin_daughters ? GetUpdatedMC(kf_1, kf_2) : GetUpdated(kf_1, kf_2);
+
+    // -- the pin rescales the mother's p by 1/(1-lambda) and its E by 1/(1+lambda); handing the daughters the
+    //    very same two factors rescales their sum by exactly as much, so the tree stays closed
+    if (policy.mother_mass) {
+        if (const auto scale = SetNonlinearMassConstraint(res.mother, *policy.mother_mass)) res.RescaleDaughters(*scale);
+    }
+
+    return res;
 }
 
 }  // namespace T2DS::KF

@@ -6,9 +6,11 @@
 #include "common/Cuts_T2DS_Finder.hpp"
 #include "common/DB_Particles.hpp"
 #include "common/MC_Helpers.hpp"
-#include "common/Math.hpp"
 #include "common/POD_Sexaquark.hpp"
 #include "common/POD_Track.hpp"
+
+#include "common/Math.hpp"
+namespace CMath = Common::Math;
 
 #include "KalmanFitter/BaseKalmanFitter.hxx"
 #include "Seeder/BaseSeeder.hxx"
@@ -45,7 +47,8 @@ void Finder::ProcessEvent() {
     // -- update event counter
     fHist_EventCounter->Fill(0.);
     // -- cache pv
-    fPrimaryVertex.SetCoordinates(fOutput_Base->Event.PV_X, fOutput_Base->Event.PV_Y, fOutput_Base->Event.PV_Z);
+    fPrimaryVertex.SetCoordinates(static_cast<double>(fOutput_Base->Event.PV_X), static_cast<double>(fOutput_Base->Event.PV_Y),
+                                  static_cast<double>(fOutput_Base->Event.PV_Z));
 }
 
 // ## Injected ZONE ## //
@@ -109,6 +112,9 @@ void Finder::FindSexaquarks_ChannelA(bool is_bkg_channel) {
     }
     // cut flow hists
     TH1D* hist = is_bkg_channel ? fHist_CutFlow_BkgCandidates.get() : fHist_CutFlow_AntiSexaquark.get();
+    // daughter hypotheses, which is where the fit reads their masses from
+    const DB::Particles::Definition pid_lambda = is_bkg_channel ? DB::Particles::Particle("Lambda") : DB::Particles::Particle("AntiLambda");
+    constexpr DB::Particles::Definition pid_k0s = DB::Particles::Particle("KaonZeroShort");
 
     // loop over all possible pairs of (anti)lambda + K0S //
     for (std::size_t entry_lambda = 0; entry_lambda < n_lambdas; ++entry_lambda) {
@@ -140,7 +146,7 @@ void Finder::FindSexaquarks_ChannelA(bool is_bkg_channel) {
             auto [deriv_lambda, deriv_k0s] = Seeder::LineLine::ComputeDerivatives(pca_cache);
 
             // fit vertex //
-            auto fit = KF::FitVertex(lambda, k0s, {seed_lambda, deriv_lambda}, {seed_k0s, deriv_k0s});
+            auto fit = KF::FitVertex(lambda, k0s, pid_lambda, pid_k0s, {seed_lambda, deriv_lambda}, {seed_k0s, deriv_k0s});
 
             // create storage+computation units //
             POD::Sexaquark sexa = Create_ChannelA(fit, seed_lambda.pca, seed_k0s.pca, is_bkg_channel);
@@ -214,32 +220,34 @@ bool Finder::SlowCuts_ChannelA(const Cached::Sexaquark& c_sexa, TH1D* hist_cut_f
     return true;
 }
 
-POD::Sexaquark Finder::Create_ChannelA(const KF::Particle& fit, const Seeder::PCA& pca_v0a, const Seeder::PCA& pca_v0b, bool is_bkg_channel) {
+POD::Sexaquark Finder::Create_ChannelA(const KF::FitResult& fit, const Seeder::PCA& pca_v0a, const Seeder::PCA& pca_v0b, bool is_bkg_channel) {
     POD::Sexaquark sexa;  // non-initialized on purpose
-    sexa.SV_X = static_cast<float>(fit.X());
-    sexa.SV_Y = static_cast<float>(fit.Y());
-    sexa.SV_Z = static_cast<float>(fit.Z());
-    sexa.Px = static_cast<float>(fit.Px());
-    sexa.Py = static_cast<float>(fit.Py());
-    sexa.Pz = static_cast<float>(fit.Pz());
-    sexa.Energy = static_cast<float>(fit.E());
-    sexa.Chi2NDF = static_cast<float>(fit.Chi2NDF());
-    sexa.E_MinusNucleon = static_cast<float>(fit.E() - DB::Particles::Particle("Neutron").mass);  // small optimization
+    sexa.SV_X = static_cast<float>(fit.mother.X());
+    sexa.SV_Y = static_cast<float>(fit.mother.Y());
+    sexa.SV_Z = static_cast<float>(fit.mother.Z());
+    sexa.Px = static_cast<float>(fit.mother.Px());
+    sexa.Py = static_cast<float>(fit.mother.Py());
+    sexa.Pz = static_cast<float>(fit.mother.Pz());
+    sexa.Energy = static_cast<float>(fit.mother.E());
+    sexa.Chi2NDF = static_cast<float>(fit.mother.Chi2NDF());
+    sexa.E_MinusNucleon = static_cast<float>(fit.mother.E() - DB::Particles::Particle("Neutron").mass);  // small optimization
     sexa.IsBkgChannel = is_bkg_channel;
     // -- V0A
     sexa.Dau1_PCAwrtSV_X = static_cast<float>(pca_v0a.X());
     sexa.Dau1_PCAwrtSV_Y = static_cast<float>(pca_v0a.Y());
     sexa.Dau1_PCAwrtSV_Z = static_cast<float>(pca_v0a.Z());
-    sexa.Dau1_PCAwrtSV_Px = static_cast<float>(pca_v0a.Px());
-    sexa.Dau1_PCAwrtSV_Py = static_cast<float>(pca_v0a.Py());
-    sexa.Dau1_PCAwrtSV_Pz = static_cast<float>(pca_v0a.Pz());
+    sexa.Dau1_Fit_Px = static_cast<float>(fit.Dau1_Px());
+    sexa.Dau1_Fit_Py = static_cast<float>(fit.Dau1_Py());
+    sexa.Dau1_Fit_Pz = static_cast<float>(fit.Dau1_Pz());
+    sexa.Dau1_Fit_Energy = static_cast<float>(fit.Dau1_E());
     // -- V0B
     sexa.Dau2_PCAwrtSV_X = static_cast<float>(pca_v0b.X());
     sexa.Dau2_PCAwrtSV_Y = static_cast<float>(pca_v0b.Y());
     sexa.Dau2_PCAwrtSV_Z = static_cast<float>(pca_v0b.Z());
-    sexa.Dau2_PCAwrtSV_Px = static_cast<float>(pca_v0b.Px());
-    sexa.Dau2_PCAwrtSV_Py = static_cast<float>(pca_v0b.Py());
-    sexa.Dau2_PCAwrtSV_Pz = static_cast<float>(pca_v0b.Pz());
+    sexa.Dau2_Fit_Px = static_cast<float>(fit.Dau2_Px());
+    sexa.Dau2_Fit_Py = static_cast<float>(fit.Dau2_Py());
+    sexa.Dau2_Fit_Pz = static_cast<float>(fit.Dau2_Pz());
+    sexa.Dau2_Fit_Energy = static_cast<float>(fit.Dau2_E());
 
     return sexa;
 }
@@ -273,7 +281,9 @@ void Finder::FindSexaquarks_ChannelD(bool is_bkg_channel) {
     if (fSettings.IsMC) {
         input_mc_kaons = is_bkg_channel ? &fInput.MC_NegKaon : &fInput.MC_PosKaon;
     }
-    constexpr double mass_kaon = DB::Particles::Particle("NegKaon").mass;
+    // -- daughter hypotheses
+    const DB::Particles::Definition pid_kaon = is_bkg_channel ? DB::Particles::Particle("NegKaon") : DB::Particles::Particle("PosKaon");
+    const DB::Particles::Definition pid_lambda = is_bkg_channel ? DB::Particles::Particle("Lambda") : DB::Particles::Particle("AntiLambda");
     // -- cut flow hist
     TH1D* hist = is_bkg_channel ? fHist_CutFlow_BkgCandidates.get() : fHist_CutFlow_AntiSexaquark.get();
 
@@ -301,7 +311,8 @@ void Finder::FindSexaquarks_ChannelD(bool is_bkg_channel) {
             auto [deriv_ka, deriv_v0] = Seeder::HelixLine::ComputeDerivatives(seed_kaon, seed_v0, pca_cache);
 
             // fit vertex //
-            auto fit = KF::FitVertex(kaon, lambda, mass_kaon, {seed_kaon, deriv_ka}, {seed_v0, deriv_v0}, fOutput_Base->Event.MagneticField);
+            auto fit =
+                KF::FitVertex(kaon, lambda, pid_kaon, pid_lambda, {seed_kaon, deriv_ka}, {seed_v0, deriv_v0}, fOutput_Base->Event.MagneticField);
 
             // create storage+computation units //
             POD::Sexaquark sexa = Create_ChannelD(fit, seed_v0.pca, seed_kaon.pca, is_bkg_channel);
@@ -376,32 +387,34 @@ bool Finder::SlowCuts_ChannelD(const Cached::Sexaquark& c_sexa, TH1D* hist_cut_f
     return true;
 }
 
-POD::Sexaquark Finder::Create_ChannelD(const KF::Particle& fit, const Seeder::PCA& pca_v0, const Seeder::PCA& pca_ka, bool is_bkg_channel) {
+POD::Sexaquark Finder::Create_ChannelD(const KF::FitResult& fit, const Seeder::PCA& pca_v0, const Seeder::PCA& pca_ka, bool is_bkg_channel) {
     POD::Sexaquark sexa;  // non-initialized on purpose
-    sexa.SV_X = static_cast<float>(fit.X());
-    sexa.SV_Y = static_cast<float>(fit.Y());
-    sexa.SV_Z = static_cast<float>(fit.Z());
-    sexa.Px = static_cast<float>(fit.Px());
-    sexa.Py = static_cast<float>(fit.Py());
-    sexa.Pz = static_cast<float>(fit.Pz());
-    sexa.Energy = static_cast<float>(fit.E());
-    sexa.Chi2NDF = static_cast<float>(fit.Chi2NDF());
-    sexa.E_MinusNucleon = static_cast<float>(fit.E() - DB::Particles::Particle("Proton").mass);  // small optimization
+    sexa.SV_X = static_cast<float>(fit.mother.X());
+    sexa.SV_Y = static_cast<float>(fit.mother.Y());
+    sexa.SV_Z = static_cast<float>(fit.mother.Z());
+    sexa.Px = static_cast<float>(fit.mother.Px());
+    sexa.Py = static_cast<float>(fit.mother.Py());
+    sexa.Pz = static_cast<float>(fit.mother.Pz());
+    sexa.Energy = static_cast<float>(fit.mother.E());
+    sexa.Chi2NDF = static_cast<float>(fit.mother.Chi2NDF());
+    sexa.E_MinusNucleon = static_cast<float>(fit.mother.E() - DB::Particles::Particle("Proton").mass);  // small optimization
     sexa.IsBkgChannel = is_bkg_channel;
     // V0
     sexa.Dau1_PCAwrtSV_X = static_cast<float>(pca_v0.X());
     sexa.Dau1_PCAwrtSV_Y = static_cast<float>(pca_v0.Y());
     sexa.Dau1_PCAwrtSV_Z = static_cast<float>(pca_v0.Z());
-    sexa.Dau1_PCAwrtSV_Px = static_cast<float>(pca_v0.Px());
-    sexa.Dau1_PCAwrtSV_Py = static_cast<float>(pca_v0.Py());
-    sexa.Dau1_PCAwrtSV_Pz = static_cast<float>(pca_v0.Pz());
+    sexa.Dau1_Fit_Px = static_cast<float>(fit.Dau2_Px());
+    sexa.Dau1_Fit_Py = static_cast<float>(fit.Dau2_Py());
+    sexa.Dau1_Fit_Pz = static_cast<float>(fit.Dau2_Pz());
+    sexa.Dau1_Fit_Energy = static_cast<float>(fit.Dau2_E());
     // kaon
     sexa.Dau2_PCAwrtSV_X = static_cast<float>(pca_ka.X());
     sexa.Dau2_PCAwrtSV_Y = static_cast<float>(pca_ka.Y());
     sexa.Dau2_PCAwrtSV_Z = static_cast<float>(pca_ka.Z());
-    sexa.Dau2_PCAwrtSV_Px = static_cast<float>(pca_ka.Px());
-    sexa.Dau2_PCAwrtSV_Py = static_cast<float>(pca_ka.Py());
-    sexa.Dau2_PCAwrtSV_Pz = static_cast<float>(pca_ka.Pz());
+    sexa.Dau2_Fit_Px = static_cast<float>(fit.Dau1_Px());
+    sexa.Dau2_Fit_Py = static_cast<float>(fit.Dau1_Py());
+    sexa.Dau2_Fit_Pz = static_cast<float>(fit.Dau1_Pz());
+    sexa.Dau2_Fit_Energy = static_cast<float>(fit.Dau1_E());
 
     return sexa;
 }
@@ -418,7 +431,8 @@ void Finder::FindSexaquarks_ChannelH(bool is_bkg_channel) {
     // -- mc
     const std::vector<POD::Extended::McParticle>* input_mc_kaons = nullptr;
     if (fSettings.IsMC) input_mc_kaons = is_bkg_channel ? &fInput.MC_NegKaon : &fInput.MC_PosKaon;
-    constexpr double mass_kaon = DB::Particles::Particle("NegKaon").mass;
+    // -- daughter hypothesis, which is where the fit reads their mass from
+    const DB::Particles::Definition pid_kaon = is_bkg_channel ? DB::Particles::Particle("NegKaon") : DB::Particles::Particle("PosKaon");
     // cut flow hist
     TH1D* hist = is_bkg_channel ? fHist_CutFlow_BkgCandidates.get() : fHist_CutFlow_AntiSexaquark.get();
 
@@ -440,7 +454,7 @@ void Finder::FindSexaquarks_ChannelH(bool is_bkg_channel) {
             auto [deriv_kaon1, deriv_kaon2] = Seeder::HelixHelix::ComputeDerivatives(seed_kaon1, seed_kaon2, pca_cache);
 
             // fit vertex //
-            auto fit = KF::FitVertex(kaon1, kaon2, mass_kaon, mass_kaon, {seed_kaon1, deriv_kaon1}, {seed_kaon2, deriv_kaon2},
+            auto fit = KF::FitVertex(kaon1, kaon2, pid_kaon, pid_kaon, {seed_kaon1, deriv_kaon1}, {seed_kaon2, deriv_kaon2},
                                      fOutput_Base->Event.MagneticField);
 
             // create storage+computation units //
@@ -485,32 +499,34 @@ bool Finder::SlowCuts_ChannelH(const Cached::Sexaquark& sexa, TH1D* hist_cut_flo
     return true;
 }
 
-POD::Sexaquark Finder::Create_ChannelH(const KF::Particle& fit, const Seeder::PCA& pca_kaon1, const Seeder::PCA& pca_kaon2, bool is_bkg_channel) {
+POD::Sexaquark Finder::Create_ChannelH(const KF::FitResult& fit, const Seeder::PCA& pca_kaon1, const Seeder::PCA& pca_kaon2, bool is_bkg_channel) {
     POD::Sexaquark sexa;  // non-initialized on purpose
-    sexa.SV_X = static_cast<float>(fit.X());
-    sexa.SV_Y = static_cast<float>(fit.Y());
-    sexa.SV_Z = static_cast<float>(fit.Z());
-    sexa.Px = static_cast<float>(fit.Px());
-    sexa.Py = static_cast<float>(fit.Py());
-    sexa.Pz = static_cast<float>(fit.Pz());
-    sexa.Energy = static_cast<float>(fit.E());
-    sexa.Chi2NDF = static_cast<float>(fit.Chi2NDF());
-    sexa.E_MinusNucleon = static_cast<float>(fit.E() - DB::Particles::Particle("Proton").mass);  // small optimization
+    sexa.SV_X = static_cast<float>(fit.mother.X());
+    sexa.SV_Y = static_cast<float>(fit.mother.Y());
+    sexa.SV_Z = static_cast<float>(fit.mother.Z());
+    sexa.Px = static_cast<float>(fit.mother.Px());
+    sexa.Py = static_cast<float>(fit.mother.Py());
+    sexa.Pz = static_cast<float>(fit.mother.Pz());
+    sexa.Energy = static_cast<float>(fit.mother.E());
+    sexa.Chi2NDF = static_cast<float>(fit.mother.Chi2NDF());
+    sexa.E_MinusNucleon = static_cast<float>(fit.mother.E() - DB::Particles::Particle("Proton").mass);  // small optimization
     sexa.IsBkgChannel = is_bkg_channel;
     // -- Kaon 1
     sexa.Dau1_PCAwrtSV_X = static_cast<float>(pca_kaon1.X());
     sexa.Dau1_PCAwrtSV_Y = static_cast<float>(pca_kaon1.Y());
     sexa.Dau1_PCAwrtSV_Z = static_cast<float>(pca_kaon1.Z());
-    sexa.Dau1_PCAwrtSV_Px = static_cast<float>(pca_kaon1.Px());
-    sexa.Dau1_PCAwrtSV_Py = static_cast<float>(pca_kaon1.Py());
-    sexa.Dau1_PCAwrtSV_Pz = static_cast<float>(pca_kaon1.Pz());
+    sexa.Dau1_Fit_Px = static_cast<float>(fit.Dau1_Px());
+    sexa.Dau1_Fit_Py = static_cast<float>(fit.Dau1_Py());
+    sexa.Dau1_Fit_Pz = static_cast<float>(fit.Dau1_Pz());
+    sexa.Dau1_Fit_Energy = static_cast<float>(fit.Dau1_E());
     // -- Kaon 2
     sexa.Dau2_PCAwrtSV_X = static_cast<float>(pca_kaon2.X());
     sexa.Dau2_PCAwrtSV_Y = static_cast<float>(pca_kaon2.Y());
     sexa.Dau2_PCAwrtSV_Z = static_cast<float>(pca_kaon2.Z());
-    sexa.Dau2_PCAwrtSV_Px = static_cast<float>(pca_kaon2.Px());
-    sexa.Dau2_PCAwrtSV_Py = static_cast<float>(pca_kaon2.Py());
-    sexa.Dau2_PCAwrtSV_Pz = static_cast<float>(pca_kaon2.Pz());
+    sexa.Dau2_Fit_Px = static_cast<float>(fit.Dau2_Px());
+    sexa.Dau2_Fit_Py = static_cast<float>(fit.Dau2_Py());
+    sexa.Dau2_Fit_Pz = static_cast<float>(fit.Dau2_Pz());
+    sexa.Dau2_Fit_Energy = static_cast<float>(fit.Dau2_E());
 
     return sexa;
 }

@@ -24,10 +24,26 @@ namespace Cached { struct PreFoundLambda; struct Hdibaryon; }
 namespace T2DS {
 
 namespace Seeder { struct PCA; }
-namespace KF { struct Particle; }
+namespace KF { struct Particle; struct FitResult; }
 // clang-format on
 
 class Verifier {
+
+    // Fit-Related //
+
+    enum class EFitConstraints : int {
+        kDontPinAnything,                                // baseline, don't use any kind of mass constraint during/after fits
+        kPinDaughtersOnFirstFit_DontPinMothers,          // protons+pions on shell; mass cuts available
+        kPinDaughtersOnBothFits_PinMothersOnlyFirstFit,  // costs +1 NDF and a mass-pull chi2 term; lambdas' masses become deltas
+    };
+    struct FitSetup {
+        bool pin_lambda_daughters{false};  // 1st fit: (anti)protons and pions onto their own shells
+        bool pin_lambda_mass{false};       // 1st fit: the (anti)lambda onto m(lambda); costs +1 NDF and a chi2 term
+        bool lambdas_on_shell{false};      // 2nd fit: the (anti)lambdas arrive carrying an exact mass hypothesis ...
+        bool pin_lambdas{false};           // 2nd fit: ... and get re-pinned to it, after the update, before the sum
+    };
+
+    // Cut-related //
 
     enum class EPreFoundLambda : int {
         kAllPreFoundLambdas,
@@ -144,9 +160,8 @@ class Verifier {
 
     POD::Extended::McParticle BuildMcPreFoundLambda(const POD::Extended::McParticle &mc_neg, const POD::Extended::McParticle &mc_pos,
                                                     const HD::DecayTree &decay_pid);
-    POD::Extended::PreFoundLambda CreateExtendedPreFoundLambda(const POD::PreFoundLambda &old_lambda, const KF::Particle &fit,
-                                                               const Seeder::PCA &pca_neg, const Seeder::PCA &pca_pos, double mass_neg,
-                                                               double mass_pos);
+    POD::Extended::PreFoundLambda CreateExtendedPreFoundLambda(const POD::PreFoundLambda &old_lambda, const KF::FitResult &fit,
+                                                               const Seeder::PCA &pca_neg, const Seeder::PCA &pca_pos);
 
     // h-dibaryon //
     void VerifyLambdaPair(bool anti_channel);
@@ -156,7 +171,28 @@ class Verifier {
 
     POD::Extended::McParticle BuildMcHdibaryon(const POD::Extended::McParticle &mc_lambda1, const POD::Extended::McParticle &mc_lambda2,
                                                const HD::DecayTree &decay_pid);
-    POD::LambdaPair CreateLambdaPair(const KF::Particle &fit, const Seeder::PCA &pca_lambda1, const Seeder::PCA &pca_lambda2, bool anti_channel);
+    POD::LambdaPair CreateLambdaPair(const KF::FitResult &fit, const Seeder::PCA &pca_lambda1, const Seeder::PCA &pca_lambda2, bool anti_channel);
+
+    // fit configuration //
+    // Resolve `fFitConstraints` into the knobs of the two consecutive vertex fits.
+    // The (anti)h-dibaryon mass is never pinned in any configuration, as it's the property under study.
+    [[nodiscard]] static constexpr FitSetup GetFitSetup() {
+        switch (kFitConstraints) {
+            // -- nothing is constrained anywhere
+            case EFitConstraints::kDontPinAnything:
+                return {};
+            // -- every daughter is set on shell, no mother is ever pinned.
+            //    The (anti)lambda mass stays a measurement, so its cuts still select.
+            case EFitConstraints::kPinDaughtersOnFirstFit_DontPinMothers:
+                return {.pin_lambda_daughters = true, .pin_lambda_mass = false, .lambdas_on_shell = false, .pin_lambdas = false};
+            // -- the same, plus the (anti)lambda is pinned to m(Lambda) in the first fit, which does pay +1 NDF
+            //    and a mass-pull chi2 term, and turns its mass into a delta
+            case EFitConstraints::kPinDaughtersOnBothFits_PinMothersOnlyFirstFit:
+                return {.pin_lambda_daughters = true, .pin_lambda_mass = true, .lambdas_on_shell = true, .pin_lambdas = true};
+        }
+        return {};  // unreachable, switch above is exhaustive
+    }
+    static constexpr EFitConstraints kFitConstraints = EFitConstraints::kPinDaughtersOnBothFits_PinMothersOnlyFirstFit;  // HARDCODED
 
     // member variables //
 

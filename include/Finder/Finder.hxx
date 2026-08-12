@@ -28,10 +28,12 @@ namespace Cached { struct Sexaquark; }
 namespace T2DS {
 
 namespace Seeder { struct PCA; }
-namespace KF { struct Particle; }
+namespace KF { struct Particle; struct FitResult; }
 // clang-format on
 
 class Finder {
+    // PENDING for author: missing fit constraints + cuts enums+structs
+
    public:
     Finder() = delete;
     Finder(const Finder &) = delete;
@@ -120,19 +122,19 @@ class Finder {
     void FindSexaquarks_ChannelA(bool is_bkg_channel);
     [[nodiscard]] bool FastCuts_ChannelA(const Seeder::PCA &pca_v0a, const Seeder::PCA &pca_v0b, TH1D *hist_cut_flow) const;
     [[nodiscard]] bool SlowCuts_ChannelA(const Cached::Sexaquark &c_sexa, TH1D *hist_cut_flow) const;
-    POD::Sexaquark Create_ChannelA(const KF::Particle &fit, const Seeder::PCA &pca_v0a, const Seeder::PCA &pca_v0b, bool is_bkg_channel);
+    POD::Sexaquark Create_ChannelA(const KF::FitResult &fit, const Seeder::PCA &pca_v0a, const Seeder::PCA &pca_v0b, bool is_bkg_channel);
 
     // channel D //
     void FindSexaquarks_ChannelD(bool is_bkg_channel);
     [[nodiscard]] bool FastCuts_ChannelD(const Seeder::PCA &pca_v0, const Seeder::PCA &pca_ka, TH1D *hist_cut_flow) const;
     [[nodiscard]] bool SlowCuts_ChannelD(const Cached::Sexaquark &c_sexa, TH1D *hist_cut_flow) const;
-    POD::Sexaquark Create_ChannelD(const KF::Particle &fit, const Seeder::PCA &pca_v0, const Seeder::PCA &pca_ka, bool is_bkg_channel);
+    POD::Sexaquark Create_ChannelD(const KF::FitResult &fit, const Seeder::PCA &pca_v0, const Seeder::PCA &pca_ka, bool is_bkg_channel);
 
     // channel H //
     void FindSexaquarks_ChannelH(bool is_bkg_channel);
     [[nodiscard]] bool FastCuts_ChannelH(const Seeder::PCA &pca_kaon1, const Seeder::PCA &pca_kaon2, TH1D *hist_cut_flow) const;
     [[nodiscard]] bool SlowCuts_ChannelH(const Cached::Sexaquark &c_sexa, TH1D *hist_cut_flow) const;
-    POD::Sexaquark Create_ChannelH(const KF::Particle &fit, const Seeder::PCA &pca_kaon1, const Seeder::PCA &pca_kaon2, bool is_bkg_channel);
+    POD::Sexaquark Create_ChannelH(const KF::FitResult &fit, const Seeder::PCA &pca_kaon1, const Seeder::PCA &pca_kaon2, bool is_bkg_channel);
 
     // member variables //
 

@@ -28,11 +28,13 @@ namespace Cached { struct V0; }
 namespace T2DS {
 
 namespace Seeder{ struct PCA; }
-namespace KF{ struct Particle; }
+namespace KF{ struct Particle; struct FitResult; }
 // clang-format on
 
 // Pack secondary V0s and tracks.
 class Packager {
+    // PENDING for author: missing fit constraints + cuts enums+structs
+
    public:
     Packager(const Packager &) = delete;
     Packager(Packager &&) = delete;
@@ -138,7 +140,7 @@ class Packager {
     bool SlowCuts_KaonZeroShort(const Cached::V0 &v0, TH1D *hist_cut_flow) const;
 
     POD::Extended::McParticle BuildMcV0(const POD::Extended::McParticle &mc_neg, const POD::Extended::McParticle &mc_pos, int pdg_code_hypothesis);
-    POD::V0 CreateV0(const KF::Particle &fit, const Seeder::PCA &neg_pca_wrt_v0, const Seeder::PCA &pos_pca_wrt_v0);
+    POD::V0 CreateV0(const KF::FitResult &fit, const Seeder::PCA &neg_pca_wrt_v0, const Seeder::PCA &pos_pca_wrt_v0);
 
     // member variables //
 

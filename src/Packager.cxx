@@ -6,12 +6,14 @@
 #include "common/Cuts_T2DS_Packager.hpp"
 #include "common/DB_Particles.hpp"
 #include "common/MC_Helpers.hpp"
-#include "common/Math.hpp"
 #include "common/POD_Event.hpp"
 #include "common/POD_InjectedSexa.hpp"
 #include "common/POD_McParticle.hpp"
 #include "common/POD_Track.hpp"
 #include "common/POD_V0.hpp"
+
+#include "common/Math.hpp"
+namespace CMath = Common::Math;
 
 #include "App/Logger.hxx"
 #include "KalmanFitter/BaseKalmanFitter.hxx"
@@ -20,8 +22,6 @@
 #include "Seeder/SeederHelixHelix.hxx"
 
 #include "Packager/Packager.hxx"
-
-namespace CMath = Common::Math;
 
 namespace T2DS {
 
@@ -68,7 +68,8 @@ void Packager::ProcessEvent() {
     // -- update event counter
     fHist_EventCounter->Fill(0.);
     // -- cache pv
-    fPrimaryVertex.SetCoordinates(fOutput.Event.PV_X, fOutput.Event.PV_Y, fOutput.Event.PV_Z);
+    fPrimaryVertex.SetCoordinates(static_cast<double>(fOutput.Event.PV_X), static_cast<double>(fOutput.Event.PV_Y),
+                                  static_cast<double>(fOutput.Event.PV_Z));
 }
 
 // ## MC/Injected ZONE ## //
@@ -324,8 +325,8 @@ void Packager::FindV0s(const DB::Particles::Definition& pid) {
             auto [deriv_neg, deriv_pos] = Seeder::HelixHelix::ComputeDerivatives(seed_neg, seed_pos, pca_cache);
 
             // fit vertex //
-            auto fit = KF::FitVertex(track_neg, track_pos, pid_neg.mass, pid_pos.mass, {seed_neg, deriv_neg}, {seed_pos, deriv_pos},
-                                     fOutput.Event.MagneticField);
+            auto fit =
+                KF::FitVertex(track_neg, track_pos, pid_neg, pid_pos, {seed_neg, deriv_neg}, {seed_pos, deriv_pos}, fOutput.Event.MagneticField);
 
             // create storage+computation units //
             POD::V0 v0 = CreateV0(fit, seed_neg.pca, seed_pos.pca);
@@ -457,31 +458,33 @@ POD::Extended::McParticle Packager::BuildMcV0(const POD::Extended::McParticle& m
     return mc_v0;
 }
 
-POD::V0 Packager::CreateV0(const KF::Particle& fit, const Seeder::PCA& neg_pca_wrt_v0, const Seeder::PCA& pos_pca_wrt_v0) {
+POD::V0 Packager::CreateV0(const KF::FitResult& fit, const Seeder::PCA& neg_pca_wrt_v0, const Seeder::PCA& pos_pca_wrt_v0) {
     POD::V0 new_v0;  // non-initialized on purpose
-    new_v0.Decay_X = static_cast<float>(fit.X());
-    new_v0.Decay_Y = static_cast<float>(fit.Y());
-    new_v0.Decay_Z = static_cast<float>(fit.Z());
-    new_v0.Px = static_cast<float>(fit.Px());
-    new_v0.Py = static_cast<float>(fit.Py());
-    new_v0.Pz = static_cast<float>(fit.Pz());
-    new_v0.Energy = static_cast<float>(fit.E());
-    new_v0.CovMatrix = fit.Cov<7>();
-    new_v0.Chi2NDF = static_cast<float>(fit.Chi2NDF());
+    new_v0.Decay_X = static_cast<float>(fit.mother.X());
+    new_v0.Decay_Y = static_cast<float>(fit.mother.Y());
+    new_v0.Decay_Z = static_cast<float>(fit.mother.Z());
+    new_v0.Px = static_cast<float>(fit.mother.Px());
+    new_v0.Py = static_cast<float>(fit.mother.Py());
+    new_v0.Pz = static_cast<float>(fit.mother.Pz());
+    new_v0.Energy = static_cast<float>(fit.mother.E());
+    new_v0.CovMatrix = fit.mother.Cov<7>();
+    new_v0.Chi2NDF = static_cast<float>(fit.mother.Chi2NDF());
     // -- negative daughter
     new_v0.Neg_PCAwrtV0_X = static_cast<float>(neg_pca_wrt_v0.X());
     new_v0.Neg_PCAwrtV0_Y = static_cast<float>(neg_pca_wrt_v0.Y());
     new_v0.Neg_PCAwrtV0_Z = static_cast<float>(neg_pca_wrt_v0.Z());
-    new_v0.Neg_PCAwrtV0_Px = static_cast<float>(neg_pca_wrt_v0.Px());
-    new_v0.Neg_PCAwrtV0_Py = static_cast<float>(neg_pca_wrt_v0.Py());
-    new_v0.Neg_PCAwrtV0_Pz = static_cast<float>(neg_pca_wrt_v0.Pz());
+    new_v0.Neg_Fit_Px = static_cast<float>(fit.Dau1_Px());
+    new_v0.Neg_Fit_Py = static_cast<float>(fit.Dau1_Py());
+    new_v0.Neg_Fit_Pz = static_cast<float>(fit.Dau1_Pz());
+    new_v0.Neg_Fit_Energy = static_cast<float>(fit.Dau1_E());
     // -- positive daughter
     new_v0.Pos_PCAwrtV0_X = static_cast<float>(pos_pca_wrt_v0.X());
     new_v0.Pos_PCAwrtV0_Y = static_cast<float>(pos_pca_wrt_v0.Y());
     new_v0.Pos_PCAwrtV0_Z = static_cast<float>(pos_pca_wrt_v0.Z());
-    new_v0.Pos_PCAwrtV0_Px = static_cast<float>(pos_pca_wrt_v0.Px());
-    new_v0.Pos_PCAwrtV0_Py = static_cast<float>(pos_pca_wrt_v0.Py());
-    new_v0.Pos_PCAwrtV0_Pz = static_cast<float>(pos_pca_wrt_v0.Pz());
+    new_v0.Pos_Fit_Px = static_cast<float>(fit.Dau2_Px());
+    new_v0.Pos_Fit_Py = static_cast<float>(fit.Dau2_Py());
+    new_v0.Pos_Fit_Pz = static_cast<float>(fit.Dau2_Pz());
+    new_v0.Pos_Fit_Energy = static_cast<float>(fit.Dau2_E());
 
     return new_v0;
 }

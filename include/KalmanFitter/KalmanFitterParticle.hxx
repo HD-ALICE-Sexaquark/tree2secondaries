@@ -10,6 +10,7 @@
 #include <Eigen/Eigen>
 
 #include "common/Constants.hpp"
+#include "common/DB_Particles.hpp"
 #include "common/POD_PreFoundLambda.hpp"
 #include "common/POD_Track.hpp"
 #include "common/POD_V0.hpp"
@@ -18,16 +19,36 @@
 
 namespace T2DS::KF {
 
+// ## Constants ## //
+
+static constexpr double Initial_Css = 1.;
+static constexpr int Initial_NDF = -1;
+
+// -- mass constraint's Newton solver
+static constexpr int MassConstraint_MaxIter = 10;  // PENDING: maybe it's already done in 2-3 steps
+static constexpr double MassConstraint_Tolerance = 1.E-10;
+static constexpr double MassConstraint_MinDenom = 1.E-10;
+static constexpr double MassConstraint_MinVariance = 1.E-20;
+
 // ## KF::Particle ## //
 
 struct Particle {
 
     // Constructors //
 
+    // The mass always comes from the particle's identity, never from a parallel argument -- so the two can't disagree.
+    // `on_shell` re-asserts an exact mass hypothesis on a composite, which is what a mother mass constraint applied
+    // during a previous fit amounts to. It has to be opt-in and explicit because the hypothesis does not survive the
+    // POD round-trip: `POD::V0` and `POD::Extended::PreFoundLambda` store (Px,Py,Pz,E) but no mass bookkeeping.
+
     Particle() = default;
-    static Particle FromTrack(const POD::Track &v, double mass);
-    static Particle FromV0(const POD::V0 &v);
-    static Particle FromPreFoundLambda(const POD::Extended::PreFoundLambda &l);
+    static Particle FromTrack(const POD::Track &v, const DB::Particles::Definition &pid);
+    static Particle FromV0(const POD::V0 &v, const DB::Particles::Definition &pid, bool on_shell);
+    static Particle FromPreFoundLambda(const POD::Extended::PreFoundLambda &l, const DB::Particles::Definition &pid, bool on_shell);
+
+    // Modifier //
+
+    void SetMassBookkeeping(const DB::Particles::Definition &pid, bool on_shell);
 
     // Named Accesors //
 
@@ -155,10 +176,12 @@ struct Particle {
 
     // Member Variables //
 
-    Eigen::Matrix<double, 8, 8> fC{Eigen::Matrix<double, 8, 8>::Zero()};  // symmetric, only lower triangle is used
+    Eigen::Matrix<double, 8, 8> fC{Eigen::Matrix<double, 8, 8>::Zero()};  // full symmetric
     Eigen::Vector<double, 8> fP{Eigen::Vector<double, 8>::Zero()};
+    std::optional<double> fMassHypo;  // exact mass hypothesis, if the particle has one
     double fChi2{};
-    int fNDF{Common::DummyInt};
+    double fSumDaughterMass{0.};  // sum of the daughters' masses, i.e. the lowest physical mass
+    int fNDF{Initial_NDF};
     int fQ{};
 };
 
