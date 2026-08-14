@@ -31,11 +31,9 @@ struct MassScale {
 
 // Fit Result //
 
-// A fitted vertex: the mother, plus each daughter's 4-momentum *at that vertex* -- after the Kalman update and,
-// when `pin_daughters` is on, after being pinned to its mass shell. These are the numbers the fit actually summed,
-// so `mother.(px,py,pz,E) == dau_1 + dau_2` holds exactly and any decay tree built from them closes.
 struct FitResult {
-    Particle mother;
+    Particle mother;                                                   // at decay/secondary vertex; closed tree values
+    std::optional<Particle> at_pv;                                     // available when pinned to production/primary vertex
     Eigen::Vector<double, 4> dau_1{Eigen::Vector<double, 4>::Zero()};  // (px, py, pz, E)
     Eigen::Vector<double, 4> dau_2{Eigen::Vector<double, 4>::Zero()};
 
@@ -71,22 +69,26 @@ struct Daughter : Particle {
     Eigen::Matrix<double, 6, 6> corr;    // NOTE: non-initialized on purpose
 };
 
-// Mass Constraint //
+// Fit Policy //
 
-// Mass policy: what the fit is allowed to do about masses. Two independent options:
-//  - `pin_daughters` acts *during* the 4-momentum sum (this is KFParticle's `fConstructMethod == 2`): each daughter
-//    is put back on its mass shell first, which guarantees mass(mother) >= sum(mass(daughters)). Off, momentum and
-//    energy are treated as independent and the daughter masses may drift off shell -- KFParticle's method 0.
-// -  `daughters_already_pinned` composite daughters arrive carrying an exact mass hypothesis, which does
-//                               not survive the POD round-trip
-//                               NOTE: inert unless `pin_daughters`
-//  - `mother_mass` acts on the fitted mother *afterwards*, it always fires when enabled.
-//                  IMPORTANT: this constraint makes `Mass()` a delta, however it pays for itself in both chi2 and NDF.
-struct MassPolicy {
+// Toggle fit constraints.
+// - `pin_daughters` -- acts *during* the 4-momentum sum (this is KFParticle's `fConstructMethod == 2`): each daughter
+//                      is put back on its mass shell first, which guarantees mass(mother) >= sum(mass(daughters)). Off, momentum and
+//                      energy are treated as independent and the daughter masses may drift off shell -- KFParticle's method 0.
+// - `daughters_already_pinned` -- composite daughters arrive carrying an exact mass hypothesis, which does
+//                                 not survive the POD round-trip
+//                                 NOTE: inert unless `pin_daughters` = true
+// - `mother_mass` -- acts on the fitted mother *afterwards*, it always fires when enabled.
+//                    IMPORTANT: this constraint makes `Mass()` a delta, however it pays for itself in both chi2 and NDF.
+// - `prod_vertex` -- pins fit to a certain production vertex
+struct FitPolicy {
     bool pin_daughters{false};
     bool daughters_already_pinned{false};
     std::optional<double> mother_mass;
+    std::optional<Vertex> prod_vertex;
 };
+
+// Mass Constraint //
 
 [[nodiscard]] std::optional<MassScale> SetMassConstraint(Eigen::Vector<double, 8>& p, Eigen::Matrix<double, 8, 8>& c, Eigen::Matrix<double, 7, 7>& j,
                                                          double mass);
@@ -112,40 +114,41 @@ inline void ConstrainToMassShell(Eigen::Vector<double, 8>& p, Eigen::Matrix<doub
     }
 }
 
+// Production Vertex //
+
+[[nodiscard]] Particle SetProductionVertex(const Particle& part, const Vertex& vtx, double bz = 0.);
+
 // Main Fitting Methods //
 
 FitResult GetUpdated(const Daughter& kf_1, const Daughter& kf_2);
 FitResult GetUpdatedMC(const Daughter& kf_1, const Daughter& kf_2);
 
-// NOTE: `policy.daughters_already_pinned` is consumed by the `Particle::From*` factories in the convenience overloads
-//       below. This entry point receives particles that are already built, so it cannot apply it -- call
-//       `Particle::SetMassBookkeeping` yourself before coming here.
 FitResult FitVertex(const KF::Particle& part_1, const KF::Particle& part_2, const Seeder::Result& s_1, const Seeder::Result& s_2, double bz = 0.,
-                    const MassPolicy& policy = {});
+                    const FitPolicy& policy = {});
 
 // Inline Methods //
 
 inline FitResult FitVertex(const POD::Track& track_1, const POD::Track& track_2, const DB::Particles::Definition& pid_1,
                            const DB::Particles::Definition& pid_2, const Seeder::Result& s_1, const Seeder::Result& s_2, double bz,
-                           const MassPolicy& policy = {}) {
+                           const FitPolicy& policy = {}) {
     return FitVertex(Particle::FromTrack(track_1, pid_1), Particle::FromTrack(track_2, pid_2), s_1, s_2, bz, policy);
 }
 
 inline FitResult FitVertex(const POD::Track& track, const POD::V0& v0, const DB::Particles::Definition& pid_track,
                            const DB::Particles::Definition& pid_v0, const Seeder::Result& s_track, const Seeder::Result& s_v0, double bz,
-                           const MassPolicy& policy = {}) {
+                           const FitPolicy& policy = {}) {
     return FitVertex(Particle::FromTrack(track, pid_track), Particle::FromV0(v0, pid_v0, policy.daughters_already_pinned), s_track, s_v0, bz, policy);
 }
 
 inline FitResult FitVertex(const POD::V0& v0_1, const POD::V0& v0_2, const DB::Particles::Definition& pid_1, const DB::Particles::Definition& pid_2,
-                           const Seeder::Result& s_1, const Seeder::Result& s_2, const MassPolicy& policy = {}) {
+                           const Seeder::Result& s_1, const Seeder::Result& s_2, const FitPolicy& policy = {}) {
     return FitVertex(Particle::FromV0(v0_1, pid_1, policy.daughters_already_pinned), Particle::FromV0(v0_2, pid_2, policy.daughters_already_pinned),
                      s_1, s_2, 0., policy);
 }
 
 inline FitResult FitVertex(const POD::Extended::PreFoundLambda& l1, const POD::Extended::PreFoundLambda& l2, const DB::Particles::Definition& pid_1,
-                           const DB::Particles::Definition& pid_2, const Seeder::Result& s1, const Seeder::Result& s2,
-                           const MassPolicy& policy = {}) {
+                           const DB::Particles::Definition& pid_2, const Seeder::Result& s1, const Seeder::Result& s2, const FitPolicy& policy = {}) {
+    // `bz`=0 is safe, because `l1` and `l2` are neutral particles; equivalent to q=0 route for both particles
     return FitVertex(Particle::FromPreFoundLambda(l1, pid_1, policy.daughters_already_pinned),
                      Particle::FromPreFoundLambda(l2, pid_2, policy.daughters_already_pinned), s1, s2, 0., policy);
 }

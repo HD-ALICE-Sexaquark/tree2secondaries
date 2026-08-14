@@ -27,25 +27,31 @@ Deriv ComputeDerivatives(const Cache& c);
 // Inline Methods //
 
 inline Seed FastPCA(const POD::V0& v0, const std::array<double, 3>& vtx, Cache* cache = nullptr) {
-    return FastPCA(v0.Decay_X, v0.Decay_Y, v0.Decay_Z, v0.Px, v0.Py, v0.Pz, vtx, cache);
+    return FastPCA(static_cast<double>(v0.Decay_X), static_cast<double>(v0.Decay_Y), static_cast<double>(v0.Decay_Z), static_cast<double>(v0.Px),
+                   static_cast<double>(v0.Py), static_cast<double>(v0.Pz), vtx, cache);
 }
 
 inline Seed FastPCA(const POD::Extended::PreFoundLambda& lambda, const std::array<double, 3>& vtx, Cache* cache = nullptr) {
-    return FastPCA(lambda.Decay_X, lambda.Decay_Y, lambda.Decay_Z, lambda.Px, lambda.Py, lambda.Pz, vtx, cache);
+    return FastPCA(static_cast<double>(lambda.Decay_X), static_cast<double>(lambda.Decay_Y), static_cast<double>(lambda.Decay_Z),
+                   static_cast<double>(lambda.Px), static_cast<double>(lambda.Py), static_cast<double>(lambda.Pz), vtx, cache);
 }
 
 inline Result FullPCA(const POD::V0& v0, const std::array<double, 3>& vtx) {
     Cache cache;
     Seed seed = FastPCA(v0, vtx, &cache);
-    Deriv deriv = ComputeDerivatives(cache);
-    return {seed, deriv};
+    return {seed, ComputeDerivatives(cache)};
 }
 
 inline Result FullPCA(const POD::Extended::PreFoundLambda& lambda, const std::array<double, 3>& vtx) {
     Cache cache;
     Seed seed = FastPCA(lambda, vtx, &cache);
-    Deriv deriv = ComputeDerivatives(cache);
-    return {seed, deriv};
+    return {seed, ComputeDerivatives(cache)};
+}
+
+inline Result FullPCA(double x0, double y0, double z0, double px, double py, double pz, const std::array<double, 3>& vtx) {
+    Cache cache;
+    Seed seed = FastPCA(x0, y0, z0, px, py, pz, vtx, &cache);
+    return {seed, ComputeDerivatives(cache)};
 }
 
 }  // namespace T2DS::Seeder::LineVertex

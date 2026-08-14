@@ -2,7 +2,9 @@
 
 #include <Eigen/Eigen>
 
+#include "common/Constants.hpp"
 #include "common/DB_Particles.hpp"
+#include "common/POD_Event.hpp"
 #include "common/POD_PreFoundLambda.hpp"
 #include "common/POD_Track.hpp"
 #include "common/POD_V0.hpp"
@@ -128,6 +130,45 @@ Particle Particle::FromPreFoundLambda(const POD::Extended::PreFoundLambda& l, co
     out.fQ = 0;
 
     out.SetMassBookkeeping(pid, on_shell);
+
+    return out;
+}
+
+// Propagate the error of the decay length l = s * p, with s = `fP(7)`.
+//     d(l)/d(s) = p
+//     d(l)/d(p_i) = s * p_i / p
+//  => var(l) = p^2 * var(s) + 2 * s * sum_i p_i * cov(s,p_i) + (s/p)^2 * p^T * cov(p,p) * p
+std::optional<double> Particle::DecayLengthErr() const {
+
+    const double p2 = SquaredMomentum();
+    if (p2 < Common::AbsAlmostZero) return std::nullopt;  // protection
+
+    const Eigen::Vector<double, 3> mom = fP.segment<3>(3);
+
+    const double variance = p2 * VarS()                                                         //
+                            + 2. * S() * (Px() * CovSPx() + Py() * CovSPy() + Pz() * CovSPz())  //
+                            + (S() * S() / p2) * mom.dot(fC.block<3, 3>(3, 3).selfadjointView<Eigen::Lower>() * mom);
+
+    if (variance <= 0.) return std::nullopt;  // protection
+
+    return std::sqrt(variance);
+}
+
+// Create a `KF::Vertex` from the event's reconstructed primary vertex.
+Vertex Vertex::FromEvent(const POD::Event& e) {
+
+    Vertex out;
+
+    out.xyz(0) = static_cast<double>(e.PV_X);
+    out.xyz(1) = static_cast<double>(e.PV_Y);
+    out.xyz(2) = static_cast<double>(e.PV_Z);
+
+    for (unsigned int i = 0; i < 3; ++i) {
+        for (unsigned int j = 0; j <= i; ++j) {
+            out.cov(i, j) = static_cast<double>(e.PV_CovMatrix[IJ(i, j)]);
+            out.cov(j, i) = out.cov(i, j);
+        }
+    }
 
     return out;
 }

@@ -3,7 +3,6 @@
 
 #include "common/Constants.hpp"
 #include "common/Math.hpp"
-#include "common/POD_Track.hpp"
 
 #include "Seeder/BaseSeeder.hxx"
 #if T2DS_DEBUG
@@ -16,28 +15,29 @@ namespace T2DS::Seeder::HelixVertex {
 
 // First phase. Find point of closest approach (PCA) of this particle w.r.t. an arbitrary vertex in the XY plane.
 // Arguments:
-// - `q`     -- [input] charged particle
-// - `v`     -- [input] arbitrary vertex
-// - `bz`    -- [input] z-component of homogeneous magnetic field
-// - `cache` -- [output,optional]
+// - `x0,y0,z0,px,py,pz`, `charge` -- [input] charged particle
+// - `v`                           -- [input] arbitrary vertex
+// - `bz`                          -- [input] z-component of homogeneous magnetic field
+// - `cache`                       -- [output,optional]
 // Return: (packed in a single `Seed` struct)
 // - `pca.xyz`, `pca.mom`              -- position and momentum at their PCAs
 // - `ds`                              -- transport parameters needed to reach their PCAs
 // - `theta`, `sin`, `cos`, `sB`, `cB` -- cache related-quantities
-Seed FastPCA_XY(const POD::Track& q, const std::array<double, 3>& v, double bz, Cache* cache) {
+Seed FastPCA_XY(double x0, double y0, double z0, double px, double py, double pz, int charge,  //
+                const std::array<double, 3>& v, double bz, Cache* cache) {
 
     // cache //
 
     Cache local;
     Cache& c = cache != nullptr ? *cache : local;
 
-    c.x0 = q.X;
-    c.y0 = q.Y;
-    c.z0 = q.Z;
+    c.x0 = x0;
+    c.y0 = y0;
+    c.z0 = z0;
 
-    c.px0 = q.Px;
-    c.py0 = q.Py;
-    c.pz0 = q.Pz;
+    c.px0 = px;
+    c.py0 = py;
+    c.pz0 = pz;
 
     c.pt2 = c.px0 * c.px0 + c.py0 * c.py0;
 
@@ -47,7 +47,7 @@ Seed FastPCA_XY(const POD::Track& q, const std::array<double, 3>& v, double bz, 
 
     c.a = c.dx * c.px0 + c.dy * c.py0;
 
-    c.bq = bz * static_cast<double>(q.Charge) * Common::Kappa;
+    c.bq = bz * static_cast<double>(charge) * Common::Kappa;
     c.abq = c.a * c.bq;
 
     // prepare seed //

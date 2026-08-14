@@ -15,6 +15,7 @@
 #include "common/Schema_FoundHdibaryon.hpp"
 
 #include "App/Settings.hxx"
+#include "KalmanFitter/KalmanFitterParticle.hxx"
 
 // forward declarations //
 // clang-format off
@@ -24,15 +25,15 @@ namespace Cached { struct PreFoundLambda; struct Hdibaryon; }
 namespace T2DS {
 
 namespace Seeder { struct PCA; }
-namespace KF { struct Particle; struct FitResult; }
+namespace KF { struct FitResult; }
 // clang-format on
 
 class Verifier {
 
     // Fit-Related //
 
-    enum class EFitConstraints : int {
-        kDontPinAnything,                                // baseline, don't use any kind of mass constraint during/after fits
+    enum class EMassConstraints : int {
+        kNone,                                           // baseline, don't use any kind of mass constraint during/after fits
         kPinDaughtersOnFirstFit_DontPinMothers,          // protons+pions on shell; mass cuts available
         kPinDaughtersOnBothFits_PinMothersOnlyFirstFit,  // costs +1 NDF and a mass-pull chi2 term; lambdas' masses become deltas
     };
@@ -41,6 +42,7 @@ class Verifier {
         bool pin_lambda_mass{false};       // 1st fit: the (anti)lambda onto m(lambda); costs +1 NDF and a chi2 term
         bool lambdas_on_shell{false};      // 2nd fit: the (anti)lambdas arrive carrying an exact mass hypothesis ...
         bool pin_lambdas{false};           // 2nd fit: ... and get re-pinned to it, after the update, before the sum
+        bool pin_hdib_to_pv{false};        // 2nd fit, final step: pin particle to known production vertex
     };
 
     // Cut-related //
@@ -174,25 +176,33 @@ class Verifier {
     POD::LambdaPair CreateLambdaPair(const KF::FitResult &fit, const Seeder::PCA &pca_lambda1, const Seeder::PCA &pca_lambda2, bool anti_channel);
 
     // fit configuration //
-    // Resolve `fFitConstraints` into the knobs of the two consecutive vertex fits.
-    // The (anti)h-dibaryon mass is never pinned in any configuration, as it's the property under study.
+    // -- (anti)h-dibaryon mass is never pinned in any configuration, as it's the property under study
     [[nodiscard]] static constexpr FitSetup GetFitSetup() {
-        switch (kFitConstraints) {
+        switch (kMassConstraints) {
             // -- nothing is constrained anywhere
-            case EFitConstraints::kDontPinAnything:
-                return {};
+            case EMassConstraints::kNone:
+                return {.pin_hdib_to_pv = kProdVertexConstraint};
             // -- every daughter is set on shell, no mother is ever pinned.
             //    The (anti)lambda mass stays a measurement, so its cuts still select.
-            case EFitConstraints::kPinDaughtersOnFirstFit_DontPinMothers:
-                return {.pin_lambda_daughters = true, .pin_lambda_mass = false, .lambdas_on_shell = false, .pin_lambdas = false};
+            case EMassConstraints::kPinDaughtersOnFirstFit_DontPinMothers:
+                return {.pin_lambda_daughters = true,
+                        .pin_lambda_mass = false,
+                        .lambdas_on_shell = false,
+                        .pin_lambdas = false,
+                        .pin_hdib_to_pv = kProdVertexConstraint};
             // -- the same, plus the (anti)lambda is pinned to m(Lambda) in the first fit, which does pay +1 NDF
             //    and a mass-pull chi2 term, and turns its mass into a delta
-            case EFitConstraints::kPinDaughtersOnBothFits_PinMothersOnlyFirstFit:
-                return {.pin_lambda_daughters = true, .pin_lambda_mass = true, .lambdas_on_shell = true, .pin_lambdas = true};
+            case EMassConstraints::kPinDaughtersOnBothFits_PinMothersOnlyFirstFit:
+                return {.pin_lambda_daughters = true,
+                        .pin_lambda_mass = true,
+                        .lambdas_on_shell = true,
+                        .pin_lambdas = true,
+                        .pin_hdib_to_pv = kProdVertexConstraint};
         }
-        return {};  // unreachable, switch above is exhaustive
+        return {.pin_hdib_to_pv = kProdVertexConstraint};  // unreachable, switch above is exhaustive
     }
-    static constexpr EFitConstraints kFitConstraints = EFitConstraints::kPinDaughtersOnBothFits_PinMothersOnlyFirstFit;  // HARDCODED
+    static constexpr EMassConstraints kMassConstraints = EMassConstraints::kPinDaughtersOnBothFits_PinMothersOnlyFirstFit;  // HARDCODED
+    static constexpr bool kProdVertexConstraint = true;                                                                     // HARDCODED
 
     // member variables //
 
@@ -216,6 +226,8 @@ class Verifier {
     std::unique_ptr<Framework::TeeTree::Reader> fReader;
     // -- cached
     ROOT::Math::XYZPoint fPrimaryVertex;
+    KF::Vertex fPrimaryVertexKF;
+    double fMagneticField{0.};
 
     // output //
 

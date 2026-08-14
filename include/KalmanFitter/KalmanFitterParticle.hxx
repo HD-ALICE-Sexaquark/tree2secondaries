@@ -11,6 +11,7 @@
 
 #include "common/Constants.hpp"
 #include "common/DB_Particles.hpp"
+#include "common/POD_Event.hpp"
 #include "common/POD_PreFoundLambda.hpp"
 #include "common/POD_Track.hpp"
 #include "common/POD_V0.hpp"
@@ -174,6 +175,12 @@ struct Particle {
     [[nodiscard]] double AbsZ() const { return std::abs(Z()); }
     [[nodiscard]] double AbsEta() const { return std::abs(Eta()); }
 
+    // Decay Length //
+    // -- meaningful only on a particle returned by `SetProductionVertex`
+
+    [[nodiscard]] double DecayLength() const { return S() * Momentum(); }
+    [[nodiscard]] std::optional<double> DecayLengthErr() const;
+
     // Member Variables //
 
     Eigen::Matrix<double, 8, 8> fC{Eigen::Matrix<double, 8, 8>::Zero()};  // full symmetric
@@ -185,9 +192,27 @@ struct Particle {
     int fQ{};
 };
 
+// ## KF::Vertex ## //
+
+struct Vertex {
+
+    // Constructor //
+
+    static Vertex FromEvent(const POD::Event &e);
+
+    // Getter //
+
+    [[nodiscard]] std::array<double, 3> GetXYZ() const { return {xyz(0), xyz(1), xyz(2)}; }
+
+    // Member Variables //
+
+    Eigen::Matrix<double, 3, 3> cov{Eigen::Matrix<double, 3, 3>::Zero()};  // full symmetric
+    Eigen::Vector<double, 3> xyz{Eigen::Vector<double, 3>::Zero()};
+};
+
 }  // namespace T2DS::KF
 
-// # KF::Particle Print Formatter # //
+// ## KF::Particle Print Formatter ## //
 
 template <>
 struct std::formatter<T2DS::KF::Particle> {
