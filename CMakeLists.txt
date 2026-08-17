@@ -113,7 +113,7 @@ add_executable(${PROJECT_NAME} src/Seeder/SeederHelixHelix.cxx
                                src/Verifier.cxx
                                src/App.cxx)
 
-target_link_libraries(${PROJECT_NAME} PRIVATE POD
+target_link_libraries(${PROJECT_NAME} PRIVATE "-Wl,--no-as-needed" POD "-Wl,--as-needed"
                                               CLI11::CLI11
                                               Eigen3::Eigen
                                               ROOT::Core ROOT::Tree ROOT::MathCore ROOT::GenVector

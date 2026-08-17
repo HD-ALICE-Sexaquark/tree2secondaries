@@ -1,3 +1,4 @@
+#include "App/App.hxx"
 #include "App/Parser.hxx"
 #include "App/Settings.hxx"
 #include "Finder/Finder.hxx"
@@ -16,43 +17,37 @@ int main(int argc, char *argv[]) {
     if (settings.Mode == T2DS::EProgramMode::PACKAGER) {
 
         T2DS::Packager pkgr(settings);
-        const auto n_events = pkgr.NumberEventsToRead();
-        for (long long id_event = 0; id_event < n_events; ++id_event) {
-            pkgr.Load(id_event);
+        T2DS::RunOverInputs(pkgr, settings, [&] {
             pkgr.ProcessEvent();
             if (settings.IsMC) pkgr.ProcessInjectedSexa();
             pkgr.ProcessTracks();
             pkgr.Pack();
             pkgr.EndOfEvent();
-        }
-        pkgr.EndOfAnalysis();
+        });
+        if (!pkgr.EndOfAnalysis()) return 1;
 
     } else if (settings.Mode == T2DS::EProgramMode::FINDER) {
 
         T2DS::Finder fndr(settings);
-        const auto n_events = fndr.NumberEventsToRead();
-        for (unsigned long id_event = 0; id_event < n_events; ++id_event) {
-            fndr.Load(id_event);
+        T2DS::RunOverInputs(fndr, settings, [&] {
             fndr.ProcessEvent();
             if (settings.IsMC) fndr.ProcessInjected();
             fndr.Find();
             fndr.EndOfEvent();
-        }
-        fndr.EndOfAnalysis();
+        });
+        if (!fndr.EndOfAnalysis()) return 1;
 
     } else if (settings.Mode == T2DS::EProgramMode::VERIFIER) {
 
         T2DS::Verifier vrfr(settings);
-        const auto n_events = vrfr.NumberEventsToRead();
-        for (long long id_event = 0; id_event < n_events; ++id_event) {
-            vrfr.Load(id_event);
+        T2DS::RunOverInputs(vrfr, settings, [&] {
             vrfr.ProcessEvent();
             if (settings.IsMC) vrfr.ProcessInjected();
             vrfr.ProcessPreFoundLambda();
             vrfr.Verify();
             vrfr.EndOfEvent();
-        }
-        vrfr.EndOfAnalysis();
+        });
+        if (!vrfr.EndOfAnalysis()) return 1;
 
     } else {
 

@@ -1,6 +1,9 @@
 #pragma once
 
+#include <exception>
 #include <memory>
+#include <string>
+#include <string_view>
 #include <utility>
 
 #include <TFile.h>
@@ -47,7 +50,6 @@ class Finder {
           fReactionChannel{DB::ReactionChannels::FindReactionChannel(fSettings.ReactionChannel)},
           fName_FoundRNT{std::format("FoundChannel{}", fReactionChannel.name)},
           // input
-          fInput_File{std::make_unique<TFile>(fSettings.PathInputFile.c_str(), "READ")},
           fInput{},
           fReader{nullptr},
           // output
@@ -74,7 +76,6 @@ class Finder {
             return;
         }
 
-        fReader = std::make_unique<Framework::Reader>(fInput.CreateModel(fSettings.IsMC), T2DS::Name_PackedRNT, *fInput_File);
         fWriter = std::make_unique<Framework::Writer>(std::move(model), fName_FoundRNT, *fOutput_File);
 
         PrepareOutputHistograms();
@@ -82,13 +83,21 @@ class Finder {
         Logger::Info(__FUNCTION__, "Finder initialized successfully.");
     }
 
+    [[nodiscard]] bool OpenInput(std::string_view path) {
+        fReader.reset();
+        try {
+            fReader = std::make_unique<Framework::Reader>(fInput.CreateModel(fSettings.IsMC), T2DS::Name_PackedRNT, path);
+        } catch (const std::exception &exc) {
+            Logger::Error(__FUNCTION__, "Couldn't read {} ({}) -- skipping it.", path, exc.what());
+            return false;
+        }
+        return true;
+    }
+
     void PrepareOutputHistograms();
 
     void Load(ROOT::NTupleSize_t entry_id) { fReader->Load(entry_id); }
-    [[nodiscard]] ROOT::NTupleSize_t NumberEventsToRead() {
-        auto total = fReader->Iter()->GetNEntries();
-        return fSettings.LimitToNEvents.has_value() ? std::min(fSettings.LimitToNEvents.value(), total) : total;
-    }
+    [[nodiscard]] unsigned long NumberEventsToRead() { return fReader->Iter()->GetNEntries(); }
 
     void ProcessEvent();
     void ProcessInjected();
@@ -112,7 +121,7 @@ class Finder {
     }
 
     void EndOfEvent();
-    void EndOfAnalysis();
+    bool EndOfAnalysis();
 
    private:
     // mc sexaquark //
@@ -144,7 +153,6 @@ class Finder {
 
     // input //
 
-    std::unique_ptr<TFile> fInput_File;
     Schema::PackedEvents fInput;
     std::unique_ptr<Framework::Reader> fReader;
     // -- cached
@@ -152,7 +160,7 @@ class Finder {
 
     // output //
 
-    std::unique_ptr<TFile> fOutput_File;
+    std::unique_ptr<TFile> fOutput_File;  // single file, kept alive across every input file, if multiple
     Schema::FoundChannelA fOutput_ChannelA;
     Schema::FoundChannelD fOutput_ChannelD;
     Schema::FoundChannelH fOutput_ChannelH;

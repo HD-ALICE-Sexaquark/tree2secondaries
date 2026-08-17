@@ -1,7 +1,10 @@
 #pragma once
 
 #include <cstddef>
+#include <exception>
 #include <memory>
+#include <string>
+#include <string_view>
 #include <vector>
 
 #include <TFile.h>
@@ -46,7 +49,6 @@ class Packager {
         : fSettings{settings},
           fReactionChannel{DB::ReactionChannels::FindReactionChannel(fSettings.ReactionChannel)},
           // input
-          fInput_File{std::make_unique<TFile>(fSettings.PathInputFile.c_str(), "READ")},
           fInput{},
           fReader{nullptr},
           // output
@@ -54,8 +56,6 @@ class Packager {
           fOutput{},
           fWriter{nullptr} {
 
-        fReader = std::make_unique<Framework::TeeTree::Reader>(fInput.CreateModel_TeeTree(fSettings.IsMC, fSettings.IsMC), E2T::Name_OutputTree,
-                                                               *fInput_File);
         fWriter = std::make_unique<Framework::Writer>(fOutput.CreateModel(fSettings.IsMC), T2DS::Name_PackedRNT, *fOutput_File);
 
         PrepareOutputHistograms();
@@ -63,13 +63,22 @@ class Packager {
         Logger::Info(__FUNCTION__, "Packager initialized successfully.");
     }
 
+    [[nodiscard]] bool OpenInput(std::string_view path) {
+        fReader.reset();  // raw `TTree*` must die first
+        try {
+            fReader =
+                std::make_unique<Framework::TeeTree::Reader>(fInput.CreateModel_TeeTree(fSettings.IsMC, fSettings.IsMC), E2T::Name_OutputTree, path);
+        } catch (const std::exception &exc) {
+            Logger::Error(__FUNCTION__, "Couldn't read {} ({}) -- skipping it.", path, exc.what());
+            return false;
+        }
+        return true;
+    }
+
     void PrepareOutputHistograms();
 
     void Load(long long entry_idx) { fReader->Load(entry_idx); }
-    [[nodiscard]] long long NumberEventsToRead() {
-        auto total = fReader->GetEntries();
-        return fSettings.LimitToNEvents.has_value() ? std::min(static_cast<long long>(fSettings.LimitToNEvents.value()), total) : total;
-    }
+    [[nodiscard]] unsigned long NumberEventsToRead() { return static_cast<unsigned long>(fReader->GetEntries()); }
 
     void ProcessEvent();
     void ProcessInjectedSexa();
@@ -116,7 +125,7 @@ class Packager {
     }
 
     void EndOfEvent();
-    void EndOfAnalysis();
+    bool EndOfAnalysis();
 
    private:
     // tracks //
@@ -158,7 +167,6 @@ class Packager {
 
     // input //
 
-    std::unique_ptr<TFile> fInput_File;
     Schema::Events fInput;
     std::unique_ptr<Framework::TeeTree::Reader> fReader;
     // -- cached
@@ -166,7 +174,7 @@ class Packager {
 
     // output //
 
-    std::unique_ptr<TFile> fOutput_File;
+    std::unique_ptr<TFile> fOutput_File;  // single file, kept alive across every input file, if multiple
     Schema::PackedEvents fOutput;
     std::unique_ptr<Framework::Writer> fWriter;
 

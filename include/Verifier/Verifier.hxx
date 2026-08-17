@@ -1,6 +1,10 @@
 #pragma once
 
+#include <exception>
 #include <memory>
+#include <string>
+#include <string_view>
+#include <vector>
 
 #include <TFile.h>
 #include <TH1.h>
@@ -87,6 +91,7 @@ class Verifier {
         kPasses_Max_DecayLength,
         kPasses_Min_CPAwrtPV,
         kPasses_Max_Chi2NDF,
+        kPasses_Max_Chi2CV,
         // (anti)lambdas : depend on (anti)h-dibaryon decay vertex
         kPasses_Max_L1_DecayLength,
         kPasses_Min_L1_DecayLength,
@@ -112,7 +117,6 @@ class Verifier {
     explicit Verifier(const Settings &settings)
         : fSettings{settings},
           // input
-          fInput_File{std::make_unique<TFile>(fSettings.PathInputFile.c_str(), "READ")},
           fInput{},
           fReader{nullptr},
           // output
@@ -120,7 +124,6 @@ class Verifier {
           fOutput{},
           fWriter{nullptr} {
 
-        fReader = std::make_unique<Framework::TeeTree::Reader>(fInput.CreateModel_TeeTree(fSettings.IsMC, false), E2T::Name_OutputTree, *fInput_File);
         fWriter = std::make_unique<Framework::Writer>(fOutput.CreateModel(fSettings.IsMC), T2DS::Name_FoundHdibaryonRNT, *fOutput_File);
 
         PrepareOutputHistograms();
@@ -128,13 +131,21 @@ class Verifier {
         Logger::Info(__FUNCTION__, "Verifier initialized successfully.");
     }
 
+    [[nodiscard]] bool OpenInput(std::string_view path) {
+        fReader.reset();  // raw `TTree*` must die first
+        try {
+            fReader = std::make_unique<Framework::TeeTree::Reader>(fInput.CreateModel_TeeTree(fSettings.IsMC, false), E2T::Name_OutputTree, path);
+        } catch (const std::exception &exc) {
+            Logger::Error(__FUNCTION__, "Couldn't read {} ({}) -- skipping it.", path, exc.what());
+            return false;
+        }
+        return true;
+    }
+
     void PrepareOutputHistograms();
 
     void Load(long long entry_idx) { fReader->Load(entry_idx); }
-    [[nodiscard]] long long NumberEventsToRead() {
-        auto total = fReader->GetEntries();
-        return fSettings.LimitToNEvents.has_value() ? std::min(static_cast<long long>(fSettings.LimitToNEvents.value()), total) : total;
-    }
+    [[nodiscard]] unsigned long NumberEventsToRead() { return static_cast<unsigned long>(fReader->GetEntries()); }
 
     void ProcessEvent();
     void ProcessInjected();
@@ -146,7 +157,7 @@ class Verifier {
     }
 
     void EndOfEvent();
-    void EndOfAnalysis();
+    bool EndOfAnalysis();
 
    private:
     // injected //
@@ -221,7 +232,6 @@ class Verifier {
 
     // input //
 
-    std::unique_ptr<TFile> fInput_File;
     Schema::Events fInput;
     std::unique_ptr<Framework::TeeTree::Reader> fReader;
     // -- cached
@@ -231,7 +241,7 @@ class Verifier {
 
     // output //
 
-    std::unique_ptr<TFile> fOutput_File;
+    std::unique_ptr<TFile> fOutput_File;  // single file, kept alive across every input file, if multiple
     Schema::FoundHdibaryon fOutput;
     std::unique_ptr<Framework::Writer> fWriter;
 

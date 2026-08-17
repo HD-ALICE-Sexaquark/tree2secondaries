@@ -507,7 +507,7 @@ void Packager::EndOfEvent() {
     fEntries_PiPlus.clear();
 }
 
-void Packager::EndOfAnalysis() {
+bool Packager::EndOfAnalysis() {
 
     Logger::Info(__FUNCTION__, "The following objects have been written into TFile \"{}\":", fSettings.PathOutputFile);
 
@@ -544,6 +544,10 @@ void Packager::EndOfAnalysis() {
     Logger::Info(__FUNCTION__, "- TH1D \"{}\"", fHist_CutFlow_KaonZeroShort->GetName());
 
     Logger::Info(__FUNCTION__, "All done.");
+
+    if (fHist_EventCounter->GetEntries() == 0) return false;
+
+    return true;
 }
 
 }  // namespace T2DS

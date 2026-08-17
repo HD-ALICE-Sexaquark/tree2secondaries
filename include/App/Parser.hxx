@@ -2,6 +2,7 @@
 
 #include <array>
 #include <string>
+#include <vector>
 
 #include <CLI/CLI.hpp>
 
@@ -49,8 +50,8 @@ class Parser {
         settings.IsMC = mode_cmd->got_subcommand("mc");
         auto* data_kind_cmd = settings.IsMC ? mode_cmd->get_subcommand("mc") : mode_cmd->get_subcommand("data");
 
-        // -- input path
-        settings.PathInputFile = InputFile;
+        // -- input paths
+        settings.PathInputFiles = InputFiles;
 
         // -- n events limit
         auto* opt_n = CLI_APP.get_option("-n");
@@ -91,7 +92,7 @@ class Parser {
    protected:
     void AddOptions() {
 
-        CLI_APP.add_option("-i,--input", InputFile, "Path of input file")->required();
+        CLI_APP.add_option("-i,--input", InputFiles, "Path(s) of input file(s)")->required();
         CLI_APP.add_option("-o,--output", "Path of output file")->expected(1);
         CLI_APP.add_option("-n,--nevents", "Limit to N events")->expected(1)->check(CLI::PositiveNumber);
 
@@ -122,7 +123,7 @@ class Parser {
         package_cmd->add_subcommand("data", "Process data");
         package_cmd->require_subcommand(1);
 
-        // -- search mode
+        // search mode
         auto* search_cmd = CLI_APP.add_subcommand("search", "Read \"PackedRNT.root\" files to search for anti-sexaquark reactions");
         // -- mc
         auto* search_mc_cmd = search_cmd->add_subcommand("mc", "Process MC");
@@ -132,7 +133,7 @@ class Parser {
         add_channels_opt(search_data_cmd);
         search_cmd->require_subcommand(1);
 
-        // -- verify mode
+        // verify mode
         auto* verify_cmd = CLI_APP.add_subcommand("verify", "Read \"AnalysisResults.root\" to verify the existence of h-dibaryons");
         verify_cmd->add_subcommand("mc", "Process MC");
         verify_cmd->add_subcommand("data", "Process data");
@@ -142,7 +143,7 @@ class Parser {
     }
 
     CLI::App CLI_APP;
-    std::string InputFile;
+    std::vector<std::string> InputFiles;
 };
 
 }  // namespace T2DS

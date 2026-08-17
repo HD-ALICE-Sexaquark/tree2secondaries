@@ -31,17 +31,16 @@ Additional `<options>`:
 OPTIONS:
 
   -h, --help                  Print this help message and exit
-  -i, --input TEXT REQUIRED   Path of input file
+  -i, --input FILE1 FILE2 ... [REQUIRED] Path(s) of input file(s). Faulty files get skipped.
   -o, --output TEXT           Path of output file
-  -n, --nevents NUMBER        Limit to N events
+  -n, --nevents NUMBER        Limit to N events, counted across all input files
 
 SUBCOMMANDS:
 
   pack data
   pack mc   : Read "AnalysisResults.root" to package injected anti-sexaquarks, tracks and V0s.
-              Both cases require option:
+              Additionally, `pack mc` requires:
               -c, --channel : {A,D,H} Process a standard reaction channel
-              And `pack mc` additionaly requires:
               -m, --mass : {1.73,1.8,1.87,1.94,2.01} Assign injected anti-sexaquark mass
 
   search data

@@ -4,13 +4,14 @@
 #include <cstdint>
 #include <optional>
 #include <string>
+#include <vector>
 
 #include "App/Logger.hxx"
 
 namespace T2DS {
 
 enum EProgramMode : std::uint8_t { FINDER, PACKAGER, VERIFIER };
-inline constexpr std::array<const char*, 3> Name_ProgramMode{"FINDER", "PACKAGER", "VERIFIER"};
+inline constexpr std::array<const char *, 3> Name_ProgramMode{"FINDER", "PACKAGER", "VERIFIER"};
 
 struct Settings {
     void Print() const {
@@ -22,7 +23,14 @@ struct Settings {
         } else if (Mode == EProgramMode::FINDER) {
             Logger::Info("Settings", "ReactionChannel = {}", ReactionChannel);
         }
-        Logger::Info("Settings", "InputFile       = {}", PathInputFile);
+        if (PathInputFiles.size() == 1) {
+            Logger::Info("Settings", "InputFile       = {}", PathInputFiles.front());
+        } else {
+            Logger::Info("Settings", "InputFiles      = {} files", PathInputFiles.size());
+            for (const auto &file : PathInputFiles) {
+                Logger::Info("Settings", "-- {}", file);
+            }
+        }
         Logger::Info("Settings", "OutputFile      = {}", PathOutputFile);
         if (LimitToNEvents.has_value()) {
             Logger::Info("Settings", "LimitToNEvents  = {}", LimitToNEvents.value());
@@ -31,13 +39,13 @@ struct Settings {
         }
     }
 
-    std::string PathInputFile;
+    std::vector<std::string> PathInputFiles;
     std::string PathOutputFile;
     std::optional<unsigned long> LimitToNEvents;
     double SexaquarkMass{};
     EProgramMode Mode{EProgramMode::PACKAGER};
     char ReactionChannel{};
-    bool IsMC;
+    bool IsMC{false};
 };
 
 }  // namespace T2DS

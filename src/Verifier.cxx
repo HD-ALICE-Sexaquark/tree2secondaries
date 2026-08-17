@@ -316,9 +316,9 @@ bool Verifier::FastCuts_Lambda(const Seeder::PCA& pca_neg, const Seeder::PCA& pc
     FillHist(fHist_CutFlow_AntiLambda.get(), EPreFoundLambda::kAllPreFoundLambdas);
     FillHist(fHist_CutFlow_Lambda.get(), EPreFoundLambda::kAllPreFoundLambdas);
 
-    if (CMath::Distance(pca_neg.xyz, pca_pos.xyz) > Cuts::PreFoundLambda::Max_DCAbtwDaughters) return false;
-    FillHist(fHist_CutFlow_AntiLambda.get(), EPreFoundLambda::kPasses_Max_DCAbtwDaughters);
-    FillHist(fHist_CutFlow_Lambda.get(), EPreFoundLambda::kPasses_Max_DCAbtwDaughters);
+    // if (CMath::Distance(pca_neg.xyz, pca_pos.xyz) > Cuts::PreFoundLambda::Max_DCAbtwDaughters) return false; // PENDING: temporarily turned off
+    // FillHist(fHist_CutFlow_AntiLambda.get(), EPreFoundLambda::kPasses_Max_DCAbtwDaughters); // PENDING: temporarily turned off
+    // FillHist(fHist_CutFlow_Lambda.get(), EPreFoundLambda::kPasses_Max_DCAbtwDaughters); // PENDING: temporarily turned off
 
     return true;
 }
@@ -332,17 +332,17 @@ bool Verifier::SlowCuts_Lambda(const Cached::PreFoundLambda& c_lambda, bool anti
     if (c_lambda.Pt() > Cuts::PreFoundLambda::Max_Pt) return false;
     FillHist(hist_cut_flow, EPreFoundLambda::kPasses_Max_Pt);
 
-    if (c_lambda.Pt() < Cuts::PreFoundLambda::Min_Pt) return false;
-    FillHist(hist_cut_flow, EPreFoundLambda::kPasses_Min_Pt);
+    // if (c_lambda.Pt() < Cuts::PreFoundLambda::Min_Pt) return false; // PENDING: temporarily turned off
+    // FillHist(hist_cut_flow, EPreFoundLambda::kPasses_Min_Pt); // PENDING: temporarily turned off
 
     if (std::abs(c_lambda.Rapidity()) > Cuts::PreFoundLambda::AbsMax_Rapidity) return false;
     FillHist(hist_cut_flow, EPreFoundLambda::kPasses_AbsMax_Rapidity);
 
-    if (c_lambda.Mass() < Cuts::PreFoundLambda::Min_Mass) return false;
-    FillHist(hist_cut_flow, EPreFoundLambda::kPasses_Min_Mass);
+    // if (c_lambda.Mass() < Cuts::PreFoundLambda::Min_Mass) return false; // PENDING: temporarily turned off
+    // FillHist(hist_cut_flow, EPreFoundLambda::kPasses_Min_Mass); // PENDING: temporarily turned off
 
-    if (c_lambda.Mass() > Cuts::PreFoundLambda::Max_Mass) return false;
-    FillHist(hist_cut_flow, EPreFoundLambda::kPasses_Max_Mass);
+    // if (c_lambda.Mass() > Cuts::PreFoundLambda::Max_Mass) return false; // PENDING: temporarily turned off
+    // FillHist(hist_cut_flow, EPreFoundLambda::kPasses_Max_Mass); // PENDING: temporarily turned off
 
     if (c_lambda.CPA_wrt_PV() < Cuts::PreFoundLambda::Min_CPAwrtPV) return false;
     FillHist(hist_cut_flow, EPreFoundLambda::kPasses_Min_CPAwrtPV);
@@ -350,11 +350,11 @@ bool Verifier::SlowCuts_Lambda(const Cached::PreFoundLambda& c_lambda, bool anti
     if (std::abs(c_lambda.ArmRadiusDev()) > Cuts::PreFoundLambda::AbsMax_ArmRadiusDev) return false;
     FillHist(hist_cut_flow, EPreFoundLambda::kPasses_AbsMax_ArmRadiusDev);
 
-    if (c_lambda.DCA_wrt_PV() > Cuts::PreFoundLambda::Max_DCAwrtPV) return false;
-    FillHist(hist_cut_flow, EPreFoundLambda::kPasses_Max_DCAwrtPV);
+    // if (c_lambda.DCA_wrt_PV() > Cuts::PreFoundLambda::Max_DCAwrtPV) return false; // PENDING: temporarily turned off
+    // FillHist(hist_cut_flow, EPreFoundLambda::kPasses_Max_DCAwrtPV); // PENDING: temporarily turned off
 
-    // if (static_cast<double>(c_lambda.Chi2NDF) > Cuts::PreFoundLambda::Max_Chi2NDF) return false; // PENDING: temporarily turned off, need to
-    // re-tune FillHist(hist_cut_flow, EPreFoundLambda::kPasses_Max_Chi2NDF); // PENDING: temporarily turned off, need to re-tune
+    if (static_cast<double>(c_lambda.Chi2NDF) > 2.5) return false;
+    FillHist(hist_cut_flow, EPreFoundLambda::kPasses_Max_Chi2NDF);
 
     // depend on (anti)protons //
 
@@ -364,8 +364,8 @@ bool Verifier::SlowCuts_Lambda(const Cached::PreFoundLambda& c_lambda, bool anti
     if (c_lambda.Pr_Pt() > Cuts::PreFoundLambda::Max_Pt_Proton) return false;
     FillHist(hist_cut_flow, EPreFoundLambda::kPasses_Max_Pt_Proton);
 
-    if (c_lambda.Pr_Pt() < Cuts::PreFoundLambda::Min_Pt_Proton) return false;
-    FillHist(hist_cut_flow, EPreFoundLambda::kPasses_Min_Pt_Proton);
+    // if (c_lambda.Pr_Pt() < Cuts::PreFoundLambda::Min_Pt_Proton) return false; // PENDING: temporarily turned off
+    // FillHist(hist_cut_flow, EPreFoundLambda::kPasses_Min_Pt_Proton); // PENDING: temporarily turned off
 
     // depend on pi(minus/plus) //
 
@@ -375,8 +375,8 @@ bool Verifier::SlowCuts_Lambda(const Cached::PreFoundLambda& c_lambda, bool anti
     if (c_lambda.Pi_Pt() > Cuts::PreFoundLambda::Max_Pt_Pion) return false;
     FillHist(hist_cut_flow, EPreFoundLambda::kPasses_Max_Pt_Pion);
 
-    if (c_lambda.Pi_Pt() < Cuts::PreFoundLambda::Min_Pt_Pion) return false;
-    FillHist(hist_cut_flow, EPreFoundLambda::kPasses_Min_Pt_Pion);
+    // if (c_lambda.Pi_Pt() < Cuts::PreFoundLambda::Min_Pt_Pion) return false; // PENDING: temporarily turned off
+    // FillHist(hist_cut_flow, EPreFoundLambda::kPasses_Min_Pt_Pion); // PENDING: temporarily turned off
 
     return true;
 }
@@ -427,6 +427,12 @@ POD::Extended::PreFoundLambda Verifier::CreateExtendedPreFoundLambda(const POD::
     new_lambda.Decay_Y = static_cast<float>(fit.mother.Y());
     new_lambda.Decay_Z = static_cast<float>(fit.mother.Z());
     new_lambda.DcaV0Daughters = static_cast<float>(CMath::Distance(pca_neg.xyz, pca_pos.xyz));
+    new_lambda.Neg_PCAwrtV0_Px = static_cast<float>(pca_neg.Px());
+    new_lambda.Neg_PCAwrtV0_Py = static_cast<float>(pca_neg.Py());
+    new_lambda.Neg_PCAwrtV0_Pz = static_cast<float>(pca_neg.Pz());
+    new_lambda.Pos_PCAwrtV0_Px = static_cast<float>(pca_pos.Px());
+    new_lambda.Pos_PCAwrtV0_Py = static_cast<float>(pca_pos.Py());
+    new_lambda.Pos_PCAwrtV0_Pz = static_cast<float>(pca_pos.Pz());
 
     return new_lambda;
 }
@@ -517,14 +523,14 @@ bool Verifier::FastCuts_Hdibaryon(const Seeder::PCA& pca_lambda1, const Seeder::
 
 bool Verifier::SlowCuts_Hdibaryon(const Cached::Hdibaryon& c_hdib, TH1D* hist_cut_flow) {
 
-    // if (std::abs(static_cast<double>(c_hdib.Pz)) > Cuts::LambdaPair::AbsMax_Pz) return false; // PENDING: temporarily turned off
-    // FillHist(hist_cut_flow, ELambdaPair::kPasses_AbsMax_Pz); // PENDING: temporarily turned off
+    if (std::abs(static_cast<double>(c_hdib.Pz)) > Cuts::LambdaPair::AbsMax_Pz) return false;
+    FillHist(hist_cut_flow, ELambdaPair::kPasses_AbsMax_Pz);
 
-    // if (c_hdib.Pt() > Cuts::LambdaPair::Max_Pt) return false; // PENDING: temporarily turned off
-    // FillHist(hist_cut_flow, ELambdaPair::kPasses_Max_Pt); // PENDING: temporarily turned off
+    if (c_hdib.Pt() > Cuts::LambdaPair::Max_Pt) return false;
+    FillHist(hist_cut_flow, ELambdaPair::kPasses_Max_Pt);
 
-    // if (c_hdib.Pt() < Cuts::LambdaPair::Min_Pt) return false; // PENDING: temporarily turned off
-    // FillHist(hist_cut_flow, ELambdaPair::kPasses_Min_Pt); // PENDING: temporarily turned off
+    if (c_hdib.Pt() < Cuts::LambdaPair::Min_Pt) return false;
+    FillHist(hist_cut_flow, ELambdaPair::kPasses_Min_Pt);
 
     // if (c_hdib.Mass() < Cuts::LambdaPair::Min_Mass) return false; // PENDING: temporarily turned off
     // FillHist(hist_cut_flow, ELambdaPair::kPasses_Min_Mass); // PENDING: temporarily turned off
@@ -532,8 +538,8 @@ bool Verifier::SlowCuts_Hdibaryon(const Cached::Hdibaryon& c_hdib, TH1D* hist_cu
     // if (c_hdib.Mass() > Cuts::LambdaPair::Max_Mass) return false; // PENDING: temporarily turned off
     // FillHist(hist_cut_flow, ELambdaPair::kPasses_Max_Mass); // PENDING: temporarily turned off
 
-    // if (std::abs(c_hdib.Rapidity()) > Cuts::LambdaPair::AbsMax_Rapidity) return false; // PENDING: temporarily turned off
-    // FillHist(hist_cut_flow, ELambdaPair::kPasses_AbsMax_Rapidity); // PENDING: temporarily turned off
+    if (std::abs(c_hdib.Rapidity()) > Cuts::LambdaPair::AbsMax_Rapidity) return false;
+    FillHist(hist_cut_flow, ELambdaPair::kPasses_AbsMax_Rapidity);
 
     // if (static_cast<double>(c_hdib.DecayLength) > Cuts::LambdaPair::Max_DecayLength) return false; // PENDING: temporarily turned off, need to
     // re-tune FillHist(hist_cut_flow, ELambdaPair::kPasses_Max_DecayLength); // PENDING: temporarily turned off, need to re-tune
@@ -541,13 +547,16 @@ bool Verifier::SlowCuts_Hdibaryon(const Cached::Hdibaryon& c_hdib, TH1D* hist_cu
     // if (c_hdib.CPA_wrt_PV() < Cuts::LambdaPair::Min_CPAwrtPV) return false; // PENDING: temporarily turned off
     // FillHist(hist_cut_flow, ELambdaPair::kPasses_Min_CPAwrtPV); // PENDING: temporarily turned off
 
-    // if (static_cast<double>(c_hdib.Chi2NDF) > Cuts::LambdaPair::Max_Chi2NDF) return false; // PENDING: temporarily turned off, need to re-tune
-    // FillHist(hist_cut_flow, ELambdaPair::kPasses_Max_Chi2NDF); // PENDING: temporarily turned off, need to re-tune
+    if (static_cast<double>(c_hdib.Chi2NDF) > Cuts::LambdaPair::Max_Chi2NDF) return false;
+    FillHist(hist_cut_flow, ELambdaPair::kPasses_Max_Chi2NDF);
+
+    if (static_cast<double>(c_hdib.Chi2CV) > 5.) return false;
+    FillHist(hist_cut_flow, ELambdaPair::kPasses_Max_Chi2CV);
 
     // (anti)lambda : depend on (anti)h-dibaryon decay vertex //
 
-    // if (c_hdib.L1_DecayLength() > Cuts::PreFoundLambda::Max_DecayLength) return false; // PENDING: temporarily turned off
-    // FillHist(hist_cut_flow, ELambdaPair::kPasses_Max_L1_DecayLength); // PENDING: temporarily turned off
+    if (c_hdib.L1_DecayLength() > Cuts::PreFoundLambda::Max_DecayLength) return false;
+    FillHist(hist_cut_flow, ELambdaPair::kPasses_Max_L1_DecayLength);
 
     // if (c_hdib.L1_DecayLength() < Cuts::PreFoundLambda::Min_DecayLength) return false; // PENDING: temporarily turned off
     // FillHist(hist_cut_flow, ELambdaPair::kPasses_Min_L1_DecayLength); // PENDING: temporarily turned off
@@ -555,8 +564,8 @@ bool Verifier::SlowCuts_Hdibaryon(const Cached::Hdibaryon& c_hdib, TH1D* hist_cu
     // if (c_hdib.L1_CPA_wrt_DV() < Cuts::PreFoundLambda::Min_CPAwrtDV) return false; // PENDING: temporarily turned off
     // FillHist(hist_cut_flow, ELambdaPair::kPasses_Min_L1_CPAwrtDV); // PENDING: temporarily turned off
 
-    // if (c_hdib.L2_DecayLength() > Cuts::PreFoundLambda::Max_DecayLength) return false; // PENDING: temporarily turned off
-    // FillHist(hist_cut_flow, ELambdaPair::kPasses_Max_L2_DecayLength); // PENDING: temporarily turned off
+    if (c_hdib.L2_DecayLength() > Cuts::PreFoundLambda::Max_DecayLength) return false;
+    FillHist(hist_cut_flow, ELambdaPair::kPasses_Max_L2_DecayLength);
 
     // if (c_hdib.L2_DecayLength() < Cuts::PreFoundLambda::Min_DecayLength) return false; // PENDING: temporarily turned off
     // FillHist(hist_cut_flow, ELambdaPair::kPasses_Min_L2_DecayLength); // PENDING: temporarily turned off
@@ -673,7 +682,7 @@ void Verifier::EndOfEvent() {
     fOutput.Clear(fSettings.IsMC);
 }
 
-void Verifier::EndOfAnalysis() {
+bool Verifier::EndOfAnalysis() {
 
     Logger::Info(__FUNCTION__, "The following objects have been written into TFile \"{}\":", fSettings.PathOutputFile);
 
@@ -698,6 +707,10 @@ void Verifier::EndOfAnalysis() {
     Logger::Info(__FUNCTION__, "- TH1D \"{}\"", fHist_CutFlow_Hdibaryon->GetName());
 
     Logger::Info(__FUNCTION__, "All done.");
+
+    if (fHist_EventCounter->GetEntries() == 0) return false;
+
+    return true;
 }
 
 }  // namespace T2DS

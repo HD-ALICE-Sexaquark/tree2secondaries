@@ -560,7 +560,7 @@ void Finder::EndOfEvent() {
 
 // ## END OF CYCLES ## //
 
-void Finder::EndOfAnalysis() {
+bool Finder::EndOfAnalysis() {
 
     Logger::Info(__FUNCTION__, "The following objects have been written into TFile \"{}\":", fSettings.PathOutputFile);
 
@@ -580,6 +580,10 @@ void Finder::EndOfAnalysis() {
     Logger::Info(__FUNCTION__, "- TH1D \"{}\"", fHist_CutFlow_BkgCandidates->GetName());
 
     Logger::Info(__FUNCTION__, "All done.");
+
+    if (fHist_EventCounter->GetEntries() == 0) return false;
+
+    return true;
 }
 
 }  // namespace T2DS
