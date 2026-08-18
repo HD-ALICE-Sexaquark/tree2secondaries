@@ -50,5 +50,6 @@ SUBCOMMANDS:
 
   verify data
   verify mc   : Read "AnalysisResults.root" to verify the existence of (anti)h-dibaryons.
+                It also produces artificial lambda+antilambda background.
                 Doesn't require further options.
 ```

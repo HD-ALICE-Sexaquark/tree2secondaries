@@ -545,9 +545,7 @@ bool Packager::EndOfAnalysis() {
 
     Logger::Info(__FUNCTION__, "All done.");
 
-    if (fHist_EventCounter->GetEntries() == 0) return false;
-
-    return true;
+    return fHist_EventCounter->GetEntries() != 0;
 }
 
 }  // namespace T2DS

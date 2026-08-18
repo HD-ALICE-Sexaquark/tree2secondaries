@@ -53,6 +53,10 @@ class Verifier {
 
     enum class EPreFoundLambda : int {
         kAllPreFoundLambdas,
+        // pre-seed cuts
+        kPasses_DiffDaughters_Logical,
+        kPasses_DiffDaughters_Physical,
+        kPasses_NotDuplicated,
         // fast cuts
         kPasses_Max_DCAbtwDaughters,
         // slow cuts
@@ -60,8 +64,6 @@ class Verifier {
         kPasses_Max_Pt,
         kPasses_Min_Pt,
         kPasses_AbsMax_Rapidity,
-        kPasses_Min_Mass,
-        kPasses_Max_Mass,
         kPasses_Min_CPAwrtPV,
         kPasses_AbsMax_ArmRadiusDev,
         kPasses_Max_DCAwrtPV,
@@ -79,6 +81,11 @@ class Verifier {
     };
     enum class ELambdaPair : int {
         kAllCombinations,
+        // pre-seed cuts
+        kPasses_DiffLambdas_Logical,
+        kPasses_DiffTracks_Logical,
+        kPasses_DiffTracks_Physical,
+        kPasses_DiffLambdas_Physical,
         // fast cuts
         kPasses_Max_DCAbtwDau,
         // slow cuts
@@ -152,8 +159,9 @@ class Verifier {
     void ProcessPreFoundLambda();
 
     void Verify() {
-        VerifyLambdaPair(true);
-        VerifyLambdaPair(false);
+        VerifyLambdaPair(true, true);    // anti-lambda + anti-lambda
+        VerifyLambdaPair(false, false);  // lambda + lambda
+        VerifyLambdaPair(false, true);   // mixed: lambda + anti-lambda
     }
 
     void EndOfEvent();
@@ -168,23 +176,27 @@ class Verifier {
     [[nodiscard]] POD::Track ExtractTrack(const POD::PreFoundLambda &pod_lambda, short charge) const;
 
     // pre-found on-the-fly (anti)lambdas //
-    [[nodiscard]] bool FastCuts_Lambda(const Seeder::PCA &pca_neg, const Seeder::PCA &pca_pos);
-    bool SlowCuts_Lambda(const Cached::PreFoundLambda &c_lambda, bool anti_channel);
+    [[nodiscard]] bool IsDuplicatedPreFoundLambda(std::size_t entry_lambda) const;
+    [[nodiscard]] bool PreSeedCuts_Lambda(const POD::PreFoundLambda &lambda, std::size_t entry_lambda);
+    [[nodiscard]] bool PostSeedCuts_Lambda(const Seeder::PCA &pca_neg, const Seeder::PCA &pca_pos);
+    bool PostFitCuts_Lambda(const Cached::PreFoundLambda &c_lambda);
 
     POD::Extended::McParticle BuildMcPreFoundLambda(const POD::Extended::McParticle &mc_neg, const POD::Extended::McParticle &mc_pos,
                                                     const HD::DecayTree &decay_pid);
     POD::Extended::PreFoundLambda CreateExtendedPreFoundLambda(const POD::PreFoundLambda &old_lambda, const KF::FitResult &fit,
-                                                               const Seeder::PCA &pca_neg, const Seeder::PCA &pca_pos);
+                                                               const Seeder::PCA &pca_neg, const Seeder::PCA &pca_pos, bool anti_lambda);
 
     // h-dibaryon //
-    void VerifyLambdaPair(bool anti_channel);
+    void VerifyLambdaPair(bool anti_channel_l1, bool anti_channel_l2);
 
-    [[nodiscard]] bool FastCuts_Hdibaryon(const Seeder::PCA &pca_lambda1, const Seeder::PCA &pca_lambda2, TH1D *hist_cut_flow);
-    [[nodiscard]] bool SlowCuts_Hdibaryon(const Cached::Hdibaryon &c_hdib, TH1D *hist_cut_flow);
+    [[nodiscard]] bool PreSeedCuts_Hdibaryon(const POD::Extended::PreFoundLambda &lambda1, const POD::Extended::PreFoundLambda &lambda2,
+                                             TH1D *hist_cut_flow);
+    [[nodiscard]] bool PostSeedCuts_Hdibaryon(const Seeder::PCA &pca_lambda1, const Seeder::PCA &pca_lambda2, TH1D *hist_cut_flow);
+    [[nodiscard]] bool PostFitCuts_Hdibaryon(const Cached::Hdibaryon &c_hdib, TH1D *hist_cut_flow);
 
     POD::Extended::McParticle BuildMcHdibaryon(const POD::Extended::McParticle &mc_lambda1, const POD::Extended::McParticle &mc_lambda2,
-                                               const HD::DecayTree &decay_pid);
-    POD::LambdaPair CreateLambdaPair(const KF::FitResult &fit, const Seeder::PCA &pca_lambda1, const Seeder::PCA &pca_lambda2, bool anti_channel);
+                                               int pdg_code_hypothesis);
+    POD::LambdaPair CreateLambdaPair(const KF::FitResult &fit, const Seeder::PCA &pca_lambda1, const Seeder::PCA &pca_lambda2);
 
     // fit configuration //
     // -- (anti)h-dibaryon mass is never pinned in any configuration, as it's the property under study
@@ -254,6 +266,7 @@ class Verifier {
     // -- cut flow for (anti)h-dibaryons
     std::unique_ptr<TH1D> fHist_CutFlow_AntiHdibaryon;
     std::unique_ptr<TH1D> fHist_CutFlow_Hdibaryon;
+    std::unique_ptr<TH1D> fHist_CutFlow_MixedLambdaPair;
 };
 
 }  // namespace T2DS

@@ -33,8 +33,10 @@ namespace T2DS {
 void Verifier::PrepareOutputHistograms() {
     // event counter
     fHist_EventCounter = std::make_unique<TH1D>("N_Events", ";N_Events;", 1, 0., 1.);
+
     // cut flows
     constexpr const char* hist_title = ";;N Passed Cut";
+
     // -- for (anti)lambdas
     fHist_CutFlow_AntiLambda = std::make_unique<TH1D>(                                                 //
         std::format("CutFlow_{}", DB::Particles::Particle("AntiLambda").acronym).c_str(), hist_title,  //
@@ -42,9 +44,15 @@ void Verifier::PrepareOutputHistograms() {
     fHist_CutFlow_Lambda = std::make_unique<TH1D>(                                                 //
         std::format("CutFlow_{}", DB::Particles::Particle("Lambda").acronym).c_str(), hist_title,  //
         static_cast<int>(EPreFoundLambda::kNPreFoundLambdaCuts), 0., static_cast<double>(EPreFoundLambda::kNPreFoundLambdaCuts));
+
+    // -- define bin labels
     for (auto* hist_lambda : {fHist_CutFlow_AntiLambda.get(), fHist_CutFlow_Lambda.get()}) {
         auto* x_axis = hist_lambda->GetXaxis();
         x_axis->SetBinLabel(static_cast<int>(EPreFoundLambda::kAllPreFoundLambdas) + 1, "AllPreFoundLambdas");
+        // pre-seed cuts
+        x_axis->SetBinLabel(static_cast<int>(EPreFoundLambda::kPasses_DiffDaughters_Logical) + 1, "Passes_DiffDaughters_Logical");
+        x_axis->SetBinLabel(static_cast<int>(EPreFoundLambda::kPasses_DiffDaughters_Physical) + 1, "Passes_DiffDaughters_Physical");
+        x_axis->SetBinLabel(static_cast<int>(EPreFoundLambda::kPasses_NotDuplicated) + 1, "Passes_NotDuplicated");
         // fast cuts
         x_axis->SetBinLabel(static_cast<int>(EPreFoundLambda::kPasses_Max_DCAbtwDaughters) + 1, "Passes_Max_DCAbtwDaughters");
         // slow cuts
@@ -52,8 +60,6 @@ void Verifier::PrepareOutputHistograms() {
         x_axis->SetBinLabel(static_cast<int>(EPreFoundLambda::kPasses_Max_Pt) + 1, "Passes_Max_Pt");
         x_axis->SetBinLabel(static_cast<int>(EPreFoundLambda::kPasses_Min_Pt) + 1, "Passes_Min_Pt");
         x_axis->SetBinLabel(static_cast<int>(EPreFoundLambda::kPasses_AbsMax_Rapidity) + 1, "Passes_AbsMax_Rapidity");
-        x_axis->SetBinLabel(static_cast<int>(EPreFoundLambda::kPasses_Min_Mass) + 1, "Passes_Min_Mass");
-        x_axis->SetBinLabel(static_cast<int>(EPreFoundLambda::kPasses_Max_Mass) + 1, "Passes_Max_Mass");
         x_axis->SetBinLabel(static_cast<int>(EPreFoundLambda::kPasses_Min_CPAwrtPV) + 1, "Passes_Min_CPAwrtPV");
         x_axis->SetBinLabel(static_cast<int>(EPreFoundLambda::kPasses_AbsMax_ArmRadiusDev) + 1, "Passes_AbsMax_ArmRadiusDev");
         x_axis->SetBinLabel(static_cast<int>(EPreFoundLambda::kPasses_Max_DCAwrtPV) + 1, "Passes_Max_DCAwrtPV");
@@ -67,16 +73,27 @@ void Verifier::PrepareOutputHistograms() {
         x_axis->SetBinLabel(static_cast<int>(EPreFoundLambda::kPasses_Max_Pt_Pion) + 1, "Passes_Max_Pt_Pion");
         x_axis->SetBinLabel(static_cast<int>(EPreFoundLambda::kPasses_Min_Pt_Pion) + 1, "Passes_Min_Pt_Pion");
     }
-    // -- for (anti)h-dibaryons
-    fHist_CutFlow_AntiHdibaryon = std::make_unique<TH1D>(                                                 //
-        std::format("CutFlow_{}", DB::Particles::Particle("AntiHdibaryon").acronym).c_str(), hist_title,  //
-        static_cast<int>(ELambdaPair::kNLambdaPairCuts), 0., static_cast<double>(ELambdaPair::kNLambdaPairCuts));
-    fHist_CutFlow_Hdibaryon = std::make_unique<TH1D>(                                                 //
-        std::format("CutFlow_{}", DB::Particles::Particle("Hdibaryon").acronym).c_str(), hist_title,  //
-        static_cast<int>(ELambdaPair::kNLambdaPairCuts), 0., static_cast<double>(ELambdaPair::kNLambdaPairCuts));
-    for (auto* hist_hdib : {fHist_CutFlow_AntiHdibaryon.get(), fHist_CutFlow_Hdibaryon.get()}) {
+
+    // -- for (anti)h-dibaryons + mixed lambda pairs
+    fHist_CutFlow_AntiHdibaryon =
+        std::make_unique<TH1D>(std::format("CutFlow_{}", DB::Particles::Particle("AntiHdibaryon").acronym).c_str(), hist_title,  //
+                               static_cast<int>(ELambdaPair::kNLambdaPairCuts), 0., static_cast<double>(ELambdaPair::kNLambdaPairCuts));
+    fHist_CutFlow_Hdibaryon =
+        std::make_unique<TH1D>(std::format("CutFlow_{}", DB::Particles::Particle("Hdibaryon").acronym).c_str(), hist_title,  //
+                               static_cast<int>(ELambdaPair::kNLambdaPairCuts), 0., static_cast<double>(ELambdaPair::kNLambdaPairCuts));
+    fHist_CutFlow_MixedLambdaPair =
+        std::make_unique<TH1D>("CutFlow_MixedLL", hist_title,  //
+                               static_cast<int>(ELambdaPair::kNLambdaPairCuts), 0., static_cast<double>(ELambdaPair::kNLambdaPairCuts));
+
+    // -- define bin labels
+    for (auto* hist_hdib : {fHist_CutFlow_AntiHdibaryon.get(), fHist_CutFlow_Hdibaryon.get(), fHist_CutFlow_MixedLambdaPair.get()}) {
         auto* x_axis = hist_hdib->GetXaxis();
         x_axis->SetBinLabel(static_cast<int>(ELambdaPair::kAllCombinations) + 1, "AllCombinations");
+        // pre-seed cuts
+        x_axis->SetBinLabel(static_cast<int>(ELambdaPair::kPasses_DiffLambdas_Logical) + 1, "Passes_DiffLambdas_Logical");
+        x_axis->SetBinLabel(static_cast<int>(ELambdaPair::kPasses_DiffTracks_Logical) + 1, "Passes_DiffTracks_Logical");
+        x_axis->SetBinLabel(static_cast<int>(ELambdaPair::kPasses_DiffTracks_Physical) + 1, "Passes_DiffTracks_Physical");
+        x_axis->SetBinLabel(static_cast<int>(ELambdaPair::kPasses_DiffLambdas_Physical) + 1, "Passes_DiffLambdas_Physical");
         // fast cuts
         x_axis->SetBinLabel(static_cast<int>(ELambdaPair::kPasses_Max_DCAbtwDau) + 1, "Passes_Max_DCAbtwDau");
         // slow cuts
@@ -89,6 +106,7 @@ void Verifier::PrepareOutputHistograms() {
         x_axis->SetBinLabel(static_cast<int>(ELambdaPair::kPasses_Max_DecayLength) + 1, "Passes_Max_DecayLength");
         x_axis->SetBinLabel(static_cast<int>(ELambdaPair::kPasses_Min_CPAwrtPV) + 1, "Passes_Min_CPAwrtPV");
         x_axis->SetBinLabel(static_cast<int>(ELambdaPair::kPasses_Max_Chi2NDF) + 1, "Passes_Max_Chi2NDF");
+        x_axis->SetBinLabel(static_cast<int>(ELambdaPair::kPasses_Max_Chi2CV) + 1, "Passes_Max_Chi2CV");
         // (anti)lambdas : depend on (anti)h-dibaryon decay vertex
         x_axis->SetBinLabel(static_cast<int>(ELambdaPair::kPasses_Max_L1_DecayLength) + 1, "Passes_Max_L1_DecayLength");
         x_axis->SetBinLabel(static_cast<int>(ELambdaPair::kPasses_Min_L1_DecayLength) + 1, "Passes_Min_L1_DecayLength");
@@ -254,14 +272,17 @@ void Verifier::ProcessPreFoundLambda() {
 
         const auto& in_lambda = fInput.PreFoundLambda[entry_lambda];
 
+        // logical cuts (1) //
+        if (!PreSeedCuts_Lambda(in_lambda, entry_lambda)) continue;
+
         auto track_neg = ExtractTrack(in_lambda, -1);
         auto track_pos = ExtractTrack(in_lambda, +1);
 
         // PCAs //
         auto [seed_neg, seed_pos, pca_cache] = Seeder::HelixHelix::FastCorrectPCAs(track_neg, track_pos, fMagneticField);
 
-        // apply cuts (1) //
-        if (!FastCuts_Lambda(seed_neg.pca, seed_pos.pca)) continue;
+        // apply cuts (2) //
+        if (!PostSeedCuts_Lambda(seed_neg.pca, seed_pos.pca)) continue;
 
         // PCAs derivatives //
         auto [deriv_neg, deriv_pos] = Seeder::HelixHelix::ComputeDerivatives(seed_neg, seed_pos, pca_cache);
@@ -276,11 +297,11 @@ void Verifier::ProcessPreFoundLambda() {
                                      fMagneticField, fit_policy);
 
             // create storage+computation (anti)lambda //
-            POD::Extended::PreFoundLambda new_lambda = CreateExtendedPreFoundLambda(in_lambda, fit, seed_neg.pca, seed_pos.pca);
-            Cached::PreFoundLambda c_lambda(new_lambda, anti_channel, fPrimaryVertex);
+            POD::Extended::PreFoundLambda new_lambda = CreateExtendedPreFoundLambda(in_lambda, fit, seed_neg.pca, seed_pos.pca, anti_channel);
+            Cached::PreFoundLambda c_lambda(new_lambda, fPrimaryVertex);
 
-            // apply more cuts (2) //
-            if (!SlowCuts_Lambda(c_lambda, anti_channel)) continue;
+            // apply more cuts (3) //
+            if (!PostFitCuts_Lambda(c_lambda)) continue;
 
             // store reconstructed //
             if (anti_channel) {
@@ -311,10 +332,47 @@ void Verifier::ProcessPreFoundLambda() {
     }  // end of loop over pre-found (anti)lambdas
 }
 
-// Fill both histograms at this stage.
-bool Verifier::FastCuts_Lambda(const Seeder::PCA& pca_neg, const Seeder::PCA& pca_pos) {
+// Among duplicates, keep the one with the tightest pre-fit vertex; ties go to the lower entry.
+// NOTE: order-independent on purpose -- "keep the first" would let a worse twin evict a better one.
+bool Verifier::IsDuplicatedPreFoundLambda(std::size_t entry_lambda) const {
+    const auto& lambda = fInput.PreFoundLambda[entry_lambda];
+    for (std::size_t entry_other = 0; entry_other < fInput.PreFoundLambda.size(); ++entry_other) {
+        if (entry_other == entry_lambda) continue;
+        const auto& rival = fInput.PreFoundLambda[entry_other];
+        if (!HD::SameLambda(rival, lambda, Cuts::PreFoundLambda::Max_TracksDeltaR, Cuts::PreFoundLambda::Max_TracksRelDeltaP)) {
+            continue;
+        }
+        if (rival.DcaV0Daughters < lambda.DcaV0Daughters) return true;
+        auto lambda_sum_tpc_cls = lambda.Neg_TPC_NClusters + lambda.Pos_TPC_NClusters;
+        auto rival_sum_tpc_cls = rival.Neg_TPC_NClusters + rival.Pos_TPC_NClusters;
+        if (rival.DcaV0Daughters == lambda.DcaV0Daughters && rival_sum_tpc_cls > lambda_sum_tpc_cls) return true;
+        if (rival.DcaV0Daughters == lambda.DcaV0Daughters && rival_sum_tpc_cls == lambda_sum_tpc_cls && entry_other < entry_lambda) return true;
+    }
+    return false;
+}
+
+bool Verifier::PreSeedCuts_Lambda(const POD::PreFoundLambda& lambda, std::size_t entry_lambda) {
     FillHist(fHist_CutFlow_AntiLambda.get(), EPreFoundLambda::kAllPreFoundLambdas);
     FillHist(fHist_CutFlow_Lambda.get(), EPreFoundLambda::kAllPreFoundLambdas);
+
+    if (HD::SameDaughterEntries(lambda)) return false;
+    FillHist(fHist_CutFlow_AntiLambda.get(), EPreFoundLambda::kPasses_DiffDaughters_Logical);
+    FillHist(fHist_CutFlow_Lambda.get(), EPreFoundLambda::kPasses_DiffDaughters_Logical);
+
+    if (CMath::IsSameHelix(lambda.Neg_State, lambda.Pos_State, Cuts::PreFoundLambda::Max_TracksDeltaR, Cuts::PreFoundLambda::Max_TracksRelDeltaP)) {
+        return false;
+    }
+    FillHist(fHist_CutFlow_AntiLambda.get(), EPreFoundLambda::kPasses_DiffDaughters_Physical);
+    FillHist(fHist_CutFlow_Lambda.get(), EPreFoundLambda::kPasses_DiffDaughters_Physical);
+
+    if (IsDuplicatedPreFoundLambda(entry_lambda)) return false;
+    FillHist(fHist_CutFlow_AntiLambda.get(), EPreFoundLambda::kPasses_NotDuplicated);
+    FillHist(fHist_CutFlow_Lambda.get(), EPreFoundLambda::kPasses_NotDuplicated);
+
+    return true;
+}
+
+bool Verifier::PostSeedCuts_Lambda(const Seeder::PCA& pca_neg, const Seeder::PCA& pca_pos) {
 
     // if (CMath::Distance(pca_neg.xyz, pca_pos.xyz) > Cuts::PreFoundLambda::Max_DCAbtwDaughters) return false; // PENDING: temporarily turned off
     // FillHist(fHist_CutFlow_AntiLambda.get(), EPreFoundLambda::kPasses_Max_DCAbtwDaughters); // PENDING: temporarily turned off
@@ -323,8 +381,8 @@ bool Verifier::FastCuts_Lambda(const Seeder::PCA& pca_neg, const Seeder::PCA& pc
     return true;
 }
 
-bool Verifier::SlowCuts_Lambda(const Cached::PreFoundLambda& c_lambda, bool anti_channel) {
-    auto* hist_cut_flow = anti_channel ? fHist_CutFlow_AntiLambda.get() : fHist_CutFlow_Lambda.get();
+bool Verifier::PostFitCuts_Lambda(const Cached::PreFoundLambda& c_lambda) {
+    auto* hist_cut_flow = c_lambda.IsAntiLambda ? fHist_CutFlow_AntiLambda.get() : fHist_CutFlow_Lambda.get();
 
     if (std::abs(static_cast<double>(c_lambda.Pz)) > Cuts::PreFoundLambda::AbsMax_Pz) return false;
     FillHist(hist_cut_flow, EPreFoundLambda::kPasses_AbsMax_Pz);
@@ -399,7 +457,7 @@ POD::Extended::McParticle Verifier::BuildMcPreFoundLambda(const POD::Extended::M
 }
 
 POD::Extended::PreFoundLambda Verifier::CreateExtendedPreFoundLambda(const POD::PreFoundLambda& old_lambda, const KF::FitResult& fit,
-                                                                     const Seeder::PCA& pca_neg, const Seeder::PCA& pca_pos) {
+                                                                     const Seeder::PCA& pca_neg, const Seeder::PCA& pca_pos, bool anti_lambda) {
     // profit from initialization list to extend data
     POD::Extended::PreFoundLambda new_lambda{old_lambda,
                                              static_cast<float>(fit.mother.Px()),
@@ -421,7 +479,8 @@ POD::Extended::PreFoundLambda Verifier::CreateExtendedPreFoundLambda(const POD::
                                              static_cast<float>(fit.Dau2_Px()),
                                              static_cast<float>(fit.Dau2_Py()),
                                              static_cast<float>(fit.Dau2_Pz()),
-                                             static_cast<float>(fit.Dau2_E())};
+                                             static_cast<float>(fit.Dau2_E()),
+                                             anti_lambda};
     // override previous info
     new_lambda.Decay_X = static_cast<float>(fit.mother.X());
     new_lambda.Decay_Y = static_cast<float>(fit.mother.Y());
@@ -439,16 +498,30 @@ POD::Extended::PreFoundLambda Verifier::CreateExtendedPreFoundLambda(const POD::
 
 // ## H-dibaryon ZONE ## //
 
-void Verifier::VerifyLambdaPair(bool anti_channel) {
+void Verifier::VerifyLambdaPair(bool anti_channel_l1, bool anti_channel_l2) {
 
-    // determine rules based on reconstruction of lambdas or anti-lambdas //
-    const auto& decay_pid = HD::GetDecayTree(anti_channel);
-    auto* hist_cut_flow = anti_channel ? fHist_CutFlow_AntiHdibaryon.get() : fHist_CutFlow_Hdibaryon.get();
-    const auto& input_lambdas = anti_channel ? fTemp_AntiLambda : fTemp_Lambda;
-    const auto& input_mc_lambdas = anti_channel ? fTemp_MC_AntiLambda : fTemp_MC_Lambda;
-    const auto& input_mc_lambdas_neg = anti_channel ? fTemp_MC_AntiLambda_Neg : fTemp_MC_Lambda_Neg;
-    const auto& input_mc_lambdas_pos = anti_channel ? fTemp_MC_AntiLambda_Pos : fTemp_MC_Lambda_Pos;
-    const std::size_t n_lambdas = input_lambdas.size();
+    // determine rules based on the species assigned to each (anti)lambda //
+    // -- the mixed channel is the lambda + anti-lambda background, which no (anti)h-dibaryon can decay into
+    const bool mixed_channel = anti_channel_l1 != anti_channel_l2;
+    const bool anti_channel = anti_channel_l1 && anti_channel_l2;
+
+    const auto& decay_pid_l1 = HD::GetDecayTree(anti_channel_l1);
+    const auto& decay_pid_l2 = HD::GetDecayTree(anti_channel_l2);
+    // NOTE: "Unknown" carries a pdg code no true particle can match, so the mixed channel is never labelled as signal
+    const int pdg_code_hypothesis = mixed_channel ? DB::Particles::Particle("Unknown").pdg_code : decay_pid_l1.hdibaryon.pdg_code;
+
+    auto* hist_cut_flow = mixed_channel  ? fHist_CutFlow_MixedLambdaPair.get()
+                          : anti_channel ? fHist_CutFlow_AntiHdibaryon.get()
+                                         : fHist_CutFlow_Hdibaryon.get();
+
+    const auto& input_lambdas_l1 = anti_channel_l1 ? fTemp_AntiLambda : fTemp_Lambda;
+    const auto& input_mc_lambdas_l1 = anti_channel_l1 ? fTemp_MC_AntiLambda : fTemp_MC_Lambda;
+    const auto& input_mc_lambdas_l1_neg = anti_channel_l1 ? fTemp_MC_AntiLambda_Neg : fTemp_MC_Lambda_Neg;
+    const auto& input_mc_lambdas_l1_pos = anti_channel_l1 ? fTemp_MC_AntiLambda_Pos : fTemp_MC_Lambda_Pos;
+    const auto& input_lambdas_l2 = anti_channel_l2 ? fTemp_AntiLambda : fTemp_Lambda;
+    const auto& input_mc_lambdas_l2 = anti_channel_l2 ? fTemp_MC_AntiLambda : fTemp_MC_Lambda;
+    const auto& input_mc_lambdas_l2_neg = anti_channel_l2 ? fTemp_MC_AntiLambda_Neg : fTemp_MC_Lambda_Neg;
+    const auto& input_mc_lambdas_l2_pos = anti_channel_l2 ? fTemp_MC_AntiLambda_Pos : fTemp_MC_Lambda_Pos;
 
     // -- the (anti)h-dibaryon mass is never pinned, because it's the property to study
     constexpr FitSetup setup = GetFitSetup();
@@ -460,38 +533,37 @@ void Verifier::VerifyLambdaPair(bool anti_channel) {
     };
 
     // loop over all possible pairs of (anti)lambdas //
-    for (std::size_t entry_lambda1 = 0; entry_lambda1 + 1 < n_lambdas; ++entry_lambda1) {
-        const auto& lambda1 = input_lambdas[entry_lambda1];  // cache index lookup
+    for (std::size_t entry_lambda1 = 0; entry_lambda1 < input_lambdas_l1.size(); ++entry_lambda1) {
+        const auto& lambda1 = input_lambdas_l1[entry_lambda1];  // cache index lookup
 
-        for (std::size_t entry_lambda2 = entry_lambda1 + 1; entry_lambda2 < n_lambdas; ++entry_lambda2) {
-            const auto& lambda2 = input_lambdas[entry_lambda2];  // cache index lookup
+        // -- in the signal channels both legs come from a single collection and the pair is unordered, so only the
+        //    upper triangle is scanned; in the mixed one the two collections are disjoint, so it's the full product
+        for (std::size_t entry_lambda2 = mixed_channel ? 0 : entry_lambda1 + 1; entry_lambda2 < input_lambdas_l2.size(); ++entry_lambda2) {
+            const auto& lambda2 = input_lambdas_l2[entry_lambda2];  // cache index lookup
 
-            // sanity check //
-            if (lambda1.Neg_EsdEntry == lambda2.Neg_EsdEntry || lambda1.Neg_EsdEntry == lambda2.Pos_EsdEntry ||
-                lambda1.Pos_EsdEntry == lambda2.Neg_EsdEntry || lambda1.Pos_EsdEntry == lambda2.Pos_EsdEntry) {
-                continue;
-            }
+            // logical cuts (1) //
+            if (!PreSeedCuts_Hdibaryon(lambda1, lambda2, hist_cut_flow)) continue;
 
             // PCAs //
             Seeder::LineLine::Cache pca_cache;
             auto [seed_lambda1, seed_lambda2] = Seeder::LineLine::FastPCAs(lambda1, lambda2, &pca_cache);
 
-            // apply cuts (1) //
-            if (!FastCuts_Hdibaryon(seed_lambda1.pca, seed_lambda2.pca, hist_cut_flow)) continue;
+            // apply cuts (2) //
+            if (!PostSeedCuts_Hdibaryon(seed_lambda1.pca, seed_lambda2.pca, hist_cut_flow)) continue;
 
             // PCAs derivatives //
             auto [deriv_lambda1, deriv_lambda2] = Seeder::LineLine::ComputeDerivatives(pca_cache);
 
             // fit vertex //
-            auto fit = KF::FitVertex(lambda1, lambda2, decay_pid.lambda, decay_pid.lambda, {seed_lambda1, deriv_lambda1},
+            auto fit = KF::FitVertex(lambda1, lambda2, decay_pid_l1.lambda, decay_pid_l2.lambda, {seed_lambda1, deriv_lambda1},
                                      {seed_lambda2, deriv_lambda2}, fit_policy);
 
             // create storage+computation units //
-            POD::LambdaPair hdib = CreateLambdaPair(fit, seed_lambda1.pca, seed_lambda2.pca, anti_channel);
+            POD::LambdaPair hdib = CreateLambdaPair(fit, seed_lambda1.pca, seed_lambda2.pca);
             Cached::Hdibaryon c_hdib(hdib, lambda1, lambda2, fPrimaryVertex);
 
             // apply cuts (2) //
-            if (!SlowCuts_Hdibaryon(c_hdib, hist_cut_flow)) continue;
+            if (!PostFitCuts_Hdibaryon(c_hdib, hist_cut_flow)) continue;
 
             // store reconstructed //
             fOutput.Hdibaryon.emplace_back(hdib);
@@ -500,20 +572,45 @@ void Verifier::VerifyLambdaPair(bool anti_channel) {
 
             // store mc //
             if (fSettings.IsMC) {
-                fOutput.MC_Hdibaryon.emplace_back(BuildMcHdibaryon(input_mc_lambdas[entry_lambda1], input_mc_lambdas[entry_lambda2], decay_pid));
-                fOutput.MC_Lambda1.emplace_back(input_mc_lambdas[entry_lambda1]);
-                fOutput.MC_Lambda1_Neg.emplace_back(input_mc_lambdas_neg[entry_lambda1]);
-                fOutput.MC_Lambda1_Pos.emplace_back(input_mc_lambdas_pos[entry_lambda1]);
-                fOutput.MC_Lambda2.emplace_back(input_mc_lambdas[entry_lambda2]);
-                fOutput.MC_Lambda2_Neg.emplace_back(input_mc_lambdas_neg[entry_lambda2]);
-                fOutput.MC_Lambda2_Pos.emplace_back(input_mc_lambdas_pos[entry_lambda2]);
+                fOutput.MC_Hdibaryon.emplace_back(
+                    BuildMcHdibaryon(input_mc_lambdas_l1[entry_lambda1], input_mc_lambdas_l2[entry_lambda2], pdg_code_hypothesis));
+                fOutput.MC_Lambda1.emplace_back(input_mc_lambdas_l1[entry_lambda1]);
+                fOutput.MC_Lambda1_Neg.emplace_back(input_mc_lambdas_l1_neg[entry_lambda1]);
+                fOutput.MC_Lambda1_Pos.emplace_back(input_mc_lambdas_l1_pos[entry_lambda1]);
+                fOutput.MC_Lambda2.emplace_back(input_mc_lambdas_l2[entry_lambda2]);
+                fOutput.MC_Lambda2_Neg.emplace_back(input_mc_lambdas_l2_neg[entry_lambda2]);
+                fOutput.MC_Lambda2_Pos.emplace_back(input_mc_lambdas_l2_pos[entry_lambda2]);
             }
         }  // end of loop over lambda2
     }  // end of loop over lambda1
 }
 
-bool Verifier::FastCuts_Hdibaryon(const Seeder::PCA& pca_lambda1, const Seeder::PCA& pca_lambda2, TH1D* hist_cut_flow) {
+bool Verifier::PreSeedCuts_Hdibaryon(const POD::Extended::PreFoundLambda& lambda1, const POD::Extended::PreFoundLambda& lambda2,
+                                     TH1D* hist_cut_flow) {
     FillHist(hist_cut_flow, ELambdaPair::kAllCombinations);
+
+    if (HD::SameLambdasEntries(lambda1, lambda2)) return false;  // order is important; apply this before `SameDaughterEntries()`
+    FillHist(hist_cut_flow, ELambdaPair::kPasses_DiffLambdas_Logical);
+
+    if (HD::SameDaughterEntries(lambda1, lambda2)) return false;
+    FillHist(hist_cut_flow, ELambdaPair::kPasses_DiffTracks_Logical);
+
+    if (CMath::IsSameHelix(lambda1.Neg_State, lambda2.Neg_State, Cuts::PreFoundLambda::Max_TracksDeltaR, Cuts::PreFoundLambda::Max_TracksRelDeltaP) &&
+        CMath::IsSameHelix(lambda1.Pos_State, lambda2.Pos_State, Cuts::PreFoundLambda::Max_TracksDeltaR, Cuts::PreFoundLambda::Max_TracksRelDeltaP)) {
+        return false;
+    }
+    FillHist(hist_cut_flow, ELambdaPair::kPasses_DiffTracks_Physical);
+
+    if (CMath::Distance(lambda1.Decay_X, lambda1.Decay_Y, lambda1.Decay_Z, lambda2.Decay_X, lambda2.Decay_Y, lambda2.Decay_Z) <
+        Cuts::LambdaPair::Min_DistBtwLambdaDVs) {
+        return false;
+    }
+    FillHist(hist_cut_flow, ELambdaPair::kPasses_DiffLambdas_Physical);
+
+    return true;
+}
+
+bool Verifier::PostSeedCuts_Hdibaryon(const Seeder::PCA& pca_lambda1, const Seeder::PCA& pca_lambda2, TH1D* hist_cut_flow) {
 
     // if (CMath::Distance(pca_lambda1.xyz, pca_lambda2.xyz) > Cuts::LambdaPair::Max_DCAbtwDau) return false; // PENDING: temporarily turned off
     // FillHist(hist_cut_flow, ELambdaPair::kPasses_Max_DCAbtwDau); // PENDING: temporarily turned off
@@ -521,7 +618,7 @@ bool Verifier::FastCuts_Hdibaryon(const Seeder::PCA& pca_lambda1, const Seeder::
     return true;
 }
 
-bool Verifier::SlowCuts_Hdibaryon(const Cached::Hdibaryon& c_hdib, TH1D* hist_cut_flow) {
+bool Verifier::PostFitCuts_Hdibaryon(const Cached::Hdibaryon& c_hdib, TH1D* hist_cut_flow) {
 
     if (std::abs(static_cast<double>(c_hdib.Pz)) > Cuts::LambdaPair::AbsMax_Pz) return false;
     FillHist(hist_cut_flow, ELambdaPair::kPasses_AbsMax_Pz);
@@ -531,12 +628,6 @@ bool Verifier::SlowCuts_Hdibaryon(const Cached::Hdibaryon& c_hdib, TH1D* hist_cu
 
     if (c_hdib.Pt() < Cuts::LambdaPair::Min_Pt) return false;
     FillHist(hist_cut_flow, ELambdaPair::kPasses_Min_Pt);
-
-    // if (c_hdib.Mass() < Cuts::LambdaPair::Min_Mass) return false; // PENDING: temporarily turned off
-    // FillHist(hist_cut_flow, ELambdaPair::kPasses_Min_Mass); // PENDING: temporarily turned off
-
-    // if (c_hdib.Mass() > Cuts::LambdaPair::Max_Mass) return false; // PENDING: temporarily turned off
-    // FillHist(hist_cut_flow, ELambdaPair::kPasses_Max_Mass); // PENDING: temporarily turned off
 
     if (std::abs(c_hdib.Rapidity()) > Cuts::LambdaPair::AbsMax_Rapidity) return false;
     FillHist(hist_cut_flow, ELambdaPair::kPasses_AbsMax_Rapidity);
@@ -577,7 +668,7 @@ bool Verifier::SlowCuts_Hdibaryon(const Cached::Hdibaryon& c_hdib, TH1D* hist_cu
 }
 
 POD::Extended::McParticle Verifier::BuildMcHdibaryon(const POD::Extended::McParticle& mc_lambda1, const POD::Extended::McParticle& mc_lambda2,
-                                                     const HD::DecayTree& decay_pid) {
+                                                     int pdg_code_hypothesis) {
     POD::Extended::McParticle mc_hdib;
 
     // -- fill hybridness, independently of no common mother
@@ -601,7 +692,7 @@ POD::Extended::McParticle Verifier::BuildMcHdibaryon(const POD::Extended::McPart
             mc_hdib.GM_PdgCode = fInput.McParticle[static_cast<std::size_t>(mc_hdib.GM_McEntry)].PdgCode;
         }
     }
-    mc_hdib.IsTrue = mc_hdib.PdgCode == decay_pid.hdibaryon.pdg_code;
+    mc_hdib.IsTrue = mc_hdib.PdgCode == pdg_code_hypothesis;
     mc_hdib.IsGen1Signal = false;
     mc_hdib.IsGen2Signal = false;
     mc_hdib.IsTrueSignal = mc_hdib.IsTrue;
@@ -610,8 +701,7 @@ POD::Extended::McParticle Verifier::BuildMcHdibaryon(const POD::Extended::McPart
     return mc_hdib;
 }
 
-POD::LambdaPair Verifier::CreateLambdaPair(const KF::FitResult& fit, const Seeder::PCA& pca_lambda1, const Seeder::PCA& pca_lambda2,
-                                           bool anti_channel) {
+POD::LambdaPair Verifier::CreateLambdaPair(const KF::FitResult& fit, const Seeder::PCA& pca_lambda1, const Seeder::PCA& pca_lambda2) {
     POD::LambdaPair new_hdib;
     // candidate info
     new_hdib.Decay_X = static_cast<float>(fit.mother.X());
@@ -622,7 +712,6 @@ POD::LambdaPair Verifier::CreateLambdaPair(const KF::FitResult& fit, const Seede
     new_hdib.Pz = static_cast<float>(fit.mother.Pz());
     new_hdib.Energy = static_cast<float>(fit.mother.E());
     new_hdib.Chi2NDF = static_cast<float>(fit.mother.Chi2NDF());
-    new_hdib.IsAntiChannel = anti_channel;
     // available when fit constrained to a production vertex
     new_hdib.CV_X = static_cast<float>(fit.at_pv ? fit.at_pv->X() : Common::DummyDouble);
     new_hdib.CV_Y = static_cast<float>(fit.at_pv ? fit.at_pv->Y() : Common::DummyDouble);
@@ -705,12 +794,12 @@ bool Verifier::EndOfAnalysis() {
     Logger::Info(__FUNCTION__, "- TH1D \"{}\"", fHist_CutFlow_AntiHdibaryon->GetName());
     fHist_CutFlow_Hdibaryon->Write();
     Logger::Info(__FUNCTION__, "- TH1D \"{}\"", fHist_CutFlow_Hdibaryon->GetName());
+    fHist_CutFlow_MixedLambdaPair->Write();
+    Logger::Info(__FUNCTION__, "- TH1D \"{}\"", fHist_CutFlow_MixedLambdaPair->GetName());
 
     Logger::Info(__FUNCTION__, "All done.");
 
-    if (fHist_EventCounter->GetEntries() == 0) return false;
-
-    return true;
+    return fHist_EventCounter->GetEntries() != 0;
 }
 
 }  // namespace T2DS
