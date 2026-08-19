@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.28...3.31)
 project(
   t2ds
-  VERSION 26.07.05
+  VERSION 26.08.18
   LANGUAGES CXX)
 
 # set "Release" as default build type #
@@ -108,10 +108,11 @@ add_executable(${PROJECT_NAME} src/Seeder/SeederHelixHelix.cxx
                                src/Seeder/SeederLineVertex.cxx
                                src/KalmanFitter/KalmanFitter.cxx
                                src/KalmanFitter/KalmanFitterParticle.cxx
-                               src/Packager.cxx
-                               src/Finder.cxx
-                               src/Verifier.cxx
-                               src/App.cxx)
+                               src/Finder/Finder.cxx
+                               src/Verifier/Verifier.cxx
+                               src/App/Settings.cxx
+                               src/App/Parser.cxx
+                               src/App/App.cxx)
 
 target_link_libraries(${PROJECT_NAME} PRIVATE "-Wl,--no-as-needed" POD "-Wl,--as-needed"
                                               CLI11::CLI11

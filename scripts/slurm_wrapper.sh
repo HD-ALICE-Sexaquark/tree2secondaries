@@ -2,23 +2,17 @@
 
 # `tree2secondaries/scripts/slurm_wrapper.sh`
 # ===========================================
-# Slurm submission script for pack/search/verify, for both MC and real data.
+# Slurm submission script for find/verify, for both MC and real data.
 #
 # Expected input layout (both servers):
 # - for data:
-#   - for pack|verify:
-#     PRODUCTION_PATH / <run number> / AnalysisResults_<file identifier>.root (multiple files are merged per chunk)
-#   - for search:
-#     PRODUCTION_PATH / PackedRNT_<run number>.root
+#   PRODUCTION_PATH / <run number> / AnalysisResults_<file identifier>.root (multiple files are merged per chunk)
 # - for mc:
-#   - for pack|verify:
-#     PRODUCTION_PATH[_CHANNEL+MASS if any] / AnalysisResults_<run number>.root
-#   - for search:
-#     PRODUCTION_PATH[_CHANNEL+MASS if any] / PackedRNT_<run number>.root
+#   PRODUCTION_PATH[_CHANNEL+MASS if any] / AnalysisResults_<run number>.root
 #
 # Output:
-#   T2DS_ROOT_DIR / output / [packed,found,verified] / PRODUCTION_NAME[_CHANNEL+MASS if any] \
-#                          / [Packed,Found,Verified]RNT_<run number><_chunk number if any>.root
+#   T2DS_ROOT_DIR / output / [found,verified] / PRODUCTION_NAME[_CHANNEL+MASS if any] \
+#                          / [Found,Verified]RNT_<run number><_chunk number if any>.root
 #
 # The submission writes a manifest, one line per array task, of the form:
 #   <full t2ds command>
@@ -36,22 +30,22 @@ fi
 # hardcoded options
 max_parallel_jobs=72 # pi only
 chunk_size=25
-slurm_time_merged="08:00:00" # pack|verify data: several files merged per task
-slurm_time_single="01:00:00" # everything else: one file per task
+slurm_time_merged="08:00:00" # data: several files merged per task
+slurm_time_single="01:00:00" # mc: one file per task
 
 print_usage() {
-    echo "usage: ./slurm_wrapper.sh [-y] pack   <mc|data> <PRODUCTION PATH> <CHANNELS> <MASSES>"
-    echo "       ./slurm_wrapper.sh [-y] search <mc|data> <PRODUCTION PATH> <CHANNELS> <MASSES>"
+    echo "usage: ./slurm_wrapper.sh [-y] find   <mc|data> <PRODUCTION PATH> <CHANNELS> <MASSES>"
     echo "       ./slurm_wrapper.sh [-y] verify <mc|data> <PRODUCTION PATH> <CHANNELS> <MASSES>"
     echo "where: -y:              skip the confirmation of the executable's last modification time"
-    echo "       PRODUCTION PATH: (see input layout description in script file (head -25))"
+    echo "       PRODUCTION PATH: (see input layout description in script file (head -20))"
     echo "       CHANNELS:        comma-separated reaction channels (e.g. \"A,D\"), or \"\" for none"
-    echo "                        - required different from \"\" for \`pack mc\`, \`search mc\`, \`search data\`"
-    echo "                        - must be \"\" for \`pack data\` and \`verify data\`"
+    echo "                        - only selects input dirs, every channel is always searched within a single task"
+    echo "                        - required different from \"\" for \`find mc\` (for dirs selection)"
+    echo "                        - must be \"\" for \`find data\` and \`verify data\`"
     echo "                        - can be different from \"\" for \`verify mc\` (for dirs selection)"
     echo "       MASSES:          comma-separated injected masses (e.g. \"1.73,1.8\"), or \"\" for none"
     echo "                        - not used at all in \`data\`"
-    echo "                        - must be different from \"\" for \`pack mc\`"
+    echo "                        - must be different from \"\" for \`find mc\`"
     echo "                        - can be different from \"\" for \`verify mc\` (for dirs selection)"
 }
 
@@ -68,7 +62,7 @@ shift $((OPTIND - 1))
 # command-line arguments (2)
 if [[ $# -ne 5 ]]; then print_usage; exit 1; fi
 mode=$1
-if [[ ${mode} != "pack" && ${mode} != "search" && ${mode} != "verify" ]]; then print_usage; exit 1; fi
+if [[ ${mode} != "find" && ${mode} != "verify" ]]; then print_usage; exit 1; fi
 data_type=$2
 if [[ ${data_type} != "mc" && ${data_type} != "data" ]]; then print_usage; exit 1; fi
 # -- determine production name (NOTE: absolute, the manifest must not depend on the submission dir)
@@ -85,22 +79,24 @@ IFS=',' read -ra injected_masses <<< "$5"
 if [[ ${#injected_masses[@]} -eq 0 ]]; then
     injected_masses=("NONE")
 fi
+# -- on data, there's no channel-specific input dir, hence a single iteration of the main loop
+if [[ ${data_type} == "data" ]]; then
+    reaction_channels=("NONE")
+    injected_masses=("NONE")
+fi
 
 # cross-check data type/mode arguments
-if [[ ${mode} == "pack" && ${data_type} == "mc" && (${reaction_channels[0]} == "NONE" || ${injected_masses[0]} == "NONE") ]]; then
-    echo "error: pack mc requires CHANNELS and MASSES"; print_usage; exit 1
-elif [[ ${mode} == "search" && ${reaction_channels[0]} == "NONE" ]]; then
-    echo "error: search mode requires CHANNELS"; print_usage; exit 1
+if [[ ${mode} == "find" && ${data_type} == "mc" && (${reaction_channels[0]} == "NONE" || ${injected_masses[0]} == "NONE") ]]; then
+    echo "error: find mc requires CHANNELS and MASSES"; print_usage; exit 1
 fi
 
 # determine data type/mode-related options
 case ${mode} in
-    pack)   stage="packed" ;;
-    search) stage="found" ;;
+    find)   stage="found" ;;
     verify) stage="verified" ;;
 esac
 slurm_time=${slurm_time_single}
-if [[ ${data_type} == "data" && ${mode} != "search" ]]; then slurm_time=${slurm_time_merged}; fi
+if [[ ${data_type} == "data" ]]; then slurm_time=${slurm_time_merged}; fi
 
 # check environment (common to both servers)
 if [[ -z ${T2DS_ROOT_DIR:-} ]]; then echo "error: missing env. var. T2DS_ROOT_DIR"; exit 1; fi
@@ -139,12 +135,10 @@ for reaction_channel in "${reaction_channels[@]}"; do
             output_suffix="_${reaction_channel}"
         fi
 
-        # -- subcommand options: `pack mc` takes -c and -m, both `search` take -c, the rest take none
+        # -- subcommand options: `find mc` takes -m, the rest take none
         t2ds_options=""
-        if [[ ${mode} == "pack" && ${data_type} == "mc" ]]; then
-            t2ds_options="-c ${reaction_channel} -m ${injected_mass}"
-        elif [[ ${mode} == "search" ]]; then
-            t2ds_options="-c ${reaction_channel}"
+        if [[ ${mode} == "find" && ${data_type} == "mc" ]]; then
+            t2ds_options="-m ${injected_mass}"
         fi
 
         # -- define paths
@@ -154,10 +148,10 @@ for reaction_channel in "${reaction_channels[@]}"; do
 
         echo "slurm_wrapper @ ${HOSTNAME} :: adding files from ${input_dir}"
 
-        if [[ ${data_type} == "data" && ${mode} != "search" ]]; then
+        if [[ ${data_type} == "data" ]]; then
             # -- one group per run-number dir, merged in chunks of at most `chunk_size` files
             for run_dir in "${input_dir}"/*/; do
-                # (pack data, verify data)
+                # (find data, verify data)
                 input_files=("${run_dir}"AnalysisResults_*.root)
                 if [[ ${#input_files[@]} -eq 0 ]]; then continue; fi
                 run_number=$(basename "${run_dir}")
@@ -180,14 +174,9 @@ for reaction_channel in "${reaction_channels[@]}"; do
                 done
             done
         else
-            # -- one input file per task: mc holds one file per run number, and so do the packed files
-            if [[ ${mode} == "search" ]]; then
-                # (search mc, search data)
-                input_files=("${input_dir}"/PackedRNT_*.root)
-            else
-                # (pack mc, verify mc)
-                input_files=("${input_dir}"/AnalysisResults_*.root)
-            fi
+            # -- one input file per task: mc holds one file per run number
+            # (find mc, verify mc)
+            input_files=("${input_dir}"/AnalysisResults_*.root)
 
             for input_file in "${input_files[@]}"; do
                 output_id=$(basename "${input_file}" .root)

@@ -8,7 +8,7 @@
 namespace T2DS {
 
 // Read every event of every input file, calling `process_event` on each.
-// Possible `Worker`: `Packager`, `Finder`, `Verifier`.
+// Possible `Worker`: `Finder`, `Verifier`.
 template <typename Worker, typename ProcessEvent>
 void RunOverInputs(Worker &worker, const T2DS::Settings &settings, const ProcessEvent &process_event) {
 

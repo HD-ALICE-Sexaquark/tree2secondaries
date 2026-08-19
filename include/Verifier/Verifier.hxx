@@ -18,6 +18,7 @@
 #include "common/Schema_Events.hpp"
 #include "common/Schema_FoundHdibaryon.hpp"
 
+#include "App/Logger.hxx"
 #include "App/Settings.hxx"
 #include "KalmanFitter/KalmanFitterParticle.hxx"
 
