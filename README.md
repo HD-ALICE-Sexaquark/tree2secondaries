@@ -38,10 +38,10 @@ OPTIONS:
 SUBCOMMANDS:
 
   find data
-  find mc   : Read "AnalysisResults.root" to search for anti-sexaquark reactions via three channels and their charged-
+  find mc   : Read "AnalysisResults.root" to search for antisexaquark reactions via three channels and their charged-
               conjugates as reference background.
               Additionally, `find mc` requires:
-              -m, --mass : {1.73,1.8,1.87,1.94,2.01} Assign injected anti-sexaquark mass
+              -m, --mass : {1.73,1.8,1.87,1.94,2.01} Assign injected antisexaquark mass
 
   verify data
   verify mc   : Read "AnalysisResults.root" to verify the existence of (anti)h-dibaryons.

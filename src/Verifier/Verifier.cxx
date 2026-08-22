@@ -1,4 +1,6 @@
+#include <cmath>
 #include <cstddef>
+#include <format>
 #include <memory>
 #include <optional>
 #include <tuple>
@@ -646,22 +648,22 @@ bool Verifier::PostFitCuts_Hdibaryon(const Cached::Hdibaryon& c_hdib, TH1D* hist
 
     // (anti)lambda : depend on (anti)h-dibaryon decay vertex //
 
-    if (c_hdib.L1_DecayLength() > Cuts::PreFoundLambda::Max_DecayLength) return false;
+    if (c_hdib.Lambda1_DecayLength() > Cuts::PreFoundLambda::Max_DecayLength) return false;
     FillHist(hist_cut_flow, ELambdaPair::kPasses_Max_L1_DecayLength);
 
-    // if (c_hdib.L1_DecayLength() < Cuts::PreFoundLambda::Min_DecayLength) return false; // PENDING: temporarily turned off
+    // if (c_hdib.Lambda1_DecayLength() < Cuts::PreFoundLambda::Min_DecayLength) return false; // PENDING: temporarily turned off
     // FillHist(hist_cut_flow, ELambdaPair::kPasses_Min_L1_DecayLength); // PENDING: temporarily turned off
 
-    // if (c_hdib.L1_CPA_wrt_DV() < Cuts::PreFoundLambda::Min_CPAwrtDV) return false; // PENDING: temporarily turned off
+    // if (c_hdib.Lambda1_CPA_wrt_DV() < Cuts::PreFoundLambda::Min_CPAwrtDV) return false; // PENDING: temporarily turned off
     // FillHist(hist_cut_flow, ELambdaPair::kPasses_Min_L1_CPAwrtDV); // PENDING: temporarily turned off
 
-    if (c_hdib.L2_DecayLength() > Cuts::PreFoundLambda::Max_DecayLength) return false;
+    if (c_hdib.Lambda2_DecayLength() > Cuts::PreFoundLambda::Max_DecayLength) return false;
     FillHist(hist_cut_flow, ELambdaPair::kPasses_Max_L2_DecayLength);
 
-    // if (c_hdib.L2_DecayLength() < Cuts::PreFoundLambda::Min_DecayLength) return false; // PENDING: temporarily turned off
+    // if (c_hdib.Lambda2_DecayLength() < Cuts::PreFoundLambda::Min_DecayLength) return false; // PENDING: temporarily turned off
     // FillHist(hist_cut_flow, ELambdaPair::kPasses_Min_L2_DecayLength); // PENDING: temporarily turned off
 
-    // if (c_hdib.L2_CPA_wrt_DV() < Cuts::PreFoundLambda::Min_CPAwrtDV) return false; // PENDING: temporarily turned off
+    // if (c_hdib.Lambda2_CPA_wrt_DV() < Cuts::PreFoundLambda::Min_CPAwrtDV) return false; // PENDING: temporarily turned off
     // FillHist(hist_cut_flow, ELambdaPair::kPasses_Min_L2_CPAwrtDV); // PENDING: temporarily turned off
 
     return true;

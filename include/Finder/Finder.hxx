@@ -22,21 +22,22 @@
 
 #include "App/Logger.hxx"
 #include "App/Settings.hxx"
+#include "KalmanFitter/BaseKalmanFitter.hxx"
 
 // forward declarations //
 // clang-format off
-namespace Cached { struct Sexaquark; struct V0; }
+namespace Cached { struct ChannelA; struct ChannelD; struct ChannelH; struct V0; }
 
 namespace T2DS {
 
 namespace Seeder{ struct PCA; }
-namespace KF{ struct Particle; struct FitResult; }
 // clang-format on
 
-// Collect secondary charged kaons and reconstruct V0s, then combine them into anti-sexaquark candidates.
+// Collect secondary charged kaons and reconstruct V0s, then combine them into antisexaquark candidates.
 // The secondaries are built once per event and shared by every requested reaction channel.
 class Finder {
-    // PENDING for author: missing fit constraints + cuts enums+structs + duplications treatments
+    // PENDING for author: missing cuts enums+structs + duplications treatments
+
     // Cut-related //
 
     enum class EProton : int {
@@ -211,20 +212,16 @@ class Finder {
     POD::Extended::McParticle BuildMcTrack(unsigned int track_mc_entry, int pdg_code_hypothesis, bool include_gm);
 
     // V0s //
-
     void FindV0s(const DB::Particles::Definition &pid);
-
     bool PreSeedCuts_Lambda() const;         // PENDING
     bool PreSeedCuts_KaonZeroShort() const;  // PENDING
-
     bool PostSeedCuts_Lambda(const Seeder::PCA &pca_neg, const Seeder::PCA &pca_pos, TH1D *hist_cut_flow) const;
     bool PostSeedCuts_KaonZeroShort(const Seeder::PCA &pca_neg, const Seeder::PCA &pca_pos, TH1D *hist_cut_flow) const;
-
     bool PostFitCuts_Lambda(const Cached::V0 &v0, TH1D *hist_cut_flow) const;
     bool PostFitCuts_KaonZeroShort(const Cached::V0 &v0, TH1D *hist_cut_flow) const;
 
     POD::Extended::McParticle BuildMcV0(const POD::Extended::McParticle &mc_neg, const POD::Extended::McParticle &mc_pos, int pdg_code_hypothesis);
-    POD::V0 CreateV0(const KF::FitResult &fit, const Seeder::PCA &neg_pca_wrt_v0, const Seeder::PCA &pos_pca_wrt_v0);
+    POD::V0 Create_V0(const KF::FitResult &fit, const Seeder::PCA &neg_pca_wrt_v0, const Seeder::PCA &pos_pca_wrt_v0);
 
     // mc sexaquark //
     POD::Linked::InjectedSexa BuildMcSexaquark(const POD::Extended::McParticle &mc_dau1, const POD::Extended::McParticle &mc_dau2);
@@ -233,22 +230,48 @@ class Finder {
     void FindSexaquarks_ChannelA(bool is_bkg_channel);
     bool PreSeedCuts_ChannelA() const;  // PENDING
     [[nodiscard]] bool PostSeedCuts_ChannelA(const Seeder::PCA &pca_v0a, const Seeder::PCA &pca_v0b, TH1D *hist_cut_flow) const;
-    [[nodiscard]] bool PostFitCuts_ChannelA(const Cached::Sexaquark &c_sexa, TH1D *hist_cut_flow) const;
+    [[nodiscard]] bool PostFitCuts_ChannelA(const Cached::ChannelA &c_sexa, TH1D *hist_cut_flow) const;
     POD::Sexaquark Create_ChannelA(const KF::FitResult &fit, const Seeder::PCA &pca_v0a, const Seeder::PCA &pca_v0b, bool is_bkg_channel);
 
     // channel D //
     void FindSexaquarks_ChannelD(bool is_bkg_channel);
     bool PreSeedCuts_ChannelD() const;  // PENDING
     [[nodiscard]] bool PostSeedCuts_ChannelD(const Seeder::PCA &pca_v0, const Seeder::PCA &pca_ka, TH1D *hist_cut_flow) const;
-    [[nodiscard]] bool PostFitCuts_ChannelD(const Cached::Sexaquark &c_sexa, TH1D *hist_cut_flow) const;
+    [[nodiscard]] bool PostFitCuts_ChannelD(const Cached::ChannelD &c_sexa, TH1D *hist_cut_flow) const;
     POD::Sexaquark Create_ChannelD(const KF::FitResult &fit, const Seeder::PCA &pca_v0, const Seeder::PCA &pca_ka, bool is_bkg_channel);
 
     // channel H //
     void FindSexaquarks_ChannelH(bool is_bkg_channel);
     bool PreSeedCuts_ChannelH() const;  // PENDING
     [[nodiscard]] bool PostSeedCuts_ChannelH(const Seeder::PCA &pca_kaon1, const Seeder::PCA &pca_kaon2, TH1D *hist_cut_flow) const;
-    [[nodiscard]] bool PostFitCuts_ChannelH(const Cached::Sexaquark &c_sexa, TH1D *hist_cut_flow) const;
+    [[nodiscard]] bool PostFitCuts_ChannelH(const Cached::ChannelH &c_sexa, TH1D *hist_cut_flow) const;
     POD::Sexaquark Create_ChannelH(const KF::FitResult &fit, const Seeder::PCA &pca_kaon1, const Seeder::PCA &pca_kaon2, bool is_bkg_channel);
+
+    // fit configuration //
+
+    static constexpr bool kMassConstraints = true;  // HARDCODED; if enabled, allow all mass constraints, except for the antisexaquark mass
+    static constexpr KF::FitPolicy GetPolicy_V0s(double mass) {
+        if (kMassConstraints) {
+            return {
+                .pin_daughters = true,
+                .daughters_already_pinned = false,
+                .mother_mass = mass,
+                .prod_vertex = std::nullopt,
+            };
+        }
+        return {};
+    }
+    static constexpr KF::FitPolicy GetPolicy_SV() {
+        if (kMassConstraints) {
+            return {
+                .pin_daughters = true,
+                .daughters_already_pinned = true,
+                .mother_mass = std::nullopt,
+                .prod_vertex = std::nullopt,
+            };
+        }
+        return {};
+    }
 
     // member variables //
 
@@ -322,7 +345,7 @@ class Finder {
     std::unique_ptr<TH1D> fHist_CutFlow_AntiLambda;
     std::unique_ptr<TH1D> fHist_CutFlow_Lambda;
     std::unique_ptr<TH1D> fHist_CutFlow_KaonZeroShort;
-    // -- cut flow for anti-sexaquarks + bkg. sexaquarks
+    // -- cut flow for antisexaquarks + bkg. sexaquarks
     std::unique_ptr<TH1D> fHist_CutFlow_ChannelA;
     std::unique_ptr<TH1D> fHist_CutFlow_ChannelA_Bkg;
     std::unique_ptr<TH1D> fHist_CutFlow_ChannelD;

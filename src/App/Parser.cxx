@@ -81,7 +81,7 @@ void Parser::AddOptions() {
     };
 
     // find mode
-    auto* find_cmd = CLI_APP.add_subcommand("find", "Read \"AnalysisResults.root\" to search for anti-sexaquark reactions");
+    auto* find_cmd = CLI_APP.add_subcommand("find", "Read \"AnalysisResults.root\" to search for antisexaquark reactions");
     // -- mc
     auto* find_mc_cmd = find_cmd->add_subcommand("mc", "Process MC");
     add_mass_opt(find_mc_cmd);
