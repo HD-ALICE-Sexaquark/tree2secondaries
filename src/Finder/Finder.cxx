@@ -3,6 +3,7 @@
 #include <format>
 #include <memory>
 #include <optional>
+#include <tuple>
 #include <vector>
 
 #include "common/Cached_ChannelA.hpp"
@@ -90,6 +91,8 @@ void Finder::PrepareOutputHistograms() {
     for (auto* hist_lambda : {fHist_CutFlow_AntiLambda.get(), fHist_CutFlow_Lambda.get()}) {
         x_axis = hist_lambda->GetXaxis();
         x_axis->SetBinLabel(static_cast<int>(ELambda::kAllCombinations) + 1, "AllCombinations");
+        x_axis->SetBinLabel(static_cast<int>(ELambda::kPasses_DiffDaughters_Logical) + 1, "Passes_DiffDaughters_Logical");
+        x_axis->SetBinLabel(static_cast<int>(ELambda::kPasses_DiffDaughters_Physical) + 1, "Passes_DiffDaughters_Physical");
         x_axis->SetBinLabel(static_cast<int>(ELambda::kPasses_DcaBtwDaughters) + 1, "Passes_DcaBtwDaughters");
         // PENDING
     }
@@ -101,6 +104,8 @@ void Finder::PrepareOutputHistograms() {
     //  > define bin labels
     x_axis = fHist_CutFlow_KaonZeroShort->GetXaxis();
     x_axis->SetBinLabel(static_cast<int>(EKaonZeroShort::kAllCombinations) + 1, "AllCombinations");
+    x_axis->SetBinLabel(static_cast<int>(EKaonZeroShort::kPasses_DiffDaughters_Logical) + 1, "Passes_DiffDaughters_Logical");
+    x_axis->SetBinLabel(static_cast<int>(EKaonZeroShort::kPasses_DiffDaughters_Physical) + 1, "Passes_DiffDaughters_Physical");
     x_axis->SetBinLabel(static_cast<int>(EKaonZeroShort::kPasses_DcaBtwDaughters) + 1, "Passes_DcaBtwDaughters");
     // PENDING
 
@@ -110,10 +115,14 @@ void Finder::PrepareOutputHistograms() {
     fHist_CutFlow_ChannelA_Bkg = std::make_unique<TH1D>("CutFlow_ChannelA_Bkg", hist_title, static_cast<int>(EChannelA::kNChannelACuts), 0.,
                                                         static_cast<double>(EChannelA::kNChannelACuts));
     //  > define bin labels
-    // for (auto* hist_sexa : {fHist_CutFlow_ChannelA.get(), fHist_CutFlow_ChannelA_Bkg.get()}) {
-    // x_axis = hist_sexa->GetXaxis();
-    // PENDING
-    // }
+    for (auto* hist_sexa : {fHist_CutFlow_ChannelA.get(), fHist_CutFlow_ChannelA_Bkg.get()}) {
+        x_axis = hist_sexa->GetXaxis();
+        x_axis->SetBinLabel(static_cast<int>(EChannelA::kAllCombinations) + 1, "AllCombinations");
+        x_axis->SetBinLabel(static_cast<int>(EChannelA::kPasses_DiffTracks_Logical) + 1, "Passes_DiffTracks_Logical");
+        x_axis->SetBinLabel(static_cast<int>(EChannelA::kPasses_DiffTracks_Physical) + 1, "Passes_DiffTracks_Physical");
+        x_axis->SetBinLabel(static_cast<int>(EChannelA::kPasses_DiffV0s_Physical) + 1, "Passes_DiffV0s_Physical");
+        // PENDING
+    }
 
     // -- for channel d
     fHist_CutFlow_ChannelD = std::make_unique<TH1D>("CutFlow_ChannelD", hist_title, static_cast<int>(EChannelD::kNChannelDCuts), 0.,
@@ -121,10 +130,13 @@ void Finder::PrepareOutputHistograms() {
     fHist_CutFlow_ChannelD_Bkg = std::make_unique<TH1D>("CutFlow_ChannelD_Bkg", hist_title, static_cast<int>(EChannelD::kNChannelDCuts), 0.,
                                                         static_cast<double>(EChannelD::kNChannelDCuts));
     //  > define bin labels
-    // for (auto* hist_sexa : {fHist_CutFlow_ChannelD.get(), fHist_CutFlow_ChannelD_Bkg.get()}) {
-    // x_axis = hist_sexa->GetXaxis();
-    // PENDING
-    // }
+    for (auto* hist_sexa : {fHist_CutFlow_ChannelD.get(), fHist_CutFlow_ChannelD_Bkg.get()}) {
+        x_axis = hist_sexa->GetXaxis();
+        x_axis->SetBinLabel(static_cast<int>(EChannelD::kAllCombinations) + 1, "AllCombinations");
+        x_axis->SetBinLabel(static_cast<int>(EChannelD::kPasses_DiffTracks_Logical) + 1, "Passes_DiffTracks_Logical");
+        x_axis->SetBinLabel(static_cast<int>(EChannelD::kPasses_DiffTracks_Physical) + 1, "Passes_DiffTracks_Physical");
+        // PENDING
+    }
 
     // -- for channel h
     fHist_CutFlow_ChannelH = std::make_unique<TH1D>("CutFlow_ChannelH", hist_title, static_cast<int>(EChannelH::kNChannelHCuts), 0.,
@@ -132,10 +144,13 @@ void Finder::PrepareOutputHistograms() {
     fHist_CutFlow_ChannelH_Bkg = std::make_unique<TH1D>("CutFlow_ChannelH_Bkg", hist_title, static_cast<int>(EChannelH::kNChannelHCuts), 0.,
                                                         static_cast<double>(EChannelH::kNChannelHCuts));
     //  > define bin labels
-    // for (auto* hist_sexa : {fHist_CutFlow_ChannelH.get(), fHist_CutFlow_ChannelH_Bkg.get()}) {
-    // x_axis = hist_sexa->GetXaxis();
-    // PENDING
-    // }
+    for (auto* hist_sexa : {fHist_CutFlow_ChannelH.get(), fHist_CutFlow_ChannelH_Bkg.get()}) {
+        x_axis = hist_sexa->GetXaxis();
+        x_axis->SetBinLabel(static_cast<int>(EChannelH::kAllCombinations) + 1, "AllCombinations");
+        x_axis->SetBinLabel(static_cast<int>(EChannelH::kPasses_DiffTracks_Logical) + 1, "Passes_DiffTracks_Logical");
+        x_axis->SetBinLabel(static_cast<int>(EChannelH::kPasses_DiffTracks_Physical) + 1, "Passes_DiffTracks_Physical");
+        // PENDING
+    }
 }
 
 // ## Event ZONE ## //
@@ -322,29 +337,29 @@ void Finder::ProcessTracks() {
 #endif
 }
 
-bool Finder::PassesCuts_Proton(const POD::Track& track, TH1D* cut_flow_hist) const {
-    FillHist(cut_flow_hist, EProton::kAllPossibleProtons);
+bool Finder::PassesCuts_Proton(const POD::Track& track, TH1D* hist_cut_flow) const {
+    FillHist(hist_cut_flow, EProton::kAllPossibleProtons);
 
     if (std::abs(static_cast<double>(track.NSigmasProton)) > T2DS::Cuts::Proton::AbsMax_NSigmasProton) return false;
-    FillHist(cut_flow_hist, EProton::kPasses_NSigmasProtons);
+    FillHist(hist_cut_flow, EProton::kPasses_NSigmasProtons);
 
     return true;
 }
 
-bool Finder::PassesCuts_Kaon(const POD::Track& track, TH1D* cut_flow_hist) const {
-    FillHist(cut_flow_hist, EKaon::kAllPossibleKaons);
+bool Finder::PassesCuts_Kaon(const POD::Track& track, TH1D* hist_cut_flow) const {
+    FillHist(hist_cut_flow, EKaon::kAllPossibleKaons);
 
     if (std::abs(static_cast<double>(track.NSigmasKaon)) > T2DS::Cuts::Kaon::AbsMax_NSigmasKaon) return false;
-    FillHist(cut_flow_hist, EKaon::kPasses_NSigmasKaons);
+    FillHist(hist_cut_flow, EKaon::kPasses_NSigmasKaons);
 
     return true;
 }
 
-bool Finder::PassesCuts_Pion(const POD::Track& track, TH1D* cut_flow_hist) const {
-    FillHist(cut_flow_hist, EPion::kAllPossiblePions);
+bool Finder::PassesCuts_Pion(const POD::Track& track, TH1D* hist_cut_flow) const {
+    FillHist(hist_cut_flow, EPion::kAllPossiblePions);
 
     if (std::abs(static_cast<double>(track.NSigmasPion)) > T2DS::Cuts::Pion::AbsMax_NSigmasPion) return false;
-    FillHist(cut_flow_hist, EPion::kPasses_NSigmasPions);
+    FillHist(hist_cut_flow, EPion::kPasses_NSigmasPions);
 
     return true;
 }
@@ -362,6 +377,7 @@ POD::Extended::McParticle Finder::BuildMcTrack(unsigned int track_mc_entry, int 
 void Finder::FindV0s(const DB::Particles::Definition& pid) {
 
     // determine rules based on V0 species //
+    bool find_lambdas = false;  //  default for kaon-zero-short
     const std::vector<POD::Track>* temp_vec_neg = &fTemp_PiMinus;
     const std::vector<POD::Track>* temp_vec_pos = &fTemp_PiPlus;
     const std::vector<POD::Extended::McParticle>* temp_vec_mc_neg = &fTemp_MC_PiMinus;
@@ -374,8 +390,10 @@ void Finder::FindV0s(const DB::Particles::Definition& pid) {
     std::vector<POD::Extended::McParticle>* output_vec_mc_v0 = nullptr;
     std::vector<POD::Extended::McParticle>* output_vec_mc_v0_neg = nullptr;
     std::vector<POD::Extended::McParticle>* output_vec_mc_v0_pos = nullptr;
+    TH1D* hist_cut_flow = nullptr;
     switch (pid.pdg_code) {
         case DB::Particles::Particle("AntiLambda").pdg_code: {
+            find_lambdas = true;
             temp_vec_neg = &fTemp_AntiProton;
             temp_vec_mc_neg = &fTemp_MC_AntiProton;
             pid_neg = DB::Particles::Particle("AntiProton");
@@ -385,9 +403,11 @@ void Finder::FindV0s(const DB::Particles::Definition& pid) {
             output_vec_mc_v0 = &fTemp_MC_AntiLambda;
             output_vec_mc_v0_neg = &fTemp_MC_AntiLambda_Neg;
             output_vec_mc_v0_pos = &fTemp_MC_AntiLambda_Pos;
+            hist_cut_flow = fHist_CutFlow_AntiLambda.get();
             break;
         }
         case DB::Particles::Particle("Lambda").pdg_code: {
+            find_lambdas = true;
             temp_vec_pos = &fTemp_Proton;
             temp_vec_mc_pos = &fTemp_MC_Proton;
             pid_pos = DB::Particles::Particle("Proton");
@@ -397,6 +417,7 @@ void Finder::FindV0s(const DB::Particles::Definition& pid) {
             output_vec_mc_v0 = &fTemp_MC_Lambda;
             output_vec_mc_v0_neg = &fTemp_MC_Lambda_Neg;
             output_vec_mc_v0_pos = &fTemp_MC_Lambda_Pos;
+            hist_cut_flow = fHist_CutFlow_Lambda.get();
             break;
         }
         case DB::Particles::Particle("KaonZeroShort").pdg_code: {
@@ -406,6 +427,7 @@ void Finder::FindV0s(const DB::Particles::Definition& pid) {
             output_vec_mc_v0 = &fTemp_MC_KaonZeroShort;
             output_vec_mc_v0_neg = &fTemp_MC_KaonZeroShort_Neg;
             output_vec_mc_v0_pos = &fTemp_MC_KaonZeroShort_Pos;
+            hist_cut_flow = fHist_CutFlow_KaonZeroShort.get();
             break;
         }
         default: {
@@ -418,7 +440,6 @@ void Finder::FindV0s(const DB::Particles::Definition& pid) {
     const KF::FitPolicy fit_policy = GetPolicy_V0s(pid.mass);
 
     // loop over all possible pairs of tracks //
-    // NOTE: negative and positive species never share a track, hence no sanity check is needed
     for (std::size_t entry_neg = 0; entry_neg < temp_vec_neg->size(); ++entry_neg) {
         const POD::Track& track_neg = (*temp_vec_neg)[entry_neg];  // cache index lookup
 
@@ -426,13 +447,21 @@ void Finder::FindV0s(const DB::Particles::Definition& pid) {
             const POD::Track& track_pos = (*temp_vec_pos)[entry_pos];  // cache index lookup
 
             // apply cuts (1) //
-            // PENDING: placeholder to remove duplications
+            if (find_lambdas) {
+                if (!PreSeedCuts<ELambda>(track_neg, track_pos, hist_cut_flow)) continue;
+            } else {
+                if (!PreSeedCuts<EKaonZeroShort>(track_neg, track_pos, hist_cut_flow)) continue;
+            }
 
             // PCAs //
             auto [seed_neg, seed_pos, pca_cache] = Seeder::HelixHelix::FastCorrectPCAs(track_neg, track_pos, fMagneticField);
 
             // apply cuts (2) //
-            if (!PostSeedCuts(seed_neg.pca, seed_pos.pca, pid)) continue;
+            if (find_lambdas) {
+                if (!PostSeedCuts_Lambda(seed_neg.pca, seed_pos.pca, hist_cut_flow)) continue;
+            } else {
+                if (!PostSeedCuts_KaonZeroShort(seed_neg.pca, seed_pos.pca, hist_cut_flow)) continue;
+            }
 
             // PCAs derivatives //
             auto [deriv_neg, deriv_pos] = Seeder::HelixHelix::ComputeDerivatives(seed_neg, seed_pos, pca_cache);
@@ -446,7 +475,11 @@ void Finder::FindV0s(const DB::Particles::Definition& pid) {
             Cached::V0 c_v0(v0, fPrimaryVertex);
 
             // apply cuts (3) //
-            if (!PostFitCuts(c_v0, pid)) continue;
+            if (find_lambdas) {
+                if (!PostFitCuts_Lambda(c_v0, hist_cut_flow)) continue;
+            } else {
+                if (!PostFitCuts_KaonZeroShort(c_v0, hist_cut_flow)) continue;
+            }
 
             // store reconstructed //
             output_vec_v0->emplace_back(v0);
@@ -469,87 +502,101 @@ void Finder::FindV0s(const DB::Particles::Definition& pid) {
     }  // end of loop over neg
 }
 
-bool Finder::PostSeedCuts_Lambda(const Seeder::PCA& pca_neg, const Seeder::PCA& pca_pos, TH1D* cut_flow_hist) const {
-    FillHist(cut_flow_hist, ELambda::kAllCombinations);
+template <typename E>
+bool Finder::PreSeedCuts(const POD::Track& track_neg, const POD::Track& track_pos, TH1D* hist_cut_flow) const {
+    FillHist(hist_cut_flow, E::kAllCombinations);
+
+    if (track_neg.EsdEntry == track_pos.EsdEntry) return false;
+    FillHist(hist_cut_flow, E::kPasses_DiffDaughters_Logical);
+
+    if (CMath::IsSameHelix(track_neg.Px, track_neg.Py, track_neg.Pz, track_pos.Px, track_pos.Py, track_pos.Pz,  //
+                           Cuts::Track::Max_TracksDeltaR, Cuts::Track::Max_TracksRelDeltaP)) {
+        return false;
+    }
+    FillHist(hist_cut_flow, E::kPasses_DiffDaughters_Physical);
+
+    return true;
+}
+
+bool Finder::PostSeedCuts_Lambda(const Seeder::PCA& pca_neg, const Seeder::PCA& pca_pos, TH1D* hist_cut_flow) const {
 
     if (CMath::SquaredDistance(pca_neg.xyz, pca_pos.xyz) > Cuts::Lambda::Max_DCAbtwDau * Cuts::Lambda::Max_DCAbtwDau) {
         return false;
     }
-    FillHist(cut_flow_hist, ELambda::kPasses_DcaBtwDaughters);
+    FillHist(hist_cut_flow, ELambda::kPasses_DcaBtwDaughters);
 
     return true;
 }
 
-bool Finder::PostSeedCuts_KaonZeroShort(const Seeder::PCA& pca_neg, const Seeder::PCA& pca_pos, TH1D* cut_flow_hist) const {
-    FillHist(cut_flow_hist, EKaonZeroShort::kAllCombinations);
+bool Finder::PostSeedCuts_KaonZeroShort(const Seeder::PCA& pca_neg, const Seeder::PCA& pca_pos, TH1D* hist_cut_flow) const {
 
     if (CMath::SquaredDistance(pca_neg.xyz, pca_pos.xyz) > T2DS::Cuts::KaonZeroShort::Max_DCAbtwDau * T2DS::Cuts::KaonZeroShort::Max_DCAbtwDau) {
         return false;
     }
-    FillHist(cut_flow_hist, EKaonZeroShort::kPasses_DcaBtwDaughters);
+    FillHist(hist_cut_flow, EKaonZeroShort::kPasses_DcaBtwDaughters);
 
     return true;
 }
 
-bool Finder::PostFitCuts_Lambda(const Cached::V0& c_v0, TH1D* cut_flow_hist) const {
+bool Finder::PostFitCuts_Lambda(const Cached::V0& c_v0, TH1D* hist_cut_flow) const {
 
     // double mass = c_v0.Mass();  // cached // PENDING
     // if (mass < Cuts::Lambda::Min_Mass || mass > Cuts::Lambda::Max_Mass) return false; // PENDING
-    // FillHist(cut_flow_hist, 2.);  // PENDING
+    // FillHist(hist_cut_flow, 2.);  // PENDING
 
     if (c_v0.Decay_SquaredRadius2D() < Cuts::Lambda::Min_Decay_Radius2D * Cuts::Lambda::Min_Decay_Radius2D) return false;
-    // FillHist(cut_flow_hist, 3.);  // PENDING
+    // FillHist(hist_cut_flow, 3.);  // PENDING
 
     if (c_v0.Neg_SquaredDCA_wrt_V0() > Cuts::Lambda::Max_DCAnegV0 * Cuts::Lambda::Max_DCAnegV0) return false;
-    // FillHist(cut_flow_hist, 4.);  // PENDING
+    // FillHist(hist_cut_flow, 4.);  // PENDING
 
     if (c_v0.Pos_SquaredDCA_wrt_V0() > Cuts::Lambda::Max_DCAposV0 * Cuts::Lambda::Max_DCAposV0) return false;
-    // FillHist(cut_flow_hist, 5.);  // PENDING
+    // FillHist(hist_cut_flow, 5.);  // PENDING
 
     // if (c_v0.Pt() < Cuts::Lambda::Min_Pt) return false; // PENDING
-    // FillHist(cut_flow_hist, 6.);  // PENDING
+    // FillHist(hist_cut_flow, 6.);  // PENDING
 
     if (std::abs(c_v0.Rapidity()) > Cuts::Lambda::AbsMax_Rapidity) return false;
-    // FillHist(cut_flow_hist, 7.);  // PENDING
+    // FillHist(hist_cut_flow, 7.);  // PENDING
 
     // if (c_v0.AbsArmQtOverAlpha() > Cuts::Lambda::AbsMax_ArmQtOverAlpha) return false;  // PENDING: not really sure if i like this cut, actually
-    // FillHist(cut_flow_hist, 8.);  // PENDING
+    // FillHist(hist_cut_flow, 8.);  // PENDING
 
     if (c_v0.CPA_wrt_PV() < Cuts::Lambda::Min_CPAwrtPV || c_v0.CPA_wrt_PV() > Cuts::Lambda::Max_CPAwrtPV) return false;
-    // FillHist(cut_flow_hist, 8.);  // PENDING
+    // FillHist(hist_cut_flow, 8.);  // PENDING
 
     if (c_v0.SquaredDCA_wrt_PV() < Cuts::Lambda::Min_DCAwrtPV * Cuts::Lambda::Min_DCAwrtPV) return false;
-    // FillHist(cut_flow_hist, 9.);  // PENDING
+    // FillHist(hist_cut_flow, 9.);  // PENDING
 
     return true;
 }
 
-bool Finder::PostFitCuts_KaonZeroShort(const Cached::V0& c_v0, TH1D* cut_flow_hist) const {
+bool Finder::PostFitCuts_KaonZeroShort(const Cached::V0& c_v0, TH1D* hist_cut_flow) const {
 
     // if (c_v0.Pt() < Cuts::KaonZeroShort::Min_Pt) return false; // PENDING
-    // FillHist(cut_flow_hist, 2.);  // PENDING
+    // FillHist(hist_cut_flow, 2.);  // PENDING
 
     // double mass = c_v0.Mass();  // cached // PENDING
     // if (mass < Cuts::KaonZeroShort::Min_Mass || mass > Cuts::KaonZeroShort::Max_Mass) return false; // PENDING
-    // FillHist(cut_flow_hist, 3.); // PENDING
+    // FillHist(hist_cut_flow, 3.); // PENDING
 
     if (std::abs(c_v0.Rapidity()) > Cuts::KaonZeroShort::AbsMax_Rapidity) return false;
-    // FillHist(cut_flow_hist, 4.); // PENDING
+    // FillHist(hist_cut_flow, 4.); // PENDING
 
     if (c_v0.Decay_SquaredRadius2D() < Cuts::KaonZeroShort::Min_Decay_Radius2D * Cuts::KaonZeroShort::Min_Decay_Radius2D) return false;
-    // FillHist(cut_flow_hist, 5.); // PENDING
+    // FillHist(hist_cut_flow, 5.); // PENDING
 
     if (c_v0.Neg_SquaredDCA_wrt_V0() > Cuts::KaonZeroShort::Max_DCAnegV0 * Cuts::KaonZeroShort::Max_DCAnegV0) return false;
-    // FillHist(cut_flow_hist, 6.); // PENDING
+    // FillHist(hist_cut_flow, 6.); // PENDING
 
     if (c_v0.Pos_SquaredDCA_wrt_V0() > Cuts::KaonZeroShort::Max_DCAposV0 * Cuts::KaonZeroShort::Max_DCAposV0) return false;
-    // FillHist(cut_flow_hist, 7.); // PENDING
+    // FillHist(hist_cut_flow, 7.); // PENDING
 
     if (c_v0.CPA_wrt_PV() < Cuts::KaonZeroShort::Min_CPAwrtPV || c_v0.CPA_wrt_PV() > Cuts::KaonZeroShort::Max_CPAwrtPV) return false;
-    // FillHist(cut_flow_hist, 8.); // PENDING
+    // FillHist(hist_cut_flow, 8.); // PENDING
 
     if (c_v0.SquaredDCA_wrt_PV() < Cuts::KaonZeroShort::Min_DCAwrtPV * Cuts::KaonZeroShort::Min_DCAwrtPV) return false;
-    // FillHist(cut_flow_hist, 9.); // PENDING
+    // FillHist(hist_cut_flow, 9.); // PENDING
 
     return true;
 }
@@ -660,17 +707,14 @@ void Finder::FindSexaquarks_ChannelA(bool is_bkg_channel) {
             const POD::Track& k0s_neg = input_k0s_neg[entry_k0s];
             const POD::Track& k0s_pos = input_k0s_pos[entry_k0s];
 
-            // sanity check //
-            if (lambda_neg.EsdEntry == k0s_neg.EsdEntry || lambda_neg.EsdEntry == k0s_pos.EsdEntry || lambda_pos.EsdEntry == k0s_neg.EsdEntry ||
-                lambda_pos.EsdEntry == k0s_pos.EsdEntry) {
-                continue;
-            }
+            // apply cuts (1) //
+            if (!PreSeedCuts_ChannelA(lambda, lambda_neg, lambda_pos, k0s, k0s_neg, k0s_pos, hist)) continue;
 
             // PCAs //
             Seeder::LineLine::Cache pca_cache;
             auto [seed_lambda, seed_k0s] = Seeder::LineLine::FastPCAs(lambda, k0s, &pca_cache);
 
-            // apply cuts (1) //
+            // apply cuts (2) //
             if (!PostSeedCuts_ChannelA(seed_lambda.pca, seed_k0s.pca, hist)) continue;
 
             // PCAs derivatives //
@@ -683,7 +727,7 @@ void Finder::FindSexaquarks_ChannelA(bool is_bkg_channel) {
             POD::Sexaquark sexa = Create_ChannelA(fit, seed_lambda.pca, seed_k0s.pca, is_bkg_channel);
             Cached::ChannelA c_sexa(sexa, lambda, k0s, fPrimaryVertex);
 
-            // apply cuts (2) //
+            // apply cuts (3) //
             if (!PostFitCuts_ChannelA(c_sexa, hist)) continue;
 
             // store reconstructed //
@@ -714,8 +758,35 @@ void Finder::FindSexaquarks_ChannelA(bool is_bkg_channel) {
     }
 }
 
-bool Finder::PostSeedCuts_ChannelA(const Seeder::PCA& pca_v0a, const Seeder::PCA& pca_v0b, TH1D* hist_cut_flow) const {
+bool Finder::PreSeedCuts_ChannelA(const POD::V0& lambda, const POD::Track& lambda_neg, const POD::Track& lambda_pos, const POD::V0& k0s,
+                                  const POD::Track& k0s_neg, const POD::Track& k0s_pos, TH1D* hist_cut_flow) const {
     FillHist(hist_cut_flow, EChannelA::kAllCombinations);
+
+    if (lambda_neg.EsdEntry == k0s_neg.EsdEntry || lambda_neg.EsdEntry == k0s_pos.EsdEntry || lambda_pos.EsdEntry == k0s_neg.EsdEntry ||
+        lambda_pos.EsdEntry == k0s_pos.EsdEntry) {
+        return false;
+    }
+    FillHist(hist_cut_flow, EChannelA::kPasses_DiffTracks_Logical);
+
+    // just check same-charge legs
+    if (CMath::IsSameHelix(lambda_neg.Px, lambda_neg.Py, lambda_neg.Pz, k0s_neg.Px, k0s_neg.Py, k0s_neg.Pz,  //
+                           Cuts::Track::Max_TracksDeltaR, Cuts::Track::Max_TracksRelDeltaP) ||
+        CMath::IsSameHelix(lambda_pos.Px, lambda_pos.Py, lambda_pos.Pz, k0s_pos.Px, k0s_pos.Py, k0s_pos.Pz,  //
+                           Cuts::Track::Max_TracksDeltaR, Cuts::Track::Max_TracksRelDeltaP)) {
+        return false;
+    }
+    FillHist(hist_cut_flow, EChannelA::kPasses_DiffTracks_Physical);
+
+    if (CMath::SquaredDistance(lambda.Decay_X, lambda.Decay_Y, lambda.Decay_Z, k0s.Decay_X, k0s.Decay_Y, k0s.Decay_Z) <
+        Cuts::ChannelA::Min_DistBtwV0sDVs * Cuts::ChannelA::Min_DistBtwV0sDVs) {
+        return false;
+    }
+    FillHist(hist_cut_flow, EChannelA::kPasses_DiffV0s_Physical);
+
+    return true;
+}
+
+bool Finder::PostSeedCuts_ChannelA(const Seeder::PCA& pca_v0a, const Seeder::PCA& pca_v0b, TH1D* hist_cut_flow) const {
 
     // if (Common::Math::SquaredDistance(pca_v0a.xyz, pca_v0b.xyz) > T2DS::Cuts::ChannelA::Max_DCAbtwV0s * T2DS::Cuts::ChannelA::Max_DCAbtwV0s) {
     // return false;
@@ -833,13 +904,13 @@ void Finder::FindSexaquarks_ChannelD(bool is_bkg_channel) {
             // cache index lookup //
             const POD::Track& kaon = input_kaons[entry_kaon];
 
-            // -- sanity check
-            if (lambda_neg.EsdEntry == kaon.EsdEntry || lambda_pos.EsdEntry == kaon.EsdEntry) continue;
+            // apply cuts (1) //
+            if (!PreSeedCuts_ChannelD(lambda_neg, lambda_pos, kaon, hist)) continue;
 
             // PCAs (1) //
             auto [seed_kaon, seed_v0, pca_cache] = Seeder::HelixLine::FastCorrectPCAs(kaon, lambda, fMagneticField);
 
-            // apply cuts (1) //
+            // apply cuts (2) //
             if (!PostSeedCuts_ChannelD(seed_v0.pca, seed_kaon.pca, hist)) continue;
 
             // PCAs derivatives //
@@ -852,7 +923,7 @@ void Finder::FindSexaquarks_ChannelD(bool is_bkg_channel) {
             POD::Sexaquark sexa = Create_ChannelD(fit, seed_v0.pca, seed_kaon.pca, is_bkg_channel);
             Cached::ChannelD c_sexa(sexa, lambda, fPrimaryVertex);
 
-            // apply cuts (2) //
+            // apply cuts (3) //
             if (!PostFitCuts_ChannelD(c_sexa, hist)) continue;
 
             // store reconstructed //
@@ -879,8 +950,24 @@ void Finder::FindSexaquarks_ChannelD(bool is_bkg_channel) {
     }
 }
 
-bool Finder::PostSeedCuts_ChannelD(const Seeder::PCA& pca_v0, const Seeder::PCA& pca_ka, TH1D* hist_cut_flow) const {
+bool Finder::PreSeedCuts_ChannelD(const POD::Track& lambda_neg, const POD::Track& lambda_pos, const POD::Track& kaon, TH1D* hist_cut_flow) const {
     FillHist(hist_cut_flow, EChannelD::kAllCombinations);
+
+    if (lambda_neg.EsdEntry == kaon.EsdEntry || lambda_pos.EsdEntry == kaon.EsdEntry) return false;
+    FillHist(hist_cut_flow, EChannelD::kPasses_DiffTracks_Logical);
+
+    // compare kaon only with same-charge leg
+    const POD::Track& lambda_dau = kaon.Charge < 0 ? lambda_neg : lambda_pos;
+    if (CMath::IsSameHelix(lambda_dau.Px, lambda_dau.Py, lambda_dau.Pz, kaon.Px, kaon.Py, kaon.Pz,  //
+                           Cuts::Track::Max_TracksDeltaR, Cuts::Track::Max_TracksRelDeltaP)) {
+        return false;
+    }
+    FillHist(hist_cut_flow, EChannelD::kPasses_DiffTracks_Physical);
+
+    return true;
+}
+
+bool Finder::PostSeedCuts_ChannelD(const Seeder::PCA& pca_v0, const Seeder::PCA& pca_ka, TH1D* hist_cut_flow) const {
 
     // if (Common::Math::SquaredDistance(pca_ka.xyz, pca_v0.xyz) > Cuts::ChannelD::Max_DCAKaLa * Cuts::ChannelD::Max_DCAKaLa) return false;
     // FillHist(hist_cut_flow, 1.); // PENDING
@@ -979,13 +1066,15 @@ void Finder::FindSexaquarks_ChannelH(bool is_bkg_channel) {
         const POD::Track& kaon1 = input_kaons[entry_kaon1];  // cache index lookup
 
         for (std::size_t entry_kaon2 = entry_kaon1 + 1; entry_kaon2 < n_kaons; ++entry_kaon2) {
-            // NOTE: sanity check not needed, because loops don't intersect
             const POD::Track& kaon2 = input_kaons[entry_kaon2];  // cache index lookup
+
+            // apply cuts (1) //
+            if (!PreSeedCuts_ChannelH(kaon1, kaon2, hist)) continue;
 
             // PCAs (1) //
             auto [seed_kaon1, seed_kaon2, pca_cache] = Seeder::HelixHelix::FastCorrectPCAs(kaon1, kaon2, fMagneticField);
 
-            // apply cuts (1) //
+            // apply cuts (2) //
             if (!PostSeedCuts_ChannelH(seed_kaon1.pca, seed_kaon2.pca, hist)) continue;
 
             // PCAs derivatives //
@@ -999,7 +1088,7 @@ void Finder::FindSexaquarks_ChannelH(bool is_bkg_channel) {
             POD::Sexaquark sexa = Create_ChannelH(fit, seed_kaon1.pca, seed_kaon2.pca, is_bkg_channel);
             Cached::ChannelH c_sexa(sexa, fPrimaryVertex);
 
-            // apply cuts (2) //
+            // apply cuts (3) //
             if (!PostFitCuts_ChannelH(c_sexa, hist)) continue;
 
             // store reconstructed //
@@ -1022,8 +1111,22 @@ void Finder::FindSexaquarks_ChannelH(bool is_bkg_channel) {
     }
 }
 
-bool Finder::PostSeedCuts_ChannelH(const Seeder::PCA& pca_kaon1, const Seeder::PCA& pca_kaon2, TH1D* hist_cut_flow) const {
+bool Finder::PreSeedCuts_ChannelH(const POD::Track& kaon1, const POD::Track& kaon2, TH1D* hist_cut_flow) const {
     FillHist(hist_cut_flow, EChannelH::kAllCombinations);
+
+    if (kaon1.EsdEntry == kaon2.EsdEntry) return false;
+    FillHist(hist_cut_flow, EChannelH::kPasses_DiffTracks_Logical);
+
+    if (CMath::IsSameHelix(kaon1.Px, kaon1.Py, kaon1.Pz, kaon2.Px, kaon2.Py, kaon2.Pz,  //
+                           Cuts::Track::Max_TracksDeltaR, Cuts::Track::Max_TracksRelDeltaP)) {
+        return false;
+    }
+    FillHist(hist_cut_flow, EChannelH::kPasses_DiffTracks_Physical);
+
+    return true;
+}
+
+bool Finder::PostSeedCuts_ChannelH(const Seeder::PCA& pca_kaon1, const Seeder::PCA& pca_kaon2, TH1D* hist_cut_flow) const {
 
     // PENDING //
 

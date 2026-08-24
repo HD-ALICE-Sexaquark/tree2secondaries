@@ -57,10 +57,9 @@ class Verifier {
         // pre-seed cuts
         kPasses_DiffDaughters_Logical,
         kPasses_DiffDaughters_Physical,
-        kPasses_NotDuplicated,
-        // fast cuts
+        // post-seed cuts
         kPasses_Max_DCAbtwDaughters,
-        // slow cuts
+        // post-fit cuts
         kPasses_AbsMax_Pz,
         kPasses_Max_Pt,
         kPasses_Min_Pt,
@@ -87,9 +86,9 @@ class Verifier {
         kPasses_DiffTracks_Logical,
         kPasses_DiffTracks_Physical,
         kPasses_DiffLambdas_Physical,
-        // fast cuts
+        // post-seed cuts
         kPasses_Max_DCAbtwDau,
-        // slow cuts
+        // post-fit cuts
         kPasses_AbsMax_Pz,
         kPasses_Max_Pt,
         kPasses_Min_Pt,
@@ -100,7 +99,7 @@ class Verifier {
         kPasses_Min_CPAwrtPV,
         kPasses_Max_Chi2NDF,
         kPasses_Max_Chi2CV,
-        // (anti)lambdas : depend on (anti)h-dibaryon decay vertex
+        // further cuts on (anti)lambdas, as they depend on (anti)h-dibaryon decay vertex
         kPasses_Max_L1_DecayLength,
         kPasses_Min_L1_DecayLength,
         kPasses_Min_L1_CPAwrtDV,
@@ -177,8 +176,7 @@ class Verifier {
     [[nodiscard]] POD::Track ExtractTrack(const POD::PreFoundLambda &pod_lambda, short charge) const;
 
     // pre-found on-the-fly (anti)lambdas //
-    [[nodiscard]] bool IsDuplicatedPreFoundLambda(std::size_t entry_lambda) const;
-    [[nodiscard]] bool PreSeedCuts_Lambda(const POD::PreFoundLambda &lambda, std::size_t entry_lambda);
+    [[nodiscard]] bool PreSeedCuts_Lambda(const POD::PreFoundLambda &lambda);
     [[nodiscard]] bool PostSeedCuts_Lambda(const Seeder::PCA &pca_neg, const Seeder::PCA &pca_pos);
     bool PostFitCuts_Lambda(const Cached::PreFoundLambda &c_lambda);
 

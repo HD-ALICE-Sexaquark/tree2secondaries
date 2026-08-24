@@ -54,10 +54,9 @@ void Verifier::PrepareOutputHistograms() {
         // pre-seed cuts
         x_axis->SetBinLabel(static_cast<int>(EPreFoundLambda::kPasses_DiffDaughters_Logical) + 1, "Passes_DiffDaughters_Logical");
         x_axis->SetBinLabel(static_cast<int>(EPreFoundLambda::kPasses_DiffDaughters_Physical) + 1, "Passes_DiffDaughters_Physical");
-        x_axis->SetBinLabel(static_cast<int>(EPreFoundLambda::kPasses_NotDuplicated) + 1, "Passes_NotDuplicated");
-        // fast cuts
+        // post-seed cuts
         x_axis->SetBinLabel(static_cast<int>(EPreFoundLambda::kPasses_Max_DCAbtwDaughters) + 1, "Passes_Max_DCAbtwDaughters");
-        // slow cuts
+        // post-fit cuts
         x_axis->SetBinLabel(static_cast<int>(EPreFoundLambda::kPasses_AbsMax_Pz) + 1, "Passes_AbsMax_Pz");
         x_axis->SetBinLabel(static_cast<int>(EPreFoundLambda::kPasses_Max_Pt) + 1, "Passes_Max_Pt");
         x_axis->SetBinLabel(static_cast<int>(EPreFoundLambda::kPasses_Min_Pt) + 1, "Passes_Min_Pt");
@@ -96,9 +95,9 @@ void Verifier::PrepareOutputHistograms() {
         x_axis->SetBinLabel(static_cast<int>(ELambdaPair::kPasses_DiffTracks_Logical) + 1, "Passes_DiffTracks_Logical");
         x_axis->SetBinLabel(static_cast<int>(ELambdaPair::kPasses_DiffTracks_Physical) + 1, "Passes_DiffTracks_Physical");
         x_axis->SetBinLabel(static_cast<int>(ELambdaPair::kPasses_DiffLambdas_Physical) + 1, "Passes_DiffLambdas_Physical");
-        // fast cuts
+        // post-seed cuts
         x_axis->SetBinLabel(static_cast<int>(ELambdaPair::kPasses_Max_DCAbtwDau) + 1, "Passes_Max_DCAbtwDau");
-        // slow cuts
+        // post-fit cuts
         x_axis->SetBinLabel(static_cast<int>(ELambdaPair::kPasses_AbsMax_Pz) + 1, "Passes_AbsMax_Pz");
         x_axis->SetBinLabel(static_cast<int>(ELambdaPair::kPasses_Max_Pt) + 1, "Passes_Max_Pt");
         x_axis->SetBinLabel(static_cast<int>(ELambdaPair::kPasses_Min_Pt) + 1, "Passes_Min_Pt");
@@ -274,8 +273,8 @@ void Verifier::ProcessPreFoundLambda() {
 
         const auto& in_lambda = fInput.PreFoundLambda[entry_lambda];
 
-        // logical cuts (1) //
-        if (!PreSeedCuts_Lambda(in_lambda, entry_lambda)) continue;
+        // apply cuts (1) //
+        if (!PreSeedCuts_Lambda(in_lambda)) continue;
 
         auto track_neg = ExtractTrack(in_lambda, -1);
         auto track_pos = ExtractTrack(in_lambda, +1);
@@ -334,26 +333,7 @@ void Verifier::ProcessPreFoundLambda() {
     }  // end of loop over pre-found (anti)lambdas
 }
 
-// Among duplicates, keep the one with the tightest pre-fit vertex; ties go to the lower entry.
-// NOTE: order-independent on purpose -- "keep the first" would let a worse twin evict a better one.
-bool Verifier::IsDuplicatedPreFoundLambda(std::size_t entry_lambda) const {
-    const auto& lambda = fInput.PreFoundLambda[entry_lambda];
-    for (std::size_t entry_other = 0; entry_other < fInput.PreFoundLambda.size(); ++entry_other) {
-        if (entry_other == entry_lambda) continue;
-        const auto& rival = fInput.PreFoundLambda[entry_other];
-        if (!HD::SameLambda(rival, lambda, Cuts::PreFoundLambda::Max_TracksDeltaR, Cuts::PreFoundLambda::Max_TracksRelDeltaP)) {
-            continue;
-        }
-        if (rival.DcaV0Daughters < lambda.DcaV0Daughters) return true;
-        auto lambda_sum_tpc_cls = lambda.Neg_TPC_NClusters + lambda.Pos_TPC_NClusters;
-        auto rival_sum_tpc_cls = rival.Neg_TPC_NClusters + rival.Pos_TPC_NClusters;
-        if (rival.DcaV0Daughters == lambda.DcaV0Daughters && rival_sum_tpc_cls > lambda_sum_tpc_cls) return true;
-        if (rival.DcaV0Daughters == lambda.DcaV0Daughters && rival_sum_tpc_cls == lambda_sum_tpc_cls && entry_other < entry_lambda) return true;
-    }
-    return false;
-}
-
-bool Verifier::PreSeedCuts_Lambda(const POD::PreFoundLambda& lambda, std::size_t entry_lambda) {
+bool Verifier::PreSeedCuts_Lambda(const POD::PreFoundLambda& lambda) {
     FillHist(fHist_CutFlow_AntiLambda.get(), EPreFoundLambda::kAllPreFoundLambdas);
     FillHist(fHist_CutFlow_Lambda.get(), EPreFoundLambda::kAllPreFoundLambdas);
 
@@ -366,10 +346,6 @@ bool Verifier::PreSeedCuts_Lambda(const POD::PreFoundLambda& lambda, std::size_t
     }
     FillHist(fHist_CutFlow_AntiLambda.get(), EPreFoundLambda::kPasses_DiffDaughters_Physical);
     FillHist(fHist_CutFlow_Lambda.get(), EPreFoundLambda::kPasses_DiffDaughters_Physical);
-
-    if (IsDuplicatedPreFoundLambda(entry_lambda)) return false;
-    FillHist(fHist_CutFlow_AntiLambda.get(), EPreFoundLambda::kPasses_NotDuplicated);
-    FillHist(fHist_CutFlow_Lambda.get(), EPreFoundLambda::kPasses_NotDuplicated);
 
     return true;
 }
@@ -543,7 +519,7 @@ void Verifier::VerifyLambdaPair(bool anti_channel_l1, bool anti_channel_l2) {
         for (std::size_t entry_lambda2 = mixed_channel ? 0 : entry_lambda1 + 1; entry_lambda2 < input_lambdas_l2.size(); ++entry_lambda2) {
             const auto& lambda2 = input_lambdas_l2[entry_lambda2];  // cache index lookup
 
-            // logical cuts (1) //
+            // apply cuts (1) //
             if (!PreSeedCuts_Hdibaryon(lambda1, lambda2, hist_cut_flow)) continue;
 
             // PCAs //
@@ -564,7 +540,7 @@ void Verifier::VerifyLambdaPair(bool anti_channel_l1, bool anti_channel_l2) {
             POD::LambdaPair hdib = CreateLambdaPair(fit, seed_lambda1.pca, seed_lambda2.pca);
             Cached::Hdibaryon c_hdib(hdib, lambda1, lambda2, fPrimaryVertex);
 
-            // apply cuts (2) //
+            // apply cuts (3) //
             if (!PostFitCuts_Hdibaryon(c_hdib, hist_cut_flow)) continue;
 
             // store reconstructed //
@@ -597,14 +573,14 @@ bool Verifier::PreSeedCuts_Hdibaryon(const POD::Extended::PreFoundLambda& lambda
     if (HD::SameDaughterEntries(lambda1, lambda2)) return false;
     FillHist(hist_cut_flow, ELambdaPair::kPasses_DiffTracks_Logical);
 
-    if (CMath::IsSameHelix(lambda1.Neg_State, lambda2.Neg_State, Cuts::PreFoundLambda::Max_TracksDeltaR, Cuts::PreFoundLambda::Max_TracksRelDeltaP) &&
+    if (CMath::IsSameHelix(lambda1.Neg_State, lambda2.Neg_State, Cuts::PreFoundLambda::Max_TracksDeltaR, Cuts::PreFoundLambda::Max_TracksRelDeltaP) ||
         CMath::IsSameHelix(lambda1.Pos_State, lambda2.Pos_State, Cuts::PreFoundLambda::Max_TracksDeltaR, Cuts::PreFoundLambda::Max_TracksRelDeltaP)) {
         return false;
     }
     FillHist(hist_cut_flow, ELambdaPair::kPasses_DiffTracks_Physical);
 
-    if (CMath::Distance(lambda1.Decay_X, lambda1.Decay_Y, lambda1.Decay_Z, lambda2.Decay_X, lambda2.Decay_Y, lambda2.Decay_Z) <
-        Cuts::LambdaPair::Min_DistBtwLambdaDVs) {
+    if (CMath::SquaredDistance(lambda1.Decay_X, lambda1.Decay_Y, lambda1.Decay_Z, lambda2.Decay_X, lambda2.Decay_Y, lambda2.Decay_Z) <
+        Cuts::LambdaPair::Min_DistBtwLambdaDVs * Cuts::LambdaPair::Min_DistBtwLambdaDVs) {
         return false;
     }
     FillHist(hist_cut_flow, ELambdaPair::kPasses_DiffLambdas_Physical);

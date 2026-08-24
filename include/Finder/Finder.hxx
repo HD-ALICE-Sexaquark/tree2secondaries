@@ -36,58 +36,84 @@ namespace Seeder{ struct PCA; }
 // Collect secondary charged kaons and reconstruct V0s, then combine them into antisexaquark candidates.
 // The secondaries are built once per event and shared by every requested reaction channel.
 class Finder {
-    // PENDING for author: missing cuts enums+structs + duplications treatments
-
     // Cut-related //
 
     enum class EProton : int {
         kAllPossibleProtons,
-        // PENDING
-        kPasses_NSigmasProtons,
-        // --
+        kPasses_NSigmasProtons,  // PENDING
         kNProtonCuts,
     };
     enum class EKaon : int {
         kAllPossibleKaons,
-        // PENDING
-        kPasses_NSigmasKaons,
-        // --
+        kPasses_NSigmasKaons,  // PENDING
         kNKaonCuts,
     };
     enum class EPion : int {
         kAllPossiblePions,
-        // PENDING
-        kPasses_NSigmasPions,
-        // --
+        kPasses_NSigmasPions,  // PENDING
         kNPionCuts,
     };
     enum class ELambda : int {
         kAllCombinations,
+        // pre-seed cuts
+        kPasses_DiffDaughters_Logical,
+        kPasses_DiffDaughters_Physical,
+        // post-seed cuts
         // PENDING
         kPasses_DcaBtwDaughters,
+        // post-fit cuts
+        // PENDING
         // --
         kNLambdaCuts,
     };
     enum class EKaonZeroShort : int {
         kAllCombinations,
+        // pre-seed cuts
+        kPasses_DiffDaughters_Logical,
+        kPasses_DiffDaughters_Physical,
+        // post-seed cuts
         // PENDING
         kPasses_DcaBtwDaughters,
+        // post-fit cuts
+        // PENDING
         // --
         kNKaonZeroShortCuts,
     };
     enum class EChannelA : int {
         kAllCombinations,
+        // pre-seed cuts
+        kPasses_DiffTracks_Logical,
+        kPasses_DiffTracks_Physical,
+        kPasses_DiffV0s_Physical,
+        // post-seed cuts
         // PENDING
+        // post-fit cuts
+        // PENDING
+        // --
         kNChannelACuts,
     };
     enum class EChannelD : int {
         kAllCombinations,
+        // pre-seed cuts
+        kPasses_DiffTracks_Logical,
+        kPasses_DiffTracks_Physical,
+        // post-seed cuts
         // PENDING
+        // post-fit cuts
+        // PENDING
+        // --
         kNChannelDCuts,
     };
     enum class EChannelH : int {
         kAllCombinations,
+        // pre-seed cuts
+        kPasses_DiffTracks_Logical,
+        kPasses_DiffTracks_Physical,
+        // post-seed cuts
         // PENDING
+        // post-fit cuts
+        // PENDING
+        // --
         kNChannelHCuts,
     };
     template <typename E>
@@ -171,38 +197,6 @@ class Finder {
    private:
     void PrepareOutputHistograms();
 
-    [[nodiscard]] bool PostSeedCuts(const Seeder::PCA &pca_neg, const Seeder::PCA &pca_pos, const DB::Particles::Definition &pid) {
-        switch (pid.pdg_code) {
-            case DB::Particles::Particle("AntiLambda").pdg_code: {
-                return PostSeedCuts_Lambda(pca_neg, pca_pos, fHist_CutFlow_AntiLambda.get());
-            }
-            case DB::Particles::Particle("Lambda").pdg_code: {
-                return PostSeedCuts_Lambda(pca_neg, pca_pos, fHist_CutFlow_Lambda.get());
-            }
-            case DB::Particles::Particle("KaonZeroShort").pdg_code: {
-                return PostSeedCuts_KaonZeroShort(pca_neg, pca_pos, fHist_CutFlow_KaonZeroShort.get());
-            }
-            default:
-                return false;
-        }
-    }
-
-    [[nodiscard]] bool PostFitCuts(const Cached::V0 &c_v0, const DB::Particles::Definition &pid) {
-        switch (pid.pdg_code) {
-            case DB::Particles::Particle("AntiLambda").pdg_code: {
-                return PostFitCuts_Lambda(c_v0, fHist_CutFlow_AntiLambda.get());
-            }
-            case DB::Particles::Particle("Lambda").pdg_code: {
-                return PostFitCuts_Lambda(c_v0, fHist_CutFlow_Lambda.get());
-            }
-            case DB::Particles::Particle("KaonZeroShort").pdg_code: {
-                return PostFitCuts_KaonZeroShort(c_v0, fHist_CutFlow_KaonZeroShort.get());
-            }
-            default:
-                return false;
-        }
-    }
-
     // tracks //
 
     bool PassesCuts_Proton(const POD::Track &track, TH1D *hist_cut_flow) const;
@@ -213,8 +207,9 @@ class Finder {
 
     // V0s //
     void FindV0s(const DB::Particles::Definition &pid);
-    bool PreSeedCuts_Lambda() const;         // PENDING
-    bool PreSeedCuts_KaonZeroShort() const;  // PENDING
+
+    template <typename E>
+    bool PreSeedCuts(const POD::Track &track_neg, const POD::Track &track_pos, TH1D *hist_cut_flow) const;
     bool PostSeedCuts_Lambda(const Seeder::PCA &pca_neg, const Seeder::PCA &pca_pos, TH1D *hist_cut_flow) const;
     bool PostSeedCuts_KaonZeroShort(const Seeder::PCA &pca_neg, const Seeder::PCA &pca_pos, TH1D *hist_cut_flow) const;
     bool PostFitCuts_Lambda(const Cached::V0 &v0, TH1D *hist_cut_flow) const;
@@ -228,21 +223,23 @@ class Finder {
 
     // channel A //
     void FindSexaquarks_ChannelA(bool is_bkg_channel);
-    bool PreSeedCuts_ChannelA() const;  // PENDING
+    [[nodiscard]] bool PreSeedCuts_ChannelA(const POD::V0 &lambda, const POD::Track &lambda_neg, const POD::Track &lambda_pos, const POD::V0 &k0s,
+                                            const POD::Track &k0s_neg, const POD::Track &k0s_pos, TH1D *hist_cut_flow) const;
     [[nodiscard]] bool PostSeedCuts_ChannelA(const Seeder::PCA &pca_v0a, const Seeder::PCA &pca_v0b, TH1D *hist_cut_flow) const;
     [[nodiscard]] bool PostFitCuts_ChannelA(const Cached::ChannelA &c_sexa, TH1D *hist_cut_flow) const;
     POD::Sexaquark Create_ChannelA(const KF::FitResult &fit, const Seeder::PCA &pca_v0a, const Seeder::PCA &pca_v0b, bool is_bkg_channel);
 
     // channel D //
     void FindSexaquarks_ChannelD(bool is_bkg_channel);
-    bool PreSeedCuts_ChannelD() const;  // PENDING
+    [[nodiscard]] bool PreSeedCuts_ChannelD(const POD::Track &lambda_neg, const POD::Track &lambda_pos, const POD::Track &kaon,
+                                            TH1D *hist_cut_flow) const;
     [[nodiscard]] bool PostSeedCuts_ChannelD(const Seeder::PCA &pca_v0, const Seeder::PCA &pca_ka, TH1D *hist_cut_flow) const;
     [[nodiscard]] bool PostFitCuts_ChannelD(const Cached::ChannelD &c_sexa, TH1D *hist_cut_flow) const;
     POD::Sexaquark Create_ChannelD(const KF::FitResult &fit, const Seeder::PCA &pca_v0, const Seeder::PCA &pca_ka, bool is_bkg_channel);
 
     // channel H //
     void FindSexaquarks_ChannelH(bool is_bkg_channel);
-    bool PreSeedCuts_ChannelH() const;  // PENDING
+    [[nodiscard]] bool PreSeedCuts_ChannelH(const POD::Track &kaon1, const POD::Track &kaon2, TH1D *hist_cut_flow) const;
     [[nodiscard]] bool PostSeedCuts_ChannelH(const Seeder::PCA &pca_kaon1, const Seeder::PCA &pca_kaon2, TH1D *hist_cut_flow) const;
     [[nodiscard]] bool PostFitCuts_ChannelH(const Cached::ChannelH &c_sexa, TH1D *hist_cut_flow) const;
     POD::Sexaquark Create_ChannelH(const KF::FitResult &fit, const Seeder::PCA &pca_kaon1, const Seeder::PCA &pca_kaon2, bool is_bkg_channel);
