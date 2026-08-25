@@ -22,7 +22,7 @@
 #include "common/Math.hpp"
 namespace CMath = Common::Math;
 
-#include "KalmanFitter/BaseKalmanFitter.hxx"
+#include "KalmanFitter/KalmanFitter.hxx"
 #include "KalmanFitter/KalmanFitterParticle.hxx"
 #include "Seeder/SeederHelixHelix.hxx"
 #include "Seeder/SeederHelixLine.hxx"
@@ -470,8 +470,9 @@ void Finder::FindV0s(const DB::Particles::Definition& pid) {
             auto [deriv_neg, deriv_pos] = Seeder::HelixHelix::ComputeDerivatives(seeds_xy, pca_cache);
 
             // fit vertex //
-            auto fit =
-                KF::FitVertex(track_neg, track_pos, pid_neg, pid_pos, {seed_neg, deriv_neg}, {seed_pos, deriv_pos}, fMagneticField, fit_policy);
+            auto fit = KF::FitVertex(KF::MakeComponent(track_neg, pid_neg, {seed_neg, deriv_neg}),  //
+                                     KF::MakeComponent(track_pos, pid_pos, {seed_pos, deriv_pos}),  //
+                                     fMagneticField, fit_policy);
 
             // create storage+computation units //
             POD::V0 v0 = Create_V0(fit, seed_neg.pca, seed_pos.pca);
@@ -724,7 +725,10 @@ void Finder::FindSexaquarks_ChannelA(bool is_bkg_channel) {
             auto [deriv_lambda, deriv_k0s] = Seeder::LineLine::ComputeDerivatives(pca_cache);
 
             // fit vertex //
-            auto fit = KF::FitVertex(lambda, k0s, pid_lambda, pid_k0s, {seed_lambda, deriv_lambda}, {seed_k0s, deriv_k0s}, fit_policy);
+            // -- `fMagneticField` is inert here: both daughters and mother are neutral
+            auto fit = KF::FitVertex(KF::MakeComponent(lambda, pid_lambda, {seed_lambda, deriv_lambda}, kV0sArePinned),  //
+                                     KF::MakeComponent(k0s, pid_k0s, {seed_k0s, deriv_k0s}, kV0sArePinned),              //
+                                     fMagneticField, fit_policy);
 
             // create storage+computation units //
             POD::Sexaquark sexa = Create_ChannelA(fit, seed_lambda.pca, seed_k0s.pca, is_bkg_channel);
@@ -922,7 +926,9 @@ void Finder::FindSexaquarks_ChannelD(bool is_bkg_channel) {
             auto [deriv_ka, deriv_v0] = Seeder::HelixLine::ComputeDerivatives(seeds_xy, pca_cache);
 
             // fit vertex //
-            auto fit = KF::FitVertex(kaon, lambda, pid_kaon, pid_lambda, {seed_kaon, deriv_ka}, {seed_v0, deriv_v0}, fMagneticField, fit_policy);
+            auto fit = KF::FitVertex(KF::MakeComponent(kaon, pid_kaon, {seed_kaon, deriv_ka}),                   //
+                                     KF::MakeComponent(lambda, pid_lambda, {seed_v0, deriv_v0}, kV0sArePinned),  //
+                                     fMagneticField, fit_policy);
 
             // create storage+computation units //
             POD::Sexaquark sexa = Create_ChannelD(fit, seed_v0.pca, seed_kaon.pca, is_bkg_channel);
@@ -1088,8 +1094,9 @@ void Finder::FindSexaquarks_ChannelH(bool is_bkg_channel) {
             auto [deriv_kaon1, deriv_kaon2] = Seeder::HelixHelix::ComputeDerivatives(seeds_xy, pca_cache);
 
             // fit vertex //
-            auto fit =
-                KF::FitVertex(kaon1, kaon2, pid_kaon, pid_kaon, {seed_kaon1, deriv_kaon1}, {seed_kaon2, deriv_kaon2}, fMagneticField, fit_policy);
+            auto fit = KF::FitVertex(KF::MakeComponent(kaon1, pid_kaon, {seed_kaon1, deriv_kaon1}),  //
+                                     KF::MakeComponent(kaon2, pid_kaon, {seed_kaon2, deriv_kaon2}),  //
+                                     fMagneticField, fit_policy);
 
             // create storage+computation units //
             POD::Sexaquark sexa = Create_ChannelH(fit, seed_kaon1.pca, seed_kaon2.pca, is_bkg_channel);

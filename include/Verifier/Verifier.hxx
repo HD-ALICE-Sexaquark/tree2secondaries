@@ -20,7 +20,7 @@
 
 #include "App/Logger.hxx"
 #include "App/Settings.hxx"
-#include "KalmanFitter/KalmanFitterParticle.hxx"
+#include "KalmanFitter/KalmanFitterVertex.hxx"
 
 // forward declarations //
 // clang-format off

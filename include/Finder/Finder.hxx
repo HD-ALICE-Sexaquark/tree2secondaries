@@ -22,7 +22,7 @@
 
 #include "App/Logger.hxx"
 #include "App/Settings.hxx"
-#include "KalmanFitter/BaseKalmanFitter.hxx"
+#include "KalmanFitter/KalmanFitterFitTypes.hxx"
 
 // forward declarations //
 // clang-format off
@@ -251,7 +251,6 @@ class Finder {
         if (kMassConstraints) {
             return {
                 .pin_daughters = true,
-                .daughters_already_pinned = false,
                 .mother_mass = mass,
                 .prod_vertex = std::nullopt,
             };
@@ -262,13 +261,13 @@ class Finder {
         if (kMassConstraints) {
             return {
                 .pin_daughters = true,
-                .daughters_already_pinned = true,
                 .mother_mass = std::nullopt,
                 .prod_vertex = std::nullopt,
             };
         }
         return {};
     }
+    static constexpr bool kV0sArePinned = kMassConstraints;  // re-assert that V0s were pinned to their nominal mass
 
     // member variables //
 

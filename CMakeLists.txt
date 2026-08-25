@@ -107,7 +107,11 @@ add_executable(${PROJECT_NAME} src/Seeder/SeederHelixHelix.cxx
                                src/Seeder/SeederLineLine.cxx
                                src/Seeder/SeederLineVertex.cxx
                                src/KalmanFitter/KalmanFitter.cxx
+                               src/KalmanFitter/KalmanFitterMassConstraints.cxx
                                src/KalmanFitter/KalmanFitterParticle.cxx
+                               src/KalmanFitter/KalmanFitterProdVertexConstraint.cxx
+                               src/KalmanFitter/KalmanFitterTransport.cxx
+                               src/KalmanFitter/KalmanFitterVertexUpdate.cxx
                                src/Finder/Finder.cxx
                                src/Verifier/Verifier.cxx
                                src/App/Settings.cxx

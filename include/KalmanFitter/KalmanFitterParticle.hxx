@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <cmath>
 #include <format>
 #include <optional>
@@ -7,47 +8,31 @@
 #include <Math/Point3D.h>
 #include <Math/Vector3D.h>
 
-#include <Eigen/Eigen>
+#include <Eigen/Core>
 
 #include "common/Constants.hpp"
 #include "common/DB_Particles.hpp"
-#include "common/POD_Event.hpp"
 #include "common/POD_PreFoundLambda.hpp"
 #include "common/POD_Track.hpp"
 #include "common/POD_V0.hpp"
 
 #include "App/Utilities.hxx"  // NOTE: don't remove! print formatter below needs it
+#include "KalmanFitter/KalmanFitterUtils.hxx"
 
 namespace T2DS::KF {
-
-// ## Constants ## //
-
-static constexpr double Initial_Css = 1.;
-static constexpr int Initial_NDF = -1;
-
-// -- mass constraint's Newton solver
-static constexpr int MassConstraint_MaxIter = 10;  // PENDING: maybe it's already done in 2-3 steps
-static constexpr double MassConstraint_Tolerance = 1.E-10;
-static constexpr double MassConstraint_MinDenom = 1.E-10;
-static constexpr double MassConstraint_MinVariance = 1.E-20;
 
 // ## KF::Particle ## //
 
 struct Particle {
 
-    // Constructors //
-
-    // The mass always comes from the particle's identity, never from a parallel argument -- so the two can't disagree.
-    // `on_shell` re-asserts an exact mass hypothesis on a composite, which is what a mother mass constraint applied
-    // during a previous fit amounts to. It has to be opt-in and explicit because the hypothesis does not survive the
-    // POD round-trip: `POD::V0` and `POD::Extended::PreFoundLambda` store (Px,Py,Pz,E) but no mass bookkeeping.
+    // == Constructors == //
 
     Particle() = default;
-    static Particle FromTrack(const POD::Track &v, const DB::Particles::Definition &pid);
+    static Particle FromTrack(const POD::Track &t, const DB::Particles::Definition &pid);
     static Particle FromV0(const POD::V0 &v, const DB::Particles::Definition &pid, bool on_shell);
     static Particle FromPreFoundLambda(const POD::Extended::PreFoundLambda &l, const DB::Particles::Definition &pid, bool on_shell);
 
-    // Modifier //
+    // == Mass Constraint == //
 
     void SetMassBookkeeping(const DB::Particles::Definition &pid, bool on_shell);
 
@@ -110,13 +95,7 @@ struct Particle {
     [[nodiscard]] double VarE() const { return CovE2(); }
     [[nodiscard]] double VarS() const { return CovS2(); }
 
-    template <unsigned int N>
-    [[nodiscard]] std::array<float, N> State() const {
-        std::array<float, N> out{};
-        for (unsigned int i = 0; i < N; ++i) out[i] = static_cast<float>(fP(i));
-        return out;
-    }
-
+    // Packed into the lower-triangular layout every `POD::` type expects.
     template <unsigned int N>
     [[nodiscard]] std::array<float, (N * (N + 1)) / 2> Cov() const {
         std::array<float, (N * (N + 1)) / 2> out{};
@@ -126,15 +105,6 @@ struct Particle {
             }
         }
         return out;
-    }
-
-    template <unsigned int N>
-    void AppendCov(std::vector<float> &out) const {
-        for (unsigned int i = 0; i < N; ++i) {
-            for (unsigned int j = 0; j <= i; ++j) {
-                out.push_back(static_cast<float>(fC(i, j)));
-            }
-        }
     }
 
     [[nodiscard]] double Chi2() const { return fChi2; }
@@ -175,44 +145,25 @@ struct Particle {
     [[nodiscard]] double AbsZ() const { return std::abs(Z()); }
     [[nodiscard]] double AbsEta() const { return std::abs(Eta()); }
 
-    // Decay Length //
-    // -- meaningful only on a particle returned by `SetProductionVertex`
+    // == Production Vertex Constraint == //
 
     [[nodiscard]] double DecayLength() const { return S() * Momentum(); }
     [[nodiscard]] std::optional<double> DecayLengthErr() const;
 
     // Member Variables //
 
-    Eigen::Matrix<double, 8, 8> fC{Eigen::Matrix<double, 8, 8>::Zero()};  // full symmetric
+    Eigen::Matrix<double, 8, 8> fC{Eigen::Matrix<double, 8, 8>::Zero()};  // symmetric up to roundoff; lower triangle authoritative
     Eigen::Vector<double, 8> fP{Eigen::Vector<double, 8>::Zero()};
     std::optional<double> fMassHypo;  // exact mass hypothesis, if the particle has one
     double fChi2{};
     double fSumDaughterMass{0.};  // sum of the daughters' masses, i.e. the lowest physical mass
-    int fNDF{Initial_NDF};
+    int fNDF{Constants::Initial_NDF};
     int fQ{};
-};
-
-// ## KF::Vertex ## //
-
-struct Vertex {
-
-    // Constructor //
-
-    static Vertex FromEvent(const POD::Event &e);
-
-    // Getter //
-
-    [[nodiscard]] std::array<double, 3> GetXYZ() const { return {xyz(0), xyz(1), xyz(2)}; }
-
-    // Member Variables //
-
-    Eigen::Matrix<double, 3, 3> cov{Eigen::Matrix<double, 3, 3>::Zero()};  // full symmetric
-    Eigen::Vector<double, 3> xyz{Eigen::Vector<double, 3>::Zero()};
 };
 
 }  // namespace T2DS::KF
 
-// ## KF::Particle Print Formatter ## //
+// == Print Formatter == //
 
 template <>
 struct std::formatter<T2DS::KF::Particle> {

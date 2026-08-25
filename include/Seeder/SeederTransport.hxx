@@ -12,8 +12,6 @@
 namespace T2DS::Seeder {
 
 // Transport `s0` along a straight line by the path parameter `ds`.
-// The trigonometric cache degenerates to theta = 0, sin = 0, cos = 1, sB = ds, cB = 0, which is exactly what
-// `KF::Detail::Daughter::PrepareJacobAndCorr` needs to build the q = 0 Jacobian.
 [[nodiscard]] inline Seed TransportLine(double x0, double y0, double z0, double px0, double py0, double pz0, double ds) {
     Seed out;
 

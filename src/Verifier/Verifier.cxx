@@ -20,7 +20,7 @@
 #include "common/Math.hpp"
 namespace CMath = Common::Math;
 
-#include "KalmanFitter/BaseKalmanFitter.hxx"
+#include "KalmanFitter/KalmanFitter.hxx"
 #include "KalmanFitter/KalmanFitterParticle.hxx"
 #include "Seeder/SeederHelixHelix.hxx"
 #include "Seeder/SeederLineLine.hxx"
@@ -263,7 +263,6 @@ void Verifier::ProcessPreFoundLambda() {
     constexpr FitSetup setup = GetFitSetup();
     const KF::FitPolicy fit_policy{
         .pin_daughters = setup.pin_lambda_daughters,
-        .daughters_already_pinned = false,
         .mother_mass = setup.pin_lambda_mass ? std::make_optional(DB::Particles::Particle("Lambda").mass) : std::nullopt,
         .prod_vertex = std::nullopt,
     };
@@ -296,8 +295,8 @@ void Verifier::ProcessPreFoundLambda() {
             const auto& decay_tree = HD::GetDecayTree(anti_channel);
 
             // fit vertex //
-            auto fit = KF::FitVertex(track_neg, track_pos, decay_tree.neg, decay_tree.pos, {seed_neg, deriv_neg}, {seed_pos, deriv_pos},
-                                     fMagneticField, fit_policy);
+            auto fit = KF::FitVertex(KF::MakeComponent(track_neg, decay_tree.neg, {seed_neg, deriv_neg}),
+                                     KF::MakeComponent(track_pos, decay_tree.pos, {seed_pos, deriv_pos}), fMagneticField, fit_policy);
 
             // create storage+computation (anti)lambda //
             POD::Extended::PreFoundLambda new_lambda = CreateExtendedPreFoundLambda(in_lambda, fit, seed_neg.pca, seed_pos.pca, anti_channel);
@@ -507,7 +506,6 @@ void Verifier::VerifyLambdaPair(bool anti_channel_l1, bool anti_channel_l2) {
     constexpr FitSetup setup = GetFitSetup();
     const KF::FitPolicy fit_policy{
         .pin_daughters = setup.pin_lambdas,
-        .daughters_already_pinned = setup.lambdas_on_shell,
         .mother_mass = std::nullopt,
         .prod_vertex = setup.pin_hdib_to_pv ? std::make_optional(fPrimaryVertexKF) : std::nullopt,
     };
@@ -535,8 +533,10 @@ void Verifier::VerifyLambdaPair(bool anti_channel_l1, bool anti_channel_l2) {
             auto [deriv_lambda1, deriv_lambda2] = Seeder::LineLine::ComputeDerivatives(pca_cache);
 
             // fit vertex //
-            auto fit = KF::FitVertex(lambda1, lambda2, decay_pid_l1.lambda, decay_pid_l2.lambda, {seed_lambda1, deriv_lambda1},
-                                     {seed_lambda2, deriv_lambda2}, fit_policy);
+            // -- `fMagneticField` is inert here: both daughters and mother are neutral
+            auto fit = KF::FitVertex(KF::MakeComponent(lambda1, decay_pid_l1.lambda, {seed_lambda1, deriv_lambda1}, setup.lambdas_on_shell),  //
+                                     KF::MakeComponent(lambda2, decay_pid_l2.lambda, {seed_lambda2, deriv_lambda2}, setup.lambdas_on_shell),  //
+                                     fMagneticField, fit_policy);
 
             // create storage+computation units //
             POD::LambdaPair hdib = CreateLambdaPair(fit, seed_lambda1.pca, seed_lambda2.pca);
