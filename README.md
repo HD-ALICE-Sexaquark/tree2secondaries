@@ -48,4 +48,3 @@ SUBCOMMANDS:
                 It also produces artificial lambda+antilambda background.
                 Doesn't require further options.
 ```
-

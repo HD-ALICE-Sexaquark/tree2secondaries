@@ -1,77 +1,64 @@
 #include <array>
-#include <cmath>
 
 #include "common/Constants.hpp"
 
-#include "Seeder/BaseSeeder.hxx"
 #if T2DS_DEBUG
 #include "App/Logger.hxx"
 #endif
+#include "Seeder/SeederTransport.hxx"
+#include "Seeder/SeederTypes.hxx"
 
 #include "Seeder/SeederLineVertex.hxx"
 
 namespace T2DS::Seeder::LineVertex {
 
-// First phase. Find the point of closest approach (PCA) of a neutral particle w.r.t. a vertex, assuming it transports as a neutral particle.
+// Find the point of closest approach (PCA) of a neutral particle w.r.t. a vertex, assuming it transports as a straight line.
 // Arguments:
-// - `n`     -- [input] neutral particle
-// - `v`     -- [input] arbitrary vertex
-// - `cache` -- [output,optional]
+// - `s0`  -- [input] neutral particle
+// - `vtx` -- [input] arbitrary vertex
+// - `c`   -- [output] cache, consumed by `ComputeDerivatives`
 // Return: (packed in a single `Seed` struct)
 // - `pca.xyz`, `pca.mom`              -- position and momentum at the PCA
 // - `ds`                              -- transport parameter needed to reach PCA
 // - `theta`, `sin`, `cos`, `sB`, `cB` -- cached quantities
-Seed FastPCA(double x0, double y0, double z0, double px, double py, double pz,  //
-             const std::array<double, 3>& vtx, Cache* cache) {
+Seed FastPCA(const State& s0, const std::array<double, 3>& vtx, Cache& c) {
 
     // cache //
 
-    Cache local;
-    Cache& c = cache != nullptr ? *cache : local;
+    c.px0 = s0.px;
+    c.py0 = s0.py;
+    c.pz0 = s0.pz;
 
-    c.px0 = px;
-    c.py0 = py;
-    c.pz0 = pz;
+    c.dx = vtx[0] - s0.x;
+    c.dy = vtx[1] - s0.y;
+    c.dz = vtx[2] - s0.z;
 
-    c.dx = vtx[0] - x0;
-    c.dy = vtx[1] - y0;
-    c.dz = vtx[2] - z0;
-
-    c.p2 = c.px0 * c.px0 + c.py0 * c.py0 + c.pz0 * c.pz0;
-    c.a = c.px0 * c.dx + c.py0 * c.dy + c.pz0 * c.dz;
+    c.p2 = s0.px * s0.px + s0.py * s0.py + s0.pz * s0.pz;
+    c.a = s0.px * c.dx + s0.py * c.dy + s0.pz * c.dz;
 
     // particle's seed //
 
-    Seed seed;
+    if (c.p2 < Common::AbsAlmostZero) [[unlikely]] {
+        return TransportLine(s0, 0.);  // protection; degenerate seed with cos=1.
+    }
 
-    if (c.p2 < Common::AbsAlmostZero) return seed;  // protection
-
-    seed.ds = c.a / c.p2;
-
-    seed.theta = 0.;
-    seed.sin = 0.;
-    seed.cos = 1.;
-    seed.sB = seed.ds;
-    seed.cB = 0.;
-
-    seed.pca.xyz = {x0 + c.px0 * seed.ds, y0 + c.py0 * seed.ds, z0 + c.pz0 * seed.ds};
-    seed.pca.mom = {c.px0, c.py0, c.pz0};
+    Seed out = TransportLine(s0, c.a / c.p2);
 
 #if T2DS_DEBUG
-    Logger::Debug(__FUNCTION__, "seed.ds = {:13.6e}", seed.ds);
-    Logger::Debug(__FUNCTION__, "seed.(x,y,z) = {}", seed.pca.xyz);
-    Logger::Debug(__FUNCTION__, "seed.(px,py,pz) = {}", seed.pca.mom);
+    Logger::Debug(__FUNCTION__, "out.ds = {:13.6e}", out.ds);
+    Logger::Debug(__FUNCTION__, "out.(x,y,z) = {}", out.pca.xyz);
+    Logger::Debug(__FUNCTION__, "out.(px,py,pz) = {}", out.pca.mom);
 #endif
 
-    return seed;
+    return out;
 }
 
-// Second phase. Compute derivatives of `FastPCA`.
+// Compute derivatives of `FastPCA`.
 // Argument:
 // - `c` -- [input] cache filled in `FastPCA`
 // Return: (packed in a single `Deriv` struct)
 // - `ds_dr`  -- partial derivatives of current particle's ds w.r.t. current particle's state parameters = d(ds1)/dr1
-// - `ds_dr1` -- partial derivatives of current particle's ds w.r.t. other particle's state parameters = d(ds1)/dr2, d(ds2)/dr1
+// - `ds_dr1` -- partial derivatives of current particle's ds w.r.t. the vertex; i.e., negated position derivatives
 Deriv ComputeDerivatives(const Cache& c) {
 
     Deriv out;

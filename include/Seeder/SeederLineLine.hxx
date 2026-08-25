@@ -1,9 +1,8 @@
 #pragma once
 
-#include "common/POD_PreFoundLambda.hpp"
-#include "common/POD_V0.hpp"
+#include <utility>
 
-#include "Seeder/BaseSeeder.hxx"
+#include "Seeder/SeederTypes.hxx"
 
 namespace T2DS::Seeder::LineLine {
 
@@ -22,38 +21,29 @@ struct Cache {
 
 // Main Methods //
 
-std::pair<Seed, Seed> FastPCAs(double x01, double y01, double z01, double px01, double py01, double pz01,  //
-                               double x02, double y02, double z02, double px02, double py02, double pz02,  //
-                               Cache* cache = nullptr);
-
+SeedsPair FastPCAs(const State& s01, const State& s02, Cache& c);
 std::pair<Deriv, Deriv> ComputeDerivatives(const Cache& c);
 
 // Inline Methods //
 
-inline std::pair<Seed, Seed> FastPCAs(const POD::V0& v01, const POD::V0& v02, Cache* cache = nullptr) {
-    return FastPCAs(v01.Decay_X, v01.Decay_Y, v01.Decay_Z, v01.Px, v01.Py, v01.Pz,  //
-                    v02.Decay_X, v02.Decay_Y, v02.Decay_Z, v02.Px, v02.Py, v02.Pz,  //
-                    cache);
+inline SeedsPair FastPCAs(const POD::V0& v01, const POD::V0& v02, Cache& c) {  //
+    return FastPCAs(State::FromV0(v01), State::FromV0(v02), c);
+}
+inline SeedsPair FastPCAs(const POD::Extended::PreFoundLambda& l1, const POD::Extended::PreFoundLambda& l2, Cache& c) {
+    return FastPCAs(State::FromPreFoundLambda(l1), State::FromPreFoundLambda(l2), c);
 }
 
-inline std::pair<Seed, Seed> FastPCAs(const POD::Extended::PreFoundLambda& l1, const POD::Extended::PreFoundLambda& l2, Cache* cache = nullptr) {
-    return FastPCAs(l1.Decay_X, l1.Decay_Y, l1.Decay_Z, l1.Px, l1.Py, l1.Pz,  //
-                    l2.Decay_X, l2.Decay_Y, l2.Decay_Z, l2.Px, l2.Py, l2.Pz,  //
-                    cache);
+inline std::pair<Result, Result> FullPCAs(const State& s01, const State& s02) {
+    Cache c;
+    auto [seed1, seed2] = FastPCAs(s01, s02, c);
+    auto [d1, d2] = ComputeDerivatives(c);
+    return {{seed1, d1}, {seed2, d2}};
 }
-
-inline std::pair<Result, Result> FullPCAs(const POD::V0& v01, const POD::V0& v02) {
-    Cache cache;
-    auto [seed1, seed2] = FastPCAs(v01, v02, &cache);
-    auto [deriv1, deriv2] = ComputeDerivatives(cache);
-    return {{seed1, deriv1}, {seed2, deriv2}};
+inline std::pair<Result, Result> FullPCAs(const POD::V0& v01, const POD::V0& v02) {  //
+    return FullPCAs(State::FromV0(v01), State::FromV0(v02));
 }
-
 inline std::pair<Result, Result> FullPCAs(const POD::Extended::PreFoundLambda& l1, const POD::Extended::PreFoundLambda& l2) {
-    Cache cache;
-    auto [seed1, seed2] = FastPCAs(l1, l2, &cache);
-    auto [deriv1, deriv2] = ComputeDerivatives(cache);
-    return {{seed1, deriv1}, {seed2, deriv2}};
+    return FullPCAs(State::FromPreFoundLambda(l1), State::FromPreFoundLambda(l2));
 }
 
 }  // namespace T2DS::Seeder::LineLine

@@ -5,13 +5,13 @@
 
 #include "common/Constants.hpp"
 
-#include "Seeder/BaseSeeder.hxx"
-#include "Seeder/SeederHelixVertex.hxx"
-#include "Seeder/SeederLineVertex.hxx"
 #if T2DS_DEBUG
 #include "App/Logger.hxx"
 #include "App/Utilities.hxx"
 #endif
+#include "Seeder/SeederHelixVertex.hxx"
+#include "Seeder/SeederLineVertex.hxx"
+#include "Seeder/SeederTypes.hxx"
 
 #include "KalmanFitter/BaseKalmanFitter.hxx"
 
@@ -268,11 +268,17 @@ std::optional<MassScale> SetNonlinearMassConstraint(Particle& part, double mass)
 KF::Particle SetProductionVertex(const KF::Particle& part, const KF::Vertex& vtx, double bz) {
 
     auto SeedToPoint = [](const KF::Particle& in_part, const std::array<double, 3>& xyz, double in_bz) -> Seeder::Result {
+        Seeder::State s0{.x = in_part.X(),
+                         .y = in_part.Y(),
+                         .z = in_part.Z(),
+                         .px = in_part.Px(),
+                         .py = in_part.Py(),
+                         .pz = in_part.Pz(),
+                         .charge = in_part.Charge()};
         if (in_part.fQ == 0 || std::abs(in_bz) < Common::AbsAlmostZero) {
-            return Seeder::LineVertex::FullPCA(in_part.X(), in_part.Y(), in_part.Z(), in_part.Px(), in_part.Py(), in_part.Pz(), xyz);
+            return Seeder::LineVertex::FullPCA(s0, xyz);
         }
-        return Seeder::HelixVertex::FullPCA(in_part.X(), in_part.Y(), in_part.Z(), in_part.Px(), in_part.Py(), in_part.Pz(), in_part.Charge(), xyz,
-                                            in_bz);
+        return Seeder::HelixVertex::FullPCA(s0, xyz, in_bz);
     };
 
     // remember where the particle decayed //

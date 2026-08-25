@@ -1,15 +1,16 @@
+#include <algorithm>
 #include <array>
 #include <cmath>
+#include <limits>
 #include <utility>
 
 #include "common/Constants.hpp"
-#include "common/Math.hpp"
-#include "common/POD_Track.hpp"
 
-#include "Seeder/BaseSeeder.hxx"
 #if T2DS_DEBUG
 #include "App/Logger.hxx"
 #endif
+#include "Seeder/SeederTransport.hxx"
+#include "Seeder/SeederTypes.hxx"
 
 #include "Seeder/SeederHelixHelix.hxx"
 
@@ -18,38 +19,35 @@ namespace T2DS::Seeder::HelixHelix {
 // First phase. Find the points of closest approach (PCA) of two particles in the XY plane.
 // Both particles are charged and under a constant magnetic field. Assume helical trajectories.
 // Arguments:
-// - `q1`    -- [input] first particle
-// - `q2`    -- [input] second particle
-// - `bz`    -- [input] z-component of homogeneous magnetic field
-// - `cache` -- [output,optional] useful struct to store intermediate results for next phases
+// - `s01` -- [input] first particle
+// - `s02` -- [input] second particle
+// - `bz`  -- [input] z-component of homogeneous magnetic field
+// - `c`   -- [output] cache
 // Return: (packed as a pair of `Seed` structs)
 // - `ds`  -- transport parameters
 // - `pca` -- points of closest approach (position and momentum)
 // - `theta`, `sin`, `cos`, `sB`, `cB` -- cached ds computation variables
-std::pair<Seed, Seed> FastPCAs_XY(const POD::Track& q1, const POD::Track& q2, double bz, Cache* cache) {
+SeedsPair FastPCAs_XY(const State& s01, const State& s02, double bz, Cache& c) {
 
     // cache //
 
-    Cache local;
-    Cache& c = cache != nullptr ? *cache : local;
+    c.bq1 = bz * static_cast<double>(s01.charge) * Common::Kappa;
+    c.bq2 = bz * static_cast<double>(s02.charge) * Common::Kappa;
 
-    c.bq1 = bz * static_cast<double>(q1.Charge) * Common::Kappa;
-    c.bq2 = bz * static_cast<double>(q2.Charge) * Common::Kappa;
-
-    c.x01 = q1.X;
-    c.y01 = q1.Y;
-    c.z01 = q1.Z;
-    c.px01 = q1.Px;
-    c.py01 = q1.Py;
-    c.pz01 = q1.Pz;
+    c.x01 = s01.x;
+    c.y01 = s01.y;
+    c.z01 = s01.z;
+    c.px01 = s01.px;
+    c.py01 = s01.py;
+    c.pz01 = s01.pz;
     c.pt12 = c.px01 * c.px01 + c.py01 * c.py01;
 
-    c.x02 = q2.X;
-    c.y02 = q2.Y;
-    c.z02 = q2.Z;
-    c.px02 = q2.Px;
-    c.py02 = q2.Py;
-    c.pz02 = q2.Pz;
+    c.x02 = s02.x;
+    c.y02 = s02.y;
+    c.z02 = s02.z;
+    c.px02 = s02.px;
+    c.py02 = s02.py;
+    c.pz02 = s02.pz;
     c.pt22 = c.px02 * c.px02 + c.py02 * c.py02;
 
     c.dx0 = c.x01 - c.x02;
@@ -85,26 +83,12 @@ std::pair<Seed, Seed> FastPCAs_XY(const POD::Track& q1, const POD::Track& q2, do
     for (auto sign : {+1, -1}) {
 
         // particle 1 //
-        Seed tmp1;
-        tmp1.theta = std::atan2(c.bq1 * (c.k11 * c.c1 + sign * c.k21 * c.d1), sign * c.bq1 * c.k11 * c.d1 * c.bq1 - c.k21 * c.c1);
-        std::tie(tmp1.sin, tmp1.cos) = Common::Math::sincos(tmp1.theta);
-        tmp1.sB = tmp1.sin / c.bq1;
-        tmp1.cB = (1. - tmp1.cos) / c.bq1;
-        tmp1.ds = tmp1.theta / c.bq1;
-
-        tmp1.pca.xyz = {c.x01 + tmp1.sB * c.px01 + tmp1.cB * c.py01, c.y01 - tmp1.cB * c.px01 + tmp1.sB * c.py01, c.z01 + tmp1.ds * c.pz01};
-        tmp1.pca.mom = {tmp1.cos * c.px01 + tmp1.sin * c.py01, -tmp1.sin * c.px01 + tmp1.cos * c.py01, c.pz01};
+        Seed tmp1 = TransportHelixFromTheta(
+            s01, std::atan2(c.bq1 * (c.k11 * c.c1 + sign * c.k21 * c.d1), sign * c.bq1 * c.k11 * c.d1 * c.bq1 - c.k21 * c.c1), c.bq1);
 
         // particle 2 //
-        Seed tmp2;
-        tmp2.theta = std::atan2(c.bq2 * (c.k12 * c.c2 + sign * c.k22 * c.d1), sign * c.bq2 * c.k12 * c.d1 * c.bq2 - c.k22 * c.c2);
-        std::tie(tmp2.sin, tmp2.cos) = Common::Math::sincos(tmp2.theta);
-        tmp2.sB = tmp2.sin / c.bq2;
-        tmp2.cB = (1. - tmp2.cos) / c.bq2;
-        tmp2.ds = tmp2.theta / c.bq2;
-
-        tmp2.pca.xyz = {c.x02 + tmp2.sB * c.px02 + tmp2.cB * c.py02, c.y02 - tmp2.cB * c.px02 + tmp2.sB * c.py02, c.z02 + tmp2.ds * c.pz02};
-        tmp2.pca.mom = {tmp2.cos * c.px02 + tmp2.sin * c.py02, -tmp2.sin * c.px02 + tmp2.cos * c.py02, c.pz02};
+        Seed tmp2 = TransportHelixFromTheta(
+            s02, std::atan2(c.bq2 * (c.k12 * c.c2 + sign * c.k22 * c.d1), sign * c.bq2 * c.k12 * c.d1 * c.bq2 - c.k22 * c.c2), c.bq2);
 
         // distance of closest approach (DCA) //
         double tmp_dx = tmp2.pca.xyz[0] - tmp1.pca.xyz[0];
@@ -139,21 +123,20 @@ std::pair<Seed, Seed> FastPCAs_XY(const POD::Track& q1, const POD::Track& q2, do
 
 // Second phase. Add z-component as small correction.
 // Arguments:
-// - `s1_xy` -- [input] seed of particle 1 calculated in `FastPCAs_XY`
-// - `s2_xy` -- [input] seed of particle 2 calculated in `FastPCAs_XY`
-// - `c`     -- [input/output] cache filled in `FastPCAs_XY`
+// - `seeds_xy` -- [input] seeds of particle 1 and 2 calculated in `FastPCAs_XY`
+// - `c`        -- [input/output] cache filled in `FastPCAs_XY`
 // Return: (packed as a pair of `Seed` structs)
 // - `ds`  -- transport parameters
 // - `pca` -- points of closest approach (position and momentum)
 // - `theta`, `sin`, `cos`, `sB`, `cB` -- cached ds computation variables
-std::pair<Seed, Seed> CorrectPCAs_Z(const Seed& s1_xy, const Seed& s2_xy, Cache& c) {
+SeedsPair CorrectPCAs_Z(const SeedsPair& seeds_xy, Cache& c) {
 
     // cache (1) //
 
-    c.px1 = s1_xy.pca.mom[0];
-    c.py1 = s1_xy.pca.mom[1];
-    c.px2 = s2_xy.pca.mom[0];
-    c.py2 = s2_xy.pca.mom[1];
+    c.px1 = seeds_xy.first.pca.mom[0];
+    c.py1 = seeds_xy.first.pca.mom[1];
+    c.px2 = seeds_xy.second.pca.mom[0];
+    c.py2 = seeds_xy.second.pca.mom[1];
 
     c.p12 = c.px1 * c.px1 + c.py1 * c.py1 + c.pz01 * c.pz01;
     c.p22 = c.px2 * c.px2 + c.py2 * c.py2 + c.pz02 * c.pz02;
@@ -161,9 +144,7 @@ std::pair<Seed, Seed> CorrectPCAs_Z(const Seed& s1_xy, const Seed& s2_xy, Cache&
 
     c.detp = c.lp1p2 * c.lp1p2 - c.p12 * c.p22;
 
-    // protection //
-
-    if (std::abs(c.detp) < Common::AbsAlmostZero) return {s1_xy, s2_xy};
+    if (std::abs(c.detp) < Common::AbsAlmostZero) return seeds_xy;  // protection
 
     // cache (2) //
 
@@ -173,30 +154,14 @@ std::pair<Seed, Seed> CorrectPCAs_Z(const Seed& s1_xy, const Seed& s2_xy, Cache&
     c.a2 = c.ldrp2 * c.p12 - c.ldrp1 * c.lp1p2;
 
     // -- particle 1
-    Seed s1;
-    s1.ds = s1_xy.ds + c.a1 / c.detp;
-    s1.theta = c.bq1 * s1.ds;
-    std::tie(s1.sin, s1.cos) = Common::Math::sincos(s1.theta);
-    s1.sB = s1.sin / c.bq1;
-    s1.cB = (1. - s1.cos) / c.bq1;
-
-    s1.pca.xyz = {c.x01 + s1.sB * c.px01 + s1.cB * c.py01, c.y01 - s1.cB * c.px01 + s1.sB * c.py01, c.z01 + s1.ds * c.pz01};
-    s1.pca.mom = {s1.cos * c.px01 + s1.sin * c.py01, -s1.sin * c.px01 + s1.cos * c.py01, c.pz01};
+    Seed s1 = TransportHelixFromDs(c.x01, c.y01, c.z01, c.px01, c.py01, c.pz01, seeds_xy.first.ds + c.a1 / c.detp, c.bq1);
 
     // -- particle 2
-    Seed s2;
-    s2.ds = s2_xy.ds + c.a2 / c.detp;
-    s2.theta = c.bq2 * s2.ds;
-    std::tie(s2.sin, s2.cos) = Common::Math::sincos(s2.theta);
-    s2.sB = s2.sin / c.bq2;
-    s2.cB = (1. - s2.cos) / c.bq2;
-
-    s2.pca.xyz = {c.x02 + s2.sB * c.px02 + s2.cB * c.py02, c.y02 - s2.cB * c.px02 + s2.sB * c.py02, c.z02 + s2.ds * c.pz02};
-    s2.pca.mom = {s2.cos * c.px02 + s2.sin * c.py02, -s2.sin * c.px02 + s2.cos * c.py02, c.pz02};
+    Seed s2 = TransportHelixFromDs(c.x02, c.y02, c.z02, c.px02, c.py02, c.pz02, seeds_xy.second.ds + c.a2 / c.detp, c.bq2);
 
     // update status flag //
 
-    c.pca_dz_worked = 1;
+    c.pca_dz_worked = true;
 
 #if T2DS_DEBUG
     Logger::Debug(__FUNCTION__, "seed1.ds = {:13.6e}", s1.ds);
@@ -372,21 +337,22 @@ std::pair<Deriv, Deriv> ComputeDerivatives_XY(Cache& c) {
     return {deriv1, deriv2};
 }
 
-// Final phase. Update derivatives.
+// Final phase. Update derivatives considering the correction made in `CorrectPCAs_Z`.
 // Arguments:
-// - `s1_xy` -- [input] seed of particle 1 calculated in `FastPCAs_XY`
-// - `s2_xy` -- [input] seed of particle 2 calculated in `FastPCAs_XY`
-// - `d1_xy` -- [input] derivatives of particle 1 calculated in `ComputeDerivatives_XY`
-// - `d2_xy` -- [input] derivatives of particle 2 calculated in `ComputeDerivatives_XY`
-// - `c`     -- [input/output] cache filled in `FastPCAs_XY`
+// - `seeds_xy` -- [input] seeds of particle 1 and 2 calculated in `FastPCAs_XY`
+// - `d1_xy`    -- [input] derivatives of particle 1 calculated in `ComputeDerivatives_XY`
+// - `d2_xy`    -- [input] derivatives of particle 2 calculated in `ComputeDerivatives_XY`
+// - `c`        -- [input] cache filled in `FastPCAs_XY`, `CorrectPCAs_Z` and `ComputeDerivatives_XY`
 // Return: (packed as a pair of `Deriv` structs)
 // - `ds_dr`  -- partial derivatives of current particle's ds w.r.t. current particle's state parameters = d(ds1)/dr1
 // - `ds_dr1` -- partial derivatives of current particle's ds w.r.t. other particle's state parameters = d(ds1)/dr2, d(ds2)/dr1
-std::pair<Deriv, Deriv> UpdateDerivatives_Z(const Seed& s1_xy, const Seed& s2_xy, const Deriv& d1_xy, const Deriv& d2_xy, const Cache& c) {
+std::pair<Deriv, Deriv> UpdateDerivatives_Z(const SeedsPair& seeds_xy, const Deriv& d1_xy, const Deriv& d2_xy, const Cache& c) {
 
     // if `CorrectPCAs_Z` didn't work, skip this method //
 
-    if (c.pca_dz_worked == 0) return {d1_xy, d2_xy};
+    if (!c.pca_dz_worked) return {d1_xy, d2_xy};
+
+    const auto& [s1_xy, s2_xy] = seeds_xy;
 
 #if T2DS_DEBUG
     Logger::Debug(__FUNCTION__, "s1_xy.sin = {}", s1_xy.sin);

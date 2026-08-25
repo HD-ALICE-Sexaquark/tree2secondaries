@@ -23,10 +23,11 @@
 namespace CMath = Common::Math;
 
 #include "KalmanFitter/BaseKalmanFitter.hxx"
-#include "Seeder/BaseSeeder.hxx"
+#include "KalmanFitter/KalmanFitterParticle.hxx"
 #include "Seeder/SeederHelixHelix.hxx"
 #include "Seeder/SeederHelixLine.hxx"
 #include "Seeder/SeederLineLine.hxx"
+#include "Seeder/SeederTypes.hxx"
 
 #include "Finder/Finder.hxx"
 
@@ -454,7 +455,9 @@ void Finder::FindV0s(const DB::Particles::Definition& pid) {
             }
 
             // PCAs //
-            auto [seed_neg, seed_pos, pca_cache] = Seeder::HelixHelix::FastCorrectPCAs(track_neg, track_pos, fMagneticField);
+            Seeder::HelixHelix::Cache pca_cache;
+            Seeder::SeedsPair seeds_xy;
+            auto [seed_neg, seed_pos] = Seeder::HelixHelix::FastPCAs(track_neg, track_pos, fMagneticField, pca_cache, seeds_xy);
 
             // apply cuts (2) //
             if (find_lambdas) {
@@ -464,7 +467,7 @@ void Finder::FindV0s(const DB::Particles::Definition& pid) {
             }
 
             // PCAs derivatives //
-            auto [deriv_neg, deriv_pos] = Seeder::HelixHelix::ComputeDerivatives(seed_neg, seed_pos, pca_cache);
+            auto [deriv_neg, deriv_pos] = Seeder::HelixHelix::ComputeDerivatives(seeds_xy, pca_cache);
 
             // fit vertex //
             auto fit =
@@ -712,7 +715,7 @@ void Finder::FindSexaquarks_ChannelA(bool is_bkg_channel) {
 
             // PCAs //
             Seeder::LineLine::Cache pca_cache;
-            auto [seed_lambda, seed_k0s] = Seeder::LineLine::FastPCAs(lambda, k0s, &pca_cache);
+            auto [seed_lambda, seed_k0s] = Seeder::LineLine::FastPCAs(lambda, k0s, pca_cache);
 
             // apply cuts (2) //
             if (!PostSeedCuts_ChannelA(seed_lambda.pca, seed_k0s.pca, hist)) continue;
@@ -908,13 +911,15 @@ void Finder::FindSexaquarks_ChannelD(bool is_bkg_channel) {
             if (!PreSeedCuts_ChannelD(lambda_neg, lambda_pos, kaon, hist)) continue;
 
             // PCAs (1) //
-            auto [seed_kaon, seed_v0, pca_cache] = Seeder::HelixLine::FastCorrectPCAs(kaon, lambda, fMagneticField);
+            Seeder::HelixLine::Cache pca_cache;
+            Seeder::SeedsPair seeds_xy;
+            auto [seed_kaon, seed_v0] = Seeder::HelixLine::FastPCAs(kaon, lambda, fMagneticField, pca_cache, seeds_xy);
 
             // apply cuts (2) //
             if (!PostSeedCuts_ChannelD(seed_v0.pca, seed_kaon.pca, hist)) continue;
 
             // PCAs derivatives //
-            auto [deriv_ka, deriv_v0] = Seeder::HelixLine::ComputeDerivatives(seed_kaon, seed_v0, pca_cache);
+            auto [deriv_ka, deriv_v0] = Seeder::HelixLine::ComputeDerivatives(seeds_xy, pca_cache);
 
             // fit vertex //
             auto fit = KF::FitVertex(kaon, lambda, pid_kaon, pid_lambda, {seed_kaon, deriv_ka}, {seed_v0, deriv_v0}, fMagneticField, fit_policy);
@@ -1072,13 +1077,15 @@ void Finder::FindSexaquarks_ChannelH(bool is_bkg_channel) {
             if (!PreSeedCuts_ChannelH(kaon1, kaon2, hist)) continue;
 
             // PCAs (1) //
-            auto [seed_kaon1, seed_kaon2, pca_cache] = Seeder::HelixHelix::FastCorrectPCAs(kaon1, kaon2, fMagneticField);
+            Seeder::HelixHelix::Cache pca_cache;
+            Seeder::SeedsPair seeds_xy;
+            auto [seed_kaon1, seed_kaon2] = Seeder::HelixHelix::FastPCAs(kaon1, kaon2, fMagneticField, pca_cache, seeds_xy);
 
             // apply cuts (2) //
             if (!PostSeedCuts_ChannelH(seed_kaon1.pca, seed_kaon2.pca, hist)) continue;
 
             // PCAs derivatives //
-            auto [deriv_kaon1, deriv_kaon2] = Seeder::HelixHelix::ComputeDerivatives(seed_kaon1, seed_kaon2, pca_cache);
+            auto [deriv_kaon1, deriv_kaon2] = Seeder::HelixHelix::ComputeDerivatives(seeds_xy, pca_cache);
 
             // fit vertex //
             auto fit =

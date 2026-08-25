@@ -14,7 +14,7 @@
 #include "common/POD_V0.hpp"
 
 #include "KalmanFitter/KalmanFitterParticle.hxx"
-#include "Seeder/BaseSeeder.hxx"
+#include "Seeder/SeederTypes.hxx"
 
 namespace T2DS::KF {
 

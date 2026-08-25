@@ -4,92 +4,66 @@
 
 #include "common/Constants.hpp"
 
-#include "Seeder/BaseSeeder.hxx"
-#include "Seeder/SeederLineVertex.hxx"
 #if T2DS_DEBUG
 #include "App/Logger.hxx"
 #endif
+#include "Seeder/SeederLineVertex.hxx"
+#include "Seeder/SeederTransport.hxx"
+#include "Seeder/SeederTypes.hxx"
 
 #include "Seeder/SeederLineLine.hxx"
 
 namespace T2DS::Seeder::LineLine {
 
-// First phase. Find points of closest approach (PCAs) between two V0s.
+// Find points of closest approach (PCAs) between two V0s.
 // Assume they transport as straight lines.
 // Arguments:
-// - `n1`    -- [input] neutral particle 1
-// - `n2`    -- [input] neutral particle 2
-// - `cache` -- [output,optional]
+// - `s01` -- [input] neutral particle 1
+// - `s02` -- [input] neutral particle 2
+// - `c`   -- [output] cache, consumed by `ComputeDerivatives`
 // Return: (packed as a pair of `Seed` structs)
 // - `pca.xyz`, `pca.mom`              -- position and momentum at their PCAs
 // - `ds`                              -- transport parameters needed to reach their PCAs
 // - `theta`, `sin`, `cos`, `sB`, `cB` -- cached quantities
 // NOTE: when V0s are parallel (very unlikely), return the PCA to the origin {0, 0, 0} (for now)
-std::pair<Seed, Seed> FastPCAs(double x01, double y01, double z01, double px01, double py01, double pz01,  //
-                               double x02, double y02, double z02, double px02, double py02, double pz02, Cache* cache) {
+SeedsPair FastPCAs(const State& s01, const State& s02, Cache& c) {
 
     // cache //
 
-    Cache local;
-    Cache& c = cache != nullptr ? *cache : local;
+    c.px01 = s01.px;
+    c.py01 = s01.py;
+    c.pz01 = s01.pz;
 
-    c.px01 = px01;
-    c.py01 = py01;
-    c.pz01 = pz01;
+    c.px02 = s02.px;
+    c.py02 = s02.py;
+    c.pz02 = s02.pz;
 
-    c.px02 = px02;
-    c.py02 = py02;
-    c.pz02 = pz02;
+    c.dx = s02.x - s01.x;
+    c.dy = s02.y - s01.y;
+    c.dz = s02.z - s01.z;
 
-    c.dx = x02 - x01;
-    c.dy = y02 - y01;
-    c.dz = z02 - z01;
+    c.p12 = s01.px * s01.px + s01.py * s01.py + s01.pz * s01.pz;
+    c.p22 = s02.px * s02.px + s02.py * s02.py + s02.pz * s02.pz;
+    c.p1p2 = s01.px * s02.px + s01.py * s02.py + s01.pz * s02.pz;
 
-    c.p12 = c.px01 * c.px01 + c.py01 * c.py01 + c.pz01 * c.pz01;
-    c.p22 = c.px02 * c.px02 + c.py02 * c.py02 + c.pz02 * c.pz02;
-    c.p1p2 = c.px01 * c.px02 + c.py01 * c.py02 + c.pz01 * c.pz02;
-
-    c.drp1 = c.px01 * c.dx + c.py01 * c.dy + c.pz01 * c.dz;
-    c.drp2 = c.px02 * c.dx + c.py02 * c.dy + c.pz02 * c.dz;
+    c.drp1 = s01.px * c.dx + s01.py * c.dy + s01.pz * c.dz;
+    c.drp2 = s02.px * c.dx + s02.py * c.dy + s02.pz * c.dz;
 
     c.detp = c.p1p2 * c.p1p2 - c.p12 * c.p22;
 
     // protection : fully parallel v0s //
 
     if (std::abs(c.detp) < Common::AbsAlmostZero) [[unlikely]] {
-        return {LineVertex::FastPCA(x01, y01, z01, px01, py01, pz01, {0., 0., 0.}),  //
-                LineVertex::FastPCA(x02, y02, z02, px02, py02, pz02, {0., 0., 0.})};
+        LineVertex::Cache to_origin_1;
+        LineVertex::Cache to_origin_2;
+        return {LineVertex::FastPCA(s01, {0., 0., 0.}, to_origin_1),  //
+                LineVertex::FastPCA(s02, {0., 0., 0.}, to_origin_2)};
     }
 
-    // seed 1 //
+    // seeds //
 
-    Seed seed1;
-
-    seed1.ds = (c.drp2 * c.p1p2 - c.drp1 * c.p22) / c.detp;
-
-    seed1.theta = 0.;
-    seed1.sin = 0.;
-    seed1.cos = 1.;
-    seed1.sB = seed1.ds;
-    seed1.cB = 0.;
-
-    seed1.pca.xyz = {x01 + c.px01 * seed1.ds, y01 + c.py01 * seed1.ds, z01 + c.pz01 * seed1.ds};
-    seed1.pca.mom = {c.px01, c.py01, c.pz01};
-
-    // seed 2 //
-
-    Seed seed2;
-
-    seed2.ds = (c.drp2 * c.p12 - c.drp1 * c.p1p2) / c.detp;
-
-    seed2.theta = 0.;
-    seed2.sin = 0.;
-    seed2.cos = 1.;
-    seed2.sB = seed2.ds;
-    seed2.cB = 0.;
-
-    seed2.pca.xyz = {x02 + c.px02 * seed2.ds, y02 + c.py02 * seed2.ds, z02 + c.pz02 * seed2.ds};
-    seed2.pca.mom = {c.px02, c.py02, c.pz02};
+    Seed seed1 = TransportLine(s01, (c.drp2 * c.p1p2 - c.drp1 * c.p22) / c.detp);
+    Seed seed2 = TransportLine(s02, (c.drp2 * c.p12 - c.drp1 * c.p1p2) / c.detp);
 
 #if T2DS_DEBUG
     Logger::Debug(__FUNCTION__, "seed1.ds = {:13.6e}", seed1.ds);
@@ -103,9 +77,9 @@ std::pair<Seed, Seed> FastPCAs(double x01, double y01, double z01, double px01, 
     return {seed1, seed2};
 }
 
-// Second phase. Compute derivatives of previous PCAs calculation.
+// Compute derivatives of the previous PCAs calculation.
 // Argument:
-// - `c`      -- [input] cache filled in `FastPCAs`
+// - `c` -- [input] cache filled in `FastPCAs`
 // Return: (packed as a pair of `Deriv` structs)
 // - `ds_dr`  -- partial derivatives of current particle's ds w.r.t. current particle's state parameters = d(ds1)/dr1
 // - `ds_dr1` -- partial derivatives of current particle's ds w.r.t. other particle's state parameters = d(ds1)/dr2, d(ds2)/dr1

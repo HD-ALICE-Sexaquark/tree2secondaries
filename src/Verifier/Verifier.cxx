@@ -22,9 +22,9 @@ namespace CMath = Common::Math;
 
 #include "KalmanFitter/BaseKalmanFitter.hxx"
 #include "KalmanFitter/KalmanFitterParticle.hxx"
-#include "Seeder/BaseSeeder.hxx"
 #include "Seeder/SeederHelixHelix.hxx"
 #include "Seeder/SeederLineLine.hxx"
+#include "Seeder/SeederTypes.hxx"
 
 #include "Verifier/Verifier.hxx"
 
@@ -280,13 +280,15 @@ void Verifier::ProcessPreFoundLambda() {
         auto track_pos = ExtractTrack(in_lambda, +1);
 
         // PCAs //
-        auto [seed_neg, seed_pos, pca_cache] = Seeder::HelixHelix::FastCorrectPCAs(track_neg, track_pos, fMagneticField);
+        Seeder::HelixHelix::Cache pca_cache;
+        Seeder::SeedsPair seeds_xy;
+        auto [seed_neg, seed_pos] = Seeder::HelixHelix::FastPCAs(track_neg, track_pos, fMagneticField, pca_cache, seeds_xy);
 
         // apply cuts (2) //
         if (!PostSeedCuts_Lambda(seed_neg.pca, seed_pos.pca)) continue;
 
         // PCAs derivatives //
-        auto [deriv_neg, deriv_pos] = Seeder::HelixHelix::ComputeDerivatives(seed_neg, seed_pos, pca_cache);
+        auto [deriv_neg, deriv_pos] = Seeder::HelixHelix::ComputeDerivatives(seeds_xy, pca_cache);
 
         // loop over lambda / anti-lambda hypotheses //
         for (auto anti_channel : {false, true}) {
@@ -524,7 +526,7 @@ void Verifier::VerifyLambdaPair(bool anti_channel_l1, bool anti_channel_l2) {
 
             // PCAs //
             Seeder::LineLine::Cache pca_cache;
-            auto [seed_lambda1, seed_lambda2] = Seeder::LineLine::FastPCAs(lambda1, lambda2, &pca_cache);
+            auto [seed_lambda1, seed_lambda2] = Seeder::LineLine::FastPCAs(lambda1, lambda2, pca_cache);
 
             // apply cuts (2) //
             if (!PostSeedCuts_Hdibaryon(seed_lambda1.pca, seed_lambda2.pca, hist_cut_flow)) continue;
