@@ -14,7 +14,6 @@
 #include "common/Constants.hpp"
 #include "common/Framework.hpp"
 #include "common/Framework_TeeTree.hpp"
-#include "common/HD_Library.hpp"
 #include "common/Schema_Events.hpp"
 #include "common/Schema_FoundHdibaryon.hpp"
 
@@ -169,10 +168,9 @@ class Verifier {
 
    private:
     // injected //
-    POD::InjectedHdib BuildInjectedHdibaryon(const POD::McParticle &mc);
+    POD::InjectedHdib Create_InjectedHdibaryon(const POD::McParticle &mc);
 
     // mc charged track //
-    POD::Extended::McParticle BuildMcTrack(unsigned int track_mc_entry, const HD::DecayTree &decay_pid, int pdg_code_hypothesis);
     [[nodiscard]] POD::Track ExtractTrack(const POD::PreFoundLambda &pod_lambda, short charge) const;
 
     // pre-found on-the-fly (anti)lambdas //
@@ -180,10 +178,8 @@ class Verifier {
     [[nodiscard]] bool PostSeedCuts_Lambda(const Seeder::PCA &pca_neg, const Seeder::PCA &pca_pos);
     bool PostFitCuts_Lambda(const Cached::PreFoundLambda &c_lambda);
 
-    POD::Extended::McParticle BuildMcPreFoundLambda(const POD::Extended::McParticle &mc_neg, const POD::Extended::McParticle &mc_pos,
-                                                    const HD::DecayTree &decay_pid);
-    POD::Extended::PreFoundLambda CreateExtendedPreFoundLambda(const POD::PreFoundLambda &old_lambda, const KF::FitResult &fit,
-                                                               const Seeder::PCA &pca_neg, const Seeder::PCA &pca_pos, bool anti_lambda);
+    POD::Extended::PreFoundLambda Extend_PreFoundLambda(const POD::PreFoundLambda &old_lambda, const KF::FitResult &fit, const Seeder::PCA &pca_neg,
+                                                        const Seeder::PCA &pca_pos, bool anti_lambda);
 
     // h-dibaryon //
     void VerifyLambdaPair(bool anti_channel_l1, bool anti_channel_l2);
@@ -193,9 +189,7 @@ class Verifier {
     [[nodiscard]] bool PostSeedCuts_Hdibaryon(const Seeder::PCA &pca_lambda1, const Seeder::PCA &pca_lambda2, TH1D *hist_cut_flow);
     [[nodiscard]] bool PostFitCuts_Hdibaryon(const Cached::Hdibaryon &c_hdib, TH1D *hist_cut_flow);
 
-    POD::Extended::McParticle BuildMcHdibaryon(const POD::Extended::McParticle &mc_lambda1, const POD::Extended::McParticle &mc_lambda2,
-                                               int pdg_code_hypothesis);
-    POD::LambdaPair CreateLambdaPair(const KF::FitResult &fit, const Seeder::PCA &pca_lambda1, const Seeder::PCA &pca_lambda2);
+    POD::LambdaPair Create_LambdaPair(const KF::FitResult &fit, const Seeder::PCA &pca_lambda1, const Seeder::PCA &pca_lambda2);
 
     // fit configuration //
     // -- (anti)h-dibaryon mass is never pinned in any configuration, as it's the property under study
@@ -234,12 +228,11 @@ class Verifier {
 
     std::vector<POD::Extended::PreFoundLambda> fTemp_AntiLambda;
     std::vector<POD::Extended::PreFoundLambda> fTemp_Lambda;
-    std::vector<POD::Extended::McParticle> fTemp_MC_AntiLambda;
-    std::vector<POD::Extended::McParticle> fTemp_MC_AntiLambda_Neg;
-    std::vector<POD::Extended::McParticle> fTemp_MC_AntiLambda_Pos;
-    std::vector<POD::Extended::McParticle> fTemp_MC_Lambda;
-    std::vector<POD::Extended::McParticle> fTemp_MC_Lambda_Neg;
-    std::vector<POD::Extended::McParticle> fTemp_MC_Lambda_Pos;
+
+    std::vector<unsigned int> fTemp_McEntry_AntiLambda_Neg;
+    std::vector<unsigned int> fTemp_McEntry_AntiLambda_Pos;
+    std::vector<unsigned int> fTemp_McEntry_Lambda_Neg;
+    std::vector<unsigned int> fTemp_McEntry_Lambda_Pos;
 
     // input //
 

@@ -2,7 +2,6 @@
 
 #include <exception>
 #include <memory>
-#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -203,9 +202,8 @@ class Finder {
     bool PassesCuts_Kaon(const POD::Track &track, TH1D *hist_cut_flow) const;
     bool PassesCuts_Pion(const POD::Track &track, TH1D *hist_cut_flow) const;
 
-    POD::Extended::McParticle BuildMcTrack(unsigned int track_mc_entry, int pdg_code_hypothesis, bool include_gm);
-
     // V0s //
+
     void FindV0s(const DB::Particles::Definition &pid);
 
     template <typename E>
@@ -215,34 +213,33 @@ class Finder {
     bool PostFitCuts_Lambda(const Cached::V0 &v0, TH1D *hist_cut_flow) const;
     bool PostFitCuts_KaonZeroShort(const Cached::V0 &v0, TH1D *hist_cut_flow) const;
 
-    POD::Extended::McParticle BuildMcV0(const POD::Extended::McParticle &mc_neg, const POD::Extended::McParticle &mc_pos, int pdg_code_hypothesis);
     POD::V0 Create_V0(const KF::FitResult &fit, const Seeder::PCA &neg_pca_wrt_v0, const Seeder::PCA &pos_pca_wrt_v0);
 
     // mc sexaquark //
-    POD::Linked::InjectedSexa BuildMcSexaquark(const POD::Extended::McParticle &mc_dau1, const POD::Extended::McParticle &mc_dau2);
+    POD::Linked::InjectedSexa Link_InjectedSexa(const POD::Extended::McParticle &mc_dau1, const POD::Extended::McParticle &mc_dau2);
 
     // channel A //
-    void FindSexaquarks_ChannelA(bool is_bkg_channel);
+    void FindSexaquarks_ChannelA(bool wrong_sign_channel);
     [[nodiscard]] bool PreSeedCuts_ChannelA(const POD::V0 &lambda, const POD::Track &lambda_neg, const POD::Track &lambda_pos, const POD::V0 &k0s,
                                             const POD::Track &k0s_neg, const POD::Track &k0s_pos, TH1D *hist_cut_flow) const;
     [[nodiscard]] bool PostSeedCuts_ChannelA(const Seeder::PCA &pca_v0a, const Seeder::PCA &pca_v0b, TH1D *hist_cut_flow) const;
     [[nodiscard]] bool PostFitCuts_ChannelA(const Cached::ChannelA &c_sexa, TH1D *hist_cut_flow) const;
-    POD::Sexaquark Create_ChannelA(const KF::FitResult &fit, const Seeder::PCA &pca_v0a, const Seeder::PCA &pca_v0b, bool is_bkg_channel);
+    POD::Sexaquark Create_ChannelA(const KF::FitResult &fit, const Seeder::PCA &pca_v0a, const Seeder::PCA &pca_v0b, bool wrong_sign_channel);
 
     // channel D //
-    void FindSexaquarks_ChannelD(bool is_bkg_channel);
+    void FindSexaquarks_ChannelD(bool wrong_sign_channel);
     [[nodiscard]] bool PreSeedCuts_ChannelD(const POD::Track &lambda_neg, const POD::Track &lambda_pos, const POD::Track &kaon,
                                             TH1D *hist_cut_flow) const;
     [[nodiscard]] bool PostSeedCuts_ChannelD(const Seeder::PCA &pca_v0, const Seeder::PCA &pca_ka, TH1D *hist_cut_flow) const;
     [[nodiscard]] bool PostFitCuts_ChannelD(const Cached::ChannelD &c_sexa, TH1D *hist_cut_flow) const;
-    POD::Sexaquark Create_ChannelD(const KF::FitResult &fit, const Seeder::PCA &pca_v0, const Seeder::PCA &pca_ka, bool is_bkg_channel);
+    POD::Sexaquark Create_ChannelD(const KF::FitResult &fit, const Seeder::PCA &pca_v0, const Seeder::PCA &pca_ka, bool wrong_sign_channel);
 
     // channel H //
-    void FindSexaquarks_ChannelH(bool is_bkg_channel);
+    void FindSexaquarks_ChannelH(bool wrong_sign_channel);
     [[nodiscard]] bool PreSeedCuts_ChannelH(const POD::Track &kaon1, const POD::Track &kaon2, TH1D *hist_cut_flow) const;
     [[nodiscard]] bool PostSeedCuts_ChannelH(const Seeder::PCA &pca_kaon1, const Seeder::PCA &pca_kaon2, TH1D *hist_cut_flow) const;
     [[nodiscard]] bool PostFitCuts_ChannelH(const Cached::ChannelH &c_sexa, TH1D *hist_cut_flow) const;
-    POD::Sexaquark Create_ChannelH(const KF::FitResult &fit, const Seeder::PCA &pca_kaon1, const Seeder::PCA &pca_kaon2, bool is_bkg_channel);
+    POD::Sexaquark Create_ChannelH(const KF::FitResult &fit, const Seeder::PCA &pca_kaon1, const Seeder::PCA &pca_kaon2, bool wrong_sign_channel);
 
     // fit configuration //
 
@@ -282,12 +279,12 @@ class Finder {
     std::vector<POD::Track> fTemp_PiMinus;
     std::vector<POD::Track> fTemp_PiPlus;
 
-    std::vector<POD::Extended::McParticle> fTemp_MC_AntiProton;
-    std::vector<POD::Extended::McParticle> fTemp_MC_Proton;
-    std::vector<POD::Extended::McParticle> fTemp_MC_NegKaon;
-    std::vector<POD::Extended::McParticle> fTemp_MC_PosKaon;
-    std::vector<POD::Extended::McParticle> fTemp_MC_PiMinus;
-    std::vector<POD::Extended::McParticle> fTemp_MC_PiPlus;
+    std::vector<unsigned int> fTemp_McEntry_AntiProton;
+    std::vector<unsigned int> fTemp_McEntry_Proton;
+    std::vector<unsigned int> fTemp_McEntry_NegKaon;
+    std::vector<unsigned int> fTemp_McEntry_PosKaon;
+    std::vector<unsigned int> fTemp_McEntry_PiMinus;
+    std::vector<unsigned int> fTemp_McEntry_PiPlus;
 
     std::vector<POD::V0> fTemp_AntiLambda;
     std::vector<POD::Track> fTemp_AntiLambda_Neg;
@@ -299,15 +296,12 @@ class Finder {
     std::vector<POD::Track> fTemp_KaonZeroShort_Neg;
     std::vector<POD::Track> fTemp_KaonZeroShort_Pos;
 
-    std::vector<POD::Extended::McParticle> fTemp_MC_AntiLambda;
-    std::vector<POD::Extended::McParticle> fTemp_MC_AntiLambda_Neg;
-    std::vector<POD::Extended::McParticle> fTemp_MC_AntiLambda_Pos;
-    std::vector<POD::Extended::McParticle> fTemp_MC_Lambda;
-    std::vector<POD::Extended::McParticle> fTemp_MC_Lambda_Neg;
-    std::vector<POD::Extended::McParticle> fTemp_MC_Lambda_Pos;
-    std::vector<POD::Extended::McParticle> fTemp_MC_KaonZeroShort;
-    std::vector<POD::Extended::McParticle> fTemp_MC_KaonZeroShort_Neg;
-    std::vector<POD::Extended::McParticle> fTemp_MC_KaonZeroShort_Pos;
+    std::vector<unsigned int> fTemp_McEntry_AntiLambda_Neg;
+    std::vector<unsigned int> fTemp_McEntry_AntiLambda_Pos;
+    std::vector<unsigned int> fTemp_McEntry_Lambda_Neg;
+    std::vector<unsigned int> fTemp_McEntry_Lambda_Pos;
+    std::vector<unsigned int> fTemp_McEntry_KaonZeroShort_Neg;
+    std::vector<unsigned int> fTemp_McEntry_KaonZeroShort_Pos;
 
     // input //
 
@@ -316,9 +310,8 @@ class Finder {
     // -- cached
     ROOT::Math::XYZPoint fPrimaryVertex;
     double fMagneticField{0.};
-    // -- injected reaction channel of dedicated sexa mc production, identified on the first event
-    //    without value until detected injected channel; value '0' if there are no injected particles
-    std::optional<DB::ReactionChannels::Definition> fMcSignalChannel;
+    DB::ReactionChannels::Definition fMcSignalChannel{DB::ReactionChannels::ReactionChannel('0')};  // identified from the first event of the mc stack
+    bool fMcSignalChannelChecked{false};
 
     // output //
 

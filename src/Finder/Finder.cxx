@@ -171,35 +171,34 @@ void Finder::ProcessEvent() {
 
 // ## Injected/MC ZONE ## //
 
-// Loop over all MC particles.
+// To update Injected info, loop over all MC particles.
 // Select particles with no mother, generated via the AntiSexaquark-Reaction Generator, and with valid Reaction IDs;
 // and store their origin vertex as the coordinates for this particular secondary vertex.
 void Finder::ProcessInjected() {
 
-    if (!fMcSignalChannel.has_value()) {
+    // in first event, detect which reaction channel was injected, if any
+    // -- per `common/MC_PRODUCTIONS.md`, only a single check in the first event is enough
+    if (!fMcSignalChannelChecked) {
         fMcSignalChannel = MC::SexaquarkRules::DetectMcSignalChannel(fInput.McParticle);
-        Logger::Info(__FUNCTION__, "Injected reaction channel identified as \"Channel {}\".", fMcSignalChannel->name);
-    }
-
-    // there's nothing to collect; copy what is already there, if anything
-    if (fMcSignalChannel->name == '0') {
-        for (const auto& input_inj : fInput.InjectedSexa) fOutput.Injected.emplace_back(POD::Extended::InjectedSexa{input_inj});
-        return;
+        if (fMcSignalChannel.name != '0') {
+            Logger::Info(__FUNCTION__, "Injected reaction channel identified as \"Channel {}\".", fMcSignalChannel.name);
+        }
+        fMcSignalChannelChecked = true;
     }
 
     const std::size_t n_injected = fInput.InjectedSexa.size();
     if (n_injected == 0) return;
 
     // struck nucleon mass
-    const double n_mass = DB::Particles::FindParticle(fMcSignalChannel->nucleon_pdg).mass;
+    const double n_mass = DB::Particles::FindParticle(fMcSignalChannel.nucleon_pdg).mass;
 
-    // accumulate the first-gen products of every reaction //
+    // accumulate the first gen. products of every reaction //
     std::vector<InjectedReaction> reactions(n_injected);
     for (const auto& mc : fInput.McParticle) {
         // -- select only first-gen signal products
-        if (!MC::SexaquarkRules::IsGen1Signal(mc, fMcSignalChannel.value())) continue;
-        // -- derive entry
-        auto entry_injected = mc.StatusCode - E2T::ReactionID_Offset;  // `IsGen1Signal` guarantees status code to lie within [600,620[
+        if (!MC::SexaquarkRules::IsGen1Signal(mc, fMcSignalChannel)) continue;
+        // -- derive entry; `IsGen1Signal` guarantees the status code to lie within [600,620[
+        auto entry_injected = MC::SexaquarkRules::InjectionIndex(mc.StatusCode);
         if (entry_injected >= n_injected) continue;
         InjectedReaction& reaction = reactions[entry_injected];
         // -- add up lorentz vector
@@ -208,11 +207,11 @@ void Finder::ProcessInjected() {
         reaction.after_pz += static_cast<double>(mc.Pz);
         reaction.after_e += static_cast<double>(mc.Energy);
         // -- if sv not filled, fill it
-        if (reaction.found == 1) continue;
+        if (reaction.found) continue;
         reaction.sv_x = mc.Origin_X;
         reaction.sv_y = mc.Origin_Y;
         reaction.sv_z = mc.Origin_Z;
-        reaction.found = 1;
+        reaction.found = true;
     }
 
     // copy input injected sexa info //
@@ -226,7 +225,7 @@ void Finder::ProcessInjected() {
         static_cast<POD::InjectedSexa&>(output_inj) = input_inj;
         output_inj.Energy = static_cast<float>(CMath::Hypot4(input_inj.Px, input_inj.Py, input_inj.Pz, fSettings.SexaquarkMass));
         output_inj.Nucleon_Energy = static_cast<float>(CMath::Hypot4(input_inj.Nucleon_Px, input_inj.Nucleon_Py, input_inj.Nucleon_Pz, n_mass));
-        if (reaction.found == 0) continue;
+        if (!reaction.found) continue;
         output_inj.SV_X = reaction.sv_x;
         output_inj.SV_Y = reaction.sv_y;
         output_inj.SV_Z = reaction.sv_z;
@@ -237,20 +236,27 @@ void Finder::ProcessInjected() {
     }
 }
 
-POD::Linked::InjectedSexa Finder::BuildMcSexaquark(const POD::Extended::McParticle& mc_dau1, const POD::Extended::McParticle& mc_dau2) {
-    POD::Linked::InjectedSexa mc_sexa;
+POD::Linked::InjectedSexa Finder::Link_InjectedSexa(const POD::Extended::McParticle& mc_dau1, const POD::Extended::McParticle& mc_dau2) {
+    POD::Linked::InjectedSexa mc_sexa;  // by default, initialized to dummy values
 
-    // fill hybridness, independently of no common reaction id
-    mc_sexa.IsHybrid = mc_dau1.IsTrueSignal != mc_dau2.IsTrueSignal || mc_dau1.SignalID != mc_dau2.SignalID || mc_dau1.IsHybrid || mc_dau2.IsHybrid;
-
-    // find common reaction id
-    auto entry_inj = MC::SexaquarkRules::FindCommonReactionID(mc_dau1, mc_dau2);
-    if (!entry_inj.has_value() || entry_inj.value() >= fOutput.Injected.size()) {
-        return mc_sexa;
+    // -- the reaction leaves no mc record, so the shared reaction id plays the role of the common mother
+    // -- sanity check: daughters must be two different mc particles
+    if (!MC::SameMcParticle(mc_dau1, mc_dau2)) {
+        // -- find common reaction id:
+        // 1. both particles should have same non-dummy reaction id
+        // 2. reaction id then gets translated to injection index through the `E2T::ReactionID_Offset`
+        auto entry_inj = MC::SexaquarkRules::FindCommonReactionID(mc_dau1, mc_dau2);
+        if (entry_inj.has_value() && entry_inj.value() < fOutput.Injected.size()) {
+            static_cast<POD::Extended::InjectedSexa&>(mc_sexa) = fOutput.Injected[entry_inj.value()];
+            // -- two conditions for true signal:
+            // 1. sharing a reaction id (already satisfied by having reached this stage)
+            // 2. both daughters really are what the channel assumed them to be
+            mc_sexa.IsTrueSignal = mc_dau1.IsTrueSignal && mc_dau2.IsTrueSignal;
+        }
     }
 
-    // if found, fill it with matching injected info
-    static_cast<POD::Extended::InjectedSexa&>(mc_sexa) = fOutput.Injected[entry_inj.value()];
+    // -- real background: no daughter carries signal, at any depth; anything else in between is hybrid
+    mc_sexa.IsRealBkg = mc_dau1.IsRealBkg && mc_dau2.IsRealBkg;
 
     return mc_sexa;
 }
@@ -258,7 +264,7 @@ POD::Linked::InjectedSexa Finder::BuildMcSexaquark(const POD::Extended::McPartic
 // ## Tracks ZONE ## //
 
 // Filter and group tracks into per-species vectors, together with their linked mc particles.
-// NOTE: a track can enter more than one species, as the pid hypotheses aren't exclusive.
+// NOTE: a track can enter more than one species, the PID hypotheses aren't exclusive.
 void Finder::ProcessTracks() {
 
     // vectors preallocation //
@@ -270,17 +276,18 @@ void Finder::ProcessTracks() {
     fTemp_PiMinus.reserve(n_total_tracks);
     fTemp_PiPlus.reserve(n_total_tracks);
     if (fSettings.IsMC) {
-        fTemp_MC_AntiProton.reserve(n_total_tracks);
-        fTemp_MC_Proton.reserve(n_total_tracks);
-        fTemp_MC_NegKaon.reserve(n_total_tracks);
-        fTemp_MC_PosKaon.reserve(n_total_tracks);
-        fTemp_MC_PiMinus.reserve(n_total_tracks);
-        fTemp_MC_PiPlus.reserve(n_total_tracks);
+        fTemp_McEntry_AntiProton.reserve(n_total_tracks);
+        fTemp_McEntry_Proton.reserve(n_total_tracks);
+        fTemp_McEntry_NegKaon.reserve(n_total_tracks);
+        fTemp_McEntry_PosKaon.reserve(n_total_tracks);
+        fTemp_McEntry_PiMinus.reserve(n_total_tracks);
+        fTemp_McEntry_PiPlus.reserve(n_total_tracks);
     }
 
     // loop over all pre-selected tracks //
     for (std::size_t entry_track = 0; entry_track < n_total_tracks; ++entry_track) {
         const POD::Track& track = fInput.Track[entry_track];  // cache index lookup
+        const unsigned int entry_mc = fSettings.IsMC ? fInput.Track_McEntry[entry_track] : 0;
 
         // PENDING: cache calculations to speed up cuts! maybe not needed? //
 
@@ -288,42 +295,29 @@ void Finder::ProcessTracks() {
         if (track.Charge < 0) {
             if (PassesCuts_Proton(track, fHist_CutFlow_AntiProton.get())) {
                 fTemp_AntiProton.emplace_back(track);
-                if (fSettings.IsMC) {
-                    fTemp_MC_AntiProton.emplace_back(
-                        BuildMcTrack(fInput.Track_McEntry[entry_track], DB::Particles::Particle("AntiProton").pdg_code, true));
-                }
+                if (fSettings.IsMC) fTemp_McEntry_AntiProton.emplace_back(entry_mc);
             }
             if (PassesCuts_Kaon(track, fHist_CutFlow_NegKaon.get())) {
                 fTemp_NegKaon.emplace_back(track);
-                if (fSettings.IsMC) {
-                    fTemp_MC_NegKaon.emplace_back(BuildMcTrack(fInput.Track_McEntry[entry_track], DB::Particles::Particle("NegKaon").pdg_code, true));
-                }
+                if (fSettings.IsMC) fTemp_McEntry_NegKaon.emplace_back(entry_mc);
             }
             if (PassesCuts_Pion(track, fHist_CutFlow_PiMinus.get())) {
                 fTemp_PiMinus.emplace_back(track);
-                if (fSettings.IsMC) {
-                    fTemp_MC_PiMinus.emplace_back(BuildMcTrack(fInput.Track_McEntry[entry_track], DB::Particles::Particle("PiMinus").pdg_code, true));
-                }
+                if (fSettings.IsMC) fTemp_McEntry_PiMinus.emplace_back(entry_mc);
             }
         }
         if (track.Charge > 0) {
             if (PassesCuts_Proton(track, fHist_CutFlow_Proton.get())) {
                 fTemp_Proton.emplace_back(track);
-                if (fSettings.IsMC) {
-                    fTemp_MC_Proton.emplace_back(BuildMcTrack(fInput.Track_McEntry[entry_track], DB::Particles::Particle("Proton").pdg_code, true));
-                }
+                if (fSettings.IsMC) fTemp_McEntry_Proton.emplace_back(entry_mc);
             }
             if (PassesCuts_Kaon(track, fHist_CutFlow_PosKaon.get())) {
                 fTemp_PosKaon.emplace_back(track);
-                if (fSettings.IsMC) {
-                    fTemp_MC_PosKaon.emplace_back(BuildMcTrack(fInput.Track_McEntry[entry_track], DB::Particles::Particle("PosKaon").pdg_code, true));
-                }
+                if (fSettings.IsMC) fTemp_McEntry_PosKaon.emplace_back(entry_mc);
             }
             if (PassesCuts_Pion(track, fHist_CutFlow_PiPlus.get())) {
                 fTemp_PiPlus.emplace_back(track);
-                if (fSettings.IsMC) {
-                    fTemp_MC_PiPlus.emplace_back(BuildMcTrack(fInput.Track_McEntry[entry_track], DB::Particles::Particle("PiPlus").pdg_code, true));
-                }
+                if (fSettings.IsMC) fTemp_McEntry_PiPlus.emplace_back(entry_mc);
             }
         }
     }  // end of loop over tracks
@@ -365,14 +359,6 @@ bool Finder::PassesCuts_Pion(const POD::Track& track, TH1D* hist_cut_flow) const
     return true;
 }
 
-POD::Extended::McParticle Finder::BuildMcTrack(unsigned int track_mc_entry, int pdg_code_hypothesis, bool include_gm) {
-    // copy linked mc info //
-    POD::Extended::McParticle new_mc(fInput.McParticle[track_mc_entry]);
-    auto c = MC::SexaquarkRules::ClassifyDownstream(new_mc, fInput.McParticle, fMcSignalChannel.value(), pdg_code_hypothesis, include_gm, false);
-    MC::Apply(new_mc, c);
-    return new_mc;
-}
-
 // ## V0s ZONE ## //
 
 void Finder::FindV0s(const DB::Particles::Definition& pid) {
@@ -381,43 +367,40 @@ void Finder::FindV0s(const DB::Particles::Definition& pid) {
     bool find_lambdas = false;  //  default for kaon-zero-short
     const std::vector<POD::Track>* temp_vec_neg = &fTemp_PiMinus;
     const std::vector<POD::Track>* temp_vec_pos = &fTemp_PiPlus;
-    const std::vector<POD::Extended::McParticle>* temp_vec_mc_neg = &fTemp_MC_PiMinus;
-    const std::vector<POD::Extended::McParticle>* temp_vec_mc_pos = &fTemp_MC_PiPlus;
+    const std::vector<unsigned int>* temp_vec_mc_entry_neg = &fTemp_McEntry_PiMinus;
+    const std::vector<unsigned int>* temp_vec_mc_entry_pos = &fTemp_McEntry_PiPlus;
     auto pid_neg = DB::Particles::Particle("PiMinus");
     auto pid_pos = DB::Particles::Particle("PiPlus");
     std::vector<POD::V0>* output_vec_v0 = nullptr;
     std::vector<POD::Track>* output_vec_v0_neg = nullptr;
     std::vector<POD::Track>* output_vec_v0_pos = nullptr;
-    std::vector<POD::Extended::McParticle>* output_vec_mc_v0 = nullptr;
-    std::vector<POD::Extended::McParticle>* output_vec_mc_v0_neg = nullptr;
-    std::vector<POD::Extended::McParticle>* output_vec_mc_v0_pos = nullptr;
+    std::vector<unsigned int>* output_vec_mc_entry_v0_neg = nullptr;
+    std::vector<unsigned int>* output_vec_mc_entry_v0_pos = nullptr;
     TH1D* hist_cut_flow = nullptr;
     switch (pid.pdg_code) {
         case DB::Particles::Particle("AntiLambda").pdg_code: {
             find_lambdas = true;
             temp_vec_neg = &fTemp_AntiProton;
-            temp_vec_mc_neg = &fTemp_MC_AntiProton;
+            temp_vec_mc_entry_neg = &fTemp_McEntry_AntiProton;
             pid_neg = DB::Particles::Particle("AntiProton");
             output_vec_v0 = &fTemp_AntiLambda;
             output_vec_v0_neg = &fTemp_AntiLambda_Neg;
             output_vec_v0_pos = &fTemp_AntiLambda_Pos;
-            output_vec_mc_v0 = &fTemp_MC_AntiLambda;
-            output_vec_mc_v0_neg = &fTemp_MC_AntiLambda_Neg;
-            output_vec_mc_v0_pos = &fTemp_MC_AntiLambda_Pos;
+            output_vec_mc_entry_v0_neg = &fTemp_McEntry_AntiLambda_Neg;
+            output_vec_mc_entry_v0_pos = &fTemp_McEntry_AntiLambda_Pos;
             hist_cut_flow = fHist_CutFlow_AntiLambda.get();
             break;
         }
         case DB::Particles::Particle("Lambda").pdg_code: {
             find_lambdas = true;
             temp_vec_pos = &fTemp_Proton;
-            temp_vec_mc_pos = &fTemp_MC_Proton;
+            temp_vec_mc_entry_pos = &fTemp_McEntry_Proton;
             pid_pos = DB::Particles::Particle("Proton");
             output_vec_v0 = &fTemp_Lambda;
             output_vec_v0_neg = &fTemp_Lambda_Neg;
             output_vec_v0_pos = &fTemp_Lambda_Pos;
-            output_vec_mc_v0 = &fTemp_MC_Lambda;
-            output_vec_mc_v0_neg = &fTemp_MC_Lambda_Neg;
-            output_vec_mc_v0_pos = &fTemp_MC_Lambda_Pos;
+            output_vec_mc_entry_v0_neg = &fTemp_McEntry_Lambda_Neg;
+            output_vec_mc_entry_v0_pos = &fTemp_McEntry_Lambda_Pos;
             hist_cut_flow = fHist_CutFlow_Lambda.get();
             break;
         }
@@ -425,9 +408,8 @@ void Finder::FindV0s(const DB::Particles::Definition& pid) {
             output_vec_v0 = &fTemp_KaonZeroShort;
             output_vec_v0_neg = &fTemp_KaonZeroShort_Neg;
             output_vec_v0_pos = &fTemp_KaonZeroShort_Pos;
-            output_vec_mc_v0 = &fTemp_MC_KaonZeroShort;
-            output_vec_mc_v0_neg = &fTemp_MC_KaonZeroShort_Neg;
-            output_vec_mc_v0_pos = &fTemp_MC_KaonZeroShort_Pos;
+            output_vec_mc_entry_v0_neg = &fTemp_McEntry_KaonZeroShort_Neg;
+            output_vec_mc_entry_v0_pos = &fTemp_McEntry_KaonZeroShort_Pos;
             hist_cut_flow = fHist_CutFlow_KaonZeroShort.get();
             break;
         }
@@ -490,18 +472,11 @@ void Finder::FindV0s(const DB::Particles::Definition& pid) {
             output_vec_v0_neg->emplace_back(track_neg);
             output_vec_v0_pos->emplace_back(track_pos);
 
-            // store mc //
-            // NOTE: the daughters were already built in `ProcessTracks(...)`, under this very same pid hypothesis
-            if (fSettings.IsMC) {
-                // -- neg
-                const POD::Extended::McParticle& mc_neg = (*temp_vec_mc_neg)[entry_neg];
-                output_vec_mc_v0_neg->emplace_back(mc_neg);
-                // -- pos
-                const POD::Extended::McParticle& mc_pos = (*temp_vec_mc_pos)[entry_pos];
-                output_vec_mc_v0_pos->emplace_back(mc_pos);
-                // -- v0
-                output_vec_mc_v0->emplace_back(BuildMcV0(mc_neg, mc_pos, pid.pdg_code));
-            }
+            // store daughters' mc entries //
+            if (!fSettings.IsMC) continue;
+
+            output_vec_mc_entry_v0_neg->emplace_back((*temp_vec_mc_entry_neg)[entry_neg]);
+            output_vec_mc_entry_v0_pos->emplace_back((*temp_vec_mc_entry_pos)[entry_pos]);
         }  // end of loop over pos
     }  // end of loop over neg
 }
@@ -605,23 +580,6 @@ bool Finder::PostFitCuts_KaonZeroShort(const Cached::V0& c_v0, TH1D* hist_cut_fl
     return true;
 }
 
-POD::Extended::McParticle Finder::BuildMcV0(const POD::Extended::McParticle& mc_neg, const POD::Extended::McParticle& mc_pos,
-                                            int pdg_code_hypothesis) {
-    POD::Extended::McParticle mc_v0;
-
-    // -- fill hybridness, independetly of no common mother
-    mc_v0.IsHybrid = mc_neg.IsTrueSignal != mc_pos.IsTrueSignal || mc_neg.SignalID != mc_pos.SignalID;
-
-    auto mc_entry = MC::FindCommonMotherMcEntry(mc_neg, mc_pos);
-    if (!mc_entry.has_value()) return mc_v0;
-
-    // fill values //
-    static_cast<POD::McParticle&>(mc_v0) = fInput.McParticle[mc_entry.value()];
-    MC::Apply(mc_v0, MC::SexaquarkRules::ClassifyDownstream(mc_v0, fInput.McParticle, fMcSignalChannel.value(), pdg_code_hypothesis, false, true));
-
-    return mc_v0;
-}
-
 POD::V0 Finder::Create_V0(const KF::FitResult& fit, const Seeder::PCA& neg_pca_wrt_v0, const Seeder::PCA& pos_pca_wrt_v0) {
     POD::V0 new_v0;  // non-initialized on purpose
     // candidate info
@@ -656,23 +614,21 @@ POD::V0 Finder::Create_V0(const KF::FitResult& fit, const Seeder::PCA& neg_pca_w
 
 // ## Channel A ZONE ## //
 
-void Finder::FindSexaquarks_ChannelA(bool is_bkg_channel) {
+void Finder::FindSexaquarks_ChannelA(bool wrong_sign_channel) {
 
     // determine rules and aliases //
     // (anti)lambdas
     // -- rec
-    const auto& input_lambdas = is_bkg_channel ? fTemp_Lambda : fTemp_AntiLambda;
-    const auto& input_lambdas_neg = is_bkg_channel ? fTemp_Lambda_Neg : fTemp_AntiLambda_Neg;
-    const auto& input_lambdas_pos = is_bkg_channel ? fTemp_Lambda_Pos : fTemp_AntiLambda_Pos;
+    const auto& input_lambdas = wrong_sign_channel ? fTemp_Lambda : fTemp_AntiLambda;
+    const auto& input_lambdas_neg = wrong_sign_channel ? fTemp_Lambda_Neg : fTemp_AntiLambda_Neg;
+    const auto& input_lambdas_pos = wrong_sign_channel ? fTemp_Lambda_Pos : fTemp_AntiLambda_Pos;
     const std::size_t n_lambdas = input_lambdas.size();
     // -- mc
-    const std::vector<POD::Extended::McParticle>* input_mc_lambdas = nullptr;
-    const std::vector<POD::Extended::McParticle>* input_mc_lambdas_neg = nullptr;
-    const std::vector<POD::Extended::McParticle>* input_mc_lambdas_pos = nullptr;
+    const std::vector<unsigned int>* input_mc_entry_lambdas_neg = nullptr;
+    const std::vector<unsigned int>* input_mc_entry_lambdas_pos = nullptr;
     if (fSettings.IsMC) {
-        input_mc_lambdas = is_bkg_channel ? &fTemp_MC_Lambda : &fTemp_MC_AntiLambda;
-        input_mc_lambdas_neg = is_bkg_channel ? &fTemp_MC_Lambda_Neg : &fTemp_MC_AntiLambda_Neg;
-        input_mc_lambdas_pos = is_bkg_channel ? &fTemp_MC_Lambda_Pos : &fTemp_MC_AntiLambda_Pos;
+        input_mc_entry_lambdas_neg = wrong_sign_channel ? &fTemp_McEntry_Lambda_Neg : &fTemp_McEntry_AntiLambda_Neg;
+        input_mc_entry_lambdas_pos = wrong_sign_channel ? &fTemp_McEntry_Lambda_Pos : &fTemp_McEntry_AntiLambda_Pos;
     }
     // kaon-zero-short
     // -- rec
@@ -680,19 +636,11 @@ void Finder::FindSexaquarks_ChannelA(bool is_bkg_channel) {
     const auto& input_k0s_neg = fTemp_KaonZeroShort_Neg;
     const auto& input_k0s_pos = fTemp_KaonZeroShort_Pos;
     const std::size_t n_k0s = input_k0s.size();
-    // -- mc
-    const std::vector<POD::Extended::McParticle>* input_mc_k0s = nullptr;
-    const std::vector<POD::Extended::McParticle>* input_mc_k0s_neg = nullptr;
-    const std::vector<POD::Extended::McParticle>* input_mc_k0s_pos = nullptr;
-    if (fSettings.IsMC) {
-        input_mc_k0s = &fTemp_MC_KaonZeroShort;
-        input_mc_k0s_neg = &fTemp_MC_KaonZeroShort_Neg;
-        input_mc_k0s_pos = &fTemp_MC_KaonZeroShort_Pos;
-    }
+    // -- mc: single collection, no need for aliases
     // cut flow hists
-    TH1D* hist = is_bkg_channel ? fHist_CutFlow_ChannelA_Bkg.get() : fHist_CutFlow_ChannelA.get();
+    TH1D* hist = wrong_sign_channel ? fHist_CutFlow_ChannelA_Bkg.get() : fHist_CutFlow_ChannelA.get();
     // daughter hypotheses, which is where the fit reads their masses from
-    const DB::Particles::Definition pid_lambda = is_bkg_channel ? DB::Particles::Particle("Lambda") : DB::Particles::Particle("AntiLambda");
+    const DB::Particles::Definition pid_lambda = wrong_sign_channel ? DB::Particles::Particle("Lambda") : DB::Particles::Particle("AntiLambda");
     constexpr DB::Particles::Definition pid_k0s = DB::Particles::Particle("KaonZeroShort");
 
     // determine fit policy
@@ -731,7 +679,7 @@ void Finder::FindSexaquarks_ChannelA(bool is_bkg_channel) {
                                      fMagneticField, fit_policy);
 
             // create storage+computation units //
-            POD::Sexaquark sexa = Create_ChannelA(fit, seed_lambda.pca, seed_k0s.pca, is_bkg_channel);
+            POD::Sexaquark sexa = Create_ChannelA(fit, seed_lambda.pca, seed_k0s.pca, wrong_sign_channel);
             Cached::ChannelA c_sexa(sexa, lambda, k0s, fPrimaryVertex);
 
             // apply cuts (3) //
@@ -747,20 +695,22 @@ void Finder::FindSexaquarks_ChannelA(bool is_bkg_channel) {
             fOutput.ChannelA_V0B_Pos.emplace_back(k0s_pos);
 
             // store mc //
-            if (fSettings.IsMC) {
-                // -- V0A
-                const auto& mc_lambda = (*input_mc_lambdas)[entry_lambda];
-                fOutput.MC_ChannelA_V0A.emplace_back(mc_lambda);
-                fOutput.MC_ChannelA_V0A_Neg.emplace_back((*input_mc_lambdas_neg)[entry_lambda]);
-                fOutput.MC_ChannelA_V0A_Pos.emplace_back((*input_mc_lambdas_pos)[entry_lambda]);
-                // -- V0B
-                const auto& mc_k0s = (*input_mc_k0s)[entry_k0s];
-                fOutput.MC_ChannelA_V0B.emplace_back(mc_k0s);
-                fOutput.MC_ChannelA_V0B_Neg.emplace_back((*input_mc_k0s_neg)[entry_k0s]);
-                fOutput.MC_ChannelA_V0B_Pos.emplace_back((*input_mc_k0s_pos)[entry_k0s]);
-                // -- h-dibaryon
-                fOutput.MC_ChannelA.emplace_back(BuildMcSexaquark(mc_lambda, mc_k0s));
-            }
+            if (!fSettings.IsMC) continue;
+
+            // -- V0A
+            auto mc_v0a =
+                MC::LinkV0(fInput.McParticle, (*input_mc_entry_lambdas_neg)[entry_lambda], (*input_mc_entry_lambdas_pos)[entry_lambda], pid_lambda);
+            fOutput.MC_ChannelA_V0A.emplace_back(mc_v0a.v0);
+            fOutput.MC_ChannelA_V0A_Neg.emplace_back(mc_v0a.neg);
+            fOutput.MC_ChannelA_V0A_Pos.emplace_back(mc_v0a.pos);
+            // -- V0B
+            auto mc_v0b =
+                MC::LinkV0(fInput.McParticle, fTemp_McEntry_KaonZeroShort_Neg[entry_k0s], fTemp_McEntry_KaonZeroShort_Pos[entry_k0s], pid_k0s);
+            fOutput.MC_ChannelA_V0B.emplace_back(mc_v0b.v0);
+            fOutput.MC_ChannelA_V0B_Neg.emplace_back(mc_v0b.neg);
+            fOutput.MC_ChannelA_V0B_Pos.emplace_back(mc_v0b.pos);
+            // -- antisexaquark
+            fOutput.MC_ChannelA.emplace_back(Link_InjectedSexa(mc_v0a.v0, mc_v0b.v0));
         }
     }
 }
@@ -829,7 +779,7 @@ bool Finder::PostFitCuts_ChannelA(const Cached::ChannelA& c_sexa, TH1D* hist_cut
     return true;
 }
 
-POD::Sexaquark Finder::Create_ChannelA(const KF::FitResult& fit, const Seeder::PCA& pca_v0a, const Seeder::PCA& pca_v0b, bool is_bkg_channel) {
+POD::Sexaquark Finder::Create_ChannelA(const KF::FitResult& fit, const Seeder::PCA& pca_v0a, const Seeder::PCA& pca_v0b, bool wrong_sign_channel) {
     POD::Sexaquark sexa;  // non-initialized on purpose
     // candidate info
     sexa.SV_X = static_cast<float>(fit.mother.X());
@@ -841,7 +791,7 @@ POD::Sexaquark Finder::Create_ChannelA(const KF::FitResult& fit, const Seeder::P
     sexa.Energy = static_cast<float>(fit.mother.E());
     sexa.Chi2NDF = static_cast<float>(fit.mother.Chi2NDF());
     sexa.E_MinusNucleon = static_cast<float>(fit.mother.E() - DB::Particles::Particle("Neutron").mass);  // small optimization
-    sexa.IsBkgChannel = is_bkg_channel;
+    sexa.IsWrongSignChannel = wrong_sign_channel;
     // (anti)lambda
     sexa.Dau1_PCAwrtSV_X = static_cast<float>(pca_v0a.X());
     sexa.Dau1_PCAwrtSV_Y = static_cast<float>(pca_v0a.Y());
@@ -864,38 +814,36 @@ POD::Sexaquark Finder::Create_ChannelA(const KF::FitResult& fit, const Seeder::P
 
 // ## Channel D ZONE ## //
 
-void Finder::FindSexaquarks_ChannelD(bool is_bkg_channel) {
+void Finder::FindSexaquarks_ChannelD(bool wrong_sign_channel) {
 
     // determine rules and aliases //
     // (anti)lambda
     // -- rec
-    const auto& input_lambdas = is_bkg_channel ? fTemp_Lambda : fTemp_AntiLambda;
-    const auto& input_lambdas_neg = is_bkg_channel ? fTemp_Lambda_Neg : fTemp_AntiLambda_Neg;
-    const auto& input_lambdas_pos = is_bkg_channel ? fTemp_Lambda_Pos : fTemp_AntiLambda_Pos;
+    const auto& input_lambdas = wrong_sign_channel ? fTemp_Lambda : fTemp_AntiLambda;
+    const auto& input_lambdas_neg = wrong_sign_channel ? fTemp_Lambda_Neg : fTemp_AntiLambda_Neg;
+    const auto& input_lambdas_pos = wrong_sign_channel ? fTemp_Lambda_Pos : fTemp_AntiLambda_Pos;
     const std::size_t n_lambdas = input_lambdas.size();
     // -- mc
-    const std::vector<POD::Extended::McParticle>* input_mc_lambdas = nullptr;
-    const std::vector<POD::Extended::McParticle>* input_mc_lambdas_neg = nullptr;
-    const std::vector<POD::Extended::McParticle>* input_mc_lambdas_pos = nullptr;
+    const std::vector<unsigned int>* input_mc_entry_lambdas_neg = nullptr;
+    const std::vector<unsigned int>* input_mc_entry_lambdas_pos = nullptr;
     if (fSettings.IsMC) {
-        input_mc_lambdas = is_bkg_channel ? &fTemp_MC_Lambda : &fTemp_MC_AntiLambda;
-        input_mc_lambdas_neg = is_bkg_channel ? &fTemp_MC_Lambda_Neg : &fTemp_MC_AntiLambda_Neg;
-        input_mc_lambdas_pos = is_bkg_channel ? &fTemp_MC_Lambda_Pos : &fTemp_MC_AntiLambda_Pos;
+        input_mc_entry_lambdas_neg = wrong_sign_channel ? &fTemp_McEntry_Lambda_Neg : &fTemp_McEntry_AntiLambda_Neg;
+        input_mc_entry_lambdas_pos = wrong_sign_channel ? &fTemp_McEntry_Lambda_Pos : &fTemp_McEntry_AntiLambda_Pos;
     }
     // charged kaon
     // -- rec
-    const auto& input_kaons = is_bkg_channel ? fTemp_NegKaon : fTemp_PosKaon;
+    const auto& input_kaons = wrong_sign_channel ? fTemp_NegKaon : fTemp_PosKaon;
     const std::size_t n_kaons = input_kaons.size();
     // -- mc
-    const std::vector<POD::Extended::McParticle>* input_mc_kaons = nullptr;
+    const std::vector<unsigned int>* input_mc_entry_kaons = nullptr;
     if (fSettings.IsMC) {
-        input_mc_kaons = is_bkg_channel ? &fTemp_MC_NegKaon : &fTemp_MC_PosKaon;
+        input_mc_entry_kaons = wrong_sign_channel ? &fTemp_McEntry_NegKaon : &fTemp_McEntry_PosKaon;
     }
     // daughters' hypotheses
-    const DB::Particles::Definition pid_kaon = is_bkg_channel ? DB::Particles::Particle("NegKaon") : DB::Particles::Particle("PosKaon");
-    const DB::Particles::Definition pid_lambda = is_bkg_channel ? DB::Particles::Particle("Lambda") : DB::Particles::Particle("AntiLambda");
+    const DB::Particles::Definition pid_kaon = wrong_sign_channel ? DB::Particles::Particle("NegKaon") : DB::Particles::Particle("PosKaon");
+    const DB::Particles::Definition pid_lambda = wrong_sign_channel ? DB::Particles::Particle("Lambda") : DB::Particles::Particle("AntiLambda");
     // cut flow hist
-    TH1D* hist = is_bkg_channel ? fHist_CutFlow_ChannelD_Bkg.get() : fHist_CutFlow_ChannelD.get();
+    TH1D* hist = wrong_sign_channel ? fHist_CutFlow_ChannelD_Bkg.get() : fHist_CutFlow_ChannelD.get();
 
     // determine fit policy
     const KF::FitPolicy fit_policy = GetPolicy_SV();
@@ -931,7 +879,7 @@ void Finder::FindSexaquarks_ChannelD(bool is_bkg_channel) {
                                      fMagneticField, fit_policy);
 
             // create storage+computation units //
-            POD::Sexaquark sexa = Create_ChannelD(fit, seed_v0.pca, seed_kaon.pca, is_bkg_channel);
+            POD::Sexaquark sexa = Create_ChannelD(fit, seed_v0.pca, seed_kaon.pca, wrong_sign_channel);
             Cached::ChannelD c_sexa(sexa, lambda, fPrimaryVertex);
 
             // apply cuts (3) //
@@ -945,18 +893,19 @@ void Finder::FindSexaquarks_ChannelD(bool is_bkg_channel) {
             fOutput.ChannelD_Kaon.emplace_back(kaon);
 
             // store mc //
-            if (fSettings.IsMC) {
-                // -- V0
-                const auto& mc_lambda = (*input_mc_lambdas)[entry_lambda];
-                fOutput.MC_ChannelD_V0.emplace_back(mc_lambda);
-                fOutput.MC_ChannelD_V0_Neg.emplace_back((*input_mc_lambdas_neg)[entry_lambda]);
-                fOutput.MC_ChannelD_V0_Pos.emplace_back((*input_mc_lambdas_pos)[entry_lambda]);
-                // -- Kaon
-                const auto& mc_kaon = (*input_mc_kaons)[entry_kaon];
-                fOutput.MC_ChannelD_Kaon.emplace_back(mc_kaon);
-                // -- h-dibaryon
-                fOutput.MC_ChannelD.emplace_back(BuildMcSexaquark(mc_lambda, mc_kaon));
-            }
+            if (!fSettings.IsMC) continue;
+
+            // -- V0
+            auto mc_v0 =
+                MC::LinkV0(fInput.McParticle, (*input_mc_entry_lambdas_neg)[entry_lambda], (*input_mc_entry_lambdas_pos)[entry_lambda], pid_lambda);
+            fOutput.MC_ChannelD_V0.emplace_back(mc_v0.v0);
+            fOutput.MC_ChannelD_V0_Neg.emplace_back(mc_v0.neg);
+            fOutput.MC_ChannelD_V0_Pos.emplace_back(mc_v0.pos);
+            // -- Kaon
+            auto mc_kaon = MC::Extend((*input_mc_entry_kaons)[entry_kaon], fInput.McParticle, pid_kaon.pdg_code);
+            fOutput.MC_ChannelD_Kaon.emplace_back(mc_kaon);
+            // -- antisexaquark
+            fOutput.MC_ChannelD.emplace_back(Link_InjectedSexa(mc_v0.v0, mc_kaon));
         }
     }
 }
@@ -1019,7 +968,7 @@ bool Finder::PostFitCuts_ChannelD(const Cached::ChannelD& c_sexa, TH1D* hist_cut
     return true;
 }
 
-POD::Sexaquark Finder::Create_ChannelD(const KF::FitResult& fit, const Seeder::PCA& pca_v0, const Seeder::PCA& pca_ka, bool is_bkg_channel) {
+POD::Sexaquark Finder::Create_ChannelD(const KF::FitResult& fit, const Seeder::PCA& pca_v0, const Seeder::PCA& pca_ka, bool wrong_sign_channel) {
     POD::Sexaquark sexa;  // non-initialized on purpose
     // candidate info
     sexa.SV_X = static_cast<float>(fit.mother.X());
@@ -1031,7 +980,7 @@ POD::Sexaquark Finder::Create_ChannelD(const KF::FitResult& fit, const Seeder::P
     sexa.Energy = static_cast<float>(fit.mother.E());
     sexa.Chi2NDF = static_cast<float>(fit.mother.Chi2NDF());
     sexa.E_MinusNucleon = static_cast<float>(fit.mother.E() - DB::Particles::Particle("Proton").mass);  // small optimization
-    sexa.IsBkgChannel = is_bkg_channel;
+    sexa.IsWrongSignChannel = wrong_sign_channel;
     // (anti)lambda
     sexa.Dau1_PCAwrtSV_X = static_cast<float>(pca_v0.X());
     sexa.Dau1_PCAwrtSV_Y = static_cast<float>(pca_v0.Y());
@@ -1054,20 +1003,20 @@ POD::Sexaquark Finder::Create_ChannelD(const KF::FitResult& fit, const Seeder::P
 
 // ## Channel H ZONE ## //
 
-void Finder::FindSexaquarks_ChannelH(bool is_bkg_channel) {
+void Finder::FindSexaquarks_ChannelH(bool wrong_sign_channel) {
 
     // determine rules and aliases //
     // charged kaons
     // -- rec
-    const auto& input_kaons = is_bkg_channel ? fTemp_NegKaon : fTemp_PosKaon;
+    const auto& input_kaons = wrong_sign_channel ? fTemp_NegKaon : fTemp_PosKaon;
     const std::size_t n_kaons = input_kaons.size();
     // -- mc
-    const std::vector<POD::Extended::McParticle>* input_mc_kaons = nullptr;
-    if (fSettings.IsMC) input_mc_kaons = is_bkg_channel ? &fTemp_MC_NegKaon : &fTemp_MC_PosKaon;
+    const std::vector<unsigned int>* input_mc_entry_kaons = nullptr;
+    if (fSettings.IsMC) input_mc_entry_kaons = wrong_sign_channel ? &fTemp_McEntry_NegKaon : &fTemp_McEntry_PosKaon;
     // daughter hypothesis, which is where the fit reads their mass from
-    const DB::Particles::Definition pid_kaon = is_bkg_channel ? DB::Particles::Particle("NegKaon") : DB::Particles::Particle("PosKaon");
+    const DB::Particles::Definition pid_kaon = wrong_sign_channel ? DB::Particles::Particle("NegKaon") : DB::Particles::Particle("PosKaon");
     // cut flow hist
-    TH1D* hist = is_bkg_channel ? fHist_CutFlow_ChannelH_Bkg.get() : fHist_CutFlow_ChannelH.get();
+    TH1D* hist = wrong_sign_channel ? fHist_CutFlow_ChannelH_Bkg.get() : fHist_CutFlow_ChannelH.get();
 
     // determine fit policy
     const KF::FitPolicy fit_policy = GetPolicy_SV();
@@ -1099,7 +1048,7 @@ void Finder::FindSexaquarks_ChannelH(bool is_bkg_channel) {
                                      fMagneticField, fit_policy);
 
             // create storage+computation units //
-            POD::Sexaquark sexa = Create_ChannelH(fit, seed_kaon1.pca, seed_kaon2.pca, is_bkg_channel);
+            POD::Sexaquark sexa = Create_ChannelH(fit, seed_kaon1.pca, seed_kaon2.pca, wrong_sign_channel);
             Cached::ChannelH c_sexa(sexa, fPrimaryVertex);
 
             // apply cuts (3) //
@@ -1111,16 +1060,16 @@ void Finder::FindSexaquarks_ChannelH(bool is_bkg_channel) {
             fOutput.ChannelH_Kaon2.emplace_back(kaon2);
 
             // store mc //
-            if (fSettings.IsMC) {
-                // -- Kaon1
-                const auto& mc_kaon1 = (*input_mc_kaons)[entry_kaon1];
-                fOutput.MC_ChannelH_Kaon1.emplace_back(mc_kaon1);
-                // -- Kaon2
-                const auto& mc_kaon2 = (*input_mc_kaons)[entry_kaon2];
-                fOutput.MC_ChannelH_Kaon2.emplace_back(mc_kaon2);
-                // -- h-dibaryon
-                fOutput.MC_ChannelH.emplace_back(BuildMcSexaquark(mc_kaon1, mc_kaon2));
-            }
+            if (!fSettings.IsMC) continue;
+
+            // -- Kaon1
+            auto mc_kaon1 = MC::Extend((*input_mc_entry_kaons)[entry_kaon1], fInput.McParticle, pid_kaon.pdg_code);
+            fOutput.MC_ChannelH_Kaon1.emplace_back(mc_kaon1);
+            // -- Kaon2
+            auto mc_kaon2 = MC::Extend((*input_mc_entry_kaons)[entry_kaon2], fInput.McParticle, pid_kaon.pdg_code);
+            fOutput.MC_ChannelH_Kaon2.emplace_back(mc_kaon2);
+            // -- antisexaquark
+            fOutput.MC_ChannelH.emplace_back(Link_InjectedSexa(mc_kaon1, mc_kaon2));
         }
     }
 }
@@ -1154,7 +1103,8 @@ bool Finder::PostFitCuts_ChannelH(const Cached::ChannelH& c_sexa, TH1D* hist_cut
     return true;
 }
 
-POD::Sexaquark Finder::Create_ChannelH(const KF::FitResult& fit, const Seeder::PCA& pca_kaon1, const Seeder::PCA& pca_kaon2, bool is_bkg_channel) {
+POD::Sexaquark Finder::Create_ChannelH(const KF::FitResult& fit, const Seeder::PCA& pca_kaon1, const Seeder::PCA& pca_kaon2,
+                                       bool wrong_sign_channel) {
     POD::Sexaquark sexa;  // non-initialized on purpose
     // candidate info
     sexa.SV_X = static_cast<float>(fit.mother.X());
@@ -1166,7 +1116,7 @@ POD::Sexaquark Finder::Create_ChannelH(const KF::FitResult& fit, const Seeder::P
     sexa.Energy = static_cast<float>(fit.mother.E());
     sexa.Chi2NDF = static_cast<float>(fit.mother.Chi2NDF());
     sexa.E_MinusNucleon = static_cast<float>(fit.mother.E() - DB::Particles::Particle("Proton").mass);  // small optimization
-    sexa.IsBkgChannel = is_bkg_channel;
+    sexa.IsWrongSignChannel = wrong_sign_channel;
     // charged kaon 1
     sexa.Dau1_PCAwrtSV_X = static_cast<float>(pca_kaon1.X());
     sexa.Dau1_PCAwrtSV_Y = static_cast<float>(pca_kaon1.Y());
@@ -1221,21 +1171,18 @@ void Finder::EndOfEvent() {
     if (!fSettings.IsMC) return;
 
     // clear transient mc //
-    fTemp_MC_AntiProton.clear();
-    fTemp_MC_Proton.clear();
-    fTemp_MC_NegKaon.clear();
-    fTemp_MC_PosKaon.clear();
-    fTemp_MC_PiMinus.clear();
-    fTemp_MC_PiPlus.clear();
-    fTemp_MC_AntiLambda.clear();
-    fTemp_MC_AntiLambda_Neg.clear();
-    fTemp_MC_AntiLambda_Pos.clear();
-    fTemp_MC_Lambda.clear();
-    fTemp_MC_Lambda_Neg.clear();
-    fTemp_MC_Lambda_Pos.clear();
-    fTemp_MC_KaonZeroShort.clear();
-    fTemp_MC_KaonZeroShort_Neg.clear();
-    fTemp_MC_KaonZeroShort_Pos.clear();
+    fTemp_McEntry_AntiProton.clear();
+    fTemp_McEntry_Proton.clear();
+    fTemp_McEntry_NegKaon.clear();
+    fTemp_McEntry_PosKaon.clear();
+    fTemp_McEntry_PiMinus.clear();
+    fTemp_McEntry_PiPlus.clear();
+    fTemp_McEntry_AntiLambda_Neg.clear();
+    fTemp_McEntry_AntiLambda_Pos.clear();
+    fTemp_McEntry_Lambda_Neg.clear();
+    fTemp_McEntry_Lambda_Pos.clear();
+    fTemp_McEntry_KaonZeroShort_Neg.clear();
+    fTemp_McEntry_KaonZeroShort_Pos.clear();
 }
 
 bool Finder::EndOfAnalysis() {
