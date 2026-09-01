@@ -119,8 +119,10 @@ std::filesystem::path ResolveOutput(const Skimmer::Config& config, std::string_v
 
     const auto* histogram = file->Get<TH1>("N_Events");
     if (!histogram) {
-        Logger::Info(__FUNCTION__, "\"{}\" has no N_Events histogram -- its events will not count towards the normalization", path);
-        return 0;
+        // Returning 0 here would zero this sample's denominator without zeroing its candidates, which no
+        // consumer can detect afterwards.
+        throw std::runtime_error(
+            std::format("\"{}\" has no N_Events histogram -- it was not produced by `t2ds`, so it has no normalization denominator", path));
     }
     return static_cast<std::uint64_t>(histogram->GetEntries());
 }
@@ -132,13 +134,6 @@ void RunChannel(const Skimmer::Config& config, std::string_view output_dir, std:
 
     const SkimPlan plan = BuildPlan<Traits>(config);
 
-    if (std::ranges::any_of(config.Samples, [](const Skimmer::Sample& s) { return s.Role != Skimmer::ERole::kBoth; })) {
-        throw std::runtime_error(
-            "this config declares per-sample roles, which this program cannot yet honour: it writes a single cache, and merging a signal "
-            "production with a background one would give them one shared event count. Skim each production with its own config, then "
-            "pass both caches to Stage 2 as --cache-signal and --cache-background.");
-    }
-
     const std::filesystem::path output_path = ResolveOutput(config, output_dir);
     const std::unique_ptr<TFile> output_file{TFile::Open(output_path.c_str(), "RECREATE")};
     if (!output_file || output_file->IsZombie()) {
@@ -149,6 +144,7 @@ void RunChannel(const Skimmer::Config& config, std::string_view output_dir, std:
     std::uint64_t n_events_read_total{0};
     std::uint64_t n_read_total{0};
     std::uint64_t n_written_total{0};
+    std::uint64_t n_injected_total{0};
 
     // NOTE: the writers have to be destroyed before the file is closed -- an `RNTupleWriter` commits its
     //       final cluster and footer in its destructor. Hence the scope.
@@ -158,9 +154,17 @@ void RunChannel(const Skimmer::Config& config, std::string_view output_dir, std:
 
         std::vector<double> values(plan.Fields.size(), 0.);
 
-        for (const auto& sample : config.Samples) {
+        for (std::size_t s = 0; s < config.Samples.size(); ++s) {
+
+            const Skimmer::Sample& sample = config.Samples[s];
+            const auto sample_index = static_cast<std::uint8_t>(s);
 
             const std::uint64_t n_events = ReadNEvents(sample.Path);
+
+            // `NInjectedPerEvent == 0` means "use the channel trait" -- except for a background production,
+            // which carries no injected signal by definition; claiming the trait's count there would invent one.
+            unsigned int n_injected_per_event = sample.NInjectedPerEvent;
+            if (n_injected_per_event == 0 && sample.Role != Skimmer::ERole::kBackground) n_injected_per_event = Traits::kNInjectedPerEvent;
 
             typename Traits::Schema schema;
             Framework::Reader reader{schema.CreateModel(true), sample.NTuple, sample.Path};
@@ -175,7 +179,7 @@ void RunChannel(const Skimmer::Config& config, std::string_view output_dir, std:
 
             for (ROOT::NTupleSize_t entry = 0; entry < n_entries; ++entry) {
 
-                if (n_events_limit > 0 && n_events_read_total + n_events_read >= n_events_limit) break;
+                if (n_events_limit > 0 && n_events_read >= n_events_limit) break;
                 reader.Load(entry);
                 ++n_events_read;
 
@@ -205,36 +209,44 @@ void RunChannel(const Skimmer::Config& config, std::string_view output_dir, std:
                     for (std::size_t f = 0; f < plan.RegistryIndex.size(); ++f) values[f] = Traits::kVariables[plan.RegistryIndex[f]].Extract(cached);
                     if (!PassesBaseline(plan, values)) continue;
 
-                    cache.Fill(Traits::Label(schema, i, cached), schema.Event.RunNumber, schema.Event.EventNumber, 1.F, values);
+                    cache.Fill(sample_index, Traits::Label(schema, i, cached), schema.Event.RunNumber, schema.Event.EventNumber, 1.F, values);
                     ++n_written;
                 }
             }
 
-            meta.Fill(sample.Path, run_number, n_events, n_events_read, n_read, n_written);
+            meta.Fill({.SampleIndex = sample_index,
+                       .Path = sample.Path,
+                       .RunNumber = run_number,
+                       .Role = sample.Role,
+                       .NInjectedPerEvent = n_injected_per_event,
+                       .NEvents = n_events,
+                       .NEventsRead = n_events_read,
+                       .NCandidatesRead = n_read,
+                       .NCandidatesWritten = n_written});
 
-            Logger::Info(__FUNCTION__, "{}: {} events, {} candidates read, {} written ({:.2f}%)", sample.Path, n_events_read, n_read, n_written,
-                         n_read > 0 ? 100. * static_cast<double>(n_written) / static_cast<double>(n_read) : 0.);
+            Logger::Info(__FUNCTION__, "{} ({}): {} events, {} candidates read, {} written ({:.2f}%)", sample.Path, Skimmer::AsString(sample.Role),
+                         n_events_read, n_read, n_written, n_read > 0 ? 100. * static_cast<double>(n_written) / static_cast<double>(n_read) : 0.);
 
             n_events_total += n_events;
             n_events_read_total += n_events_read;
             n_read_total += n_read;
             n_written_total += n_written;
-
-            if (n_events_limit > 0 && n_events_read_total >= n_events_limit) break;
+            n_injected_total += n_events * n_injected_per_event;
         }
 
-        Skimmer::WriteProvenance(*output_file, config, Traits::kNInjectedPerEvent, n_events_limit > 0);
+        Skimmer::WriteProvenance(*output_file, config, n_events_limit > 0);
     }
 
     output_file->Close();
 
     Logger::Info(__FUNCTION__, "wrote {} rows to \"{}\" ({} candidates read from {} events)", n_written_total, output_path.string(), n_read_total,
                  n_events_read_total);
-    Logger::Info(__FUNCTION__, "the inputs hold {} events in total, i.e. {} injected signals", n_events_total,
-                 n_events_total * Traits::kNInjectedPerEvent);
+    Logger::Info(__FUNCTION__, "the inputs hold {} events in total, i.e. {} injected signals", n_events_total, n_injected_total);
 
     if (n_events_limit > 0) {
-        Logger::Info(__FUNCTION__, "this is a partial skim (n_events was given); it is flagged as such and must not be used for normalization");
+        Logger::Info(__FUNCTION__,
+                     "this is a partial skim ({} events per sample at most); it is flagged as such and must not be used for normalization",
+                     n_events_limit);
     }
 }
 

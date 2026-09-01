@@ -28,6 +28,7 @@ CacheWriter::CacheWriter(std::string_view ntuple_name, TFile& file, std::span<co
     fValues.assign(fields.size(), 0.F);
 
     Framework::Model model;
+    model.RegisterField<std::uint8_t>(&fSampleIndex, "SampleIndex");
     model.RegisterField<std::uint8_t>(&fProcess, "Process");
     model.RegisterField<unsigned int>(&fRunNumber, "RunNumber");
     model.RegisterField<unsigned int>(&fEventNumber, "EventNumber");
@@ -39,7 +40,9 @@ CacheWriter::CacheWriter(std::string_view ntuple_name, TFile& file, std::span<co
     fWriter = std::make_unique<Framework::Writer>(std::move(model), ntuple_name, file, ROOT::RNTupleWriteOptions());
 }
 
-void CacheWriter::Fill(Process::EProcess process, unsigned int run_number, unsigned int event_number, float weight, std::span<const double> values) {
+void CacheWriter::Fill(std::uint8_t sample_index, Process::EProcess process, unsigned int run_number, unsigned int event_number, float weight,
+                       std::span<const double> values) {
+    fSampleIndex = sample_index;
     fProcess = static_cast<std::uint8_t>(process);
     fRunNumber = run_number;
     fEventNumber = event_number;
@@ -52,8 +55,11 @@ void CacheWriter::Fill(Process::EProcess process, unsigned int run_number, unsig
 
 MetaWriter::MetaWriter(TFile& file) {
     Framework::Model model;
+    model.RegisterField<std::uint8_t>(&fSampleIndex, "SampleIndex");
     model.RegisterField<std::string>(&fPath, "Path");
     model.RegisterField<unsigned int>(&fRunNumber, "RunNumber");
+    model.RegisterField<std::uint8_t>(&fRole, "Role");
+    model.RegisterField<std::uint32_t>(&fNInjectedPerEvent, "NInjectedPerEvent");
     model.RegisterField<std::uint64_t>(&fNEvents, "NEvents");
     model.RegisterField<std::uint64_t>(&fNEventsRead, "NEventsRead");
     model.RegisterField<std::uint64_t>(&fNCandidatesRead, "NCandidatesRead");
@@ -61,25 +67,26 @@ MetaWriter::MetaWriter(TFile& file) {
     fWriter = std::make_unique<Framework::Writer>(std::move(model), "Meta", file, ROOT::RNTupleWriteOptions());
 }
 
-void MetaWriter::Fill(std::string_view path, unsigned int run_number, std::uint64_t n_events, std::uint64_t n_events_read, std::uint64_t n_read,
-                      std::uint64_t n_written) {
-    fPath = std::string(path);
-    fRunNumber = run_number;
-    fNEvents = n_events;
-    fNEventsRead = n_events_read;
-    fNCandidatesRead = n_read;
-    fNCandidatesWritten = n_written;
+void MetaWriter::Fill(const MetaRow& row) {
+    fSampleIndex = row.SampleIndex;
+    fPath = std::string(row.Path);
+    fRunNumber = row.RunNumber;
+    fRole = static_cast<std::uint8_t>(row.Role);
+    fNInjectedPerEvent = row.NInjectedPerEvent;
+    fNEvents = row.NEvents;
+    fNEventsRead = row.NEventsRead;
+    fNCandidatesRead = row.NCandidatesRead;
+    fNCandidatesWritten = row.NCandidatesWritten;
     fWriter->Fill();
 }
 
-void WriteProvenance(TFile& file, const Skimmer::Config& config, unsigned int n_injected_per_event, bool is_partial) {
+void WriteProvenance(TFile& file, const Skimmer::Config& config, bool is_partial) {
 
     std::string channel{AsString(config.Channel)};
     std::string hypothesis{config.Hypothesis};
     std::string config_path{config.Path};
     std::string observable{config.Obs.Variable};
     double signal_mass{config.SignalMass};
-    std::uint32_t injected_per_event{n_injected_per_event};
     std::uint64_t expected_real_events{E2T::NExpectedEventsInRealData};
 
     Framework::Model model;
@@ -88,7 +95,6 @@ void WriteProvenance(TFile& file, const Skimmer::Config& config, unsigned int n_
     model.RegisterField<std::string>(&config_path, "ConfigPath");
     model.RegisterField<std::string>(&observable, "Observable");
     model.RegisterField<double>(&signal_mass, "SignalMass");
-    model.RegisterField<std::uint32_t>(&injected_per_event, "NInjectedPerEvent");
     model.RegisterField<std::uint64_t>(&expected_real_events, "NExpectedEventsInRealData");
     model.RegisterField<bool>(&is_partial, "IsPartial");
 

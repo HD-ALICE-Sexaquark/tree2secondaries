@@ -11,7 +11,8 @@ using json = nlohmann::json;
 
 namespace {
 
-// Reads a required key, and says which key was missing rather than letting nlohmann throw a type error three frames deeper.
+// Reads a required key, and says which key was missing.
+// Only ever instantiated with scalars, subobjects go through `RequireNode`, which does not copy them.
 template <typename T>
 T Require(const json& node, std::string_view context, std::string_view key) {
     const auto it = node.find(key);
@@ -27,23 +28,60 @@ template <typename T>
 T Optional(const json& node, std::string_view key, T fallback) {
     const auto it = node.find(key);
     if (it == node.end()) return fallback;
-    return it->get<T>();
+    try {
+        return it->get<T>();
+    } catch (const json::exception& exc) {
+        throw std::runtime_error(std::format("optional key \"{}\" has the wrong type ({})", key, exc.what()));
+    }
+}
+
+// A required subobject.
+const json& RequireNode(const json& node, std::string_view context, std::string_view key) {
+    const auto it = node.find(key);
+    if (it == node.end()) {
+        throw std::runtime_error(std::format("{}: missing required key \"{}\"", context, key));
+    }
+    return *it;
+}
+
+// An optional subobject: null when absent, so a caller can skip it instead of materializing an empty one to iterate over.
+const json* FindNode(const json& node, std::string_view key) {
+    const auto it = node.find(key);
+    return it == node.end() ? nullptr : &*it;
+}
+
+// A required string, by reference into the document. `AsChannel`/`AsRole`/`AsDirection` all take a `std::string_view`, so the
+// values that are only ever compared never need a string of their own.
+const std::string& RequireString(const json& node, std::string_view context, std::string_view key) {
+    const json& value = RequireNode(node, context, key);
+    if (!value.is_string()) {
+        throw std::runtime_error(std::format("{}: key \"{}\" must be a string", context, key));
+    }
+    return value.get_ref<const std::string&>();
+}
+
+std::string_view OptionalString(const json& node, std::string_view key, std::string_view fallback) {
+    const json* value = FindNode(node, key);
+    if (!value) return fallback;
+    if (!value->is_string()) {
+        throw std::runtime_error(std::format("optional key \"{}\" must be a string", key));
+    }
+    return value->get_ref<const std::string&>();
 }
 
 // A cut value is a scalar for `lower`/`upper` and a two-element array for `window`.
 // Enforced here so that a window with a single number fails loudly instead of defaulting its upper edge to zero.
-inline void ReadCutValue(const json& node, std::string_view context, std::string_view key, Skimmer::EDirection direction, double& low, double& high) {
-    const auto it = node.find(key);
-    if (it == node.end()) throw std::runtime_error(std::format("{}: missing required key \"{}\"", context, key));
+void ReadCutValue(const json& node, std::string_view context, std::string_view key, Skimmer::EDirection direction, double& low, double& high) {
+    const json& value = RequireNode(node, context, key);
     if (direction == Skimmer::EDirection::kWindow) {
-        if (!it->is_array() || it->size() != 2)
+        if (!value.is_array() || value.size() != 2)
             throw std::runtime_error(std::format("{}: \"{}\" must be a two-element array [low, high] for a window cut", context, key));
-        low = (*it)[0].get<double>();
-        high = (*it)[1].get<double>();
+        low = value[0].get<double>();
+        high = value[1].get<double>();
         if (high < low) throw std::runtime_error(std::format("{}: \"{}\" has high < low", context, key));
     } else {
-        if (!it->is_number()) throw std::runtime_error(std::format("{}: \"{}\" must be a number for a {} cut", context, key, AsString(direction)));
-        low = it->get<double>();
+        if (!value.is_number()) throw std::runtime_error(std::format("{}: \"{}\" must be a number for a {} cut", context, key, AsString(direction)));
+        low = value.get<double>();
         high = low;
     }
 }
@@ -70,31 +108,31 @@ std::vector<std::string> Config::CachedVariables() const {
 }
 
 void Config::Print() const {
-    Logger::Info(__FUNCTION__, "{:<20} = {}", "Path", Path);
-    Logger::Info(__FUNCTION__, "{:<20} = {}", "Channel", AsString(Channel));
-    Logger::Info(__FUNCTION__, "{:<20} = {}", "Hypothesis", Hypothesis);
-    Logger::Info(__FUNCTION__, "{:<20} = {:.2f}", "SignalMass", SignalMass);
-    Logger::Info(__FUNCTION__, "{:<20} = {} entries", "Samples", Samples.size());
+    Logger::Info(__FUNCTION__, "{:<12} = {}", "Path", Path);
+    Logger::Info(__FUNCTION__, "{:<12} = {}", "Channel", AsString(Channel));
+    Logger::Info(__FUNCTION__, "{:<12} = {}", "Hypothesis", Hypothesis);
+    Logger::Info(__FUNCTION__, "{:<12} = {:.3f}", "SignalMass", SignalMass);
+    Logger::Info(__FUNCTION__, "{:<12} = {} entries", "Samples", Samples.size());
     for (const auto& sample : Samples)
-        Logger::Info(__FUNCTION__, "{:<20}   {} ({}, role {}{})", "", sample.Path, sample.NTuple, AsString(sample.Role),
+        Logger::Info(__FUNCTION__, "{:<12}   {} ({}, role {}{})", "", sample.Path, sample.NTuple, AsString(sample.Role),
                      sample.NInjectedPerEvent > 0 ? std::format(", {}/event injected", sample.NInjectedPerEvent) : "");
-    Logger::Info(__FUNCTION__, "{:<20} = {} [{}, {}] in {} bins", "Observable", Obs.Variable, Obs.Min, Obs.Max, Obs.Bins);
-    Logger::Info(__FUNCTION__, "{:<20} = {} cuts", "Baseline", Baseline.size());
+    Logger::Info(__FUNCTION__, "{:<12} = {} [{}, {}] in {} bins", "Observable", Obs.Variable, Obs.Min, Obs.Max, Obs.Bins);
+    Logger::Info(__FUNCTION__, "{:<12} = {} cuts", "Baseline", Baseline.size());
     for (const auto& cut : Baseline) {
         if (cut.Direction == EDirection::kWindow)
-            Logger::Info(__FUNCTION__, "{:<20}   {} window [{}, {}]", "", cut.Variable, cut.Value, cut.ValueUpper);
+            Logger::Info(__FUNCTION__, "{:<12}   {} window [{}, {}]", "", cut.Variable, cut.Value, cut.ValueUpper);
         else
-            Logger::Info(__FUNCTION__, "{:<20}   {} {} {}", "", cut.Variable, AsString(cut.Direction), cut.Value);
+            Logger::Info(__FUNCTION__, "{:<12}   {} {} {}", "", cut.Variable, AsString(cut.Direction), cut.Value);
     }
-    Logger::Info(__FUNCTION__, "{:<20} = {} variables", "Scan", Variables.size());
+    Logger::Info(__FUNCTION__, "{:<12} = {} variables", "Scan", Variables.size());
     for (const auto& variable : Variables)
-        Logger::Info(__FUNCTION__, "{:<20}   {} ({}, {} steps over [{}, {}]{})", "", variable.Name, AsString(variable.Direction), variable.Steps,
+        Logger::Info(__FUNCTION__, "{:<12}   {} ({}, {} steps over [{}, {}]{})", "", variable.Name, AsString(variable.Direction), variable.Steps,
                      variable.RangeMin, variable.RangeMax, variable.InGrid ? ", in grid" : "");
-    Logger::Info(__FUNCTION__, "{:<20} = {} (a = {}, f_syst = {})", "Fom", FigureOfMerit.Formula, FigureOfMerit.A, FigureOfMerit.FSyst);
+    Logger::Info(__FUNCTION__, "{:<12} = {} (a = {}, f_syst = {})", "Fom", FigureOfMerit.Formula, FigureOfMerit.A, FigureOfMerit.FSyst);
     if (FigureOfMerit.HasSignalYield)
-        Logger::Info(__FUNCTION__, "{:<20}   dN/dy {} x dy {} x BR {} x {} species x P(int) {}", "", FigureOfMerit.DnDy, FigureOfMerit.DeltaY,
+        Logger::Info(__FUNCTION__, "{:<12}   dN/dy {} x dy {} x BR {} x {} species x P(int) {}", "", FigureOfMerit.DnDy, FigureOfMerit.DeltaY,
                      FigureOfMerit.BranchingRatio, FigureOfMerit.NInjectedSpecies, FigureOfMerit.InteractionProbability);
-    Logger::Info(__FUNCTION__, "{:<20} = {} signal, {} background", "Guards", Guard.MinRawSignal, Guard.MinRawBackground);
+    Logger::Info(__FUNCTION__, "{:<12} = {} signal, {} background", "Guards", Guard.MinRawSignal, Guard.MinRawBackground);
 }
 
 Config Load(std::string_view path) {
@@ -111,20 +149,25 @@ Config Load(std::string_view path) {
 
     Config config;
     config.Path = std::string(path);
-    config.Channel = AsChannel(Require<std::string>(json_file, "config", "channel"));
-    config.Hypothesis = Require<std::string>(json_file, "config", "hypothesis");
+    config.Channel = AsChannel(RequireString(json_file, "config", "channel"));
+    config.Hypothesis = RequireString(json_file, "config", "hypothesis");
     config.SignalMass = Optional<double>(json_file, "signal_mass", 0.);
 
     // -- samples
 
-    const auto& samples = Require<json>(json_file, "config", "samples");
+    const json& samples = RequireNode(json_file, "config", "samples");
     if (!samples.is_array() || samples.empty()) throw std::runtime_error("config: \"samples\" must be a non-empty array");
+    if (samples.size() > kMaxSamples) {
+        // `SampleIndex` is one byte per cache row; see `Skimmer/Writers.hxx`.
+        throw std::runtime_error(
+            std::format("config: \"samples\" holds {} entries, more than the {} a cache row can address", samples.size(), kMaxSamples));
+    }
     for (const auto& node : samples) {
         Sample sample;
-        sample.Path = Require<std::string>(node, "samples[]", "path");
-        sample.NTuple = Require<std::string>(node, "samples[]", "ntuple");
+        sample.Path = RequireString(node, "samples[]", "path");
+        sample.NTuple = RequireString(node, "samples[]", "ntuple");
         sample.RunNumber = Optional<unsigned int>(node, "run_number", 0U);
-        sample.Role = AsRole(Optional<std::string>(node, "role", std::string("both")));
+        sample.Role = AsRole(OptionalString(node, "role", "both"));
         sample.NInjectedPerEvent = Optional<unsigned int>(node, "n_injected_per_event", 0U);
         config.Samples.push_back(std::move(sample));
     }
@@ -153,34 +196,36 @@ Config Load(std::string_view path) {
 
     // -- observable
 
-    const auto& observable = Require<json>(json_file, "config", "observable");
-    config.Obs.Variable = Require<std::string>(observable, "observable", "variable");
+    const json& observable = RequireNode(json_file, "config", "observable");
+    config.Obs.Variable = RequireString(observable, "observable", "variable");
     config.Obs.Bins = Optional<unsigned int>(observable, "bins", 200U);
-    const auto& range = Require<json>(observable, "observable", "range");
+    const json& range = RequireNode(observable, "observable", "range");
     if (!range.is_array() || range.size() != 2) throw std::runtime_error("observable: \"range\" must be a two-element array");
     config.Obs.Min = range[0].get<double>();
     config.Obs.Max = range[1].get<double>();
 
     // -- baseline preselection
 
-    const json baseline = Optional<json>(json_file, "baseline", json::array());
-    for (const auto& node : baseline) {
-        BaselineCut cut;
-        cut.Variable = Require<std::string>(node, "baseline[]", "variable");
-        cut.Direction = AsDirection(Require<std::string>(node, "baseline[]", "direction"));
-        ReadCutValue(node, "baseline[]", "value", cut.Direction, cut.Value, cut.ValueUpper);
-        config.Baseline.push_back(std::move(cut));
+    if (const json* baseline = FindNode(json_file, "baseline")) {
+        if (!baseline->is_array()) throw std::runtime_error("config: \"baseline\" must be an array");
+        for (const auto& node : *baseline) {
+            BaselineCut cut;
+            cut.Variable = RequireString(node, "baseline[]", "variable");
+            cut.Direction = AsDirection(RequireString(node, "baseline[]", "direction"));
+            ReadCutValue(node, "baseline[]", "value", cut.Direction, cut.Value, cut.ValueUpper);
+            config.Baseline.push_back(std::move(cut));
+        }
     }
 
     // -- scanned cut variables
 
-    const auto& variables = Require<json>(json_file, "config", "variables");
+    const json& variables = RequireNode(json_file, "config", "variables");
     if (!variables.is_array() || variables.empty()) throw std::runtime_error("config: \"variables\" must be a non-empty array");
     for (const auto& node : variables) {
         CutVariable variable;
-        variable.Name = Require<std::string>(node, "variables[]", "name");
-        variable.Direction = AsDirection(Require<std::string>(node, "variables[]", "direction"));
-        const auto& scan_range = Require<json>(node, "variables[]", "range");
+        variable.Name = RequireString(node, "variables[]", "name");
+        variable.Direction = AsDirection(RequireString(node, "variables[]", "direction"));
+        const json& scan_range = RequireNode(node, "variables[]", "range");
         if (!scan_range.is_array() || scan_range.size() != 2)
             throw std::runtime_error(std::format("variables[{}]: \"range\" must be a two-element array", variable.Name));
         variable.RangeMin = scan_range[0].get<double>();
@@ -196,8 +241,8 @@ Config Load(std::string_view path) {
 
     // -- figure of merit
 
-    const auto& fom = Require<json>(json_file, "config", "fom");
-    config.FigureOfMerit.Formula = Require<std::string>(fom, "fom", "formula");
+    const json& fom = RequireNode(json_file, "config", "fom");
+    config.FigureOfMerit.Formula = RequireString(fom, "fom", "formula");
     if (config.FigureOfMerit.Formula != "punzi" && config.FigureOfMerit.Formula != "asimov" && config.FigureOfMerit.Formula != "poisson") {
         throw std::runtime_error(std::format("fom: unknown formula \"{}\" (expected punzi, asimov or poisson)", config.FigureOfMerit.Formula));
     }
@@ -211,13 +256,13 @@ Config Load(std::string_view path) {
 
     config.FigureOfMerit.HasSignalYield = fom.contains("signal_yield");
     if (config.FigureOfMerit.HasSignalYield) {
-        const auto& yield = Require<json>(fom, "fom", "signal_yield");
+        const json& yield = RequireNode(fom, "fom", "signal_yield");
         config.FigureOfMerit.DnDy = Require<double>(yield, "fom.signal_yield", "dndy");
         config.FigureOfMerit.DeltaY = Require<double>(yield, "fom.signal_yield", "delta_y");
         config.FigureOfMerit.BranchingRatio = Optional<double>(yield, "branching_ratio", 1.);
         config.FigureOfMerit.NInjectedSpecies = Optional<unsigned int>(yield, "n_injected_species", 1U);
         config.FigureOfMerit.InteractionProbability = Optional<double>(yield, "interaction_probability", 1.);
-        config.FigureOfMerit.YieldSource = Optional<std::string>(yield, "source", std::string{});
+        config.FigureOfMerit.YieldSource = OptionalString(yield, "source", "");
         if (config.FigureOfMerit.DnDy <= 0. || config.FigureOfMerit.DeltaY <= 0.) {
             throw std::runtime_error("fom.signal_yield: \"dndy\" and \"delta_y\" must be positive");
         }
@@ -253,24 +298,30 @@ Config Load(std::string_view path) {
 
     // -- guards
 
-    const auto& guards = Optional<json>(json_file, "guards", json::object());
-    config.Guard.MinRawSignal = Optional<unsigned int>(guards, "min_raw_signal", 20U);
-    config.Guard.MinRawBackground = Optional<unsigned int>(guards, "min_raw_background", 20U);
+    // `config.Guard` already holds the defaults, so an absent "guards" object simply leaves them alone.
+    if (const json* guards = FindNode(json_file, "guards")) {
+        config.Guard.MinRawSignal = Optional<unsigned int>(*guards, "min_raw_signal", config.Guard.MinRawSignal);
+        config.Guard.MinRawBackground = Optional<unsigned int>(*guards, "min_raw_background", config.Guard.MinRawBackground);
+    }
 
     // -- acknowledged dummy populations
 
-    const json sentinel_ok = Optional<json>(json_file, "sentinel_ok", json::array());
-    for (const auto& node : sentinel_ok) {
-        auto name = node.get<std::string>();
-        const bool known = std::ranges::any_of(config.Variables, [&name](const CutVariable& v) { return v.Name == name; }) ||
-                           std::ranges::any_of(config.Baseline, [&name](const BaselineCut& c) { return c.Variable == name; });
-        if (!known)
-            throw std::runtime_error(
-                std::format("config: \"sentinel_ok\" names \"{}\", which is neither a scanned variable nor a "
-                            "baseline cut. It exists to acknowledge a dummy population on a variable the "
-                            "selection actually uses.",
-                            name));
-        config.SentinelOk.push_back(std::move(name));
+    if (const json* sentinel_ok = FindNode(json_file, "sentinel_ok")) {
+        if (!sentinel_ok->is_array()) {
+            throw std::runtime_error("config: \"sentinel_ok\" must be an array");
+        }
+        for (const auto& node : *sentinel_ok) {
+            auto name = node.get<std::string>();
+            const bool known = std::ranges::any_of(config.Variables, [&name](const CutVariable& v) { return v.Name == name; }) ||
+                               std::ranges::any_of(config.Baseline, [&name](const BaselineCut& c) { return c.Variable == name; });
+            if (!known)
+                throw std::runtime_error(
+                    std::format("config: \"sentinel_ok\" names \"{}\", which is neither a scanned variable nor a "
+                                "baseline cut. It exists to acknowledge a dummy population on a variable the "
+                                "selection actually uses.",
+                                name));
+            config.SentinelOk.push_back(std::move(name));
+        }
     }
 
     return config;

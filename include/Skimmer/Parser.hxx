@@ -29,7 +29,7 @@ class Parser : CLI::App {
             ->check(CLI::ExistingFile);
         add_option("-o,--output", cli.OutputDir, "Output directory, or a path ending in .root")  //
             ->expected(1);
-        add_option("-n,--nevents", cli.NEvents, "Limit to N events across all samples (0 = all)")  //
+        add_option("-n,--nevents", cli.NEvents, "Limit to N events per sample (0 = all)")  //
             ->expected(1);
 
         try {

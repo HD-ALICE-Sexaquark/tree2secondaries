@@ -40,6 +40,8 @@ endif()
 
 # find dependencies #
 
+# cli11
+
 message(STATUS "Fetching https://github.com/CLIUtils/CLI11")
 FetchContent_Declare(
   cli11_proj
@@ -48,6 +50,8 @@ FetchContent_Declare(
   GIT_SHALLOW TRUE)
 FetchContent_MakeAvailable(cli11_proj)
 message(STATUS "Fetching https://github.com/CLIUtils/CLI11 -- fetched")
+
+# eigen
 
 message(STATUS "Fetching https://gitlab.com/libeigen/eigen")
 FetchContent_Declare(
@@ -59,20 +63,39 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(eigen)
 message(STATUS "Fetching https://gitlab.com/libeigen/eigen -- fetched")
 
-message(STATUS "Fetching https://github.com/nlohmann/json")
-FetchContent_Declare(
-  nlohmann_json
-  EXCLUDE_FROM_ALL
-  GIT_REPOSITORY https://github.com/nlohmann/json.git
-  GIT_TAG v3.12.0
-  GIT_SHALLOW TRUE)
-FetchContent_MakeAvailable(nlohmann_json)
-message(STATUS "Fetching https://github.com/nlohmann/json -- fetched")
+# root
 
 message(STATUS "Looking for ROOT")
 find_package(ROOT 6.40 REQUIRED CONFIG COMPONENTS Core Tree MathCore GenVector Hist RIO ROOTNTuple)
 if(ROOT_FOUND)
   message(STATUS "Found ROOT: ${ROOT_INCLUDE_DIRS}")
+endif()
+
+# nlohmann/json
+# (1) ROOT's bundled header?
+# (2) system-wide installation?
+# (3) if none, fetch it
+
+add_library(lib_nlohmann_json INTERFACE)
+
+if(ROOT_builtin_nlohmannjson_FOUND)
+  message(STATUS "Using nlohmann/json bundled with ROOT")
+else()
+  find_package(nlohmann_json 3.12.0 QUIET CONFIG)
+  if(nlohmann_json_FOUND)
+    message(STATUS "Found nlohmann/json: ${nlohmann_json_DIR}")
+  else()
+    message(STATUS "Fetching https://github.com/nlohmann/json")
+    FetchContent_Declare(
+      nlohmann_json
+      EXCLUDE_FROM_ALL
+      GIT_REPOSITORY https://github.com/nlohmann/json.git
+      GIT_TAG v3.12.0
+      GIT_SHALLOW TRUE)
+    FetchContent_MakeAvailable(nlohmann_json)
+    message(STATUS "Fetching https://github.com/nlohmann/json -- fetched")
+  endif()
+  target_link_libraries(lib_nlohmann_json INTERFACE nlohmann_json::nlohmann_json)
 endif()
 
 # flags #
@@ -163,6 +186,6 @@ add_executable(skim src/Skimmer/Config.cxx
 target_link_libraries(skim PRIVATE t2ds_flags
                                    "-Wl,--no-as-needed" POD "-Wl,--as-needed"
                                    CLI11::CLI11
-                                   nlohmann_json::nlohmann_json
+                                   lib_nlohmann_json
                                    ROOT::Core ROOT::MathCore ROOT::GenVector
                                    ROOT::RIO ROOT::Hist ROOT::ROOTNTuple)

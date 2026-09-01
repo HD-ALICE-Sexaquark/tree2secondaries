@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 #include <format>
 #include <stdexcept>
@@ -33,6 +34,10 @@ enum class ERole : std::uint8_t {
     kBackground,  // supplies B
     kBoth,        // one production serving as its own background -- the default
 };
+
+// Every cache row names the sample it came from with a single byte (`SampleIndex`, see `Skimmer/Writers.hxx`),
+// which is what bounds how many samples one config may declare.
+inline constexpr std::size_t kMaxSamples = 256;
 
 struct Sample {
     std::string Path;
@@ -149,7 +154,7 @@ struct Guards {
     if (name == "lower") return EDirection::kLower;
     if (name == "upper") return EDirection::kUpper;
     if (name == "window") return EDirection::kWindow;
-    throw std::runtime_error(std::format("unknown direction \"{}\" (expected lower, upper, window, symm_inside or symm_outside)", name));
+    throw std::runtime_error(std::format("unknown direction \"{}\" (expected lower, upper or window)", name));
 }
 
 struct Config {
