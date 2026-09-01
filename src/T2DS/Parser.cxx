@@ -4,8 +4,9 @@
 
 #include <CLI/CLI.hpp>
 
-#include "App/Parser.hxx"
-#include "App/Settings.hxx"
+#include "T2DS/Settings.hxx"
+
+#include "T2DS/Parser.hxx"
 
 namespace T2DS {
 

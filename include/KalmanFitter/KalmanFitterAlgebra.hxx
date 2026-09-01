@@ -4,8 +4,8 @@
 #include <Eigen/LU>
 
 #if T2DS_DEBUG
-#include "App/Logger.hxx"
-#include "App/Utilities.hxx"
+#include "Utils/Logger.hxx"
+#include "Utils/Utilities.hxx"
 #endif
 
 namespace T2DS::KF::Internal::Algebra {

@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.28...3.31)
 project(
   t2ds
-  VERSION 26.08.18
+  VERSION 26.08.31
   LANGUAGES CXX)
 
 # set "Release" as default build type #
@@ -59,6 +59,16 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(eigen)
 message(STATUS "Fetching https://gitlab.com/libeigen/eigen -- fetched")
 
+message(STATUS "Fetching https://github.com/nlohmann/json")
+FetchContent_Declare(
+  nlohmann_json
+  EXCLUDE_FROM_ALL
+  GIT_REPOSITORY https://github.com/nlohmann/json.git
+  GIT_TAG v3.12.0
+  GIT_SHALLOW TRUE)
+FetchContent_MakeAvailable(nlohmann_json)
+message(STATUS "Fetching https://github.com/nlohmann/json -- fetched")
+
 message(STATUS "Looking for ROOT")
 find_package(ROOT 6.40 REQUIRED CONFIG COMPONENTS Core Tree MathCore GenVector Hist RIO ROOTNTuple)
 if(ROOT_FOUND)
@@ -68,6 +78,21 @@ endif()
 # flags #
 
 set(T2DS_RELEASE_FLAGS -march=x86-64-v3 -mtune=native -ffp-contract=fast -fno-math-errno -fno-trapping-math)
+
+# shared compile settings #
+
+add_library(t2ds_flags INTERFACE)
+target_include_directories(t2ds_flags INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}
+                                                ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_compile_options(t2ds_flags INTERFACE -Wall
+                                            -Wextra
+                                            -Wshadow
+                                            -Wnon-virtual-dtor
+                                            -Wpedantic
+                                            -Wconversion
+                                            -Wdouble-promotion
+                                            $<$<CONFIG:Release>:${T2DS_RELEASE_FLAGS}>)
+target_compile_definitions(t2ds_flags INTERFACE $<$<CONFIG:Debug>:T2DS_DEBUG>)
 
 # option: profiling #
 
@@ -99,43 +124,45 @@ target_link_options(POD PRIVATE -Wno-alloc-size-larger-than)
 target_include_directories(POD PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}
                                       ${CMAKE_CURRENT_SOURCE_DIR}/common)
 
-# main target #
+# t2ds target #
 
-add_executable(${PROJECT_NAME} src/Seeder/SeederHelixHelix.cxx
-                               src/Seeder/SeederHelixLine.cxx
-                               src/Seeder/SeederHelixVertex.cxx
-                               src/Seeder/SeederLineLine.cxx
-                               src/Seeder/SeederLineVertex.cxx
-                               src/KalmanFitter/KalmanFitter.cxx
-                               src/KalmanFitter/KalmanFitterMassConstraints.cxx
-                               src/KalmanFitter/KalmanFitterParticle.cxx
-                               src/KalmanFitter/KalmanFitterProdVertexConstraint.cxx
-                               src/KalmanFitter/KalmanFitterTransport.cxx
-                               src/KalmanFitter/KalmanFitterVertexUpdate.cxx
-                               src/Finder/Finder.cxx
-                               src/Verifier/Verifier.cxx
-                               src/App/Settings.cxx
-                               src/App/Parser.cxx
-                               src/App/App.cxx)
+add_executable(t2ds src/Seeder/SeederHelixHelix.cxx
+                    src/Seeder/SeederHelixLine.cxx
+                    src/Seeder/SeederHelixVertex.cxx
+                    src/Seeder/SeederLineLine.cxx
+                    src/Seeder/SeederLineVertex.cxx
+                    src/KalmanFitter/KalmanFitter.cxx
+                    src/KalmanFitter/KalmanFitterMassConstraints.cxx
+                    src/KalmanFitter/KalmanFitterParticle.cxx
+                    src/KalmanFitter/KalmanFitterProdVertexConstraint.cxx
+                    src/KalmanFitter/KalmanFitterTransport.cxx
+                    src/KalmanFitter/KalmanFitterVertexUpdate.cxx
+                    src/T2DS/Finder.cxx
+                    src/T2DS/Verifier.cxx
+                    src/T2DS/Settings.cxx
+                    src/T2DS/Parser.cxx
+                    src/T2DS/Main.cxx)
 
-target_link_libraries(${PROJECT_NAME} PRIVATE "-Wl,--no-as-needed" POD "-Wl,--as-needed"
-                                              CLI11::CLI11
-                                              Eigen3::Eigen
-                                              ROOT::Core ROOT::Tree ROOT::MathCore ROOT::GenVector
-                                              ROOT::RIO ROOT::Hist ROOT::ROOTNTuple)
+target_link_libraries(t2ds PRIVATE t2ds_flags
+                                   "-Wl,--no-as-needed" POD "-Wl,--as-needed"
+                                   CLI11::CLI11
+                                   Eigen3::Eigen
+                                   ROOT::Core ROOT::Tree ROOT::MathCore ROOT::GenVector
+                                   ROOT::RIO ROOT::Hist ROOT::ROOTNTuple)
 
-target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
-                                                   ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_compile_definitions(t2ds PRIVATE EIGEN_DONT_PARALLELIZE
+                                        $<$<CONFIG:Release>:EIGEN_NO_DEBUG>)
 
-target_compile_options(${PROJECT_NAME} PRIVATE -Wall
-                                               -Wextra
-                                               -Wshadow
-                                               -Wnon-virtual-dtor
-                                               -Wpedantic
-                                               -Wconversion
-                                               -Wdouble-promotion
-                                               $<$<CONFIG:Release>:${T2DS_RELEASE_FLAGS}>)
+# skim target #
 
-target_compile_definitions(${PROJECT_NAME} PRIVATE EIGEN_DONT_PARALLELIZE
-                                                   $<$<CONFIG:Debug>:T2DS_DEBUG>
-                                                   $<$<CONFIG:Release>:EIGEN_NO_DEBUG>)
+add_executable(skim src/Skimmer/Config.cxx
+                    src/Skimmer/Writers.cxx
+                    src/Skimmer/Skimmer.cxx
+                    src/Skimmer/Main.cxx)
+
+target_link_libraries(skim PRIVATE t2ds_flags
+                                   "-Wl,--no-as-needed" POD "-Wl,--as-needed"
+                                   CLI11::CLI11
+                                   nlohmann_json::nlohmann_json
+                                   ROOT::Core ROOT::MathCore ROOT::GenVector
+                                   ROOT::RIO ROOT::Hist ROOT::ROOTNTuple)

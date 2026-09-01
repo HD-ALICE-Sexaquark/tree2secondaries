@@ -29,7 +29,7 @@ namespace CMath = Common::Math;
 #include "Seeder/SeederLineLine.hxx"
 #include "Seeder/SeederTypes.hxx"
 
-#include "Finder/Finder.hxx"
+#include "T2DS/Finder.hxx"
 
 namespace T2DS {
 

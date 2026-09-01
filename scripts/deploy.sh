@@ -27,10 +27,11 @@ t2ds_remote_path=${!path_var}
 ssh "${t2ds_remote_user_and_host}" mkdir -p "${t2ds_remote_path}"
 
 rsync -avzR --delete \
-    "${T2DS_LOCAL_PATH}"/./src \
-    "${T2DS_LOCAL_PATH}"/./include \
     "${T2DS_LOCAL_PATH}"/./common \
+    "${T2DS_LOCAL_PATH}"/./configs \
+    "${T2DS_LOCAL_PATH}"/./include \
     "${T2DS_LOCAL_PATH}"/./scripts \
+    "${T2DS_LOCAL_PATH}"/./src \
     "${T2DS_LOCAL_PATH}"/./CMakeLists.txt \
     "${t2ds_remote_user_and_host}":"${t2ds_remote_path}"/
 

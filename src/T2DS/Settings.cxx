@@ -2,8 +2,9 @@
 #include <optional>
 #include <vector>
 
-#include "App/Logger.hxx"
-#include "App/Settings.hxx"
+#include "Utils/Logger.hxx"
+
+#include "T2DS/Settings.hxx"
 
 namespace T2DS {
 

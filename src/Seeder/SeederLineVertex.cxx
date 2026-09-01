@@ -3,7 +3,7 @@
 #include "common/Constants.hpp"
 
 #if T2DS_DEBUG
-#include "App/Logger.hxx"
+#include "Utils/Logger.hxx"
 #endif
 #include "Seeder/SeederTransport.hxx"
 #include "Seeder/SeederTypes.hxx"

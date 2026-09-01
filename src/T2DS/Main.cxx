@@ -1,8 +1,8 @@
-#include "App/App.hxx"
-#include "App/Parser.hxx"
-#include "App/Settings.hxx"
-#include "Finder/Finder.hxx"
-#include "Verifier/Verifier.hxx"
+#include "T2DS/Finder.hxx"
+#include "T2DS/Parser.hxx"
+#include "T2DS/RunOverInputs.hxx"
+#include "T2DS/Settings.hxx"
+#include "T2DS/Verifier.hxx"
 
 int main(int argc, char *argv[]) {
 

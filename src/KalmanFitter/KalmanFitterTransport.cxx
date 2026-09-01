@@ -3,8 +3,8 @@
 #include "common/Constants.hpp"
 
 #if T2DS_DEBUG
-#include "App/Logger.hxx"
-#include "App/Utilities.hxx"
+#include "Utils/Logger.hxx"
+#include "Utils/Utilities.hxx"
 #endif
 #include "KalmanFitter/KalmanFitterParticle.hxx"
 #include "Seeder/SeederTypes.hxx"

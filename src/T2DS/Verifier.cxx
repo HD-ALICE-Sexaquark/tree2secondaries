@@ -26,7 +26,7 @@ namespace CMath = Common::Math;
 #include "Seeder/SeederLineLine.hxx"
 #include "Seeder/SeederTypes.hxx"
 
-#include "Verifier/Verifier.hxx"
+#include "T2DS/Verifier.hxx"
 
 namespace T2DS {
 
@@ -129,8 +129,7 @@ void Verifier::ProcessEvent() {
     // update event counter
     fHist_EventCounter->Fill(0.);
     // cache pv
-    fPrimaryVertex.SetCoordinates(static_cast<double>(fOutput.Event.PV_X), static_cast<double>(fOutput.Event.PV_Y),
-                                  static_cast<double>(fOutput.Event.PV_Z));
+    fPrimaryVertex.SetCoordinates(fOutput.Event.PV_X, fOutput.Event.PV_Y, fOutput.Event.PV_Z);
     fPrimaryVertexKF = KF::Vertex::FromEvent(fOutput.Event);
     // cache bz
     fMagneticField = static_cast<double>(fOutput.Event.MagneticField);

@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <limits>
 
-#include "App/Settings.hxx"
+#include "T2DS/Settings.hxx"
 
 namespace T2DS {
 

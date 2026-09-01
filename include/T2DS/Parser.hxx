@@ -6,7 +6,7 @@
 
 #include <CLI/CLI.hpp>
 
-#include "App/Settings.hxx"
+#include "T2DS/Settings.hxx"
 
 namespace T2DS {
 

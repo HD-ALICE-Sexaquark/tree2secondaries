@@ -19,9 +19,9 @@
 #include "common/Schema_Events.hpp"
 #include "common/Schema_FoundSexaquark.hpp"
 
-#include "App/Logger.hxx"
-#include "App/Settings.hxx"
 #include "KalmanFitter/KalmanFitterFitTypes.hxx"
+#include "T2DS/Settings.hxx"
+#include "Utils/Logger.hxx"
 
 // forward declarations //
 // clang-format off
