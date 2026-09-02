@@ -99,14 +99,10 @@ SkimPlan BuildPlan(const Skimmer::Config& config) {
 
 // # Where the Output Goes # //
 
-std::filesystem::path ResolveOutput(const Skimmer::Config& config, std::string_view output_dir) {
-    std::filesystem::path output{output_dir};
-    if (output.extension() == ".root") {
-        std::filesystem::create_directories(output.parent_path().empty() ? std::filesystem::path{"."} : output.parent_path());
-        return output;
-    }
-    std::filesystem::create_directories(output);
-    return output / std::format("Cache_{}.root", Skimmer::AsString(config.Channel));
+std::filesystem::path ResolveOutput(const Skimmer::Config& config) {
+    const std::filesystem::path output{config.Output};
+    if (!output.parent_path().empty()) std::filesystem::create_directories(output.parent_path());
+    return output;
 }
 
 // # The Event Count # //
@@ -136,13 +132,13 @@ std::filesystem::path ResolveOutput(const Skimmer::Config& config, std::string_v
 // # Implementation per Channel Trait # //
 
 template <typename Traits>
-void RunChannel(const Skimmer::Config& config, std::string_view output_dir, std::uint64_t n_events_limit) {
+void RunChannel(const Skimmer::Config& config) {
 
     const SkimPlan plan = BuildPlan<Traits>(config);
 
     Skimmer::Reweighter reweighter{config.SignalMass, config.WeightsPt, config.WeightsRadius};
 
-    const std::filesystem::path output_path = ResolveOutput(config, output_dir);
+    const std::filesystem::path output_path = ResolveOutput(config);
     const std::unique_ptr<TFile> output_file{TFile::Open(output_path.c_str(), "RECREATE")};
     if (!output_file || output_file->IsZombie()) {
         throw std::runtime_error(std::format("could not create \"{}\"", output_path.string()));
@@ -182,7 +178,7 @@ void RunChannel(const Skimmer::Config& config, std::string_view output_dir, std:
 
             for (ROOT::NTupleSize_t entry = 0; entry < n_entries; ++entry) {
 
-                if (n_events_limit > 0 && n_events_read >= n_events_limit) break;
+                if (config.NEventsLimit > 0 && n_events_read >= config.NEventsLimit) break;
                 reader.Load(entry);
                 ++n_events_read;
 
@@ -261,8 +257,6 @@ void RunChannel(const Skimmer::Config& config, std::string_view output_dir, std:
         }
     }
 
-    Skimmer::WriteCacheSource(*output_file, config, Traits::kName_OutputRNT, plan.Fields, n_events_limit);
-
     output_file->Close();
 
     Logger::Info(__FUNCTION__, "wrote {} rows to \"{}\" ({} candidates read from {} events)", n_written_total, output_path.string(), n_read_total,
@@ -278,10 +272,9 @@ void RunChannel(const Skimmer::Config& config, std::string_view output_dir, std:
         }
     }
 
-    if (n_events_limit > 0) {
-        Logger::Info(__FUNCTION__,
-                     "this is a partial skim ({} events per sample at most); it is flagged as such and must not be used for normalization",
-                     n_events_limit);
+    if (config.NEventsLimit > 0) {
+        Logger::Info(__FUNCTION__, "this is a partial skim ({} events per sample at most); it must not be used for normalization",
+                     config.NEventsLimit);
     }
 }
 
@@ -291,19 +284,19 @@ void RunChannel(const Skimmer::Config& config, std::string_view output_dir, std:
 
 namespace Skimmer {
 
-void Run(const Config& config, std::string_view output_dir, std::uint64_t n_events_limit) {
+void Run(const Config& config) {
     switch (config.Channel) {
         case EChannel::kChannelA:
-            RunChannel<TraitsChannelA>(config, output_dir, n_events_limit);
+            RunChannel<TraitsChannelA>(config);
             break;
         case EChannel::kChannelD:
-            RunChannel<TraitsChannelD>(config, output_dir, n_events_limit);
+            RunChannel<TraitsChannelD>(config);
             break;
         case EChannel::kChannelH:
-            RunChannel<TraitsChannelH>(config, output_dir, n_events_limit);
+            RunChannel<TraitsChannelH>(config);
             break;
         case EChannel::kLambdaPair:
-            RunChannel<TraitsLambdaPair>(config, output_dir, n_events_limit);
+            RunChannel<TraitsLambdaPair>(config);
             break;
     }
 }

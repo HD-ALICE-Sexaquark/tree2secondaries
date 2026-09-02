@@ -8,8 +8,8 @@ Single-threaded programs, ideally executed in a job scheduler like Slurm or HTCo
 The output is stored in event-based RNTuples. It can parse real data or MC.
 
 `skim` flattens the candidate vectors of one or more `t2ds` RNTuples into a scalar-only cache, applying the config's
-baseline preselection on the way. Only works for MC productions. It reads a skim config file (`configs/`), which names
-the input files and the variables to cache.
+baseline preselection on the way. Only works for MC productions. Its only argument is a skim config file (`configs/`),
+which names the input files, the variables to cache and where the cache goes.
 
 ## Requirements
 
@@ -75,13 +75,13 @@ More information: [docs/FINDER.md](./docs/FINDER.md) / [docs/VERIFIER.md](./docs
 ## Usage: Skimmer
 
 ```
-./skim [OPTIONS]
+./skim [OPTIONS] <config>
+
+POSITIONALS:
+  <config>      [REQUIRED] Path of JSON config file
 
 OPTIONS:
-  -h,     --help              Print this help message and exit
-  -c,     --config FILE       [REQUIRED] Path of JSON config file
-  -o,     --output TEXT       Output directory, or a path ending in .root
-  -n,     --nevents NUMBER    Limit to N events per sample (0 = all)
+  -h, --help    Print this help message and exit
 ```
 
 More information: [docs/SKIMMER.md](./docs/SKIMMER.md)

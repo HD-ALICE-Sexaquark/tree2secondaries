@@ -8,13 +8,9 @@
 #include <vector>
 
 #include <TFile.h>
-#include <TObjString.h>
 
 #include <ROOT/RNTupleModel.hxx>
 #include <ROOT/RNTupleWriteOptions.hxx>
-
-#include <nlohmann/json.hpp>
-using json = nlohmann::json;
 
 #include "common/Framework.hpp"
 
@@ -35,6 +31,7 @@ CacheWriter::CacheWriter(std::string_view ntuple_name, TFile& file, std::span<co
     model.RegisterField<std::uint8_t>(&fClassification, "Classification");
     model.RegisterField<unsigned int>(&fRunNumber, "RunNumber");
     model.RegisterField<unsigned int>(&fDirNumber, "DirNumber");
+    model.RegisterField<unsigned int>(&fDirNumberB, "DirNumberB");
     model.RegisterField<unsigned int>(&fEventNumber, "EventNumber");
     model.RegisterField<float>(&fWeight, "Weight");
     for (std::size_t i = 0; i < fields.size(); ++i) {
@@ -50,6 +47,7 @@ void CacheWriter::Fill(std::uint8_t sample_index, Classification::EClassificatio
     fClassification = static_cast<std::uint8_t>(classification);
     fRunNumber = event.RunNumber;
     fDirNumber = event.DirNumber;
+    fDirNumberB = event.DirNumberB;
     fEventNumber = event.EventNumber;
     fWeight = weight;
     for (std::size_t i = 0; i < fValues.size(); ++i) fValues[i] = static_cast<float>(values[i]);
@@ -81,28 +79,6 @@ void MetaWriter::Fill(const MetaRow& row) {
     fNCandidatesRead = row.NCandidatesRead;
     fNCandidatesWritten = row.NCandidatesWritten;
     fWriter->Fill();
-}
-
-// # CacheSource # //
-
-void WriteCacheSource(TFile& file, const Skimmer::Config& config, std::string_view ntuple_name, std::span<const std::string> fields,
-                      std::uint64_t n_events_limit) {
-
-    json record;
-    record["channel"] = std::string(AsString(config.Channel));
-    record["signal_mass"] = config.SignalMass;
-    record["ntuple"] = std::string(ntuple_name);
-    record["fields"] = std::vector<std::string>(fields.begin(), fields.end());
-    // The consumer multiplies its yield weight onto whatever `Weight` already holds, so it has to be able to
-    // tell a shape-reweighted cache from a flat one. Empty means that factor was off.
-    record["weights_pt"] = config.WeightsPt;
-    record["weights_radius"] = config.WeightsRadius;
-    record["config_path"] = config.Path;
-    record["is_partial"] = n_events_limit > 0;
-    record["n_events_limit"] = n_events_limit;
-
-    TObjString text{record.dump(2).c_str()};
-    file.WriteObject(&text, "CacheSource");
 }
 
 }  // namespace Skimmer

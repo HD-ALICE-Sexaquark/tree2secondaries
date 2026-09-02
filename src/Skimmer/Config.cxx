@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <filesystem>
 #include <fstream>
 #include <utility>
 
@@ -102,6 +103,8 @@ void Config::Print() const {
     Logger::Info(__FUNCTION__, "{:<12} = {}", "Path", Path);
     Logger::Info(__FUNCTION__, "{:<12} = {}", "Channel", AsString(Channel));
     Logger::Info(__FUNCTION__, "{:<12} = {:.3f}", "SignalMass", SignalMass);
+    Logger::Info(__FUNCTION__, "{:<12} = {}", "Output", Output);
+    Logger::Info(__FUNCTION__, "{:<12} = {}", "NEventsLimit", NEventsLimit == 0 ? std::string{"all"} : std::format("{}", NEventsLimit));
     if (Channel != EChannel::kLambdaPair) {
         Logger::Info(__FUNCTION__, "{:<12} = {}", "WeightsPt", WeightsPt.empty() ? "(none)" : WeightsPt);
         Logger::Info(__FUNCTION__, "{:<12} = {}", "WeightsRadius", WeightsRadius.empty() ? "(none)" : WeightsRadius);
@@ -141,6 +144,22 @@ Config Load(std::string_view path) {
     config.Path = std::string(path);
     config.Channel = AsChannel(RequireString(json_file, "config", "channel"));
     config.SignalMass = Require<double>(json_file, "config", "signal_mass");
+
+    // -- where the cache goes
+
+    // A full path rather than a directory: this key is how the consumer finds the cache, and a directory would
+    // leave it re-deriving the file name from the channel.
+    config.Output = RequireString(json_file, "config", "output");
+    if (std::filesystem::path{config.Output}.extension() != ".root") {
+        throw std::runtime_error(std::format("config: \"output\" must be a path ending in .root, not \"{}\"", config.Output));
+    }
+
+    // -- how many events to read
+
+    // Read as signed: a negative literal would otherwise wrap into a huge limit, i.e. into "all of them".
+    const auto n_events_limit = Optional<std::int64_t>(json_file, "n_events_limit", 0);
+    if (n_events_limit < 0) throw std::runtime_error(std::format("config: \"n_events_limit\" cannot be negative ({})", n_events_limit));
+    config.NEventsLimit = static_cast<std::uint64_t>(n_events_limit);
 
     // -- shape weights
 
@@ -201,7 +220,11 @@ Config Load(std::string_view path) {
         if (!node.is_string()) {
             throw std::runtime_error("variables[]: every entry must be a variable name, as a string");
         }
-        config.Variables.push_back(node.get<std::string>());
+        const auto& name = node.get_ref<const std::string&>();
+        if (std::ranges::find(config.Variables, name) != config.Variables.end()) {
+            throw std::runtime_error(std::format("variables[]: \"{}\" is listed twice", name));
+        }
+        config.Variables.push_back(name);
     }
 
     // -- baseline preselection

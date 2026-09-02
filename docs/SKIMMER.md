@@ -2,26 +2,31 @@
 
 ## The Skim Config File
 
-One JSON file per analysis channel, in `configs/skim/`. It holds only what changes the skim's output: which files to
-read, which variables to cache, and which preselection to apply.
+One JSON file per analysis channel, in `configs/`. It holds everything that changes the skim's output: which files to
+read, which variables to cache, which preselection to apply, and where the cache goes. It is also the only argument
+`skim` takes.
 
-| key                   | required       | default | possible values                                  |
-|-----------------------|----------------|---------|--------------------------------------------------|
-| `channel`             | yes            |  (none) | `ChannelA`, `ChannelD`, `ChannelH`, `LambdaPair` |
-| `signal_mass`         | yes            |  (none) | `1.73`,`1.8`,`1.87`,`1.94`,`2.01`,`2.234`        |
-| `weights_pt`          | no             |    `""` | path to a blast-wave weights file                |
-| `weights_radius`      | no             |    `""` | path to a material-budget weights file           |
-| `samples[]`           | yes, non-empty |  (none) |                                                  |
-| `samples[].path`      | yes, full path |  (none) |                                                  |
-| `samples[].role`      | no             |  `both` | `both`, `signal`, `background`                   |
-| `variables[]`         | yes, non-empty |  (none) | any available in `Skimmer/VariableRegistry.hxx`  |
-| `baseline[]`          | no             |    `[]` |                                                  |
-| `baseline[].variable` | yes            |  (none) | any available in `Skimmer/VariableRegistry.hxx`  |
-| `baseline[].direction` | yes           |  (none) | `lower`, `upper`, `window`                       |
-| `baseline[].value`    | yes            |  (none) |                                                  |
+| key                    | required       | default | possible values                                  |
+|------------------------|----------------|---------|--------------------------------------------------|
+| `channel`              | yes            |  (none) | `ChannelA`, `ChannelD`, `ChannelH`, `LambdaPair` |
+| `signal_mass`          | yes            |  (none) | `1.73`,`1.8`,`1.87`,`1.94`,`2.01`,`2.234`        |
+| `output`               | yes            |  (none) | path of the cache file, must end in `.root`      |
+| `n_events_limit`       | no             |     `0` | events per sample to read (`0` = all)            |
+| `weights_pt`           | no             |    `""` | path to a blast-wave weights file                |
+| `weights_radius`       | no             |    `""` | path to a material-budget weights file           |
+| `samples[]`            | yes, non-empty |  (none) |                                                  |
+| `samples[].path`       | yes, full path |  (none) |                                                  |
+| `samples[].role`       | no             |  `both` | `both`, `signal`, `background`                   |
+| `variables[]`          | yes, non-empty |  (none) | any available in `Skimmer/VariableRegistry.hxx`  |
+| `baseline[]`           | no             |    `[]` |                                                  |
+| `baseline[].variable`  | yes            |  (none) | any available in `Skimmer/VariableRegistry.hxx`  |
+| `baseline[].direction` | yes            |  (none) | `lower`, `upper`, `window`                       |
+| `baseline[].value`     | yes            |  (none) |                                                  |
 
-`channel` decides everything else about the file layout: which schema is read, which RNTuple that schema lives in, and
-which one the cache is written to.
+`channel` decides which schema is read, and the names of both input and output RNTuples.
+
+`n_events_limit` caps how many events are read *per sample*. Anything above `0` makes the skim partial, which no
+consumer may use for normalization -- see `NInjected` below.
 
 The tuple names come from the schema family, not from the channel, because the three sexaquark channels share a schema
 and never end up in the same file. `Hdibaryon` survives as that family name (`Schema::FoundHdibaryon`,
@@ -73,14 +78,17 @@ anything MC respects. An event outside them still has an injection to reweight, 
 percentile, from a fixed seed. The end-of-run summary reports how many rows were weighted and how many of them
 drew.
 
-The yield weights, for how many antisexaquarks or h-dibaryons a real run would actually hold, should be applied
-downstream, by the consumer of the cache, on top of this column. `CacheSource` carries both paths so a consumer can tell
-a reweighted cache from a flat one.
+The yield weights, for how many antisexaquarks or (anti)h-dibaryons a real run would actually hold, should be applied
+downstream, by the consumer of the cache, on top of this column. The consumer reads the skim config anyway, and both
+paths are keys in it, so it can tell a reweighted cache from a flat one.
 
 ## Output 1: `RNTuple "Cached{Sexaquark|Hdibaryon}"`
 
 `CachedSexaquark` / `CachedHdibaryon` -- one row per surviving candidate: `SampleIndex`, `Classification`, `RunNumber`,
-`DirNumber`, `EventNumber`, `Weight` (see above), then one `float` per cached variable.
+`DirNumber`, `DirNumberB`, `EventNumber`, `Weight` (see above), then one `float` per cached variable.
+
+`RunNumber`, `DirNumber`, `DirNumberB` and `EventNumber` are copied straight off `POD::Event`; `DirNumberB` is only
+meaningful for real data.
 
 `Classification` is the MC-truth label (see `Skimmer/Classification.hxx` and `common/docs/MC_LABELS.md`). Possible
 values:
@@ -101,8 +109,8 @@ One row per input file. Fields: `SampleIndex`, `Path`, `Role`, `NInjected`, `NEv
 `Role` is stored as the underlying value of `ERole`: `0` signal, `1` background, `2` both.
 
 `NInjected` is the sum of `Injected` signal over every read event. That is exact for a full run, because `t2ds` keeps
-every MC event whose `Injected` vector is non-empty -- the events it dropped held no injection to miss. A run with `-n`
-stops early and undercounts, which is why such a run is flagged partial and must not be used for normalization.
+every MC event whose `Injected` vector is non-empty -- the events it dropped held no injection to miss. A run with a
+non-zero `n_events_limit` stops early and undercounts, which is why such a run must not be used for normalization.
 
 The count is empirical, so it follows the file rather than the declared role: a signal production reused as a background
 sample reports its real injections. Sum `NInjected` over the `Role == signal` rows.
@@ -110,21 +118,3 @@ sample reports its real injections. Sum `NInjected` over the `Role == signal` ro
 `NEvents` comes from the `N_Events` histogram `t2ds` fills once per event, before any candidate is built. It is the
 event denominator, and the way to see that an input was truncated -- the RNTuple's entry count is always smaller, since
 candidate-less events are dropped.
-
-## Output 3: `TObjString "CacheSource"`
-
-It hold one JSON object:
-
-```json
-{
-  "channel": "LambdaPair",
-  "signal_mass": 2.234,
-  "ntuple": "CachedHdibaryon",
-  "fields": ["Mass", "Rapidity", "Pt", "..."],
-  "weights_pt": "",
-  "weights_radius": "",
-  "config_path": "../configs/hdibaryon.json",
-  "is_partial": false,
-  "n_events_limit": 0
-}
-```

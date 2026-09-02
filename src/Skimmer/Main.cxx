@@ -16,7 +16,7 @@ int main(int argc, char* argv[]) {
     try {
         const Skimmer::Config config = Skimmer::Load(cli.ConfigPath);
         config.Print();
-        Skimmer::Run(config, cli.OutputDir, cli.NEvents);
+        Skimmer::Run(config);
     } catch (const std::exception& exc) {
         Logger::Error("Main", "{}", exc.what());
         return 1;

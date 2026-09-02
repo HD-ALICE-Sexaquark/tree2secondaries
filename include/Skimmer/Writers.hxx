@@ -24,7 +24,7 @@ namespace Skimmer {
 // these names would register a duplicate RNTuple field, so `BuildPlan` rejects it at startup rather
 // than letting the writer fail halfway through a production.
 inline constexpr auto kReservedFields =
-    std::to_array<std::string_view>({"SampleIndex", "Classification", "RunNumber", "DirNumber", "EventNumber", "Weight"});
+    std::to_array<std::string_view>({"SampleIndex", "Classification", "RunNumber", "DirNumber", "DirNumberB", "EventNumber", "Weight"});
 
 class CacheWriter {
    public:
@@ -49,6 +49,7 @@ class CacheWriter {
     std::uint8_t fClassification{};
     unsigned int fRunNumber{};
     unsigned int fDirNumber{};
+    unsigned int fDirNumberB{};
     unsigned int fEventNumber{};
     float fWeight{};
     std::unique_ptr<Framework::Writer> fWriter;
@@ -91,11 +92,5 @@ class MetaWriter {
     std::uint64_t fNCandidatesWritten{};
     std::unique_ptr<Framework::Writer> fWriter;
 };
-
-// # CacheSource # //
-
-// A single JSON record, written as a `TObjString` named "CacheSource".
-void WriteCacheSource(TFile& file, const Config& config, std::string_view ntuple_name, std::span<const std::string> fields,
-                      std::uint64_t n_events_limit);
 
 }  // namespace Skimmer

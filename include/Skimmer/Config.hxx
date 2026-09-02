@@ -13,16 +13,12 @@ namespace Skimmer {
 // ## The Skim Config File ## //
 
 // Read a JSON file.
-// It holds only what changes the skim's output: which files to read, which variables to cache, and which
-// preselection to apply. Every variable named here must exist in the compiled registry of
-// `Skimmer/VariableRegistry.hxx` for the declared channel.
+// It holds everything that changes the skim's output: which files to read, which variables to cache, which preselection to apply, and where the cache
+// goes.
+// Every variable named here must exist in the compiled registry of `Skimmer/VariableRegistry.hxx` for the declared channel.
 //
-// Everything downstream needs but the skim does not act on -- the observable's binning, the scan ranges,
-// the figure of merit, the guards -- lives in a separate analysis config owned by the consumer, so that a
-// re-tune of the optimizer does not imply a re-skim. See `docs/ANALYSIS_CONFIG.md`. The output's
-// `CacheSource` record carries a digest of this file -- channel, signal mass, and the path it was loaded
-// from -- so a cache says which config produced it, but not what that config said: the baseline cuts live
-// only here.
+// It is also the whole record of a skim: the cache carries no digest of its own, so the consumer reads this file, resolves `Output`, and opens that
+// cache if it is there.
 
 enum class EChannel : std::uint8_t {
     kChannelA,    // antisexaquark + neutron -> antilambda + K0S
@@ -127,6 +123,8 @@ struct Config {
     std::vector<BaselineCut> Baseline;
     std::string WeightsPt;
     std::string WeightsRadius;
+    std::string Output;             // full path of the cache file, ending in .root
+    std::uint64_t NEventsLimit{0};  // events per sample, 0 = all of them
 
     std::string Path;  // where this config was loaded from
 
