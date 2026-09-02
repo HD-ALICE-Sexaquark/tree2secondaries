@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
+#include <exception>
 #include <filesystem>
 #include <format>
 #include <memory>
@@ -16,8 +17,11 @@
 #include <Math/Point3D.h>
 namespace RMath = ROOT::Math;
 
+#include "common/DB_Centrality.hpp"
+
 #include "Skimmer/Channels.hxx"
 #include "Skimmer/Config.hxx"
+#include "Skimmer/Reweighter.hxx"
 #include "Skimmer/Writers.hxx"
 #include "Utils/Logger.hxx"
 
@@ -136,6 +140,8 @@ void RunChannel(const Skimmer::Config& config, std::string_view output_dir, std:
 
     const SkimPlan plan = BuildPlan<Traits>(config);
 
+    Skimmer::Reweighter reweighter{config.SignalMass, config.WeightsPt, config.WeightsRadius};
+
     const std::filesystem::path output_path = ResolveOutput(config, output_dir);
     const std::unique_ptr<TFile> output_file{TFile::Open(output_path.c_str(), "RECREATE")};
     if (!output_file || output_file->IsZombie()) {
@@ -147,6 +153,7 @@ void RunChannel(const Skimmer::Config& config, std::string_view output_dir, std:
     std::uint64_t n_read_total{0};
     std::uint64_t n_written_total{0};
     std::uint64_t n_injected_total{0};
+    std::uint64_t n_weighted_total{0};
 
     // NOTE: the writers have to be destroyed before the file is closed -- an `RNTupleWriter` commits its
     //       final cluster and footer in its destructor. Hence the scope.
@@ -171,6 +178,7 @@ void RunChannel(const Skimmer::Config& config, std::string_view output_dir, std:
             std::uint64_t n_injected{0};
             std::uint64_t n_read{0};
             std::uint64_t n_written{0};
+            std::uint64_t n_weighted{0};
 
             for (ROOT::NTupleSize_t entry = 0; entry < n_entries; ++entry) {
 
@@ -193,11 +201,41 @@ void RunChannel(const Skimmer::Config& config, std::string_view output_dir, std:
 
                 for (std::size_t i = 0; i < n_candidates; ++i) {
 
+                    // build cached object //
                     const typename Traits::Cached cached = Traits::Build(schema, i, pv);
+
+                    // extract needed vars //
                     for (std::size_t f = 0; f < plan.RegistryIndex.size(); ++f) values[f] = Traits::kVariables[plan.RegistryIndex[f]].Extract(cached);
+
+                    // apply baseline selection //
                     if (!PassesBaseline(plan, values)) continue;
 
-                    cache.Fill(sample_index, Traits::Label(schema, i, cached), schema.Event, 1.F, values);
+                    // classify candidate //
+                    const Skimmer::Classification::EClassification label = Traits::Label(schema, i, cached);
+
+                    // reweight: only for signal candidates in antisexaquark MC //
+                    float weight{1.F};
+                    if constexpr (Traits::kHasInjectedSexa) {
+                        if (label == Skimmer::Classification::kSignal) {
+                            // -- get true injected information
+                            const ::Cached::InjectedSexa injected = Traits::Injected(schema, i);
+                            if (injected.ReactionID == Common::DummyInt) {
+                                throw std::runtime_error(
+                                    std::format("{}: entry {}, candidate {} is true signal but carries no linked injection", sample.Path, entry, i));
+                            }
+                            // -- get weights based on true information
+                            try {
+                                weight = static_cast<float>(reweighter.Weight(schema.Event.Centrality, injected.Pt(), injected.SV_Radius2D()));
+                            } catch (const std::exception& exc) {
+                                throw std::runtime_error(std::format("{}: entry {}, candidate {}: {}", sample.Path, entry, i, exc.what()));
+                            }
+                            // -- update counter
+                            ++n_weighted;
+                        }
+                    }
+                    cache.Fill(sample_index, label, schema.Event, weight, values);
+
+                    // update counter //
                     ++n_written;
                 }
             }
@@ -219,6 +257,7 @@ void RunChannel(const Skimmer::Config& config, std::string_view output_dir, std:
             n_read_total += n_read;
             n_written_total += n_written;
             n_injected_total += n_injected;
+            n_weighted_total += n_weighted;
         }
     }
 
@@ -230,6 +269,14 @@ void RunChannel(const Skimmer::Config& config, std::string_view output_dir, std:
                  n_events_read_total);
     Logger::Info(__FUNCTION__, "the inputs hold {} events; {} read, holding {} injected signals",  //
                  n_events_total, n_events_read_total, n_injected_total);
+
+    if (reweighter.IsActive()) {
+        Logger::Info(__FUNCTION__, "shape weights were applied to {} signal rows; every other row carries 1", n_weighted_total);
+        if (reweighter.NRandomizedCentrality() > 0) {
+            Logger::Info(__FUNCTION__, "{} of them drew a random centrality class, their event's falling outside [{}, {})",
+                         reweighter.NRandomizedCentrality(), DB::Centrality::Edges.front(), DB::Centrality::Edges.back());
+        }
+    }
 
     if (n_events_limit > 0) {
         Logger::Info(__FUNCTION__,

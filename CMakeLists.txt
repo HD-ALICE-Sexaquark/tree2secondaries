@@ -179,6 +179,7 @@ target_compile_definitions(t2ds PRIVATE EIGEN_DONT_PARALLELIZE
 # skim target #
 
 add_executable(skim src/Skimmer/Config.cxx
+                    src/Skimmer/Reweighter.cxx
                     src/Skimmer/Writers.cxx
                     src/Skimmer/Skimmer.cxx
                     src/Skimmer/Main.cxx)

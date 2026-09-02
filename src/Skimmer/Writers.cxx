@@ -93,6 +93,10 @@ void WriteCacheSource(TFile& file, const Skimmer::Config& config, std::string_vi
     record["signal_mass"] = config.SignalMass;
     record["ntuple"] = std::string(ntuple_name);
     record["fields"] = std::vector<std::string>(fields.begin(), fields.end());
+    // The consumer multiplies its yield weight onto whatever `Weight` already holds, so it has to be able to
+    // tell a shape-reweighted cache from a flat one. Empty means that factor was off.
+    record["weights_pt"] = config.WeightsPt;
+    record["weights_radius"] = config.WeightsRadius;
     record["config_path"] = config.Path;
     record["is_partial"] = n_events_limit > 0;
     record["n_events_limit"] = n_events_limit;

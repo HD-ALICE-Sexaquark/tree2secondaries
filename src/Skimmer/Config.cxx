@@ -102,6 +102,10 @@ void Config::Print() const {
     Logger::Info(__FUNCTION__, "{:<12} = {}", "Path", Path);
     Logger::Info(__FUNCTION__, "{:<12} = {}", "Channel", AsString(Channel));
     Logger::Info(__FUNCTION__, "{:<12} = {:.3f}", "SignalMass", SignalMass);
+    if (Channel != EChannel::kLambdaPair) {
+        Logger::Info(__FUNCTION__, "{:<12} = {}", "WeightsPt", WeightsPt.empty() ? "(none)" : WeightsPt);
+        Logger::Info(__FUNCTION__, "{:<12} = {}", "WeightsRadius", WeightsRadius.empty() ? "(none)" : WeightsRadius);
+    }
     Logger::Info(__FUNCTION__, "{:<12} = {} entries", "Samples", Samples.size());
     for (const auto& sample : Samples) {
         Logger::Info(__FUNCTION__, "{:<12}   {} (role: {})", "", sample.Path, AsString(sample.Role));
@@ -137,6 +141,15 @@ Config Load(std::string_view path) {
     config.Path = std::string(path);
     config.Channel = AsChannel(RequireString(json_file, "config", "channel"));
     config.SignalMass = Require<double>(json_file, "config", "signal_mass");
+
+    // -- shape weights
+
+    config.WeightsPt = OptionalString(json_file, "weights_pt", "");
+    config.WeightsRadius = OptionalString(json_file, "weights_radius", "");
+    if (config.Channel == EChannel::kLambdaPair && (!config.WeightsPt.empty() || !config.WeightsRadius.empty())) {
+        throw std::runtime_error(
+            "config: \"weights_pt\"/\"weights_radius\" are built to reshape the flat injected antisexaquarks and do not apply to h-dibaryon MC.");
+    }
 
     // -- samples
 

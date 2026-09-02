@@ -6,6 +6,7 @@
 
 #include <Math/Point3D.h>
 
+#include "common/Cached_InjectedSexa.hpp"
 #include "common/Constants.hpp"
 #include "common/Schema_FoundHdibaryon.hpp"
 #include "common/Schema_FoundSexaquark.hpp"
@@ -34,11 +35,19 @@ struct TraitsChannelA {
     static constexpr std::string_view kName_InputRNT{T2DS::Name_FoundSexaquarkRNT};
     static constexpr std::string_view kName_OutputRNT{Skimmer::Name_CachedSexaquarkRNT};
 
+    static constexpr bool kHasInjectedSexa = true;  // needed for reweighting
+
     static std::size_t Size(const Schema& schema) { return schema.ChannelA.size(); }
     static std::size_t McSize(const Schema& schema) { return schema.MC_ChannelA.size(); }
 
     static Cached Build(const Schema& schema, std::size_t i, const ROOT::Math::XYZPoint& pv) {
         return Cached{schema.ChannelA[i], schema.ChannelA_V0A[i], schema.ChannelA_V0B[i], pv};
+    }
+
+    // The MC PV, not the reconstructed one: this is an entirely generator-level object, and only the truth
+    // vertex belongs in it -- even though neither `Pt()` nor `SV_Radius2D()` reads the reference point.
+    static ::Cached::InjectedSexa Injected(const Schema& schema, std::size_t i) {
+        return {schema.MC_ChannelA[i], {schema.MC_Event.PV_X, schema.MC_Event.PV_Y, schema.MC_Event.PV_Z}};
     }
 
     static Classification::EClassification Label(const Schema& schema, std::size_t i, const Cached& cached) {
@@ -56,11 +65,17 @@ struct TraitsChannelD {
     static constexpr std::string_view kName_InputRNT{T2DS::Name_FoundSexaquarkRNT};
     static constexpr std::string_view kName_OutputRNT{Skimmer::Name_CachedSexaquarkRNT};
 
+    static constexpr bool kHasInjectedSexa = true;  // needed for reweighting
+
     static std::size_t Size(const Schema& schema) { return schema.ChannelD.size(); }
     static std::size_t McSize(const Schema& schema) { return schema.MC_ChannelD.size(); }
 
     static Cached Build(const Schema& schema, std::size_t i, const ROOT::Math::XYZPoint& pv) {
         return Cached{schema.ChannelD[i], schema.ChannelD_V0[i], pv};
+    }
+
+    static ::Cached::InjectedSexa Injected(const Schema& schema, std::size_t i) {
+        return {schema.MC_ChannelD[i], {schema.MC_Event.PV_X, schema.MC_Event.PV_Y, schema.MC_Event.PV_Z}};
     }
 
     static Classification::EClassification Label(const Schema& schema, std::size_t i, const Cached& cached) {
@@ -78,10 +93,16 @@ struct TraitsChannelH {
     static constexpr std::string_view kName_InputRNT{T2DS::Name_FoundSexaquarkRNT};
     static constexpr std::string_view kName_OutputRNT{Skimmer::Name_CachedSexaquarkRNT};
 
+    static constexpr bool kHasInjectedSexa = true;  // needed for reweighting
+
     static std::size_t Size(const Schema& schema) { return schema.ChannelH.size(); }
     static std::size_t McSize(const Schema& schema) { return schema.MC_ChannelH.size(); }
 
     static Cached Build(const Schema& schema, std::size_t i, const ROOT::Math::XYZPoint& pv) { return Cached{schema.ChannelH[i], pv}; }
+
+    static ::Cached::InjectedSexa Injected(const Schema& schema, std::size_t i) {
+        return {schema.MC_ChannelH[i], {schema.MC_Event.PV_X, schema.MC_Event.PV_Y, schema.MC_Event.PV_Z}};
+    }
 
     static Classification::EClassification Label(const Schema& schema, std::size_t i, const Cached& cached) {
         const auto& mc = schema.MC_ChannelH[i];
@@ -97,6 +118,8 @@ struct TraitsLambdaPair {
     static constexpr std::span<const Variables::Definition<Cached>> kVariables{Variables::DB_Hdibaryon};
     static constexpr std::string_view kName_InputRNT{T2DS::Name_FoundHdibaryonRNT};
     static constexpr std::string_view kName_OutputRNT{Skimmer::Name_CachedHdibaryonRNT};
+
+    static constexpr bool kHasInjectedSexa = false;  // needed for reweighting
 
     static std::size_t Size(const Schema& schema) { return schema.Hdibaryon.size(); }
     static std::size_t McSize(const Schema& schema) { return schema.MC_Hdibaryon.size(); }

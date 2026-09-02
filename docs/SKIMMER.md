@@ -8,7 +8,9 @@ read, which variables to cache, and which preselection to apply.
 | key                   | required       | default | possible values                                  |
 |-----------------------|----------------|---------|--------------------------------------------------|
 | `channel`             | yes            |  (none) | `ChannelA`, `ChannelD`, `ChannelH`, `LambdaPair` |
-| `signal_mass`         | yes            |   (none)| `1.73`,`1.8`,`1.87`,`1.94`,`2.01`,`2.234`        |
+| `signal_mass`         | yes            |  (none) | `1.73`,`1.8`,`1.87`,`1.94`,`2.01`,`2.234`        |
+| `weights_pt`          | no             |    `""` | path to a blast-wave weights file                |
+| `weights_radius`      | no             |    `""` | path to a material-budget weights file           |
 | `samples[]`           | yes, non-empty |  (none) |                                                  |
 | `samples[].path`      | yes, full path |  (none) |                                                  |
 | `samples[].role`      | no             |  `both` | `both`, `signal`, `background`                   |
@@ -40,10 +42,45 @@ and keeps `low <= x <= high`.
 `samples[].role` has an extra rule: either every sample is `both` or no sample is `both`, and there is at least one
 `signal` and at least one `background`.
 
+## The Shape Weight
+
+The dedicated MC injects antisexaquarks flat in pt over `[0, 5)` GeV/c and flat in 2D radius over `[5, 180)` cm.
+Neither is physical, so `Weight` reshapes them, using two files named by the config:
+
+| key              | file                                         | holds                                                            |
+|------------------|----------------------------------------------|------------------------------------------------------------------|
+| `weights_pt`     | `extra/Weights_BlastWave_Pt.root`            | 50 `TH1D` named `"<mass>_<centrality class>"`, e.g. `1.80_10-20` |
+| `weights_radius` | `extra/Weights_MaterialBudget_Radius2D.root` | one `TH1D` named `Radius2D`, from real-data photon conversions   |
+
+Both are optional and independent.
+
+The lookup is `template(x)` divided by the flat prior density over the injected range, so the **mean weight over
+that range is 1**. That is all `Weight` is: a shape.
+
+Only rows with `Classification == kSignal` are weighted, and only in the three sexaquark channels; every other
+row carries exactly `1`. The pt and radius fed to the lookup are MC truth, read off the injected antisexaquark
+linked to the candidate.
+
+Two things stop the run rather than being papered over, since either would leave a cache that is wrong without
+looking wrong:
+
+- a true-signal candidate with no linked injection;
+- a truth pt or radius outside the injected range, which means the templates and the production disagree about
+  how the signal was injected.
+
+The centrality classes (`common/DB_Centrality.hpp`) cover `[0, 90)`, which is a real-data acceptance rather than
+anything MC respects. An event outside them still has an injection to reweight, so it draws a class uniformly in
+percentile, from a fixed seed. The end-of-run summary reports how many rows were weighted and how many of them
+drew.
+
+The yield weights, for how many antisexaquarks or h-dibaryons a real run would actually hold, should be applied
+downstream, by the consumer of the cache, on top of this column. `CacheSource` carries both paths so a consumer can tell
+a reweighted cache from a flat one.
+
 ## Output 1: `RNTuple "Cached{Sexaquark|Hdibaryon}"`
 
 `CachedSexaquark` / `CachedHdibaryon` -- one row per surviving candidate: `SampleIndex`, `Classification`, `RunNumber`,
-`DirNumber`, `EventNumber`, `Weight`, then one `float` per cached variable.
+`DirNumber`, `EventNumber`, `Weight` (see above), then one `float` per cached variable.
 
 `Classification` is the MC-truth label (see `Skimmer/Classification.hxx` and `common/docs/MC_LABELS.md`). Possible
 values:
@@ -84,6 +121,8 @@ It hold one JSON object:
   "signal_mass": 2.234,
   "ntuple": "CachedHdibaryon",
   "fields": ["Mass", "Rapidity", "Pt", "..."],
+  "weights_pt": "",
+  "weights_radius": "",
   "config_path": "../configs/hdibaryon.json",
   "is_partial": false,
   "n_events_limit": 0

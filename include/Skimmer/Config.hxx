@@ -125,6 +125,8 @@ struct Config {
     std::vector<Sample> Samples;
     std::vector<std::string> Variables;
     std::vector<BaselineCut> Baseline;
+    std::string WeightsPt;
+    std::string WeightsRadius;
 
     std::string Path;  // where this config was loaded from
 
