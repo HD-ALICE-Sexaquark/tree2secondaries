@@ -1,90 +1,91 @@
 # `skim`
 
-The limit is per sample, not across all of them: counted globally it would consume the samples in config order and stop,
-which for a config with roles can mean "all of the signal, none of the background". A run with `-n` is flagged as
-partial in `Provenance` and must not be used for normalization.
+## The Skim Config File
 
-### The Config File
+One JSON file per analysis channel, in `configs/skim/`. It holds only what changes the skim's output: which files to
+read, which variables to cache, and which preselection to apply.
 
-One JSON file per analysis channel, in `configs/`, contains cut values, a scan range, or normalization assumptions.
+| key                   | required       | default | possible values                                  |
+|-----------------------|----------------|---------|--------------------------------------------------|
+| `channel`             | yes            |  (none) | `ChannelA`, `ChannelD`, `ChannelH`, `LambdaPair` |
+| `signal_mass`         | yes            |   (none)| `1.73`,`1.8`,`1.87`,`1.94`,`2.01`,`2.234`        |
+| `samples[]`           | yes, non-empty |  (none) |                                                  |
+| `samples[].path`      | yes, full path |  (none) |                                                  |
+| `samples[].role`      | no             |  `both` | `both`, `signal`, `background`                   |
+| `variables[]`         | yes, non-empty |  (none) | any available in `Skimmer/VariableRegistry.hxx`  |
+| `baseline[]`          | no             |    `[]` |                                                  |
+| `baseline[].variable` | yes            |  (none) | any available in `Skimmer/VariableRegistry.hxx`  |
+| `baseline[].direction` | yes           |  (none) | `lower`, `upper`, `window`                       |
+| `baseline[].value`    | yes            |  (none) |                                                  |
 
-| key                                        | required            | default |
-|--------------------------------------------|---------------------|---------|
-| `channel`                                  | yes                 |  (none) |
-| `hypothesis`                               | yes                 |  (none) |
-| `signal_mass`                              | no                  |   `0.0` |
-| `samples[]`                                | yes, non-empty      |  (none) |
-| `samples[].path`                           | yes, full path      |  (none) |
-| `samples[].ntuple`                         | yes                 |  (none) |
-| `samples[].run_number`                     | no                  |     `0` |
-| `samples[].role`                           | no                  |  `both` |
-| `samples[].n_injected_per_event`           | no                  |     `0` |
-| `observable.variable`                      | yes                 |  (none) |
-| `observable.bins`                          | no                  |   `200` |
-| `observable.range`                         | yes                 |  (none) |
-| `baseline[]`                               | no                  |    `[]` |
-| `baseline[].variable`                      | yes                 |  (none) |
-| `baseline[].direction`                     | yes                 |  (none) |
-| `baseline[].value`                         | yes                 |  (none) |
-| `variables[]`                              | yes, non-empty      |  (none) |
-| `variables[].name`                         | yes                 |  (none) |
-| `variables[].direction`                    | yes                 |  (none) |
-| `variables[].range`                        | yes                 |  (none) |
-| `variables[].steps`                        | no, at least `2`    |   `100` |
-| `variables[].initial`                      | yes                 |  (none) |
-| `variables[].in_grid`                      | no                  | `false` |
-| `fom.formula`                              | yes                 |  (none) |
-| `fom.a`                                    | no                  |   `3.0` |
-| `fom.f_syst`                               | no                  |   `0.2` |
-| `fom.n_signal_expected`                    | see below           |  (none) |
-| `fom.signal_yield`                         | see below           |  (none) |
-| `fom.signal_yield.dndy`                    | yes, within block   |  (none) |
-| `fom.signal_yield.delta_y`                 | yes, within block   |  (none) |
-| `fom.signal_yield.source`                  | yes, within block   |  (none) |
-| `fom.signal_yield.branching_ratio`         | no                  |   `1.0` |
-| `fom.signal_yield.n_injected_species`      | no                  |     `1` |
-| `fom.signal_yield.interaction_probability` | no                  |   `1.0` |
-| `guards.min_raw_signal`                    | no                  |    `20` |
-| `guards.min_raw_background`                | no                  |    `20` |
-| `sentinel_ok[]`                            | no                  |    `[]` |
+`channel` decides everything else about the file layout: which schema is read, which RNTuple that schema lives in, and
+which one the cache is written to.
 
-Cut directions are inclusive: `lower` keeps `x >= value`, `upper` keeps `x <= value`, `window` keeps `low <= x <= high`.
+The tuple names come from the schema family, not from the channel, because the three sexaquark channels share a schema
+and never end up in the same file. `Hdibaryon` survives as that family name (`Schema::FoundHdibaryon`,
+`Cached::Hdibaryon`) even though the channel it serves is called `LambdaPair`.
 
-A `window` cut must give its value as a two-element array. This is enforced rather than defaulted, so that a window
-written with a single number fails loudly instead of silently acquiring an upper edge of zero.
+`variables[]` is a plain array of names. Each must exist in the compiled registry of `Skimmer/VariableRegistry.hxx`
+for the declared channel, and none may collide with a reserved cache field (see below). The observable is just one
+more of these and has to be listed like any other -- how finely to scan a variable, from where, and in which direction
+is the optimizer's business, not the skim's.
 
-`fom.formula` is one of `punzi`, `asimov` or `poisson`. The latter two are built on an absolute signal yield and so
-require either `n_signal_expected` (the number) or a `signal_yield` block (the recipe for it) -- exactly one of the two,
-never both, so they cannot disagree. Punzi is the default precisely because it needs neither: only the signal
-efficiency, which is measurable without assuming a production rate.
+Every `baseline[].variable` is cached too, whether or not it also appears in `variables[]`. The cut is applied here
+and cannot be loosened downstream, but its surviving distribution stays inspectable -- and a baseline cut nobody can
+see the shape of is one nobody can check.
 
-`sentinel_ok[]` names variables whose dummy population is acknowledged rather than accidental. Every name must be a
-scanned variable or a baseline cut.
+Cut directions are inclusive: `lower` keeps `x >= value`, `upper` keeps `x <= value`, `window` requires `low` and `high`
+and keeps `low <= x <= high`.
 
-`samples[].role` is one of `signal`, `background` or `both`, and the whole `samples[]` array must be consistent:
-- either every sample is `both` -- one production serving as its own background,
-- or no sample is `both`, and there is at least one `signal` and at least one `background`.
+`samples[].role` has an extra rule: either every sample is `both` or no sample is `both`, and there is at least one
+`signal` and at least one `background`.
 
-`samples[].n_injected_per_event` overrides the channel's compile-time count (20 reactions per event for the sexaquark
-channels, 100 (anti)h-dibaryons for `Hdibaryon`). `0` means "use the channel's", except on a `background` sample, which
-by definition carries no injected signal and so resolves to `0`. The resolved value is what lands in `Meta`.
+## Output 1: `RNTuple "Cached{Sexaquark|Hdibaryon}"`
 
-### The Output Cache
+`CachedSexaquark` / `CachedHdibaryon` -- one row per surviving candidate: `SampleIndex`, `Classification`, `RunNumber`,
+`DirNumber`, `EventNumber`, `Weight`, then one `float` per cached variable.
 
-One file holding three RNTuples:
+`Classification` is the MC-truth label (see `Skimmer/Classification.hxx` and `common/docs/MC_LABELS.md`). Possible
+values:
+- `kSignal = 0` signal
+- `kRealBkg = 1` real background
+- `kHybrid = 2` hybrid (none of the above)
+- `kReferenceReal = 3` wrong-sign or mixed channel, where no component descends from an injection
+- `kReferenceHybrid = 4` wrong-sign or mixed channel, where at least one component descends from injection
+- `kUnknown = 5` unknown
 
-- **`<Channel>`** -- one row per surviving candidate: `SampleIndex`, `Process`, `RunNumber`, `EventNumber`, `Weight`,
-  then one `float` per cached variable.
-- **`Meta`** -- one row per input file: `SampleIndex`, `Path`, `RunNumber`, `Role`, `NInjectedPerEvent`, `NEvents`,
-  `NEventsRead`, `NCandidatesRead`, `NCandidatesWritten`.
-- **`Provenance`** -- one row: `Channel`, `Hypothesis`, `ConfigPath`, `Observable`, `SignalMass`,
-  `NExpectedEventsInRealData`, `IsPartial`.
+`SampleIndex` is the row's position in the config's `samples[]`, and is the join back to `Meta`.
 
-`SampleIndex` is the row's position in the config's `samples[]`, and is the join back to `Meta` -- two samples may share
-a run number, or omit it, so `RunNumber` alone cannot attribute a row to its file. `Role` is stored as the underlying
-value of `ERole`: `0` signal, `1` background, `2` both.
+## Output 2: `RNTuple "Meta"`
 
-`Process` is the MC-truth label (`Skimmer/Process.hxx`) and is independent of the sample's role: `0` signal, `1` hybrid,
-`2` combinatorial, `3` reference (wrong-sign or mixed channel), `4` unknown. The normalization denominator for a signal
-efficiency is `sum(NEvents * NInjectedPerEvent)` over the signal-side `Meta` rows -- `NEvents` comes from the `N_Events`
-histogram `t2ds` fills once per event, before any candidate is built, which is why it is the only correct denominator.
+One row per input file. Fields: `SampleIndex`, `Path`, `Role`, `NInjected`, `NEvents`, `NEventsRead`, `NCandidatesRead`,
+`NCandidatesWritten`.
+
+`Role` is stored as the underlying value of `ERole`: `0` signal, `1` background, `2` both.
+
+`NInjected` is the sum of `Injected` signal over every read event. That is exact for a full run, because `t2ds` keeps
+every MC event whose `Injected` vector is non-empty -- the events it dropped held no injection to miss. A run with `-n`
+stops early and undercounts, which is why such a run is flagged partial and must not be used for normalization.
+
+The count is empirical, so it follows the file rather than the declared role: a signal production reused as a background
+sample reports its real injections. Sum `NInjected` over the `Role == signal` rows.
+
+`NEvents` comes from the `N_Events` histogram `t2ds` fills once per event, before any candidate is built. It is the
+event denominator, and the way to see that an input was truncated -- the RNTuple's entry count is always smaller, since
+candidate-less events are dropped.
+
+## Output 3: `TObjString "CacheSource"`
+
+It hold one JSON object:
+
+```json
+{
+  "channel": "LambdaPair",
+  "signal_mass": 2.234,
+  "ntuple": "CachedHdibaryon",
+  "fields": ["Mass", "Rapidity", "Pt", "..."],
+  "config_path": "../configs/hdibaryon.json",
+  "is_partial": false,
+  "n_events_limit": 0
+}
+```

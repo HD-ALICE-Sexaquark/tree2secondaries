@@ -8,11 +8,14 @@
 #include <vector>
 
 #include <TFile.h>
+#include <TObjString.h>
 
 #include <ROOT/RNTupleModel.hxx>
 #include <ROOT/RNTupleWriteOptions.hxx>
 
-#include "common/Constants.hpp"
+#include <nlohmann/json.hpp>
+using json = nlohmann::json;
+
 #include "common/Framework.hpp"
 
 #include "Skimmer/Config.hxx"
@@ -29,8 +32,9 @@ CacheWriter::CacheWriter(std::string_view ntuple_name, TFile& file, std::span<co
 
     Framework::Model model;
     model.RegisterField<std::uint8_t>(&fSampleIndex, "SampleIndex");
-    model.RegisterField<std::uint8_t>(&fProcess, "Process");
+    model.RegisterField<std::uint8_t>(&fClassification, "Classification");
     model.RegisterField<unsigned int>(&fRunNumber, "RunNumber");
+    model.RegisterField<unsigned int>(&fDirNumber, "DirNumber");
     model.RegisterField<unsigned int>(&fEventNumber, "EventNumber");
     model.RegisterField<float>(&fWeight, "Weight");
     for (std::size_t i = 0; i < fields.size(); ++i) {
@@ -40,12 +44,13 @@ CacheWriter::CacheWriter(std::string_view ntuple_name, TFile& file, std::span<co
     fWriter = std::make_unique<Framework::Writer>(std::move(model), ntuple_name, file, ROOT::RNTupleWriteOptions());
 }
 
-void CacheWriter::Fill(std::uint8_t sample_index, Process::EProcess process, unsigned int run_number, unsigned int event_number, float weight,
+void CacheWriter::Fill(std::uint8_t sample_index, Classification::EClassification classification, const POD::Event& event, float weight,
                        std::span<const double> values) {
     fSampleIndex = sample_index;
-    fProcess = static_cast<std::uint8_t>(process);
-    fRunNumber = run_number;
-    fEventNumber = event_number;
+    fClassification = static_cast<std::uint8_t>(classification);
+    fRunNumber = event.RunNumber;
+    fDirNumber = event.DirNumber;
+    fEventNumber = event.EventNumber;
     fWeight = weight;
     for (std::size_t i = 0; i < fValues.size(); ++i) fValues[i] = static_cast<float>(values[i]);
     fWriter->Fill();
@@ -57,9 +62,8 @@ MetaWriter::MetaWriter(TFile& file) {
     Framework::Model model;
     model.RegisterField<std::uint8_t>(&fSampleIndex, "SampleIndex");
     model.RegisterField<std::string>(&fPath, "Path");
-    model.RegisterField<unsigned int>(&fRunNumber, "RunNumber");
     model.RegisterField<std::uint8_t>(&fRole, "Role");
-    model.RegisterField<std::uint32_t>(&fNInjectedPerEvent, "NInjectedPerEvent");
+    model.RegisterField<std::uint64_t>(&fNInjected, "NInjected");
     model.RegisterField<std::uint64_t>(&fNEvents, "NEvents");
     model.RegisterField<std::uint64_t>(&fNEventsRead, "NEventsRead");
     model.RegisterField<std::uint64_t>(&fNCandidatesRead, "NCandidatesRead");
@@ -70,9 +74,8 @@ MetaWriter::MetaWriter(TFile& file) {
 void MetaWriter::Fill(const MetaRow& row) {
     fSampleIndex = row.SampleIndex;
     fPath = std::string(row.Path);
-    fRunNumber = row.RunNumber;
     fRole = static_cast<std::uint8_t>(row.Role);
-    fNInjectedPerEvent = row.NInjectedPerEvent;
+    fNInjected = row.NInjected;
     fNEvents = row.NEvents;
     fNEventsRead = row.NEventsRead;
     fNCandidatesRead = row.NCandidatesRead;
@@ -80,26 +83,22 @@ void MetaWriter::Fill(const MetaRow& row) {
     fWriter->Fill();
 }
 
-void WriteProvenance(TFile& file, const Skimmer::Config& config, bool is_partial) {
+// # CacheSource # //
 
-    std::string channel{AsString(config.Channel)};
-    std::string hypothesis{config.Hypothesis};
-    std::string config_path{config.Path};
-    std::string observable{config.Obs.Variable};
-    double signal_mass{config.SignalMass};
-    std::uint64_t expected_real_events{E2T::NExpectedEventsInRealData};
+void WriteCacheSource(TFile& file, const Skimmer::Config& config, std::string_view ntuple_name, std::span<const std::string> fields,
+                      std::uint64_t n_events_limit) {
 
-    Framework::Model model;
-    model.RegisterField<std::string>(&channel, "Channel");
-    model.RegisterField<std::string>(&hypothesis, "Hypothesis");
-    model.RegisterField<std::string>(&config_path, "ConfigPath");
-    model.RegisterField<std::string>(&observable, "Observable");
-    model.RegisterField<double>(&signal_mass, "SignalMass");
-    model.RegisterField<std::uint64_t>(&expected_real_events, "NExpectedEventsInRealData");
-    model.RegisterField<bool>(&is_partial, "IsPartial");
+    json record;
+    record["channel"] = std::string(AsString(config.Channel));
+    record["signal_mass"] = config.SignalMass;
+    record["ntuple"] = std::string(ntuple_name);
+    record["fields"] = std::vector<std::string>(fields.begin(), fields.end());
+    record["config_path"] = config.Path;
+    record["is_partial"] = n_events_limit > 0;
+    record["n_events_limit"] = n_events_limit;
 
-    Framework::Writer writer{std::move(model), "Provenance", file, ROOT::RNTupleWriteOptions()};
-    writer.Fill();
+    TObjString text{record.dump(2).c_str()};
+    file.WriteObject(&text, "CacheSource");
 }
 
 }  // namespace Skimmer

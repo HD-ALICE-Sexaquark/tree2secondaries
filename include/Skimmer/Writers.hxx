@@ -11,9 +11,10 @@
 #include <TFile.h>
 
 #include "common/Framework.hpp"
+#include "common/POD_Event.hpp"
 
+#include "Skimmer/Classification.hxx"
 #include "Skimmer/Config.hxx"
-#include "Skimmer/Process.hxx"
 
 namespace Skimmer {
 
@@ -22,7 +23,8 @@ namespace Skimmer {
 // The bookkeeping columns every cache carries, whatever the channel. A config variable sharing one of
 // these names would register a duplicate RNTuple field, so `BuildPlan` rejects it at startup rather
 // than letting the writer fail halfway through a production.
-inline constexpr auto kReservedFields = std::to_array<std::string_view>({"SampleIndex", "Process", "RunNumber", "EventNumber", "Weight"});
+inline constexpr auto kReservedFields =
+    std::to_array<std::string_view>({"SampleIndex", "Classification", "RunNumber", "DirNumber", "EventNumber", "Weight"});
 
 class CacheWriter {
    public:
@@ -35,15 +37,18 @@ class CacheWriter {
     CacheWriter(std::string_view ntuple_name, TFile& file, std::span<const std::string> fields);
 
     // `sample_index` is the row's position in the config's `samples[]`, i.e. the `Meta` row it belongs to.
-    // Without it a row cannot be traced back to its file, since two samples may share (or omit) a run number.
-    void Fill(std::uint8_t sample_index, Process::EProcess process, unsigned int run_number, unsigned int event_number, float weight,
+    // Without it a row cannot be traced back to its file, since a file may span several runs.
+    // The event is taken whole rather than field by field, so that the identity columns and `kReservedFields`
+    // only ever have to agree with each other in one place.
+    void Fill(std::uint8_t sample_index, Classification::EClassification classification, const POD::Event& event, float weight,
               std::span<const double> values);
 
    private:
     std::vector<float> fValues;
     std::uint8_t fSampleIndex{};
-    std::uint8_t fProcess{};
+    std::uint8_t fClassification{};
     unsigned int fRunNumber{};
+    unsigned int fDirNumber{};
     unsigned int fEventNumber{};
     float fWeight{};
     std::unique_ptr<Framework::Writer> fWriter;
@@ -54,9 +59,8 @@ class CacheWriter {
 struct MetaRow {
     std::uint8_t SampleIndex{};
     std::string_view Path;
-    unsigned int RunNumber{};
     ERole Role{ERole::kBoth};
-    unsigned int NInjectedPerEvent{};
+    std::uint64_t NInjected{};
     std::uint64_t NEvents{};
     std::uint64_t NEventsRead{};
     std::uint64_t NCandidatesRead{};
@@ -79,9 +83,8 @@ class MetaWriter {
    private:
     std::uint8_t fSampleIndex{};
     std::string fPath;
-    unsigned int fRunNumber{};
     std::uint8_t fRole{};
-    std::uint32_t fNInjectedPerEvent{};
+    std::uint64_t fNInjected{};
     std::uint64_t fNEvents{};
     std::uint64_t fNEventsRead{};
     std::uint64_t fNCandidatesRead{};
@@ -89,6 +92,10 @@ class MetaWriter {
     std::unique_ptr<Framework::Writer> fWriter;
 };
 
-void WriteProvenance(TFile& file, const Config& config, bool is_partial);
+// # CacheSource # //
+
+// A single JSON record, written as a `TObjString` named "CacheSource".
+void WriteCacheSource(TFile& file, const Config& config, std::string_view ntuple_name, std::span<const std::string> fields,
+                      std::uint64_t n_events_limit);
 
 }  // namespace Skimmer

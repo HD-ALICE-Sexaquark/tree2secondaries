@@ -10,17 +10,25 @@
 
 namespace Skimmer {
 
-// ## The Config File ## //
+// ## The Skim Config File ## //
 
 // Read a JSON file.
-// Every variable referenced here must exist in the compiled registry of `Skimmer/VariableRegistry.hxx` for the declared channel.
-// The idea is that future macros/dashboards/optimizers mirror this json structure.
+// It holds only what changes the skim's output: which files to read, which variables to cache, and which
+// preselection to apply. Every variable named here must exist in the compiled registry of
+// `Skimmer/VariableRegistry.hxx` for the declared channel.
+//
+// Everything downstream needs but the skim does not act on -- the observable's binning, the scan ranges,
+// the figure of merit, the guards -- lives in a separate analysis config owned by the consumer, so that a
+// re-tune of the optimizer does not imply a re-skim. See `docs/ANALYSIS_CONFIG.md`. The output's
+// `CacheSource` record carries a digest of this file -- channel, signal mass, and the path it was loaded
+// from -- so a cache says which config produced it, but not what that config said: the baseline cuts live
+// only here.
 
 enum class EChannel : std::uint8_t {
-    kChannelA,   // antisexaquark + neutron -> antilambda + K0S
-    kChannelD,   // antisexaquark + proton -> antilambda + K+
-    kChannelH,   // antisexaquark + proton -> K+ + K+ + X
-    kHdibaryon,  // (anti)h-dibaryon -> (anti)lambda + (anti)lambda
+    kChannelA,    // antisexaquark + neutron -> antilambda + K0S
+    kChannelD,    // antisexaquark + proton -> antilambda + K+
+    kChannelH,    // antisexaquark + proton -> K+ + K+ + X
+    kLambdaPair,  // (anti)h-dibaryon -> (anti)lambda + (anti)lambda
 };
 
 enum class EDirection : std::uint8_t {
@@ -41,14 +49,7 @@ inline constexpr std::size_t kMaxSamples = 256;
 
 struct Sample {
     std::string Path;
-    std::string NTuple;
-    unsigned int RunNumber{0};
     ERole Role{ERole::kBoth};
-    // Injected signals per event in *this* production. 0 means "use the channel trait", the same
-    // convention `RunNumber` uses. It exists because `Traits::kNInjectedPerEvent` is a compile-time
-    // constant of the channel, not of the production: a sexaquark production skimmed under `Hdibaryon`
-    // traits would otherwise claim 100 injected h-dibaryons per event while containing none.
-    unsigned int NInjectedPerEvent{0};
 };
 
 struct BaselineCut {
@@ -56,45 +57,6 @@ struct BaselineCut {
     EDirection Direction{EDirection::kLower};
     double Value{0.};
     double ValueUpper{0.};  // only read when `Direction == kWindow`
-};
-
-struct CutVariable {
-    std::string Name;
-    EDirection Direction{EDirection::kLower};
-    double RangeMin{0.};
-    double RangeMax{0.};
-    unsigned int Steps{100};
-    double Initial{0.};
-    double InitialUpper{0.};  // only read when `Direction == kWindow`
-    bool InGrid{false};
-};
-
-struct Observable {
-    std::string Variable;
-    unsigned int Bins{200};
-    double Min{0.};
-    double Max{5.};
-};
-
-// Not used at all by `Skimmer`, but validated here.
-struct FOM {
-    std::string Formula{"punzi"};    // punzi | asimov | poisson
-    double A{3.};                    // target significance, in sigmas (Punzi only)
-    double FSyst{0.2};               // assumed relative systematic on the background
-    bool HasNSignalExpected{false};  //
-    double NSignalExpected{0.};      // expected signal candidates in the full real-data sample at 100% efficiency, `asimov` and `poisson` need it
-    bool HasSignalYield{false};
-    double DnDy{0.};
-    double DeltaY{0.};
-    double BranchingRatio{1.};
-    unsigned int NInjectedSpecies{1};
-    double InteractionProbability{1.};
-    std::string YieldSource;
-};
-
-struct Guards {
-    unsigned int MinRawSignal{20};
-    unsigned int MinRawBackground{20};
 };
 
 [[nodiscard]] inline std::string_view AsString(EChannel channel) {
@@ -105,8 +67,8 @@ struct Guards {
             return "ChannelD";
         case EChannel::kChannelH:
             return "ChannelH";
-        case EChannel::kHdibaryon:
-            return "Hdibaryon";
+        case EChannel::kLambdaPair:
+            return "LambdaPair";
     }
     return "Unknown";
 }
@@ -146,8 +108,8 @@ struct Guards {
     if (name == "ChannelA") return EChannel::kChannelA;
     if (name == "ChannelD") return EChannel::kChannelD;
     if (name == "ChannelH") return EChannel::kChannelH;
-    if (name == "Hdibaryon") return EChannel::kHdibaryon;
-    throw std::runtime_error(std::format("unknown channel \"{}\" (expected ChannelA, ChannelD, ChannelH or Hdibaryon)", name));
+    if (name == "LambdaPair") return EChannel::kLambdaPair;
+    throw std::runtime_error(std::format("unknown channel \"{}\" (expected ChannelA, ChannelD, ChannelH or LambdaPair)", name));
 }
 
 [[nodiscard]] inline EDirection AsDirection(std::string_view name) {
@@ -159,15 +121,10 @@ struct Guards {
 
 struct Config {
     EChannel Channel{EChannel::kChannelA};
-    std::string Hypothesis;
     double SignalMass{0.};
     std::vector<Sample> Samples;
-    Observable Obs;
+    std::vector<std::string> Variables;
     std::vector<BaselineCut> Baseline;
-    std::vector<CutVariable> Variables;
-    FOM FigureOfMerit;
-    Guards Guard;
-    std::vector<std::string> SentinelOk;  // not used by Skimmer, but validated
 
     std::string Path;  // where this config was loaded from
 

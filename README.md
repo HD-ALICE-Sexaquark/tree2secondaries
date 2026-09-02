@@ -8,7 +8,8 @@ Single-threaded programs, ideally executed in a job scheduler like Slurm or HTCo
 The output is stored in event-based RNTuples. It can parse real data or MC.
 
 `skim` flattens the candidate vectors of one or more `t2ds` RNTuples into a scalar-only cache, applying the config's
-baseline preselection on the way. Only works for MC productions.
+baseline preselection on the way. Only works for MC productions. It reads a skim config file (`configs/`), which names
+the input files and the variables to cache.
 
 ## Requirements
 

@@ -107,15 +107,17 @@ std::filesystem::path ResolveOutput(const Skimmer::Config& config, std::string_v
 
 // # The Event Count # //
 
-// `t2ds` writes an `N_Events` counter beside each RNTuple, filled once per event at the top of
-// `Finder::ProcessEvent`, i.e. before any candidate is built -- which makes it the only correct
-// denominator for a signal efficiency. Counting the `Injected` field from the cache instead would
-// undercount, because `t2ds` drops events that produced no candidate at all.
+// `t2ds` writes an `N_Events` counter beside each RNTuple, filled once per event at the top of `Finder::ProcessEvent`, i.e. before any candidate is
+// built.
+// NOTE: it's the correct event denominator, because `t2ds` drops events that produced neither a candidate nor an injection; so the entry count
+// of the RNTuple is always the smaller number.
 
 [[nodiscard]] std::uint64_t ReadNEvents(std::string_view path) {
 
     const std::unique_ptr<TFile> file{TFile::Open(std::string(path).c_str(), "READ")};
-    if (!file || file->IsZombie()) throw std::runtime_error(std::format("could not open \"{}\"", path));
+    if (!file || file->IsZombie()) {
+        throw std::runtime_error(std::format("could not open \"{}\"", path));
+    }
 
     const auto* histogram = file->Get<TH1>("N_Events");
     if (!histogram) {
@@ -149,7 +151,7 @@ void RunChannel(const Skimmer::Config& config, std::string_view output_dir, std:
     // NOTE: the writers have to be destroyed before the file is closed -- an `RNTupleWriter` commits its
     //       final cluster and footer in its destructor. Hence the scope.
     {
-        Skimmer::CacheWriter cache{Skimmer::AsString(config.Channel), *output_file, plan.Fields};
+        Skimmer::CacheWriter cache{Traits::kName_OutputRNT, *output_file, plan.Fields};
         Skimmer::MetaWriter meta{*output_file};
 
         std::vector<double> values(plan.Fields.size(), 0.);
@@ -161,21 +163,14 @@ void RunChannel(const Skimmer::Config& config, std::string_view output_dir, std:
 
             const std::uint64_t n_events = ReadNEvents(sample.Path);
 
-            // `NInjectedPerEvent == 0` means "use the channel trait" -- except for a background production,
-            // which carries no injected signal by definition; claiming the trait's count there would invent one.
-            unsigned int n_injected_per_event = sample.NInjectedPerEvent;
-            if (n_injected_per_event == 0 && sample.Role != Skimmer::ERole::kBackground) n_injected_per_event = Traits::kNInjectedPerEvent;
-
             typename Traits::Schema schema;
-            Framework::Reader reader{schema.CreateModel(true), sample.NTuple, sample.Path};
+            Framework::Reader reader{schema.CreateModel(true), Traits::kName_InputRNT, sample.Path};
 
             const auto n_entries = reader.Iter()->GetNEntries();
             std::uint64_t n_events_read{0};
+            std::uint64_t n_injected{0};
             std::uint64_t n_read{0};
             std::uint64_t n_written{0};
-            // The config's `run_number` is authoritative when given; otherwise fall back to what the
-            // first event actually carries, so that `Meta` identifies the file either way.
-            unsigned int run_number{sample.RunNumber};
 
             for (ROOT::NTupleSize_t entry = 0; entry < n_entries; ++entry) {
 
@@ -183,14 +178,7 @@ void RunChannel(const Skimmer::Config& config, std::string_view output_dir, std:
                 reader.Load(entry);
                 ++n_events_read;
 
-                if (n_events_read == 1) {
-                    if (sample.RunNumber == 0) {
-                        run_number = schema.Event.RunNumber;
-                    } else if (sample.RunNumber != schema.Event.RunNumber) {
-                        Logger::Info(__FUNCTION__, "{}: config says run {} but the first event says {} -- recording the config's",  //
-                                     sample.Path, sample.RunNumber, schema.Event.RunNumber);
-                    }
-                }
+                n_injected += schema.Injected.size();
 
                 // `Traits::Label` indexes the MC vector with an index bounded by the reconstructed one.
                 if (Traits::McSize(schema) != Traits::Size(schema)) {
@@ -209,16 +197,15 @@ void RunChannel(const Skimmer::Config& config, std::string_view output_dir, std:
                     for (std::size_t f = 0; f < plan.RegistryIndex.size(); ++f) values[f] = Traits::kVariables[plan.RegistryIndex[f]].Extract(cached);
                     if (!PassesBaseline(plan, values)) continue;
 
-                    cache.Fill(sample_index, Traits::Label(schema, i, cached), schema.Event.RunNumber, schema.Event.EventNumber, 1.F, values);
+                    cache.Fill(sample_index, Traits::Label(schema, i, cached), schema.Event, 1.F, values);
                     ++n_written;
                 }
             }
 
             meta.Fill({.SampleIndex = sample_index,
                        .Path = sample.Path,
-                       .RunNumber = run_number,
                        .Role = sample.Role,
-                       .NInjectedPerEvent = n_injected_per_event,
+                       .NInjected = n_injected,
                        .NEvents = n_events,
                        .NEventsRead = n_events_read,
                        .NCandidatesRead = n_read,
@@ -231,17 +218,18 @@ void RunChannel(const Skimmer::Config& config, std::string_view output_dir, std:
             n_events_read_total += n_events_read;
             n_read_total += n_read;
             n_written_total += n_written;
-            n_injected_total += n_events * n_injected_per_event;
+            n_injected_total += n_injected;
         }
-
-        Skimmer::WriteProvenance(*output_file, config, n_events_limit > 0);
     }
+
+    Skimmer::WriteCacheSource(*output_file, config, Traits::kName_OutputRNT, plan.Fields, n_events_limit);
 
     output_file->Close();
 
     Logger::Info(__FUNCTION__, "wrote {} rows to \"{}\" ({} candidates read from {} events)", n_written_total, output_path.string(), n_read_total,
                  n_events_read_total);
-    Logger::Info(__FUNCTION__, "the inputs hold {} events in total, i.e. {} injected signals", n_events_total, n_injected_total);
+    Logger::Info(__FUNCTION__, "the inputs hold {} events; {} read, holding {} injected signals",  //
+                 n_events_total, n_events_read_total, n_injected_total);
 
     if (n_events_limit > 0) {
         Logger::Info(__FUNCTION__,
@@ -267,8 +255,8 @@ void Run(const Config& config, std::string_view output_dir, std::uint64_t n_even
         case EChannel::kChannelH:
             RunChannel<TraitsChannelH>(config, output_dir, n_events_limit);
             break;
-        case EChannel::kHdibaryon:
-            RunChannel<TraitsHdibaryon>(config, output_dir, n_events_limit);
+        case EChannel::kLambdaPair:
+            RunChannel<TraitsLambdaPair>(config, output_dir, n_events_limit);
             break;
     }
 }
