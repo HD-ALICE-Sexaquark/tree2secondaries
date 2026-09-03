@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
 #include <span>
 #include <string_view>
 
@@ -40,6 +41,8 @@ struct TraitsChannelA {
     static std::size_t Size(const Schema& schema) { return schema.ChannelA.size(); }
     static std::size_t McSize(const Schema& schema) { return schema.MC_ChannelA.size(); }
 
+    static std::uint8_t GeneratorMask(const Schema& schema, std::size_t i) { return schema.MC_ChannelA[i].GeneratorMask; }
+
     static Cached Build(const Schema& schema, std::size_t i, const ROOT::Math::XYZPoint& pv) {
         return Cached{schema.ChannelA[i], schema.ChannelA_V0A[i], schema.ChannelA_V0B[i], pv};
     }
@@ -70,6 +73,8 @@ struct TraitsChannelD {
     static std::size_t Size(const Schema& schema) { return schema.ChannelD.size(); }
     static std::size_t McSize(const Schema& schema) { return schema.MC_ChannelD.size(); }
 
+    static std::uint8_t GeneratorMask(const Schema& schema, std::size_t i) { return schema.MC_ChannelD[i].GeneratorMask; }
+
     static Cached Build(const Schema& schema, std::size_t i, const ROOT::Math::XYZPoint& pv) {
         return Cached{schema.ChannelD[i], schema.ChannelD_V0[i], pv};
     }
@@ -98,6 +103,8 @@ struct TraitsChannelH {
     static std::size_t Size(const Schema& schema) { return schema.ChannelH.size(); }
     static std::size_t McSize(const Schema& schema) { return schema.MC_ChannelH.size(); }
 
+    static std::uint8_t GeneratorMask(const Schema& schema, std::size_t i) { return schema.MC_ChannelH[i].GeneratorMask; }
+
     static Cached Build(const Schema& schema, std::size_t i, const ROOT::Math::XYZPoint& pv) { return Cached{schema.ChannelH[i], pv}; }
 
     static ::Cached::InjectedSexa Injected(const Schema& schema, std::size_t i) {
@@ -123,6 +130,8 @@ struct TraitsLambdaPair {
 
     static std::size_t Size(const Schema& schema) { return schema.Hdibaryon.size(); }
     static std::size_t McSize(const Schema& schema) { return schema.MC_Hdibaryon.size(); }
+
+    static std::uint8_t GeneratorMask(const Schema& schema, std::size_t i) { return schema.MC_Hdibaryon[i].GeneratorMask; }
 
     static Cached Build(const Schema& schema, std::size_t i, const ROOT::Math::XYZPoint& pv) {
         return Cached{schema.Hdibaryon[i], schema.Lambda1[i], schema.Lambda2[i], pv};

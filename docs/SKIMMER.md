@@ -6,22 +6,24 @@ One JSON file per analysis channel, in `configs/`. It holds everything that chan
 read, which variables to cache, which preselection to apply, and where the cache goes. It is also the only argument
 `skim` takes.
 
-| key                    | required       | default | possible values                                  |
-|------------------------|----------------|---------|--------------------------------------------------|
-| `channel`              | yes            |  (none) | `ChannelA`, `ChannelD`, `ChannelH`, `LambdaPair` |
-| `signal_mass`          | yes            |  (none) | `1.73`,`1.8`,`1.87`,`1.94`,`2.01`,`2.234`        |
-| `output`               | yes            |  (none) | path of the cache file, must end in `.root`      |
-| `n_events_limit`       | no             |     `0` | events per sample to read (`0` = all)            |
-| `weights_pt`           | no             |    `""` | path to a blast-wave weights file                |
-| `weights_radius`       | no             |    `""` | path to a material-budget weights file           |
-| `samples[]`            | yes, non-empty |  (none) |                                                  |
-| `samples[].path`       | yes, full path |  (none) |                                                  |
-| `samples[].role`       | no             |  `both` | `both`, `signal`, `background`                   |
-| `variables[]`          | yes, non-empty |  (none) | any available in `Skimmer/VariableRegistry.hxx`  |
-| `baseline[]`           | no             |    `[]` |                                                  |
-| `baseline[].variable`  | yes            |  (none) | any available in `Skimmer/VariableRegistry.hxx`  |
-| `baseline[].direction` | yes            |  (none) | `lower`, `upper`, `window`                       |
-| `baseline[].value`     | yes            |  (none) |                                                  |
+| key                    | required       | default | possible values                                   |
+|------------------------|----------------|---------|---------------------------------------------------|
+| `channel`              | yes            |  (none) | `ChannelA`, `ChannelD`, `ChannelH`, `LambdaPair`  |
+| `signal_mass`          | yes            |  (none) | `1.73`,`1.8`,`1.87`,`1.94`,`2.01`,`2.234`         |
+| `output`               | yes            |  (none) | path of the cache file, must end in `.root`       |
+| `n_events_limit`       | no             |     `0` | events per sample to read (`0` = all)             |
+| `keep_reference`       | no             | `false` | keep the wrong-sign / mixed reference background  |
+| `keep_injected_bkg`    | no             | `false` | keep row with injected-background constituents    |
+| `weights_pt`           | no             |    `""` | path to a blast-wave weights file                 |
+| `weights_radius`       | no             |    `""` | path to a material-budget weights file            |
+| `samples[]`            | yes, non-empty |  (none) |                                                   |
+| `samples[].path`       | yes, full path |  (none) |                                                   |
+| `samples[].role`       | no             |  `both` | `both`, `signal`, `background`                    |
+| `variables[]`          | yes, non-empty |  (none) | any available in `Skimmer/VariableRegistry.hxx`   |
+| `baseline[]`           | no             |    `[]` |                                                   |
+| `baseline[].variable`  | yes            |  (none) | any available in `Skimmer/VariableRegistry.hxx`   |
+| `baseline[].direction` | yes            |  (none) | `lower`, `upper`, `window`                        |
+| `baseline[].value`     | yes            |  (none) |                                                   |
 
 `channel` decides which schema is read, and the names of both input and output RNTuples.
 
@@ -46,6 +48,23 @@ and keeps `low <= x <= high`.
 
 `samples[].role` has an extra rule: either every sample is `both` or no sample is `both`, and there is at least one
 `signal` and at least one `background`.
+
+## What Gets Into the Cache
+
+A candidate that passes the baseline is still dropped for one of two reasons.
+
+**Hybrids never make it in, and that is not a setting.** `Hybrid` is exactly "carries a signal constituent but is not
+true signal" (see `common/docs/MC_LABELS.md`), so it is neither the signal an optimizer tries to keep nor the background
+it tries to reject; a cut tuned against it would be biased on both sides. `kHybrid` and `kReferenceHybrid` are therefore
+always excluded, which leaves `Classification` holding only `kSignal`, `kRealBkg` and -- when asked for --
+`kReferenceReal`.
+
+`keep_reference` decides whether the reference background model comes along: wrong-sign combinations for the
+antisexaquark, mixed lambda-antilambda pairs for the (anti)h-dibaryon. Since the hybrids are already gone, "the
+reference background" here means precisely `kReferenceReal`.
+
+`keep_injected_bkg`, when `false`, drops every candidate with a constituent from an injected-background generator
+(injected antineutrons, auxiliary primaries). This key is global.
 
 ## The Shape Weight
 
@@ -84,8 +103,9 @@ paths are keys in it, so it can tell a reweighted cache from a flat one.
 
 ## Output 1: `RNTuple "Cached{Sexaquark|Hdibaryon}"`
 
-`CachedSexaquark` / `CachedHdibaryon` -- one row per surviving candidate: `SampleIndex`, `Classification`, `RunNumber`,
-`DirNumber`, `DirNumberB`, `EventNumber`, `Weight` (see above), then one `float` per cached variable.
+`CachedSexaquark` / `CachedHdibaryon` -- one row per surviving candidate: `SampleIndex`, `Classification`,
+`GeneratorMask`, `RunNumber`, `DirNumber`, `DirNumberB`, `EventNumber`, `Weight` (see above), then one `float` per
+cached variable.
 
 `RunNumber`, `DirNumber`, `DirNumberB` and `EventNumber` are copied straight off `POD::Event`; `DirNumberB` is only
 meaningful for real data.
@@ -94,17 +114,37 @@ meaningful for real data.
 values:
 - `kSignal = 0` signal
 - `kRealBkg = 1` real background
-- `kHybrid = 2` hybrid (none of the above)
+- `kHybrid = 2` hybrid (none of the above) -- **never written**, see above
 - `kReferenceReal = 3` wrong-sign or mixed channel, where no component descends from an injection
-- `kReferenceHybrid = 4` wrong-sign or mixed channel, where at least one component descends from injection
+- `kReferenceHybrid = 4` wrong-sign or mixed channel, where at least one component descends from injection -- **never
+  written**
 - `kUnknown = 5` unknown
+
+`GeneratorMask` is the generator of origin, one bit per generator, OR-ed over the candidate's charged leaves (see
+`common/docs/MC_LABELS.md`):
+
+| bit | value | generator                    | class |
+|-----|-------|------------------------------|-------|
+|   0 |     1 | HIJING                       |   H   |
+|   1 |     2 | injected antineutrons        |   N   |
+|   2 |     4 | antisexaquark reactions      |   S   |
+|   3 |     8 | auxiliary primaries          |   N   |
+|   4 |    16 | injected (anti)h-dibaryons   |   S   |
+
+Only one production's bits ever appear in one row: antisexaquark MC uses bits `0-2`, (anti)h-dibaryon MC uses bits
+`3-4`. Two relations hold in every row and are worth checking after a skim: `Classification == kRealBkg` if and only if
+no S bit is set, and `Classification == kSignal` implies **only** S bits are set (the converse does not hold -- but its
+counterexamples are all hybrids, which are not written).
 
 `SampleIndex` is the row's position in the config's `samples[]`, and is the join back to `Meta`.
 
 ## Output 2: `RNTuple "Meta"`
 
 One row per input file. Fields: `SampleIndex`, `Path`, `Role`, `NInjected`, `NEvents`, `NEventsRead`, `NCandidatesRead`,
-`NCandidatesWritten`.
+`NCandidatesWritten`, `NDropped_Truth`, `NDropped_Origin`.
+
+`NDropped_Truth` and `NDropped_Origin` attribute the gap between read and written to the two filters above -- the truth
+label and the injected-background veto respectively, counted after the baseline.
 
 `Role` is stored as the underlying value of `ERole`: `0` signal, `1` background, `2` both.
 

@@ -23,8 +23,8 @@ namespace Skimmer {
 // The bookkeeping columns every cache carries, whatever the channel. A config variable sharing one of
 // these names would register a duplicate RNTuple field, so `BuildPlan` rejects it at startup rather
 // than letting the writer fail halfway through a production.
-inline constexpr auto kReservedFields =
-    std::to_array<std::string_view>({"SampleIndex", "Classification", "RunNumber", "DirNumber", "DirNumberB", "EventNumber", "Weight"});
+inline constexpr auto kReservedFields = std::to_array<std::string_view>(
+    {"SampleIndex", "Classification", "GeneratorMask", "RunNumber", "DirNumber", "DirNumberB", "EventNumber", "Weight"});
 
 class CacheWriter {
    public:
@@ -40,13 +40,16 @@ class CacheWriter {
     // Without it a row cannot be traced back to its file, since a file may span several runs.
     // The event is taken whole rather than field by field, so that the identity columns and `kReservedFields`
     // only ever have to agree with each other in one place.
-    void Fill(std::uint8_t sample_index, Classification::EClassification classification, const POD::Event& event, float weight,
-              std::span<const double> values);
+    // `generator_mask` is stored rather than consumed, so that a consumer can still cut on the generator of origin
+    // without re-running the skim -- and so that an origin filter applied here stays visible after the fact.
+    void Fill(std::uint8_t sample_index, Classification::EClassification classification, std::uint8_t generator_mask, const POD::Event& event,
+              float weight, std::span<const double> values);
 
    private:
     std::vector<float> fValues;
     std::uint8_t fSampleIndex{};
     std::uint8_t fClassification{};
+    std::uint8_t fGeneratorMask{};
     unsigned int fRunNumber{};
     unsigned int fDirNumber{};
     unsigned int fDirNumberB{};
@@ -66,6 +69,8 @@ struct MetaRow {
     std::uint64_t NEventsRead{};
     std::uint64_t NCandidatesRead{};
     std::uint64_t NCandidatesWritten{};
+    std::uint64_t NDropped_Truth{};   // dropped by `Classification::ShouldBeKept`: hybrids always, reference unless kept
+    std::uint64_t NDropped_Origin{};  // dropped by the injected-background veto
 };
 
 // Metadata: one row per input file.
@@ -90,6 +95,8 @@ class MetaWriter {
     std::uint64_t fNEventsRead{};
     std::uint64_t fNCandidatesRead{};
     std::uint64_t fNCandidatesWritten{};
+    std::uint64_t fNDropped_Truth{};
+    std::uint64_t fNDropped_Origin{};
     std::unique_ptr<Framework::Writer> fWriter;
 };
 

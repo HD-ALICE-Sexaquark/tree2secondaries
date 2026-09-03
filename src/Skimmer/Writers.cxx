@@ -14,7 +14,6 @@
 
 #include "common/Framework.hpp"
 
-#include "Skimmer/Config.hxx"
 #include "Skimmer/Writers.hxx"
 
 namespace Skimmer {
@@ -29,6 +28,7 @@ CacheWriter::CacheWriter(std::string_view ntuple_name, TFile& file, std::span<co
     Framework::Model model;
     model.RegisterField<std::uint8_t>(&fSampleIndex, "SampleIndex");
     model.RegisterField<std::uint8_t>(&fClassification, "Classification");
+    model.RegisterField<std::uint8_t>(&fGeneratorMask, "GeneratorMask");
     model.RegisterField<unsigned int>(&fRunNumber, "RunNumber");
     model.RegisterField<unsigned int>(&fDirNumber, "DirNumber");
     model.RegisterField<unsigned int>(&fDirNumberB, "DirNumberB");
@@ -41,10 +41,11 @@ CacheWriter::CacheWriter(std::string_view ntuple_name, TFile& file, std::span<co
     fWriter = std::make_unique<Framework::Writer>(std::move(model), ntuple_name, file, ROOT::RNTupleWriteOptions());
 }
 
-void CacheWriter::Fill(std::uint8_t sample_index, Classification::EClassification classification, const POD::Event& event, float weight,
-                       std::span<const double> values) {
+void CacheWriter::Fill(std::uint8_t sample_index, Classification::EClassification classification, std::uint8_t generator_mask,
+                       const POD::Event& event, float weight, std::span<const double> values) {
     fSampleIndex = sample_index;
     fClassification = static_cast<std::uint8_t>(classification);
+    fGeneratorMask = generator_mask;
     fRunNumber = event.RunNumber;
     fDirNumber = event.DirNumber;
     fDirNumberB = event.DirNumberB;
@@ -66,6 +67,8 @@ MetaWriter::MetaWriter(TFile& file) {
     model.RegisterField<std::uint64_t>(&fNEventsRead, "NEventsRead");
     model.RegisterField<std::uint64_t>(&fNCandidatesRead, "NCandidatesRead");
     model.RegisterField<std::uint64_t>(&fNCandidatesWritten, "NCandidatesWritten");
+    model.RegisterField<std::uint64_t>(&fNDropped_Truth, "NDropped_Truth");
+    model.RegisterField<std::uint64_t>(&fNDropped_Origin, "NDropped_Origin");
     fWriter = std::make_unique<Framework::Writer>(std::move(model), "Meta", file, ROOT::RNTupleWriteOptions());
 }
 
@@ -78,6 +81,8 @@ void MetaWriter::Fill(const MetaRow& row) {
     fNEventsRead = row.NEventsRead;
     fNCandidatesRead = row.NCandidatesRead;
     fNCandidatesWritten = row.NCandidatesWritten;
+    fNDropped_Truth = row.NDropped_Truth;
+    fNDropped_Origin = row.NDropped_Origin;
     fWriter->Fill();
 }
 

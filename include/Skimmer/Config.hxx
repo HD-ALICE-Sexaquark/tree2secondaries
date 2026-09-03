@@ -125,6 +125,8 @@ struct Config {
     std::string WeightsRadius;
     std::string Output;             // full path of the cache file, ending in .root
     std::uint64_t NEventsLimit{0};  // events per sample, 0 = all of them
+    bool KeepReference{false};      // wrong-sign / mixed-channel candidates, i.e., the reference background model
+    bool KeepInjectedBkg{true};     // rows with a constituent from an injected-background generator
 
     std::string Path;  // where this config was loaded from
 

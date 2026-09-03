@@ -18,6 +18,7 @@
 namespace RMath = ROOT::Math;
 
 #include "common/DB_Centrality.hpp"
+#include "common/MC_Helpers.hpp"
 
 #include "Skimmer/Channels.hxx"
 #include "Skimmer/Config.hxx"
@@ -150,6 +151,8 @@ void RunChannel(const Skimmer::Config& config) {
     std::uint64_t n_written_total{0};
     std::uint64_t n_injected_total{0};
     std::uint64_t n_weighted_total{0};
+    std::uint64_t n_dropped_truth_total{0};
+    std::uint64_t n_dropped_origin_total{0};
 
     // NOTE: the writers have to be destroyed before the file is closed -- an `RNTupleWriter` commits its
     //       final cluster and footer in its destructor. Hence the scope.
@@ -175,6 +178,8 @@ void RunChannel(const Skimmer::Config& config) {
             std::uint64_t n_read{0};
             std::uint64_t n_written{0};
             std::uint64_t n_weighted{0};
+            std::uint64_t n_dropped_truth{0};
+            std::uint64_t n_dropped_origin{0};
 
             for (ROOT::NTupleSize_t entry = 0; entry < n_entries; ++entry) {
 
@@ -208,6 +213,20 @@ void RunChannel(const Skimmer::Config& config) {
 
                     // classify candidate //
                     const Skimmer::Classification::EClassification label = Traits::Label(schema, i, cached);
+                    const std::uint8_t generator_mask = Traits::GeneratorMask(schema, i);
+
+                    // apply truth selection //
+                    // -- hybrids never survive this; the reference background does only when the config asks for it
+                    if (!Skimmer::Classification::ShouldBeKept(label, config.KeepReference)) {
+                        ++n_dropped_truth;
+                        continue;
+                    }
+
+                    // apply generator-of-origin selection //
+                    if (!config.KeepInjectedBkg && MC::Origin::CarriesInjectedBkg(generator_mask)) {
+                        ++n_dropped_origin;
+                        continue;
+                    }
 
                     // reweight: only for signal candidates in antisexaquark MC //
                     float weight{1.F};
@@ -229,7 +248,7 @@ void RunChannel(const Skimmer::Config& config) {
                             ++n_weighted;
                         }
                     }
-                    cache.Fill(sample_index, label, schema.Event, weight, values);
+                    cache.Fill(sample_index, label, generator_mask, schema.Event, weight, values);
 
                     // update counter //
                     ++n_written;
@@ -243,10 +262,15 @@ void RunChannel(const Skimmer::Config& config) {
                        .NEvents = n_events,
                        .NEventsRead = n_events_read,
                        .NCandidatesRead = n_read,
-                       .NCandidatesWritten = n_written});
+                       .NCandidatesWritten = n_written,
+                       .NDropped_Truth = n_dropped_truth,
+                       .NDropped_Origin = n_dropped_origin});
 
             Logger::Info(__FUNCTION__, "{} ({}): {} events, {} candidates read, {} written ({:.2f}%)", sample.Path, Skimmer::AsString(sample.Role),
                          n_events_read, n_read, n_written, n_read > 0 ? 100. * static_cast<double>(n_written) / static_cast<double>(n_read) : 0.);
+            // -- the rest failed the baseline; a shrinking skim must always say which rule shrank it
+            Logger::Info(__FUNCTION__, "{:<12}   of the survivors of the baseline, {} were dropped by their truth label and {} by their origin", "",
+                         n_dropped_truth, n_dropped_origin);
 
             n_events_total += n_events;
             n_events_read_total += n_events_read;
@@ -254,6 +278,8 @@ void RunChannel(const Skimmer::Config& config) {
             n_written_total += n_written;
             n_injected_total += n_injected;
             n_weighted_total += n_weighted;
+            n_dropped_truth_total += n_dropped_truth;
+            n_dropped_origin_total += n_dropped_origin;
         }
     }
 
@@ -263,6 +289,8 @@ void RunChannel(const Skimmer::Config& config) {
                  n_events_read_total);
     Logger::Info(__FUNCTION__, "the inputs hold {} events; {} read, holding {} injected signals",  //
                  n_events_total, n_events_read_total, n_injected_total);
+    Logger::Info(__FUNCTION__, "{} candidates were dropped by their truth label ({}) and {} by their generator of origin",  //
+                 n_dropped_truth_total, config.KeepReference ? "hybrids" : "hybrids and reference background", n_dropped_origin_total);
 
     if (reweighter.IsActive()) {
         Logger::Info(__FUNCTION__, "shape weights were applied to {} signal rows; every other row carries 1", n_weighted_total);

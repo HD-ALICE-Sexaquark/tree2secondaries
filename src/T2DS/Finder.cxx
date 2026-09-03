@@ -1,5 +1,6 @@
 #include <cmath>
 #include <cstddef>
+#include <cstdint>
 #include <format>
 #include <memory>
 #include <optional>
@@ -257,6 +258,9 @@ POD::Linked::InjectedSexa Finder::Link_InjectedSexa(const POD::Extended::McParti
 
     // -- real background: no daughter carries signal, at any depth; anything else in between is hybrid
     mc_sexa.IsRealBkg = mc_dau1.IsRealBkg && mc_dau2.IsRealBkg;
+
+    // -- the reaction has no mc record of its own, so its mask is purely the daughters'
+    mc_sexa.GeneratorMask = static_cast<std::uint8_t>(mc_dau1.GeneratorMask | mc_dau2.GeneratorMask);
 
     return mc_sexa;
 }

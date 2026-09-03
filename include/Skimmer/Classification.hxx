@@ -49,4 +49,20 @@ inline constexpr std::size_t NClassifications = Name_Classification.size();
     return kHybrid;
 }
 
+[[nodiscard]] constexpr bool ShouldBeKept(EClassification classification, bool keep_reference) {
+    switch (classification) {
+        case kSignal:
+        case kRealBkg:
+            return true;
+        case kReferenceReal:
+            return keep_reference;
+        case kHybrid:
+        case kReferenceHybrid:
+            return false;
+        case kUnknown:
+            return true;  // PENDING: applies for real data
+    }
+    return false;
+}
+
 }  // namespace Skimmer::Classification
